@@ -1,0 +1,60 @@
+import { createTranslator, getMessages } from "@internal/i18n";
+
+const sections = [
+  {
+    titleKey: "legal.privacy.sections.collect.title",
+    bodyKey: "legal.privacy.sections.collect.body",
+  },
+  {
+    titleKey: "legal.privacy.sections.use.title",
+    bodyKey: "legal.privacy.sections.use.body",
+  },
+  {
+    titleKey: "legal.privacy.sections.retention.title",
+    bodyKey: "legal.privacy.sections.retention.body",
+  },
+  {
+    titleKey: "legal.privacy.sections.rights.title",
+    bodyKey: "legal.privacy.sections.rights.body",
+  },
+  {
+    titleKey: "legal.privacy.sections.processors.title",
+    bodyKey: "legal.privacy.sections.processors.body",
+  },
+];
+
+export default async function PrivacyPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+
+  return (
+    <div className="bg-white py-24">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6">
+        <header>
+          <p className="text-sm uppercase tracking-[0.3em] text-emerald-600">
+            {t("footer.privacy")}
+          </p>
+          <h1 className="mt-4 text-4xl font-semibold text-slate-900">{t("legal.privacy.title")}</h1>
+          <p className="mt-3 text-base text-slate-600">
+            {t("legal.privacy.updated", undefined, {
+              date: new Date().toLocaleDateString(locale, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }),
+            })}
+          </p>
+        </header>
+        <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">
+          {sections.map((section) => (
+            <section key={section.titleKey}>
+              <h2 className="text-lg font-semibold text-emerald-600">{t(section.titleKey)}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{t(section.bodyKey)}</p>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
