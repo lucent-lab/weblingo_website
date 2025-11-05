@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { createTranslator, getMessages } from "@internal/i18n";
 
 const sections = [
@@ -23,6 +25,23 @@ const sections = [
   },
 ];
 
+const TERMS_OF_SERVICE_LAST_UPDATED = new Date("2025-11-05");
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+
+  return {
+    title: t("legal.terms.title"),
+    description: t("legal.terms.sections.overview.body"),
+  };
+}
+
 export default async function TermsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const messages = await getMessages(locale);
@@ -36,7 +55,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
           <h1 className="mt-4 text-4xl font-semibold text-slate-900">{t("legal.terms.title")}</h1>
           <p className="mt-3 text-base text-slate-600">
             {t("legal.terms.updated", undefined, {
-              date: new Date().toLocaleDateString(locale, {
+              date: TERMS_OF_SERVICE_LAST_UPDATED.toLocaleDateString(locale, {
                 year: "numeric",
                 month: "long",
                 day: "numeric",

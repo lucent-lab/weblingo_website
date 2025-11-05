@@ -12,7 +12,15 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
   const messages = await getMessages(locale);
   const t = createTranslator(messages);
   const pricingTableId = getPricingTableId(locale);
-  const publishableKey = env.STRIPE_PUBLIC_KEY;
+  const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+  if (!pricingTableId || !publishableKey) {
+    throw new Error("Missing required Stripe configuration");
+  }
+
+  if (!/^pk_(test|live)_/.test(publishableKey)) {
+    throw new Error("Invalid Stripe publishable key format");
+  }
 
   return (
     <div className="bg-background pb-24 pt-20">

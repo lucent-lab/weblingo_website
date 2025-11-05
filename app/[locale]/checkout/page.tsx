@@ -9,12 +9,14 @@ export default async function CheckoutPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
   const messages = await getMessages(locale);
   const t = createTranslator(messages);
-  const planId = typeof searchParams?.plan === "string" ? searchParams.plan : undefined;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const planId =
+    typeof resolvedSearchParams?.plan === "string" ? resolvedSearchParams.plan : undefined;
   const hasPlan = planId ? pricingTiers.some((plan) => plan.id === planId) : true;
 
   if (!hasPlan) {

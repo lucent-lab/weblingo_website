@@ -1,4 +1,21 @@
+import type { Metadata } from "next";
+
 import { createTranslator, getMessages } from "@internal/i18n";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+
+  return {
+    title: t("legal.notice.title"),
+    description: t("legal.notice.description"),
+  };
+}
 
 export default async function LegalNoticePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

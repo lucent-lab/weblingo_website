@@ -5,8 +5,10 @@ import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import { env } from "@internal/core";
 
+const appUrl = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+
 export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
+  metadataBase: appUrl ? new URL(appUrl) : undefined,
   title: {
     default: "WebLingo — AI Localization for SaaS Marketing",
     template: "%s · WebLingo",

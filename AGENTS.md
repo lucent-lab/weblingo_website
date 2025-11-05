@@ -22,14 +22,13 @@ This document guides contributors working inside the `web` marketing site for We
 Define these in `.env.local`:
 
 - `NEXT_PUBLIC_APP_URL`
-- `STRIPE_PUBLIC_KEY`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICING_TABLE_ID`
 - `STRIPE_PRICING_TABLE_ID_EN`
 - `STRIPE_PRICING_TABLE_ID_FR`
 - `STRIPE_PRICING_TABLE_ID_JA`
-- `STRIPE_PRICING_TABLE_ID`
 
 ## Development Principles
 

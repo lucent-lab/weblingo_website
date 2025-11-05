@@ -1,9 +1,21 @@
+import { notFound } from "next/navigation";
+
 import { TryForm } from "@/components/try-form";
 import { createTranslator, getMessages } from "@internal/i18n";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const messages = await getMessages(locale);
+  if (!locale) {
+    notFound();
+  }
+
+  let messages: Awaited<ReturnType<typeof getMessages>>;
+  try {
+    messages = await getMessages(locale);
+  } catch (error) {
+    console.error("Failed to load messages:", error);
+    notFound();
+  }
   const t = createTranslator(messages);
 
   return (

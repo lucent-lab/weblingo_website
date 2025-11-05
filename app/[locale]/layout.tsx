@@ -19,12 +19,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
+
+  if (locale !== rawLocale) {
+    return {};
+  }
+
+  const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+
   return {
     alternates: {
-      canonical: `${env.NEXT_PUBLIC_APP_URL}/${locale}`,
-      languages: Object.fromEntries(
-        i18nConfig.locales.map((code) => [code, `${env.NEXT_PUBLIC_APP_URL}/${code}`]),
-      ),
+      canonical: `${baseUrl}/${locale}`,
+      languages: Object.fromEntries(i18nConfig.locales.map((code) => [code, `${baseUrl}/${code}`])),
     },
   };
 }

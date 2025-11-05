@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { createTranslator, getMessages } from "@internal/i18n";
 
 const sections = [
@@ -23,6 +25,23 @@ const sections = [
   },
 ];
 
+const PRIVACY_POLICY_LAST_UPDATED = new Date("2025-11-05");
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+
+  return {
+    title: t("legal.privacy.title"),
+    description: t("legal.privacy.sections.collect.body"),
+  };
+}
+
 export default async function PrivacyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const messages = await getMessages(locale);
@@ -38,7 +57,7 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
           <h1 className="mt-4 text-4xl font-semibold text-slate-900">{t("legal.privacy.title")}</h1>
           <p className="mt-3 text-base text-slate-600">
             {t("legal.privacy.updated", undefined, {
-              date: new Date().toLocaleDateString(locale, {
+              date: PRIVACY_POLICY_LAST_UPDATED.toLocaleDateString(locale, {
                 year: "numeric",
                 month: "long",
                 day: "numeric",

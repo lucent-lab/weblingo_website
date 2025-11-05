@@ -46,7 +46,7 @@ styles/              # Tailwind globals
 - `components/pricing-teaser.tsx` — Home page teaser built with shadcn/ui cards over the pricing catalog.
 - `components/ui/*` — Locally vendored shadcn/ui primitives (button, card, badge, input).
 
-The public pricing experience embeds Stripe’s Pricing Table on `/[locale]/pricing` using `STRIPE_PUBLIC_KEY` and `STRIPE_PRICING_TABLE_ID`. The fallback table ensures we retain plan metadata for the Checkout API and non-embed contexts.
+The public pricing experience embeds Stripe’s Pricing Table on `/[locale]/pricing` using `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `STRIPE_PRICING_TABLE_ID`. The fallback table ensures we retain plan metadata for the Checkout API and non-embed contexts.
 
 ## Stripe Integration
 

@@ -37,6 +37,47 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      if (session.mode !== "subscription") {
+        console.warn(
+          JSON.stringify(
+            {
+              level: "warn",
+              message: "Unexpected checkout session mode",
+              mode: session.mode,
+              siteId: SITE_ID,
+              sessionId: session.id,
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      const customerId =
+        typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : (session.subscription?.id ?? null);
+
+      if (!customerId || !subscriptionId) {
+        console.error(
+          JSON.stringify(
+            {
+              level: "error",
+              message: "Missing customer or subscription on completed checkout session",
+              siteId: SITE_ID,
+              sessionId: session.id,
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
       console.log(
         JSON.stringify(
           {
@@ -44,8 +85,8 @@ export async function POST(request: NextRequest) {
             message: "Checkout session completed",
             siteId: SITE_ID,
             sessionId: session.id,
-            customerId: session.customer,
-            subscriptionId: session.subscription,
+            customerId,
+            subscriptionId,
           },
           null,
           0,
