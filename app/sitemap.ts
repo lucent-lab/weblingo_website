@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { env } from "@internal/core";
 import { i18nConfig } from "@internal/i18n";
 
-const baseRoutes = ["", "/pricing", "/contact", "/checkout", "/legal/terms", "/legal/privacy"];
+const baseRoutes = ["", "/pricing", "/contact", "/try", "/legal/terms", "/legal/privacy"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();

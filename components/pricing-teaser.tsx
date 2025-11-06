@@ -22,7 +22,7 @@ export function PricingTeaser({ locale, t }: PricingTeaserProps) {
   }
 
   return (
-    <section className="bg-background pb-20 pt-16">
+    <section id="pricing-table" className="bg-background pb-20 pt-16">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6">
         <Script src="https://js.stripe.com/v3/pricing-table.js" async />
         <stripe-pricing-table pricing-table-id={pricingTableId} publishable-key={publishableKey} />

@@ -1,10 +1,8 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingTeaser } from "@/components/pricing-teaser";
-import { pricingTiers } from "@modules/pricing";
 import { createTranslator, getMessages } from "@internal/i18n";
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -127,7 +125,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
       <PricingTeaser locale={locale} t={t} />
 
-      <section className="mx-auto mt-16 w-full max-w-6xl px-6">
+      <section id="compare" className="mx-auto mt-16 w-full max-w-6xl px-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-foreground">
@@ -139,7 +137,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
               <table className="w-full min-w-[600px] text-sm text-muted-foreground">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                    <th className="py-2 pr-4 font-medium">{t("pricing.compare.title")}</th>
+                    <th className="py-2 pr-4 font-medium">{t("pricing.compare.column.feature")}</th>
                     <th className="py-2 px-4 font-medium text-center">
                       {t("pricing.tiers.launch.name")}
                     </th>
@@ -169,7 +167,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </Card>
       </section>
 
-      <section className="mx-auto mt-16 w-full max-w-4xl px-6">
+      <section id="faq" className="mx-auto mt-16 w-full max-w-4xl px-6">
         <h2 className="text-2xl font-semibold text-foreground">{t("pricing.faq.title")}</h2>
         <div className="mt-6 space-y-6">
           {faqItems.map((item) => (

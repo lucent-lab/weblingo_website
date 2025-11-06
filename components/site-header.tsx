@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import type { Translator } from "@internal/i18n";
 
 const navLinks = [
+  { href: "/pricing#compare", labelKey: "nav.features" },
+  { href: "#how-it-works", labelKey: "nav.how" },
   { href: "/pricing", labelKey: "nav.pricing" },
-  { href: "/docs", labelKey: "nav.docs" },
-  { href: "/try", labelKey: "nav.try" },
+  { href: "#faq", labelKey: "nav.faq" },
 ];
 
 type SiteHeaderProps = {
@@ -22,34 +23,33 @@ export function SiteHeader({ locale, t }: SiteHeaderProps) {
           WebLingo
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={`/${locale}${link.href}`}
-              className="transition hover:text-primary focus-visible:text-primary"
-            >
-              {t(link.labelKey)}
-            </Link>
-          ))}
-          <Link
-            href={`/${locale}/legal/terms`}
-            className="transition hover:text-primary focus-visible:text-primary"
-          >
-            {t("nav.legal")}
-          </Link>
-          <Link
-            href={`/${locale}/login`}
-            className="transition hover:text-primary focus-visible:text-primary"
-          >
-            {t("nav.login")}
-          </Link>
+          {navLinks.map((link) => {
+            const href = `/${locale}${
+              link.href.startsWith("/") || link.href.startsWith("#") ? link.href : `/${link.href}`
+            }`;
+            return (
+              <Link
+                key={link.href}
+                href={href}
+                className="transition hover:text-primary focus-visible:text-primary"
+              >
+                {t(link.labelKey)}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" className="sm:hidden">
-            <Link href={`/${locale}/pricing`}>{t("nav.pricing")}</Link>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="hidden sm:inline-flex">
+            <Link href={`/${locale}/try`}>{t("nav.try")}</Link>
           </Button>
-          <Button asChild>
-            <Link href={`/${locale}/checkout`}>{t("nav.start")}</Link>
+          <Button asChild className="hidden sm:inline-flex">
+            <Link href={`/${locale}/pricing`}>{t("nav.start")}</Link>
+          </Button>
+          <Button asChild variant="ghost" className="sm:hidden">
+            <Link href={`/${locale}/try`}>{t("nav.try")}</Link>
+          </Button>
+          <Button asChild className="sm:hidden">
+            <Link href={`/${locale}/pricing`}>{t("nav.start")}</Link>
           </Button>
         </div>
       </div>

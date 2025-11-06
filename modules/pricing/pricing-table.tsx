@@ -50,9 +50,7 @@ export function PricingTable({ locale, t }: PricingTableProps) {
               ))}
             </ul>
             <Button asChild className="w-full" size="lg">
-              <Link href={`/${locale}/checkout?plan=${tier.id}`}>
-                {t("pricing.tiers.checkout")}
-              </Link>
+              <Link href={`/${locale}/pricing#pricing-table`}>{t("pricing.tiers.checkout")}</Link>
             </Button>
           </CardContent>
         </Card>

@@ -15,9 +15,62 @@ export function normalizeLocale(locale: string): Locale {
   return i18nConfig.defaultLocale;
 }
 
+const cache: Partial<Record<Locale, Messages>> = {};
+
+async function loadMessages(locale: Locale): Promise<Messages> {
+  if (!cache[locale]) {
+    cache[locale] = await loaders[locale]();
+  }
+  return cache[locale]!;
+}
+
+let validated = false;
+
+async function ensureMessageConsistency(): Promise<void> {
+  if (validated) {
+    return;
+  }
+
+  const locales = Object.keys(loaders) as Locale[];
+  const referenceLocale = i18nConfig.defaultLocale;
+  const referenceMessages = await loadMessages(referenceLocale);
+  const referenceKeys = new Set(Object.keys(referenceMessages));
+
+  const missingReports: string[] = [];
+  const extraReports: string[] = [];
+
+  for (const locale of locales) {
+    const messages = locale === referenceLocale ? referenceMessages : await loadMessages(locale);
+    const messageKeys = new Set(Object.keys(messages));
+
+    const missing = [...referenceKeys].filter((key) => !messageKeys.has(key));
+    if (missing.length > 0) {
+      missingReports.push(`${locale}: ${missing.join(", ")}`);
+    }
+
+    const extra = [...messageKeys].filter((key) => !referenceKeys.has(key));
+    if (extra.length > 0) {
+      extraReports.push(`${locale}: ${extra.join(", ")}`);
+    }
+  }
+
+  if (missingReports.length > 0 || extraReports.length > 0) {
+    const parts = [
+      "i18n message key mismatch detected.",
+      missingReports.length ? `Missing keys -> ${missingReports.join(" | ")}` : null,
+      extraReports.length ? `Extra keys -> ${extraReports.join(" | ")}` : null,
+    ].filter(Boolean);
+
+    throw new Error(parts.join(" "));
+  }
+
+  validated = true;
+}
+
 export async function getMessages(locale: string): Promise<Messages> {
   const normalized = normalizeLocale(locale);
-  return loaders[normalized]();
+  await ensureMessageConsistency();
+  return loadMessages(normalized);
 }
 
 export type Translator = (key: string, fallback?: string, vars?: Record<string, string>) => string;
