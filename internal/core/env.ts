@@ -1,9 +1,14 @@
 import { z } from "zod";
 
-const envSchema = z.object({
+const clientEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
-  STRIPE_SECRET_KEY: z.string().min(1),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
+});
+
+const serverEnvSchema = z.object({
+  STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   STRIPE_PRICING_TABLE_ID: z.string().min(1).optional(),
   STRIPE_PRICING_TABLE_ID_EN: z.string().min(1).optional(),
@@ -11,13 +16,30 @@ const envSchema = z.object({
   STRIPE_PRICING_TABLE_ID_JA: z.string().min(1).optional(),
 });
 
-export const env = envSchema.parse({
+const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema);
+
+type FullEnv = z.infer<typeof fullEnvSchema>;
+
+const readClientEnv = () => ({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+});
+
+const readServerEnv = () => ({
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICING_TABLE_ID: process.env.STRIPE_PRICING_TABLE_ID,
   STRIPE_PRICING_TABLE_ID_EN: process.env.STRIPE_PRICING_TABLE_ID_EN,
   STRIPE_PRICING_TABLE_ID_FR: process.env.STRIPE_PRICING_TABLE_ID_FR,
   STRIPE_PRICING_TABLE_ID_JA: process.env.STRIPE_PRICING_TABLE_ID_JA,
 });
+
+const isServer = typeof window === "undefined";
+
+const runtimeEnv = isServer
+  ? fullEnvSchema.parse({ ...readClientEnv(), ...readServerEnv() })
+  : clientEnvSchema.parse(readClientEnv());
+
+export const env = runtimeEnv as FullEnv;
