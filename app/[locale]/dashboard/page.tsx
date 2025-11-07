@@ -94,7 +94,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   );
 }
 
-function formatDate(value: string | null, locale: string) {
+function formatDate(value: string | null | undefined, locale: string) {
   if (!value) {
     return "—";
   }

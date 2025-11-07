@@ -16,6 +16,7 @@ const serverEnvSchema = z.object({
   STRIPE_PRICING_TABLE_ID_EN: z.string().min(1).optional(),
   STRIPE_PRICING_TABLE_ID_FR: z.string().min(1).optional(),
   STRIPE_PRICING_TABLE_ID_JA: z.string().min(1).optional(),
+  SUPABASE_SECRET_KEY: z.string().min(1),
 });
 
 const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema);
@@ -38,6 +39,7 @@ const readServerEnv = () => ({
   STRIPE_PRICING_TABLE_ID_EN: process.env.STRIPE_PRICING_TABLE_ID_EN,
   STRIPE_PRICING_TABLE_ID_FR: process.env.STRIPE_PRICING_TABLE_ID_FR,
   STRIPE_PRICING_TABLE_ID_JA: process.env.STRIPE_PRICING_TABLE_ID_JA,
+  SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
 });
 
 const isServer = typeof window === "undefined";
