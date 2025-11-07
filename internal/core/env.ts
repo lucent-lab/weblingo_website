@@ -14,8 +14,6 @@ const serverEnvSchema = z.object({
   STRIPE_PRICING_TABLE_ID_EN: z.string().min(1).optional(),
   STRIPE_PRICING_TABLE_ID_FR: z.string().min(1).optional(),
   STRIPE_PRICING_TABLE_ID_JA: z.string().min(1).optional(),
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
 });
 
 const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema);
@@ -36,8 +34,6 @@ const readServerEnv = () => ({
   STRIPE_PRICING_TABLE_ID_EN: process.env.STRIPE_PRICING_TABLE_ID_EN,
   STRIPE_PRICING_TABLE_ID_FR: process.env.STRIPE_PRICING_TABLE_ID_FR,
   STRIPE_PRICING_TABLE_ID_JA: process.env.STRIPE_PRICING_TABLE_ID_JA,
-  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 });
 
 const isServer = typeof window === "undefined";
