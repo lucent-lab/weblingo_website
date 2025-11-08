@@ -18,7 +18,7 @@ export function LaunchBanner() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const stored = window.sessionStorage.getItem(STORAGE_KEY);
     if (stored === "1") {
       setHidden(true);
     }
@@ -70,7 +70,7 @@ export function LaunchBanner() {
   function handleDismiss() {
     setHidden(true);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, "1");
+      window.sessionStorage.setItem(STORAGE_KEY, "1");
     }
   }
 

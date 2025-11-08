@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 const payloadSchema = z.object({
   email: z.string().email().max(320),
@@ -15,6 +16,31 @@ const payloadSchema = z.object({
 // Ensure you create a table named `launch_waitlist_signups` with a unique constraint on `email`.
 const TABLE_NAME = "launch_waitlist_signups";
 
+type WaitlistInsert = {
+  email: string;
+  site_url: string | null;
+  user_agent: string | null;
+  referer: string | null;
+};
+
+type WaitlistRow = {
+  id: string;
+  created_at: string;
+};
+
+type WaitlistTableClient = {
+  upsert: (
+    values: WaitlistInsert,
+    options?: {
+      onConflict?: string;
+      ignoreDuplicates?: boolean;
+    },
+  ) => {
+    select: (columns: string) => {
+      single: () => Promise<PostgrestSingleResponse<WaitlistRow>>;
+    };
+  };
+};
 export async function POST(request: NextRequest) {
   let json: unknown;
   try {
@@ -38,22 +64,23 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .upsert(
-      {
-        email: parsed.data.email,
-        site_url: parsed.data.siteUrl ?? null,
-        user_agent: request.headers.get("user-agent"),
-        referer: request.headers.get("referer"),
-      },
-      {
-        onConflict: "email",
-        ignoreDuplicates: false,
-      },
-    )
+  const waitlistRow: WaitlistInsert = {
+    email: parsed.data.email,
+    site_url: parsed.data.siteUrl ?? null,
+    user_agent: request.headers.get("user-agent"),
+    referer: request.headers.get("referer"),
+  };
+
+  const table = supabase.from(TABLE_NAME) as unknown as WaitlistTableClient;
+  const response = await table
+    .upsert(waitlistRow, {
+      onConflict: "email",
+      ignoreDuplicates: false,
+    })
     .select("id, created_at")
     .single();
+
+  const { data, error } = response as PostgrestSingleResponse<WaitlistRow>;
 
   if (error) {
     console.error(
