@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { LaunchBanner } from "@components/launch-banner";
 import { SiteFooter } from "@components/site-footer";
 import { SiteHeader } from "@components/site-header";
 import { env } from "@internal/core";
@@ -50,12 +51,28 @@ export default async function LocaleLayout({
 
   const messages = await getMessages(locale);
   const t = createTranslator(messages);
+  const bannerCopy = {
+    badge: t("banner.badge"),
+    title: t("banner.title"),
+    subtitle: t("banner.subtitle"),
+    emailPlaceholder: t("banner.emailPlaceholder"),
+    sitePlaceholder: t("banner.sitePlaceholder"),
+    buttonIdle: t("banner.button.idle"),
+    buttonLoading: t("banner.button.loading"),
+    buttonSuccess: t("banner.button.success"),
+    successMessage: t("banner.message.success"),
+    defaultMessage: t("banner.message.default"),
+    dismissLabel: t("banner.dismiss"),
+  };
 
   return (
-    <div className="flex min-h-screen flex-col" data-locale={locale}>
-      <SiteHeader locale={locale} t={t} />
-      <main className="flex-1">{children}</main>
-      <SiteFooter locale={locale} t={t} />
-    </div>
+    <>
+      <div className="flex min-h-screen flex-col" data-locale={locale}>
+        <SiteHeader locale={locale} t={t} />
+        <main className="flex-1">{children}</main>
+        <SiteFooter locale={locale} t={t} />
+      </div>
+      <LaunchBanner copy={bannerCopy} />
+    </>
   );
 }

@@ -2,7 +2,6 @@ import "../styles/globals.css";
 
 import type { Metadata } from "next";
 
-import { LaunchBanner } from "@/components/launch-banner";
 import { cn } from "@/lib/utils";
 import { env } from "@internal/core";
 
@@ -27,7 +26,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans text-foreground antialiased")}>
         <div className="flex min-h-screen flex-col">{children}</div>
-        <LaunchBanner />
       </body>
     </html>
   );

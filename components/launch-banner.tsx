@@ -9,7 +9,25 @@ type SubmissionState = "idle" | "loading" | "success" | "error";
 
 const STORAGE_KEY = "weblingo-launch-banner-dismissed";
 
-export function LaunchBanner() {
+type LaunchBannerCopy = {
+  badge: string;
+  title: string;
+  subtitle: string;
+  emailPlaceholder: string;
+  sitePlaceholder: string;
+  buttonIdle: string;
+  buttonLoading: string;
+  buttonSuccess: string;
+  successMessage: string;
+  defaultMessage: string;
+  dismissLabel: string;
+};
+
+type LaunchBannerProps = {
+  copy: LaunchBannerCopy;
+};
+
+export function LaunchBanner({ copy }: LaunchBannerProps) {
   const [email, setEmail] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [status, setStatus] = useState<SubmissionState>("idle");
@@ -80,13 +98,10 @@ export function LaunchBanner() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="text-sm sm:flex-1">
             <p className="font-semibold uppercase tracking-[0.2em] text-primary-foreground/80">
-              Final boarding call
+              {copy.badge}
             </p>
-            <p className="text-base font-medium">
-              WebLingo is almost ready. Drop your email{` `}
-              <span className="hidden sm:inline">(and optional site)</span> for launch updates + a free
-              month.
-            </p>
+            <p className="text-base font-medium">{copy.title}</p>
+            <p className="text-sm">{copy.subtitle}</p>
           </div>
 
           <form className="flex flex-1 flex-col gap-2 sm:flex-row" onSubmit={handleSubmit}>
@@ -95,7 +110,7 @@ export function LaunchBanner() {
               autoComplete="email"
               className="border-white/30 bg-white/15 text-white placeholder:text-white/70 focus-visible:ring-primary-foreground"
               onChange={(event) => setEmail(event.currentTarget.value)}
-              placeholder="you@company.com"
+              placeholder={copy.emailPlaceholder}
               required
               type="email"
               value={email}
@@ -104,7 +119,7 @@ export function LaunchBanner() {
               aria-label="Website (optional)"
               className="border-white/30 bg-white/10 text-white placeholder:text-white/60 focus-visible:ring-primary-foreground sm:max-w-[220px]"
               onChange={(event) => setSiteUrl(event.currentTarget.value)}
-              placeholder="https://your-site.com"
+              placeholder={copy.sitePlaceholder}
               type="url"
               value={siteUrl}
             />
@@ -114,22 +129,26 @@ export function LaunchBanner() {
               type="submit"
               variant="secondary"
             >
-              {status === "success" ? "We'll be in touch" : status === "loading" ? "Sending..." : "Notify me"}
+              {status === "success"
+                ? copy.buttonSuccess
+                : status === "loading"
+                  ? copy.buttonLoading
+                  : copy.buttonIdle}
             </Button>
           </form>
         </div>
         <div className="mt-2 flex flex-col gap-2 text-xs text-primary-foreground/80 sm:flex-row sm:items-center sm:justify-between">
           <p className="truncate">
             {status === "success"
-              ? "Thanks! We'll let you know as soon as WebLingo ships."
-              : errorMessage ?? "We'll send updates and a free-month code at launch."}
+              ? copy.successMessage
+              : errorMessage ?? copy.defaultMessage}
           </p>
           <button
             className="self-start rounded px-2 py-1 text-primary-foreground/80 transition hover:text-white"
             onClick={handleDismiss}
             type="button"
           >
-            Dismiss
+            {copy.dismissLabel}
           </button>
         </div>
       </div>

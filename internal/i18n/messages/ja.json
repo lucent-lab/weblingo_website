@@ -311,5 +311,16 @@
   "home.final.title": "サイトを多言語化する準備はできていますか？",
   "home.final.subtitle": "今すぐサイトを試しませんか。翻訳済みのサイトが次のコーヒーの前に公開できるかもしれません。",
   "home.final.cta": "URLを今すぐ試す",
-  "home.benefits.title": "WebLingo の特長"
+  "home.benefits.title": "WebLingo の特長",
+  "banner.badge": "最終案内",
+  "banner.title": "WebLingo はまもなく公開です。",
+  "banner.subtitle": "メールアドレス（必要ならサイトURLも）を登録して、リリース情報と1か月無料を受け取りましょう。",
+  "banner.emailPlaceholder": "you@example.com",
+  "banner.sitePlaceholder": "https://あなたのサイト.jp",
+  "banner.button.idle": "通知を受け取る",
+  "banner.button.loading": "送信中...",
+  "banner.button.success": "追ってご連絡します",
+  "banner.message.success": "ありがとうございます！公開したらすぐにお知らせします。",
+  "banner.message.default": "リリース情報と1か月無料コードをお送りします。",
+  "banner.dismiss": "閉じる"
 }

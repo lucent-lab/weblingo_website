@@ -311,5 +311,16 @@
   "home.final.title": "Prêt à rendre votre site multilingue ?",
   "home.final.subtitle": "Testez votre site maintenant — vos pages traduites peuvent être en ligne avant votre prochaine pause café.",
   "home.final.cta": "Tester votre URL",
-  "home.benefits.title": "Pourquoi choisir WebLingo"
+  "home.benefits.title": "Pourquoi choisir WebLingo",
+  "banner.badge": "Dernier appel",
+  "banner.title": "WebLingo est presque prêt.",
+  "banner.subtitle": "Laissez votre e-mail (et éventuellement votre site) pour recevoir le lancement et un mois offert.",
+  "banner.emailPlaceholder": "vous@entreprise.com",
+  "banner.sitePlaceholder": "https://votre-site.com",
+  "banner.button.idle": "Prévenez-moi",
+  "banner.button.loading": "Envoi...",
+  "banner.button.success": "Nous revenons vers vous",
+  "banner.message.success": "Merci ! Nous vous avertirons dès que WebLingo sera disponible.",
+  "banner.message.default": "Nous vous enverrons les nouvelles du lancement et un mois gratuit.",
+  "banner.dismiss": "Fermer"
 }

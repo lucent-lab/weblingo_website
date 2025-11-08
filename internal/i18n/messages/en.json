@@ -311,5 +311,16 @@
   "home.final.title": "Ready to make your website multilingual?",
   "home.final.subtitle": "Try your site now — your translated version could be online before your next coffee.",
   "home.final.cta": "Try your URL now",
-  "home.benefits.title": "Why WebLingo"
+  "home.benefits.title": "Why WebLingo",
+  "banner.badge": "Final boarding call",
+  "banner.title": "WebLingo is almost ready.",
+  "banner.subtitle": "Drop your email (and optional site) to get launch updates plus a free month.",
+  "banner.emailPlaceholder": "you@company.com",
+  "banner.sitePlaceholder": "https://your-site.com",
+  "banner.button.idle": "Notify me",
+  "banner.button.loading": "Sending...",
+  "banner.button.success": "We'll be in touch",
+  "banner.message.success": "Thanks! We'll let you know as soon as WebLingo ships.",
+  "banner.message.default": "We'll send updates and a free-month code at launch.",
+  "banner.dismiss": "Dismiss"
 }
