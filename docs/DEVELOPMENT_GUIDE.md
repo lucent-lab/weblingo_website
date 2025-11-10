@@ -90,6 +90,7 @@ Other scripts:
 
 - Keep the unique constraint on `email` so the API can `upsert` without duplicates.
 - The handler currently uses the service key. Once the schema stabilizes, generate Supabase types and replace the temporary table typings in `app/api/waitlist/route.ts`.
+- Run `pnpm supabase:types` whenever the schema changes. This command requires the Supabase CLI and `SUPABASE_PROJECT_ID` env var (found in the Supabase dashboard) and regenerates `types/database.ts` with strongly typed tables used by the server/client helpers.
 
 ## Adding New Internal Modules
 
@@ -117,4 +118,3 @@ When you need new capabilities (auth, database, analytics):
 ## Pending follow-ups
 
 - Dashboard: join against future billing/subscription tables so authenticated users can see their plan, status, and renewal info instead of the current basic profile view.
-- Supabase admin helper: replace the manual waitlist table typing with generated Supabase types (e.g., via `supabase gen types typescript --local`) so API handlers can rely on first-class definitions.

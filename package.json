@@ -16,7 +16,9 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "type": "tsc --noEmit",
-    "check": "pnpm run lint && pnpm run format && pnpm run type"
+    "typecheck": "pnpm run type",
+    "check": "pnpm run lint && pnpm run format && pnpm run type",
+    "supabase:types": "supabase gen types typescript --schema public --project-id \"$SUPABASE_PROJECT_ID\" > types/database.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",

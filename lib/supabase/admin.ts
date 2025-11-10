@@ -1,20 +1,25 @@
 import { createClient, type User } from "@supabase/supabase-js";
 
 import { env } from "@internal/core";
+import type { Database } from "@/types/database";
 
-let cachedAdminClient: ReturnType<typeof createClient> | null = null;
+let cachedAdminClient: ReturnType<typeof createClient<Database>> | null = null;
 
 export function createServiceRoleClient() {
   if (cachedAdminClient) {
     return cachedAdminClient;
   }
 
-  cachedAdminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+  cachedAdminClient = createClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.SUPABASE_SECRET_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
-  });
+  );
 
   return cachedAdminClient;
 }
