@@ -9,16 +9,19 @@ import { createClientTranslator, type ClientMessages } from "@internal/i18n";
 type TryFormProps = {
   locale: string;
   messages: ClientMessages;
+  disabled?: boolean;
 };
 
-export function TryForm({ locale, messages }: TryFormProps) {
+export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [url, setUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
 
+  const isDisabled = disabled || status === "loading";
+
   async function handleGenerate() {
-    if (!url) return;
+    if (!url || disabled) return;
     setStatus("loading");
     try {
       const encoded = encodeURIComponent(url.trim());
@@ -37,8 +40,9 @@ export function TryForm({ locale, messages }: TryFormProps) {
           placeholder={t("try.form.placeholder")}
           type="url"
           required
+          disabled={disabled}
         />
-        <Button onClick={handleGenerate} disabled={!url || status === "loading"}>
+        <Button onClick={handleGenerate} disabled={!url || isDisabled}>
           {status === "loading" ? `${t("try.form.button")}…` : t("try.form.button")}
         </Button>
       </div>

@@ -92,6 +92,26 @@ Other scripts:
 - The handler currently uses the service key. Once the schema stabilizes, generate Supabase types and replace the temporary table typings in `app/api/waitlist/route.ts`.
 - Run `pnpm supabase:types` whenever the schema changes. This command requires the Supabase CLI and `SUPABASE_PROJECT_ID` env var (found in the Supabase dashboard) and regenerates `types/database.ts` with strongly typed tables used by the server/client helpers.
 
+### Contact Form Logging
+
+- The contact page currently logs submissions to a `contact_messages` table.
+- Suggested schema:
+
+  ```sql
+  create table public.contact_messages (
+    id uuid primary key default gen_random_uuid(),
+    locale text not null,
+    full_name text not null,
+    work_email text not null,
+    domain text,
+    locales text,
+    message text,
+    created_at timestamptz not null default now()
+  );
+  ```
+
+- Submissions are inserted via Supabase service role credentials and the form redirects to `/[locale]/contact?submitted=1` on success. Once an email provider is in place, replace this logging step with the real notification flow and update the docs accordingly.
+
 ## Adding New Internal Modules
 
 When you need new capabilities (auth, database, analytics):

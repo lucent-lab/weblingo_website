@@ -16,7 +16,10 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
           <h1 className="text-4xl font-semibold text-foreground">{t("try.header.title")}</h1>
           <p className="text-base text-muted-foreground">{t("try.header.description")}</p>
         </div>
-        <TryForm locale={locale} messages={messages} />
+        <p className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+          {t("try.disabled.notice")}
+        </p>
+        <TryForm locale={locale} messages={messages} disabled />
       </div>
     </div>
   );

@@ -36,6 +36,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      contact_messages: {
+        Row: {
+          id: string;
+          locale: string;
+          full_name: string;
+          work_email: string;
+          domain: string | null;
+          locales: string | null;
+          message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          locale: string;
+          full_name: string;
+          work_email: string;
+          domain?: string | null;
+          locales?: string | null;
+          message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          locale?: string;
+          full_name?: string;
+          work_email?: string;
+          domain?: string | null;
+          locales?: string | null;
+          message?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {};
     Functions: {};
