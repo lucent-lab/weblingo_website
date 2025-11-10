@@ -204,3 +204,21 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
     </div>
   );
 }
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return {
+    title: t("home.hero.title", "Automatic Website Translation & Hosting"),
+    description: t(
+      "home.hero.description",
+      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+    ),
+  };
+}
+import type { Metadata } from "next";

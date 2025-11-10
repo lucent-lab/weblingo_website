@@ -188,3 +188,18 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     </div>
   );
 }
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return {
+    title: t("pricing.header.title", "Pricing"),
+    description: t("pricing.header.description"),
+  };
+}
+import type { Metadata } from "next";

@@ -33,3 +33,21 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
     </div>
   );
 }
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return {
+    title: t("try.header.title", "Try Your URL"),
+    description: t(
+      "try.header.description",
+      "Preview a translated version of your website and see how it would look hosted globally.",
+    ),
+  };
+}
+import type { Metadata } from "next";

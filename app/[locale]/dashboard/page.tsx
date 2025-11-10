@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import {
@@ -92,6 +93,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       </div>
     </div>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Dashboard",
+    robots: { index: false, follow: false },
+  };
 }
 
 function formatDate(value: string | null | undefined, locale: string) {

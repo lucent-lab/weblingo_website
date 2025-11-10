@@ -45,3 +45,11 @@ export default async function CheckoutSuccessPage({
     </div>
   );
 }
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Checkout Success",
+    robots: { index: false, follow: false },
+  };
+}
+import type { Metadata } from "next";

@@ -55,3 +55,21 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
     </div>
   );
 }
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return {
+    title: t("contact.header.title", "Contact"),
+    description: t(
+      "contact.header.description",
+      "Questions about pricing, security, or rollouts? Contact WebLingo.",
+    ),
+  };
+}
+import type { Metadata } from "next";

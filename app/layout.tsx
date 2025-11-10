@@ -10,11 +10,24 @@ const appUrl = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
 export const metadata: Metadata = {
   metadataBase: appUrl ? new URL(appUrl) : undefined,
   title: {
-    default: "WebLingo — AI Localization for SaaS Marketing",
+    default: "WebLingo — Automatic Website Translation & Hosting",
     template: "%s · WebLingo",
   },
   description:
-    "Launch localized marketing experiences in days, not quarters. WebLingo keeps every locale in sync with your primary site.",
+    "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+  openGraph: {
+    siteName: "WebLingo",
+    type: "website",
+    title: "WebLingo — Automatic Website Translation & Hosting",
+    description:
+      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+  },
+  twitter: {
+    card: "summary",
+    title: "WebLingo — Automatic Website Translation & Hosting",
+    description:
+      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+  },
 };
 
 type RootLayoutProps = {

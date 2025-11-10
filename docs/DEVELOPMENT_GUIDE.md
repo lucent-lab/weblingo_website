@@ -81,3 +81,9 @@ When you need new capabilities (auth, database, analytics):
 - Avoid circular dependencies between internal modules.
 - Ensure env parsing lives in `internal/core/env.ts` and is the only place reading `process.env`.
 - When ready, move modules into `/packages/*`, add `package.json` per package, and update aliases to package names.
+## SEO follow-ups
+
+- Add social share images and switch Twitter card to `summary_large_image` once assets exist.
+  - Create `/public/og.png` at 1200x630 (or multiple sizes) and reference via `openGraph.images` and `twitter.images` in `app/layout.tsx`.
+  - Update `twitter.card` from `summary` to `summary_large_image` after the image is available.
+  - Consider locale-specific OG images if you want translated previews.

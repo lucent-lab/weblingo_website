@@ -57,3 +57,9 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Log in",
+  robots: { index: false, follow: false },
+};
+import type { Metadata } from "next";

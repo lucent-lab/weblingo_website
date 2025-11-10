@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createTranslator, getMessages } from "@internal/i18n";
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -42,4 +43,18 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
       </div>
     </div>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return {
+    title: t("docs.title", "Docs"),
+    description: t("docs.overview"),
+  };
 }

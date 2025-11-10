@@ -32,3 +32,11 @@ export default async function CheckoutCancelPage({
     </div>
   );
 }
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Checkout Canceled",
+    robots: { index: false, follow: false },
+  };
+}
+import type { Metadata } from "next";
