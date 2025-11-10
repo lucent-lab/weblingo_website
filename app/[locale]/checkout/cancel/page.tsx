@@ -1,16 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutCancelPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { locale, t } = await resolveLocaleTranslator(params);
 
   return (
     <div className="bg-background py-24">
@@ -39,4 +38,3 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: false, follow: false },
   };
 }
-import type { Metadata } from "next";

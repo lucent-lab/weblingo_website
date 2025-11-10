@@ -185,12 +185,9 @@ async function ensureSupabaseUser({
       lastStripeSubscriptionId: subscriptionId,
     };
 
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
-      existingUser.id,
-      {
-        user_metadata: metadata,
-      },
-    );
+    const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+      user_metadata: metadata,
+    });
 
     if (updateError) {
       console.error(
@@ -260,7 +257,11 @@ function extractCustomerEmail(session: Stripe.Checkout.Session) {
     return session.customer_email;
   }
 
-  if (session.customer && typeof session.customer === "object" && !isDeletedCustomer(session.customer)) {
+  if (
+    session.customer &&
+    typeof session.customer === "object" &&
+    !isDeletedCustomer(session.customer)
+  ) {
     return session.customer.email ?? null;
   }
 

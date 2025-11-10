@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 
 type DashboardPageProps = {
@@ -17,6 +11,7 @@ type DashboardPageProps = {
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { locale } = await params;
   const supabase = await createClient();
+  // TODO: Join against upcoming billing tables to show plan, status, and renewal data once they exist.
   const {
     data: { user },
     error,
@@ -39,6 +34,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   ];
 
   const metadataEntries = Object.entries(user.user_metadata ?? {});
+  // TODO: Replace raw metadata dump with curated fields (workspace name, site URL, etc.) when we store them.
 
   return (
     <div className="bg-background pb-24 pt-16">
@@ -47,7 +43,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           <p className="text-sm uppercase tracking-[0.3em] text-primary">Account</p>
           <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-base text-muted-foreground">
-            You&apos;re signed in with Supabase. Below is the data returned for your current session.
+            You&apos;re signed in with Supabase. Below is the data returned for your current
+            session.
           </p>
         </header>
 
@@ -58,8 +55,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {accountFields.map((field) => (
-              <div key={field.label} className="flex flex-col gap-1 border-b border-border pb-4 last:border-b-0 last:pb-0">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{field.label}</p>
+              <div
+                key={field.label}
+                className="flex flex-col gap-1 border-b border-border pb-4 last:border-b-0 last:pb-0"
+              >
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {field.label}
+                </p>
                 <p className="text-sm text-foreground break-all">{field.value}</p>
               </div>
             ))}

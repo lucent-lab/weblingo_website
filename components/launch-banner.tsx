@@ -139,9 +139,7 @@ export function LaunchBanner({ copy }: LaunchBannerProps) {
         </div>
         <div className="mt-2 flex flex-col gap-2 text-xs text-primary-foreground/80 sm:flex-row sm:items-center sm:justify-between">
           <p className="truncate">
-            {status === "success"
-              ? copy.successMessage
-              : errorMessage ?? copy.defaultMessage}
+            {status === "success" ? copy.successMessage : (errorMessage ?? copy.defaultMessage)}
           </p>
           <button
             className="self-start rounded px-2 py-1 text-primary-foreground/80 transition hover:text-white"

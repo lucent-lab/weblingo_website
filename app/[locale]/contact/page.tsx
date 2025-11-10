@@ -1,11 +1,11 @@
+import type { Metadata } from "next";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { t } = await resolveLocaleTranslator(params);
 
   return (
     <div className="bg-background py-24">
@@ -61,15 +61,10 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
-  return {
-    title: t("contact.header.title", "Contact"),
-    description: t(
-      "contact.header.description",
-      "Questions about pricing, security, or rollouts? Contact WebLingo.",
-    ),
-  };
+  return createLocalizedMetadata(params, {
+    titleKey: "contact.header.title",
+    descriptionKey: "contact.header.description",
+    titleFallback: "Contact",
+    descriptionFallback: "Questions about pricing, security, or rollouts? Contact WebLingo.",
+  });
 }
-import type { Metadata } from "next";

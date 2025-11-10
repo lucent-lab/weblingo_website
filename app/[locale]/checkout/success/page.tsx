@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutSuccessPage({
   params,
@@ -10,9 +11,7 @@ export default async function CheckoutSuccessPage({
   params: Promise<{ locale: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { locale, t } = await resolveLocaleTranslator(params);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sessionId =
     typeof resolvedSearchParams?.session_id === "string"
@@ -52,4 +51,3 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: false, follow: false },
   };
 }
-import type { Metadata } from "next";

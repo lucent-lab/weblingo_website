@@ -5,5 +5,7 @@ export {
   normalizeLocale,
   type Messages,
   type Translator,
+  resolveLocaleTranslator,
+  createLocalizedMetadata,
 } from "./server";
 export { createClientTranslator, type ClientMessages } from "./client";

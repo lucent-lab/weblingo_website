@@ -6,11 +6,7 @@ import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 const payloadSchema = z.object({
   email: z.string().email().max(320),
-  siteUrl: z
-    .string()
-    .url()
-    .max(2048)
-    .optional(),
+  siteUrl: z.string().url().max(2048).optional(),
 });
 
 // Ensure you create a table named `launch_waitlist_signups` with a unique constraint on `email`.
@@ -50,16 +46,23 @@ export async function POST(request: NextRequest) {
   }
 
   const base =
-    typeof json === "object" && json !== null ? (json as Record<string, unknown>) : ({} as Record<string, unknown>);
+    typeof json === "object" && json !== null
+      ? (json as Record<string, unknown>)
+      : ({} as Record<string, unknown>);
 
   const parsed = payloadSchema.safeParse({
     email: typeof base.email === "string" ? base.email.trim() : base.email,
     siteUrl:
-      typeof base.siteUrl === "string" && base.siteUrl.trim().length > 0 ? base.siteUrl.trim() : undefined,
+      typeof base.siteUrl === "string" && base.siteUrl.trim().length > 0
+        ? base.siteUrl.trim()
+        : undefined,
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid input", details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   const supabase = createServiceRoleClient();

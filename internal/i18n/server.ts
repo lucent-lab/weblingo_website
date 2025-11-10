@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { i18nConfig, type Locale } from "./config";
 
 export type Messages = Record<string, string>;
@@ -84,4 +86,34 @@ export function createTranslator(messages: Messages): Translator {
       template,
     );
   };
+}
+
+type LocaleParams = {
+  locale: string;
+};
+
+type LocalizedMetadataOptions = {
+  titleKey?: string;
+  descriptionKey?: string;
+  titleFallback: string;
+  descriptionFallback: string;
+};
+
+export async function resolveLocaleTranslator(paramsPromise: Promise<LocaleParams>) {
+  const { locale } = await paramsPromise;
+  const messages = await getMessages(locale);
+  const t = createTranslator(messages);
+  return { locale, messages, t };
+}
+
+export async function createLocalizedMetadata(
+  paramsPromise: Promise<LocaleParams>,
+  { titleKey, descriptionKey, titleFallback, descriptionFallback }: LocalizedMetadataOptions,
+): Promise<Metadata> {
+  const { t } = await resolveLocaleTranslator(paramsPromise);
+
+  const title = titleKey ? t(titleKey, titleFallback) : titleFallback;
+  const description = descriptionKey ? t(descriptionKey, descriptionFallback) : descriptionFallback;
+
+  return { title, description };
 }

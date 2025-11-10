@@ -42,6 +42,12 @@ Use descriptive Stripe price IDs that include the site identifier, e.g. `price_w
 - Translations live in `internal/i18n/messages/<locale>.json` using flat keys.
 - Server components call `createTranslator(await getMessages(locale))`; client components receive `messages` and use `createClientTranslator(messages)`.
 - When adding new copy, add keys to every locale file and consume them via the translator—never hardcode strings in UI components.
+- Log messages **must** remain in English (even for localized pages) so diagnostics stay consistent across regions.
+
+## Coding Standards
+
+- Prefer helpers under `lib/` to avoid repeating the same `getMessages` or metadata logic across pages.
+- Keep console/error logging in English and structured (objects instead of string concatenation) for easier log aggregation.
 
 ## Installing & Running
 
@@ -66,6 +72,25 @@ Other scripts:
 5. Create Stripe Pricing Tables per locale (or reuse a default) and copy the IDs into `STRIPE_PRICING_TABLE_ID` (fallback) and `STRIPE_PRICING_TABLE_ID_EN/FR/JA` so the embedded widget renders on `/[locale]/pricing` with locale-appropriate content.
 6. Metadata sent with checkout sessions includes `siteId` so events remain distinguishable when sharing the Stripe account.
 
+## Waitlist Capture
+
+- The `/api/waitlist` endpoint writes to a Supabase table named `launch_waitlist_signups`.
+- Minimum schema:
+
+  ```sql
+  create table public.launch_waitlist_signups (
+    id uuid primary key default gen_random_uuid(),
+    email text not null unique,
+    site_url text,
+    user_agent text,
+    referer text,
+    created_at timestamptz not null default now()
+  );
+  ```
+
+- Keep the unique constraint on `email` so the API can `upsert` without duplicates.
+- The handler currently uses the service key. Once the schema stabilizes, generate Supabase types and replace the temporary table typings in `app/api/waitlist/route.ts`.
+
 ## Adding New Internal Modules
 
 When you need new capabilities (auth, database, analytics):
@@ -81,9 +106,15 @@ When you need new capabilities (auth, database, analytics):
 - Avoid circular dependencies between internal modules.
 - Ensure env parsing lives in `internal/core/env.ts` and is the only place reading `process.env`.
 - When ready, move modules into `/packages/*`, add `package.json` per package, and update aliases to package names.
+
 ## SEO follow-ups
 
 - Add social share images and switch Twitter card to `summary_large_image` once assets exist.
   - Create `/public/og.png` at 1200x630 (or multiple sizes) and reference via `openGraph.images` and `twitter.images` in `app/layout.tsx`.
   - Update `twitter.card` from `summary` to `summary_large_image` after the image is available.
   - Consider locale-specific OG images if you want translated previews.
+
+## Pending follow-ups
+
+- Dashboard: join against future billing/subscription tables so authenticated users can see their plan, status, and renewal info instead of the current basic profile view.
+- Supabase admin helper: replace the manual waitlist table typing with generated Supabase types (e.g., via `supabase gen types typescript --local`) so API handlers can rely on first-class definitions.

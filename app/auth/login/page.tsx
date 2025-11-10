@@ -1,6 +1,13 @@
 import { login, signup } from "@/app/auth/login/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
@@ -10,7 +17,9 @@ export default function LoginPage() {
         <Card>
           <CardHeader>
             <CardTitle>Sign in to WebLingo</CardTitle>
-            <CardDescription>Access your localized workspaces or get started with a free trial.</CardDescription>
+            <CardDescription>
+              Access your localized workspaces or get started with a free trial.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -52,7 +61,10 @@ export default function LoginPage() {
         </Card>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Need help? <a href="mailto:support@weblingo.com" className="font-medium text-primary">Contact support</a>
+        Need help?{" "}
+        <a href="mailto:support@weblingo.com" className="font-medium text-primary">
+          Contact support
+        </a>
       </p>
     </div>
   );

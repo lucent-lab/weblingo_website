@@ -5,7 +5,7 @@ import { LaunchBanner } from "@components/launch-banner";
 import { SiteFooter } from "@components/site-footer";
 import { SiteHeader } from "@components/site-header";
 import { env } from "@internal/core";
-import { createTranslator, getMessages, i18nConfig, normalizeLocale } from "@internal/i18n";
+import { i18nConfig, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const dynamicParams = false;
 
@@ -49,8 +49,7 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const bannerCopy = {
     badge: t("banner.badge"),
     title: t("banner.title"),

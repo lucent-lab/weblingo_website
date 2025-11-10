@@ -1,14 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingTeaser } from "@/components/pricing-teaser";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { locale, t } = await resolveLocaleTranslator(params);
 
   const comparisonRows = [
     {
@@ -194,12 +193,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
-  return {
-    title: t("pricing.header.title", "Pricing"),
-    description: t("pricing.header.description"),
-  };
+  return createLocalizedMetadata(params, {
+    titleKey: "pricing.header.title",
+    descriptionKey: "pricing.header.description",
+    titleFallback: "Pricing",
+    descriptionFallback:
+      "Choose the plan that matches your rollout. Hosting, automation, and translations ready to publish are included in every tier.",
+  });
 }
-import type { Metadata } from "next";

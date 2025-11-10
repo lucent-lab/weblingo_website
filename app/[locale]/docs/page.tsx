@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { createTranslator, getMessages } from "@internal/i18n";
+
+import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { t } = await resolveLocaleTranslator(params);
   const languages = t("docs.languages.list")
     .split("\n")
     .map((item) => item.trim())
@@ -50,11 +49,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
-  return {
-    title: t("docs.title", "Docs"),
-    description: t("docs.overview"),
-  };
+  return createLocalizedMetadata(params, {
+    titleKey: "docs.title",
+    descriptionKey: "docs.overview",
+    titleFallback: "Docs",
+    descriptionFallback:
+      "Deploy translated versions of your site with CNAME routing, CDN hosting, and automatic content refresh.",
+  });
 }

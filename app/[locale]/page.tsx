@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
 const benefitsCount = [1, 2, 3, 4, 5];
@@ -11,9 +12,7 @@ const planIds = ["starter", "pro", "agency"] as const;
 const faqKeys = ["home.faq.q1", "home.faq.q2", "home.faq.q3", "home.faq.q4", "home.faq.q5"];
 
 export default async function LocaleHomePage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
+  const { locale, t } = await resolveLocaleTranslator(params);
 
   return (
     <div className="bg-background">
@@ -210,15 +209,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
-  return {
-    title: t("home.hero.title", "Automatic Website Translation & Hosting"),
-    description: t(
-      "home.hero.description",
-      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
-    ),
-  };
+  return createLocalizedMetadata(params, {
+    titleKey: "home.hero.title",
+    descriptionKey: "home.hero.description",
+    titleFallback: "Automatic Website Translation & Hosting",
+    descriptionFallback:
+      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO-ready with localized metadata and hreflang. Launch in minutes — no code required.",
+  });
 }
-import type { Metadata } from "next";

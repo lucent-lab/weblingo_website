@@ -1,22 +1,10 @@
-import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { TryForm } from "@/components/try-form";
-import { createTranslator, getMessages } from "@internal/i18n";
+import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  if (!locale) {
-    notFound();
-  }
-
-  let messages: Awaited<ReturnType<typeof getMessages>>;
-  try {
-    messages = await getMessages(locale);
-  } catch (error) {
-    console.error("Failed to load messages:", error);
-    notFound();
-  }
-  const t = createTranslator(messages);
+  const { locale, messages, t } = await resolveLocaleTranslator(params);
 
   return (
     <div className="bg-background pb-24 pt-20">
@@ -39,15 +27,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const messages = await getMessages(locale);
-  const t = createTranslator(messages);
-  return {
-    title: t("try.header.title", "Try Your URL"),
-    description: t(
-      "try.header.description",
+  return createLocalizedMetadata(params, {
+    titleKey: "try.header.title",
+    descriptionKey: "try.header.description",
+    titleFallback: "Try Your URL",
+    descriptionFallback:
       "Preview a translated version of your website and see how it would look hosted globally.",
-    ),
-  };
+  });
 }
-import type { Metadata } from "next";
