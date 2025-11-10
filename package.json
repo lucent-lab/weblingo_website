@@ -12,9 +12,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "typecheck": "tsc --noEmit"
+    "type": "tsc --noEmit",
+    "check": "pnpm run lint && pnpm run format && pnpm run type"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
