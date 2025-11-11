@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { resolveLocaleTranslator } from "@internal/i18n";
+import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutCancelPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const { locale, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
   return (
     <div className="bg-background py-24">
@@ -32,7 +38,16 @@ export default async function CheckoutCancelPage({
   );
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
   return {
     title: "Checkout Canceled",
     robots: { index: false, follow: false },

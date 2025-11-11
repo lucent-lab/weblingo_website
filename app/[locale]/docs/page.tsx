@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const languages = t("docs.languages.list")
     .split("\n")
     .map((item) => item.trim())
@@ -49,7 +55,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  return createLocalizedMetadata(params, {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
+  return createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "docs.title",
     descriptionKey: "docs.overview",
     titleFallback: "Docs",

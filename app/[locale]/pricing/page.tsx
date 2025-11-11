@@ -1,15 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingTeaser } from "@/components/pricing-teaser";
-import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
   const comparisonRows = [
+    {
+      label: t("pricing.compare.rows.websitesIncluded.label"),
+      starter: t("pricing.compare.rows.websitesIncluded.starter"),
+      pro: t("pricing.compare.rows.websitesIncluded.pro"),
+      agency: t("pricing.compare.rows.websitesIncluded.agency"),
+    },
+    {
+      label: t("pricing.compare.rows.languages.label"),
+      starter: t("pricing.compare.rows.languages.starter"),
+      pro: t("pricing.compare.rows.languages.pro"),
+      agency: t("pricing.compare.rows.languages.agency"),
+    },
     {
       label: t("pricing.compare.rows.hosting.label"),
       starter: t("pricing.compare.rows.hosting.starter"),
@@ -75,12 +93,6 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       starter: t("pricing.compare.rows.concierge.starter"),
       pro: t("pricing.compare.rows.concierge.pro"),
       agency: t("pricing.compare.rows.concierge.agency"),
-    },
-    {
-      label: t("pricing.compare.rows.languages.label"),
-      starter: t("pricing.compare.rows.languages.starter"),
-      pro: t("pricing.compare.rows.languages.pro"),
-      agency: t("pricing.compare.rows.languages.agency"),
     },
     {
       label: t("pricing.compare.rows.pricing.label"),
@@ -165,6 +177,9 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           </CardContent>
         </Card>
       </section>
+      <p className="mt-4 text-xs text-muted-foreground text-center px-6">
+        {t("pricing.compare.footnotes")}
+      </p>
 
       <section id="faq" className="mx-auto mt-16 w-full max-w-4xl px-6">
         <h2 className="text-2xl font-semibold text-foreground">{t("pricing.faq.title")}</h2>
@@ -193,7 +208,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  return createLocalizedMetadata(params, {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
+  return createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "pricing.header.title",
     descriptionKey: "pricing.header.description",
     titleFallback: "Pricing",

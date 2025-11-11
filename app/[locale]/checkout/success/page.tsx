@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { resolveLocaleTranslator } from "@internal/i18n";
+import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutSuccessPage({
   params,
@@ -11,7 +12,12 @@ export default async function CheckoutSuccessPage({
   params: Promise<{ locale: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sessionId =
     typeof resolvedSearchParams?.session_id === "string"
@@ -45,7 +51,16 @@ export default async function CheckoutSuccessPage({
   );
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
   return {
     title: "Checkout Success",
     robots: { index: false, follow: false },

@@ -94,6 +94,8 @@ Other scripts:
 
 ### Contact Form Logging
 
+- Contact logging currently depends on the Supabase service role key via server actions. Once we add an email provider/webhook, replace this with a scoped RPC or queue so the service role key isn’t used per request.
+
 - The contact page currently logs submissions to a `contact_messages` table.
 - Suggested schema:
 

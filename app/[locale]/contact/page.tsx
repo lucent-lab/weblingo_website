@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 import { submitContactMessage } from "./actions";
 
@@ -13,10 +14,17 @@ export default async function ContactPage({
   params: Promise<{ locale: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const submitted = resolvedSearchParams?.submitted === "1";
-  const errored = resolvedSearchParams?.error === "server";
+  const errorParam =
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : undefined;
+  const hasError = errorParam === "server" || errorParam === "invalid";
   const action = submitContactMessage.bind(null, locale);
 
   return (
@@ -31,9 +39,13 @@ export default async function ContactPage({
           </h1>
           <p className="mt-3 text-base text-muted-foreground">{t("contact.header.description")}</p>
         </header>
-        {(submitted || errored) && (
+        {(submitted || hasError) && (
           <p
-            className={`rounded-xl border px-4 py-3 text-sm ${submitted ? "border-primary bg-primary/10 text-primary" : "border-destructive bg-destructive/10 text-destructive"}`}
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              submitted
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-destructive bg-destructive/10 text-destructive"
+            }`}
           >
             {submitted ? t("contact.form.success") : t("contact.form.error")}
           </p>
@@ -84,7 +96,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  return createLocalizedMetadata(params, {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
+  return createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "contact.header.title",
     descriptionKey: "contact.header.description",
     titleFallback: "Contact",

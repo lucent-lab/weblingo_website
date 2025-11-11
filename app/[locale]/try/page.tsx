@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { TryForm } from "@/components/try-form";
-import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale, messages, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
   return (
     <div className="bg-background pb-24 pt-20">
@@ -25,12 +31,13 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
   );
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
-  return createLocalizedMetadata(params, {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
+  return createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "try.header.title",
     descriptionKey: "try.header.description",
     titleFallback: "Try Your URL",

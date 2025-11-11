@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
 const benefitsCount = [1, 2, 3, 4, 5];
@@ -12,7 +13,12 @@ const planIds = ["starter", "pro", "agency"] as const;
 const faqKeys = ["home.faq.q1", "home.faq.q2", "home.faq.q3", "home.faq.q4", "home.faq.q5"];
 
 export default async function LocaleHomePage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale, t } = await resolveLocaleTranslator(params);
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    notFound();
+  }
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
   return (
     <div className="bg-background">
@@ -204,12 +210,13 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
   );
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
-  return createLocalizedMetadata(params, {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale: rawLocale } = await params;
+  const locale = normalizeLocale(rawLocale);
+  if (locale !== rawLocale) {
+    return {};
+  }
+  return createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "home.hero.title",
     descriptionKey: "home.hero.description",
     titleFallback: "Automatic Website Translation & Hosting",
