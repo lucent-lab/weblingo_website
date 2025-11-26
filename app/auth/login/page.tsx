@@ -1,3 +1,7 @@
+"use client";
+
+import { useActionState } from "react";
+
 import { login, signup } from "@/app/auth/login/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +14,22 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+type AuthFormState = { error: string | null };
+const initialAuthState: AuthFormState = { error: null };
+
 export default function LoginPage() {
+  const [loginState, loginAction, loginPending] = useActionState<AuthFormState, FormData>(
+    login,
+    initialAuthState,
+  );
+  const [signupState, signupAction, signupPending] = useActionState<AuthFormState, FormData>(
+    signup,
+    initialAuthState,
+  );
+
+  const displayError = loginState.error ?? signupState.error ?? null;
+  const isSubmitting = loginPending || signupPending;
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16">
       <form className="w-full max-w-md">
@@ -21,6 +40,11 @@ export default function LoginPage() {
               Access your localized workspaces or get started with a free trial.
             </CardDescription>
           </CardHeader>
+          {displayError ? (
+            <div className="mx-6 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {displayError}
+            </div>
+          ) : null}
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="email">
@@ -51,11 +75,16 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 sm:flex-row">
-            <Button className="w-full sm:flex-1" formAction={login}>
-              Log in
+            <Button className="w-full sm:flex-1" disabled={isSubmitting} formAction={loginAction}>
+              {loginPending ? "Signing in..." : "Log in"}
             </Button>
-            <Button className="w-full sm:flex-1" variant="outline" formAction={signup}>
-              Create account
+            <Button
+              className="w-full sm:flex-1"
+              disabled={isSubmitting}
+              variant="outline"
+              formAction={signupAction}
+            >
+              {signupPending ? "Creating..." : "Create account"}
             </Button>
           </CardFooter>
         </Card>
@@ -69,9 +98,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-export const metadata: Metadata = {
-  title: "Log in",
-  robots: { index: false, follow: false },
-};
-import type { Metadata } from "next";

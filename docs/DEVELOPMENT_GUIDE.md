@@ -31,6 +31,7 @@ STRIPE_PRICING_TABLE_ID=prctbl_default
 STRIPE_PRICING_TABLE_ID_EN=prctbl_for_en
 STRIPE_PRICING_TABLE_ID_FR=prctbl_for_fr
 STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
+NEXT_PUBLIC_WEBHOOKS_API_BASE=https://webhooks.weblingo.workers.dev/api
 ```
 
 Use descriptive Stripe price IDs that include the site identifier, e.g. `price_web_mirror_growth_monthly`.

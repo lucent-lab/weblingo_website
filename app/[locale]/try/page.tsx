@@ -12,6 +12,10 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
   }
   const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
+  const hasPreviewConfig =
+    Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
+    Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
+
   return (
     <div className="bg-background pb-24 pt-20">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6">
@@ -25,7 +29,7 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
         <p className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
           {t("try.disabled.notice")}
         </p>
-        <TryForm locale={locale} messages={messages} disabled />
+        <TryForm locale={locale} messages={messages} disabled={!hasPreviewConfig} />
       </div>
     </div>
   );

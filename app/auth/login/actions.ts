@@ -5,42 +5,44 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function login(formData: FormData) {
+type AuthFormState = {
+  error: string | null;
+};
+
+export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState | void> {
   const supabase = await createClient();
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
   const data = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+    email: (formData.get("email") as string | null)?.trim() ?? "",
+    password: (formData.get("password") as string | null) ?? "",
   };
 
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    redirect("/error");
+    console.error("Supabase login failed:", error);
+    return { error: error.message || "Invalid login credentials" };
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/dashboard");
 }
 
-export async function signup(formData: FormData) {
+export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState | void> {
   const supabase = await createClient();
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
   const data = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+    email: (formData.get("email") as string | null)?.trim() ?? "",
+    password: (formData.get("password") as string | null) ?? "",
   };
 
   const { error } = await supabase.auth.signUp(data);
 
   if (error) {
-    redirect("/error");
+    console.error("Supabase signup failed:", error);
+    return { error: error.message || "Unable to create your account. Please try again." };
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/dashboard");
 }

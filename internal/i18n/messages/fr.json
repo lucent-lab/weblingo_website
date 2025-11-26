@@ -87,6 +87,9 @@
   "try.form.button": "Générer une prévisualisation",
   "try.disabled.notice": "La prévisualisation est temporairement suspendue jusqu'au lancement officiel. Partagez votre site et votre email; nous vous enverrons la première version localisée dès que WebLingo sera en ligne.",
   "try.preview.ready": "Prévisualisation prête :",
+  "try.status.creating": "Création de la prévisualisation...",
+  "try.status.pending": "En file d'attente pour traduction...",
+  "try.status.processing": "Traduction de votre page en cours...",
   "try.preview.open": "Ouvrir la prévisualisation",
   "try.preview.subscribe": "S’abonner pour publier",
   "docs.title": "Bien démarrer",
@@ -101,7 +104,7 @@
   "login.description": "Accédez à votre tableau de bord de localisation, analytics et facturation.",
   "login.cta": "Portail disponible prochainement",
   "legal.notice.title": "Mentions légales",
-  "legal.notice.description": "Les informations légales complètes seront publiées ici avant le lancement.",
+  "legal.notice.description": "Informations officielles sur l’éditeur et l’hébergement de WebLingo.",
   "checkout.header.tagline": "Paiement",
   "checkout.header.title": "Confirmez votre offre WebLingo",
   "checkout.header.description": "Stripe collecte vos informations de paiement en toute sécurité. Vous pouvez changer d’offre ou annuler à tout moment depuis le portail de facturation.",
@@ -167,8 +170,6 @@
   "legal.privacy.sections.retention.body": "Les données sont conservées tant que votre compte est actif ou conformément aux obligations légales applicables.",
   "legal.privacy.sections.updates.title": "8. Mises à jour",
   "legal.privacy.sections.updates.body": "La présente politique peut être mise à jour à tout moment. La version la plus récente est disponible sur https://www.weblingo.app/legal.",
-  "legal.notice.title": "Mentions légales",
-  "legal.notice.description": "Informations officielles sur l’éditeur et l’hébergement de WebLingo.",
   "legal.notice.sections.operator.title": "Éditeur",
   "legal.notice.sections.operator.list": "Bredis SAS — Société par Actions Simplifiée (SAS)\nSIREN 822 881 553 — TVA FR06822881553\n44 Rue Victor Hugo, 29200 Brest, France\ncontact@weblingo.app",
   "legal.notice.sections.hosting.title": "Hébergement",
@@ -334,5 +335,8 @@
   "banner.button.success": "Nous revenons vers vous",
   "banner.message.success": "Merci ! Nous vous avertirons dès que WebLingo sera disponible.",
   "banner.message.default": "Nous vous enverrons les nouvelles du lancement et un mois gratuit.",
-  "banner.dismiss": "Fermer"
+  "banner.dismiss": "Fermer",
+  "try.form.invalidUrl": "Enter a valid URL that starts with http or https.",
+  "try.form.sourceLabel": "Source language",
+  "try.form.targetLabel": "Target language"
 }

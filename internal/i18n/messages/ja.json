@@ -87,6 +87,9 @@
   "try.form.button": "プレビューを生成",
   "try.disabled.notice": "現在サービス公開前のためプレビューは一時停止中です。公開でき次第、サイトURLとメールアドレスに最初のローカライズ版をお届けします。",
   "try.preview.ready": "プレビューが準備できました",
+  "try.status.creating": "プレビューを作成中...",
+  "try.status.pending": "翻訳キューに追加されました...",
+  "try.status.processing": "ページを翻訳中...",
   "try.preview.open": "プレビューを開く",
   "try.preview.subscribe": "公開するには購読してください",
   "docs.title": "導入ガイド",
@@ -101,7 +104,7 @@
   "login.description": "ローカリゼーションのダッシュボード、分析、請求ポータルにアクセスできます。",
   "login.cta": "ポータルは近日公開",
   "legal.notice.title": "法的通知",
-  "legal.notice.description": "正式リリース前に会社情報とコンプライアンス情報を公開します。",
+  "legal.notice.description": "WebLingo の運営者およびホスティングに関する公式情報です。",
   "checkout.header.tagline": "チェックアウト",
   "checkout.header.title": "WebLingo のプランを確認",
   "checkout.header.description": "Stripe が安全に支払い情報を収集します。プラン変更や解約はいつでも請求ポータルで可能です。",
@@ -167,8 +170,6 @@
   "legal.privacy.sections.retention.body": "データはアカウントが有効な期間中、または法的義務に基づく期間保存されます。",
   "legal.privacy.sections.updates.title": "8. 改定",
   "legal.privacy.sections.updates.body": "本ポリシーは必要に応じて更新されます。最新版は常に https://www.weblingo.app/legal でご確認いただけます。",
-  "legal.notice.title": "法的通知",
-  "legal.notice.description": "WebLingo の運営者およびホスティングに関する公式情報です。",
   "legal.notice.sections.operator.title": "運営会社",
   "legal.notice.sections.operator.list": "Bredis SAS（株式会社）\nSIREN 822 881 553 ／ VAT FR06822881553\n44 Rue Victor Hugo, 29200 Brest, France\ncontact@weblingo.app",
   "legal.notice.sections.hosting.title": "ホスティング",
@@ -334,5 +335,8 @@
   "banner.button.success": "追ってご連絡します",
   "banner.message.success": "ありがとうございます！公開したらすぐにお知らせします。",
   "banner.message.default": "リリース情報と1か月無料コードをお送りします。",
-  "banner.dismiss": "閉じる"
+  "banner.dismiss": "閉じる",
+  "try.form.invalidUrl": "Enter a valid URL that starts with http or https.",
+  "try.form.sourceLabel": "Source language",
+  "try.form.targetLabel": "Target language"
 }
