@@ -24,6 +24,8 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
   const [sourceLang, setSourceLang] = useState<Locale>(i18nConfig.defaultLocale);
   const [targetLang, setTargetLang] = useState<Locale>(locale as Locale);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const isDisabled = disabled || status === "creating" || status === "processing";
 
@@ -31,6 +33,12 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
+      }
+      if (idleTimerRef.current) {
+        clearInterval(idleTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -51,6 +59,10 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    if (idleTimerRef.current) {
+      clearInterval(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
   }
 
   function connectSSE(id: string) {
@@ -60,14 +72,79 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
     const es = new EventSource(`/api/previews/${id}/stream`);
     eventSourceRef.current = es;
 
+    let lastEventAt = Date.now();
+    const bump = () => {
+      lastEventAt = Date.now();
+    };
+
+    idleTimerRef.current = setInterval(() => {
+      if (Date.now() - lastEventAt > 45_000) {
+        setError("Connection lost, please try again.");
+        setStatus("failed");
+        closeEventSource();
+      }
+    }, 15_000);
+
+    const handlePayload = (data: Record<string, unknown>) => {
+      if (data.message || data.stage) {
+        setProgress((data.message as string) ?? (data.stage as string));
+      }
+
+      if (data.status === "ready" && typeof data.previewUrl === "string") {
+        setPreviewUrl(data.previewUrl);
+        setStatus("ready");
+        setProgress(null);
+        closeEventSource();
+        return;
+      }
+
+      if (data.status === "failed") {
+        setError((data.error as string) || "Preview failed.");
+        setStatus("failed");
+        setProgress(null);
+        closeEventSource();
+        return;
+      }
+
+      if (typeof data.status === "string") {
+        setStatus(data.status as PreviewStatus);
+      }
+    };
+
     es.addEventListener("progress", (event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data ?? "{}");
         const message = data.message || data.stage || "Processing preview...";
         setProgress(message);
+        bump();
+        handlePayload(data);
       } catch {
         setProgress("Processing preview...");
       }
+    });
+
+    es.addEventListener("status", (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data ?? "{}");
+        bump();
+        handlePayload(data);
+      } catch {
+        // ignore parse error
+      }
+    });
+
+    es.addEventListener("message", (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data ?? "{}");
+        bump();
+        handlePayload(data);
+      } catch {
+        // ignore parse error
+      }
+    });
+
+    es.addEventListener("heartbeat", () => {
+      bump();
     });
 
     es.addEventListener("complete", (event) => {
@@ -118,17 +195,29 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
         throw new Error(t("try.form.invalidUrl"));
       }
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const response = await fetch("/api/previews", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           sourceUrl: trimmed,
           sourceLang,
           targetLang,
         }),
+        signal: controller.signal,
       });
+
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (contentType.includes("text/event-stream")) {
+        await consumeEventStream(response, trimmed);
+        return;
+      }
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -156,6 +245,108 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
       const message = err instanceof Error ? err.message : "Failed to generate preview.";
       setError(message);
       setStatus("failed");
+    }
+  }
+
+  async function consumeEventStream(response: Response, sourceUrl: string) {
+    if (!response.body) {
+      throw new Error("Stream response missing body");
+    }
+
+    setStatus("processing");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    const handlePayload = (data: Record<string, unknown>) => {
+      if (data.message || data.stage) {
+        setProgress((data.message as string) ?? (data.stage as string));
+      }
+      if (data.status === "ready" && typeof data.previewUrl === "string") {
+        setPreviewUrl(data.previewUrl);
+        setStatus("ready");
+        setProgress(null);
+        return true;
+      }
+      if (data.status === "failed") {
+        setError((data.error as string) || "Preview failed.");
+        setStatus("failed");
+        setProgress(null);
+        return true;
+      }
+      return false;
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let separatorIndex;
+        while ((separatorIndex = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, separatorIndex);
+          buffer = buffer.slice(separatorIndex + 2);
+          const event = parseSseEvent(rawEvent);
+          if (!event) continue;
+
+          if (event.type === "progress" || event.type === "status" || event.type === "message") {
+            const data = safeParseJson(event.data);
+            if (data) {
+              const doneHandled = handlePayload(data);
+              if (doneHandled) return;
+            }
+          }
+
+          if (event.type === "complete") {
+            const data = safeParseJson(event.data) ?? {};
+            const preview = (data.previewUrl as string) ?? null;
+            if (preview) {
+              setPreviewUrl(preview);
+              setStatus("ready");
+              setProgress(null);
+              return;
+            }
+          }
+
+          if (event.type === "error") {
+            const data = safeParseJson(event.data) ?? {};
+            setError((data.error as string) || "Preview failed.");
+            setStatus("failed");
+            setProgress(null);
+            return;
+          }
+        }
+      }
+    } finally {
+      abortControllerRef.current = null;
+    }
+
+    // If stream ends without terminal event
+    setError("Preview stream ended unexpectedly.");
+    setStatus("failed");
+  }
+
+  function parseSseEvent(raw: string): { type: string; data: string } | null {
+    const lines = raw.split("\n");
+    let type = "message";
+    const data: string[] = [];
+    for (const line of lines) {
+      if (line.startsWith("event:")) {
+        type = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        data.push(line.slice(5).trim());
+      }
+    }
+    if (!data.length) return null;
+    return { type, data: data.join("\n") };
+  }
+
+  function safeParseJson(input: string): Record<string, unknown> | null {
+    try {
+      return JSON.parse(input);
+    } catch {
+      return null;
     }
   }
 

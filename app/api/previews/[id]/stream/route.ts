@@ -20,6 +20,7 @@ export async function GET(
       "x-preview-token": PREVIEW_TOKEN,
     },
     cache: "no-store",
+    signal: _request.signal,
   });
 
   const headers = new Headers();
@@ -31,6 +32,7 @@ export async function GET(
   });
   headers.set("Connection", "keep-alive");
   headers.set("Cache-Control", "no-cache");
+  headers.set("X-Accel-Buffering", "no");
 
   return new Response(upstream.body, {
     status: upstream.status,
