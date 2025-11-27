@@ -3,85 +3,37 @@ import { NextRequest } from "next/server";
 const API_BASE = process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE?.replace(/\/$/, "");
 const PREVIEW_TOKEN = process.env.NEXT_PUBLIC_TRY_NOW_TOKEN;
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  _request: NextRequest,
+  { params }: { params: { id: string } },
 ) {
-  const { id } = await params;
-
   if (!API_BASE || !PREVIEW_TOKEN) {
-    return new Response(
-      `event: error\ndata: ${JSON.stringify({ error: "Preview service is not configured." })}\n\n`,
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      },
-    );
+    return new Response("Preview service is not configured.", { status: 500 });
   }
 
-  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
-    return new Response(
-      `event: error\ndata: ${JSON.stringify({ error: "Invalid preview id" })}\n\n`,
-      {
-        status: 400,
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      },
-    );
-  }
+  const upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(params.id)}/stream`, {
+    method: "GET",
+    headers: {
+      Accept: "text/event-stream",
+      "x-preview-token": PREVIEW_TOKEN,
+    },
+    cache: "no-store",
+  });
 
-  try {
-    const upstreamUrl = `${API_BASE}/previews/${id}/stream`;
-    const upstream = await fetch(upstreamUrl, {
-      method: "GET",
-      headers: {
-        "x-preview-token": PREVIEW_TOKEN,
-        Accept: "text/event-stream",
-      },
-    });
-
-    if (!upstream.ok) {
-      return new Response(
-        `event: error\ndata: ${JSON.stringify({ error: `Upstream error: ${upstream.status}` })}\n\n`,
-        {
-          status: upstream.status,
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          },
-        },
-      );
+  const headers = new Headers();
+  const passthrough = ["content-type", "cache-control", "transfer-encoding"];
+  upstream.headers.forEach((value, key) => {
+    if (passthrough.includes(key.toLowerCase())) {
+      headers.set(key, value);
     }
+  });
+  headers.set("Connection", "keep-alive");
+  headers.set("Cache-Control", "no-cache");
 
-    // Stream the upstream response directly
-    return new Response(upstream.body, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to reach preview service.";
-    return new Response(`event: error\ndata: ${JSON.stringify({ error: message })}\n\n`, {
-      status: 502,
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  }
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers,
+  });
 }
-
