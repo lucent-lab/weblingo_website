@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 
-import { createSiteAction } from "../../actions";
+import { createSiteAction, type ActionResponse } from "../../actions";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,17 +24,26 @@ const initialProfile = JSON.stringify(
   2,
 );
 
-const initialState = {
+const initialState: ActionResponse = {
   ok: false,
   message: "",
 };
 
-export function OnboardingForm() {
+export function OnboardingForm(props: { sitePlan: "starter" | "pro"; maxLocales: number | null }) {
   const [state, formAction] = useActionState(createSiteAction, initialState);
+  const router = useRouter();
   const [targets, setTargets] = useState<string[]>([]);
   const [customTarget, setCustomTarget] = useState("");
   const [pattern, setPattern] = useState("https://{lang}.example.com");
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const siteId = state.meta?.siteId;
+    if (state.ok && typeof siteId === "string" && siteId.length > 0) {
+      router.push(`/dashboard/sites/${siteId}`);
+    }
+  }, [router, state.meta?.siteId, state.ok]);
 
   const patternPreview = useMemo(() => {
     const sampleLang = targets[0] || "{lang}";
@@ -44,15 +54,35 @@ export function OnboardingForm() {
   }, [pattern, targets]);
 
   const handleToggleTarget = (lang: string) => {
-    setTargets((current) =>
-      current.includes(lang) ? current.filter((l) => l !== lang) : [...current, lang],
-    );
+    setLimitMessage(null);
+    setTargets((current) => {
+      if (current.includes(lang)) {
+        return current.filter((l) => l !== lang);
+      }
+
+      if (props.maxLocales !== null && current.length >= props.maxLocales) {
+        setLimitMessage(`Your plan allows up to ${props.maxLocales} target locale(s) per site.`);
+        return current;
+      }
+
+      return [...current, lang];
+    });
   };
 
   const handleAddCustomTarget = () => {
     const trimmed = customTarget.trim();
     if (!trimmed) return;
-    setTargets((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
+    setLimitMessage(null);
+    setTargets((current) => {
+      if (current.includes(trimmed)) {
+        return current;
+      }
+      if (props.maxLocales !== null && current.length >= props.maxLocales) {
+        setLimitMessage(`Your plan allows up to ${props.maxLocales} target locale(s) per site.`);
+        return current;
+      }
+      return [...current, trimmed];
+    });
     setCustomTarget("");
   };
 
@@ -64,6 +94,17 @@ export function OnboardingForm() {
           Provide your source site, pick target languages, and define the subdomain pattern. We will
           enqueue a crawl immediately after creation.
         </CardDescription>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-muted px-2 py-1">
+            Site plan: <span className="font-semibold text-foreground">{props.sitePlan}</span>
+          </span>
+          <span className="rounded-full bg-muted px-2 py-1">
+            Locale limit:{" "}
+            <span className="font-semibold text-foreground">
+              {props.maxLocales === null ? "Unlimited" : props.maxLocales}
+            </span>
+          </span>
+        </div>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-8">
@@ -134,6 +175,11 @@ export function OnboardingForm() {
                     >
                       <input
                         checked={targets.includes(lang)}
+                        disabled={
+                          props.maxLocales !== null &&
+                          !targets.includes(lang) &&
+                          targets.length >= props.maxLocales
+                        }
                         className="sr-only"
                         name="targetLangs"
                         type="checkbox"
@@ -144,6 +190,7 @@ export function OnboardingForm() {
                     </label>
                   ))}
                 </div>
+                {limitMessage ? <p className="text-xs text-destructive">{limitMessage}</p> : null}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input
                     className="sm:max-w-xs"
@@ -157,7 +204,12 @@ export function OnboardingForm() {
                       }
                     }}
                   />
-                  <Button onClick={handleAddCustomTarget} type="button" variant="outline">
+                  <Button
+                    disabled={props.maxLocales !== null && targets.length >= props.maxLocales}
+                    onClick={handleAddCustomTarget}
+                    type="button"
+                    variant="outline"
+                  >
                     Add language
                   </Button>
                 </div>
@@ -176,8 +228,9 @@ export function OnboardingForm() {
                     onChange={(event) => setPattern(event.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Must include <code>{`{lang}`}</code>. We seed domain records and route prefixes from
-                    this pattern. Preview: <span className="font-semibold text-foreground">{patternPreview}</span>
+                    Must include <code>{`{lang}`}</code>. We seed domain records and route prefixes
+                    from this pattern. Preview:{" "}
+                    <span className="font-semibold text-foreground">{patternPreview}</span>
                   </p>
                   {!pattern.includes("{lang}") ? (
                     <p className="text-xs text-destructive">Pattern must contain {"{lang}"}.</p>
@@ -192,10 +245,7 @@ export function OnboardingForm() {
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">Selected:</span>
                     {targets.map((lang) => (
-                      <span
-                        key={lang}
-                        className="rounded-full bg-muted px-2 py-1 text-foreground"
-                      >
+                      <span key={lang} className="rounded-full bg-muted px-2 py-1 text-foreground">
                         {lang.toUpperCase()}
                       </span>
                     ))}
@@ -226,7 +276,8 @@ export function OnboardingForm() {
                   spellCheck={false}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Keep it short and structured — values are validated and empty objects are rejected.
+                  Keep it short and structured — values are validated and empty objects are
+                  rejected.
                 </p>
               </div>
             ) : null}
@@ -247,10 +298,12 @@ export function OnboardingForm() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              We will create domains and enqueue a crawl right after this step. You can verify DNS and
-              update glossary from the site detail view.
+              We will create domains and enqueue a crawl right after this step. You can verify DNS
+              and update glossary from the site detail view.
             </p>
-            <SubmitButton disabled={targets.length === 0 || step !== 3 || !pattern.includes("{lang}")} />
+            <SubmitButton
+              disabled={targets.length === 0 || step !== 3 || !pattern.includes("{lang}")}
+            />
           </div>
         </form>
       </CardContent>
