@@ -33,7 +33,7 @@ Create `.env.local` (or configure host env) with:
 ```
 # App + dashboard
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_WEBHOOKS_API_BASE=https://webhooks.weblingo.workers.dev/api
+NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
 
 # Stripe
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -56,11 +56,11 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 ## Running Locally
 
-1) Install dependencies: `pnpm install`  
-2) Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` to your worker preview URL).  
-3) Start dev server: `pnpm run dev` (opens `http://localhost:3000`).  
-4) Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).  
-5) Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
+1. Install dependencies: `pnpm install`
+2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` to your worker preview URL).
+3. Start dev server: `pnpm run dev` (opens `http://localhost:3000`).
+4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
+5. Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
 
 ## Stripe Setup
 
@@ -71,12 +71,12 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 ## Deployment
 
-- **Build**: `pnpm run build` (Next.js static + server output).  
-- **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 18+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.  
-- **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.  
-- **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin.  
-- **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.  
-- **Dashboard**: `/dashboard` uses Supabase session cookies; ensure the domain matches your Supabase config so auth cookies persist.  
+- **Build**: `pnpm run build` (Next.js static + server output).
+- **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 18+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
+- **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.
+- **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin.
+- **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.
+- **Dashboard**: `/dashboard` uses Supabase session cookies; ensure the domain matches your Supabase config so auth cookies persist.
 - **Smoke checks**: After deploy, verify `/[locale]` pages load, Stripe Pricing Table renders, and dashboard can list/create sites via the worker API.
 
 ## Roadmap For Additional Sites

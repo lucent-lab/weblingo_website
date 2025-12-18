@@ -20,35 +20,61 @@ const errorResponseSchema = z.object({
   details: z.unknown().optional(),
 });
 
+const planTypeSchema = z.enum(["free", "starter", "pro", "agency"]);
+const planStatusSchema = z.enum(["active", "past_due", "cancelled"]);
+
+const entitlementsSchema = z
+  .object({
+    planType: planTypeSchema,
+    planStatus: planStatusSchema,
+  })
+  .strict();
+
+const dnsInstructionsSchema = z
+  .object({
+    type: z.literal("CNAME"),
+    name: z.string(),
+    target: z.string(),
+    notes: z.string().optional(),
+  })
+  .strict();
+
+const cloudflareHostnameStateSchema = z
+  .object({
+    customHostnameId: z.string().nullable(),
+    hostnameStatus: z.string().nullable(),
+    certStatus: z.string().nullable(),
+    lastSyncedAt: z.string().nullable(),
+    errors: z.unknown().nullable(),
+  })
+  .strict();
+
 const domainSchema = z.object({
   domain: z.string(),
   status: z.enum(["pending", "verified", "failed"]),
   verificationToken: z.string(),
   verifiedAt: z.string().nullable().optional(),
   lastCheckedAt: z.string().nullable().optional(),
+  dnsInstructions: dnsInstructionsSchema.nullable().optional(),
+  cloudflare: cloudflareHostnameStateSchema.nullable().optional(),
 });
 
 const routeLocaleSchema = z.object({
   lang: z.string(),
-  origin: z.string().optional(),
-  routePrefix: z.string().optional(),
+  origin: z.string(),
+  routePrefix: z.string().nullable().optional(),
 });
 
 const routeConfigSchema = z
   .object({
     sourceLang: z.string(),
-    sourceOrigin: z.string().optional(),
-    pattern: z.string(),
+    sourceOrigin: z.string(),
+    pattern: z.string().nullable().optional(),
     locales: z.array(routeLocaleSchema),
   })
   .nullable();
 
-const siteProfileSchema = z
-  .record(z.any())
-  .refine((value) => value === null || Object.keys(value).length > 0, {
-    message: "siteProfile must be a non-empty object or null",
-  })
-  .nullable();
+const siteProfileSchema = z.record(z.unknown()).nullable();
 
 const siteSchema = z.object({
   id: z.string(),
@@ -63,7 +89,7 @@ const siteSchema = z.object({
       targetLang: z.string(),
     }),
   ),
-  routeConfig: routeConfigSchema,
+  routeConfig: routeConfigSchema.optional(),
   domains: z.array(domainSchema),
 });
 
@@ -74,11 +100,11 @@ const crawlStatusSchema = z.object({
 
 const deploymentSchema = z.object({
   targetLang: z.string(),
-  status: z.enum(["publishing", "active", "failed", "unknown"]),
-  deploymentId: z.string(),
+  status: z.string(),
+  deploymentId: z.string().nullable().optional(),
   activatedAt: z.string().nullable().optional(),
   routePrefix: z.string().nullable().optional(),
-  artifactManifest: z.unknown().optional(),
+  artifactManifest: z.string().nullable().optional(),
   activeDeploymentId: z.string().nullable().optional(),
 });
 
@@ -88,12 +114,59 @@ const glossaryEntrySchema = z.object({
   targetLangs: z.array(z.string()).optional(),
   matchType: z.string().optional(),
   caseSensitive: z.boolean().optional(),
+  scope: z.enum(["segment", "in_segment"]).optional(),
 });
 
 const authResponseSchema = z.object({
   token: z.string().min(1),
-  expiresAt: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}T[^ ]+Z$/)),
+  expiresAt: z.string(),
+  entitlements: entitlementsSchema,
+  actorAccountId: z.string().min(1),
+  subjectAccountId: z.string().min(1),
 });
+
+const featureFlagsSchema = z
+  .object({
+    editEnabled: z.boolean(),
+    slugEditEnabled: z.boolean(),
+    glossaryEnabled: z.boolean(),
+    overridesEnabled: z.boolean(),
+    tmWriteEnabled: z.boolean(),
+    publishEnabled: z.boolean(),
+    pipelineAllowed: z.boolean(),
+    serveAllowed: z.boolean(),
+    siteCreateEnabled: z.boolean(),
+    localeUpdateEnabled: z.boolean(),
+    domainVerifyEnabled: z.boolean(),
+    crawlTriggerEnabled: z.boolean(),
+    renderEnabled: z.boolean(),
+    agencyActionsEnabled: z.boolean(),
+    demoMode: z.boolean(),
+    maxSites: z.number().int().nonnegative().nullable(),
+    maxLocales: z.number().int().nonnegative().nullable(),
+    maxDailyRecrawls: z.number().int().nonnegative().nullable(),
+    maxGlossarySources: z.number().int().nonnegative().nullable(),
+    featurePreview: z.array(z.string()),
+  })
+  .strict();
+
+const quotasSchema = z
+  .object({
+    maxSites: z.number().int().nonnegative().nullable(),
+    starterQuota: z.number().int().nonnegative().nullable(),
+    proQuota: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+
+const accountMeSchema = z
+  .object({
+    accountId: z.string(),
+    planType: planTypeSchema,
+    planStatus: planStatusSchema,
+    featureFlags: featureFlagsSchema,
+    quotas: quotasSchema,
+  })
+  .strict();
 
 export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
@@ -101,6 +174,7 @@ export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
+export type AccountMe = z.infer<typeof accountMeSchema>;
 
 type RequestOptions<T> = {
   path: string;
@@ -119,7 +193,9 @@ async function request<T>({
   schema,
   headers,
 }: RequestOptions<T>): Promise<T> {
-  const url = path.startsWith("http") ? path : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
+  const url = path.startsWith("http")
+    ? path
+    : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
   const response = await fetch(url, {
     method,
     headers: {
@@ -140,7 +216,7 @@ async function request<T>({
       parsedError?.success && parsedError.data.error
         ? parsedError.data.error
         : `Request failed with status ${response.status}`;
-    const details = parsedError?.success ? parsedError.data.details : parsed ?? undefined;
+    const details = parsedError?.success ? parsedError.data.details : (parsed ?? undefined);
     throw new WebhooksApiError(message, response.status, details);
   }
 
@@ -172,6 +248,14 @@ export async function exchangeWebhooksToken(
   });
 }
 
+export async function fetchAccountMe(token: string): Promise<AccountMe> {
+  return request({
+    path: "/accounts/me",
+    token,
+    schema: accountMeSchema,
+  });
+}
+
 export async function listSites(token: string): Promise<Site[]> {
   const data = await request({
     path: "/sites",
@@ -195,9 +279,9 @@ export type CreateSitePayload = {
   sourceLang: string;
   targetLangs: string[];
   subdomainPattern: string;
-  siteProfile: Record<string, unknown>;
-  sitePlan?: "starter" | "pro";
-  maxLocales?: number | null;
+  siteProfile: Record<string, unknown> | null;
+  sitePlan: "starter" | "pro";
+  maxLocales: number | null;
 };
 
 export async function createSite(token: string, payload: CreateSitePayload) {
@@ -213,7 +297,10 @@ export async function createSite(token: string, payload: CreateSitePayload) {
 export async function updateSite(
   token: string,
   siteId: string,
-  payload: Partial<Omit<CreateSitePayload, "targetLangs">> & { targetLangs?: string[]; status?: "active" | "inactive" },
+  payload: Partial<Omit<CreateSitePayload, "targetLangs">> & {
+    targetLangs?: string[];
+    status?: "active" | "inactive";
+  },
 ) {
   return request({
     path: `/sites/${siteId}`,
@@ -233,12 +320,35 @@ export async function triggerCrawl(token: string, siteId: string) {
   });
 }
 
-export async function verifyDomain(token: string, siteId: string, domain: string, overrideToken?: string) {
+export async function verifyDomain(
+  token: string,
+  siteId: string,
+  domain: string,
+  overrideToken?: string,
+) {
   return request({
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/verify`,
     method: "POST",
     token,
-    body: overrideToken ? { token: overrideToken, env: "test" } : undefined,
+    body: overrideToken ? { token: overrideToken } : {},
+    schema: z.object({ domain: domainSchema }),
+  });
+}
+
+export async function provisionDomain(token: string, siteId: string, domain: string) {
+  return request({
+    path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/provision`,
+    method: "POST",
+    token,
+    schema: z.object({ domain: domainSchema }),
+  });
+}
+
+export async function refreshDomain(token: string, siteId: string, domain: string) {
+  return request({
+    path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/refresh`,
+    method: "POST",
+    token,
     schema: z.object({ domain: domainSchema }),
   });
 }
@@ -277,7 +387,7 @@ export async function updateGlossary(
     schema: z
       .object({
         entries: z.array(glossaryEntrySchema),
-        crawlStatus: crawlStatusSchema.optional(),
+        crawlStatus: crawlStatusSchema.nullable().optional(),
       })
       .strict(),
   });
@@ -286,7 +396,7 @@ export async function updateGlossary(
 export async function createOverride(
   token: string,
   siteId: string,
-  payload: { segmentId: string; targetLang: string; text: string; contextHashScope?: string },
+  payload: { segmentId: string; targetLang: string; text: string; contextHashScope: string | null },
 ) {
   return request({
     path: `/sites/${siteId}/overrides`,
@@ -297,7 +407,7 @@ export async function createOverride(
       .object({
         segmentId: z.string(),
         targetLang: z.string(),
-        contextHashScope: z.string().optional(),
+        contextHashScope: z.string().nullable(),
       })
       .strict(),
   });
