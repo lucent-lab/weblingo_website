@@ -9,40 +9,68 @@ type AuthFormState = {
   error: string | null;
 };
 
-export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const supabase = await createClient();
+function toFriendlySupabaseAuthError(error: unknown): string {
+  const message =
+    error && typeof error === "object" && "message" in error && typeof error.message === "string"
+      ? error.message
+      : "Unexpected error";
 
-  const data = {
-    email: (formData.get("email") as string | null)?.trim() ?? "",
-    password: (formData.get("password") as string | null) ?? "",
-  };
-
-  const { error } = await supabase.auth.signInWithPassword(data);
-
-  if (error) {
-    console.error("Supabase login failed:", error);
-    return { error: error.message || "Invalid login credentials" };
+  const normalized = message.toLowerCase();
+  if (normalized.includes("fetch failed") || normalized.includes("failed to fetch")) {
+    return [
+      "Unable to reach Supabase.",
+      "If running locally, make sure Supabase is running and your",
+      "NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are set correctly.",
+    ].join(" ");
   }
 
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
+  return message;
+}
+
+export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  try {
+    const supabase = await createClient();
+
+    const data = {
+      email: (formData.get("email") as string | null)?.trim() ?? "",
+      password: (formData.get("password") as string | null) ?? "",
+    };
+
+    const { error } = await supabase.auth.signInWithPassword(data);
+
+    if (error) {
+      console.error("Supabase login failed:", error);
+      return { error: toFriendlySupabaseAuthError(error) };
+    }
+
+    revalidatePath("/", "layout");
+    redirect("/dashboard");
+  } catch (error) {
+    console.error("Supabase login failed:", error);
+    return { error: toFriendlySupabaseAuthError(error) };
+  }
 }
 
 export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const data = {
-    email: (formData.get("email") as string | null)?.trim() ?? "",
-    password: (formData.get("password") as string | null) ?? "",
-  };
+    const data = {
+      email: (formData.get("email") as string | null)?.trim() ?? "",
+      password: (formData.get("password") as string | null) ?? "",
+    };
 
-  const { error } = await supabase.auth.signUp(data);
+    const { error } = await supabase.auth.signUp(data);
 
-  if (error) {
+    if (error) {
+      console.error("Supabase signup failed:", error);
+      return { error: toFriendlySupabaseAuthError(error) };
+    }
+
+    revalidatePath("/", "layout");
+    redirect("/dashboard");
+  } catch (error) {
     console.error("Supabase signup failed:", error);
-    return { error: error.message || "Unable to create your account. Please try again." };
+    return { error: toFriendlySupabaseAuthError(error) };
   }
-
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
 }
