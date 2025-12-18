@@ -196,16 +196,25 @@ async function request<T>({
   const url = path.startsWith("http")
     ? path
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
-  const response = await fetch(url, {
-    method,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new WebhooksApiError(
+      "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
+      0,
+      error,
+    );
+  }
 
   const text = await response.text();
   const parsed = text ? safeParseJson(text) : undefined;
