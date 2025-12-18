@@ -98,7 +98,11 @@ export default async function SitePage({ params }: SitePageProps) {
         </CardContent>
       </Card>
 
-      <DomainSection domains={site.domains} siteId={site.id} />
+      <DomainSection
+        canManageDomains={auth.has({ feature: "domain_verify" })}
+        domains={site.domains}
+        siteId={site.id}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         {auth.has({ feature: "crawl_trigger" }) ? (
@@ -196,7 +200,15 @@ function StatusBadge({ status }: { status: Site["status"] }) {
   return <Badge variant="outline">Inactive</Badge>;
 }
 
-function DomainSection({ domains, siteId }: { domains: Site["domains"]; siteId: string }) {
+function DomainSection({
+  canManageDomains,
+  domains,
+  siteId,
+}: {
+  canManageDomains: boolean;
+  domains: Site["domains"];
+  siteId: string;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -257,38 +269,40 @@ function DomainSection({ domains, siteId }: { domains: Site["domains"]; siteId: 
                   </div>
                 )}
               </div>
-              {domain.dnsInstructions ? (
-                <div className="flex flex-col gap-2 md:items-end">
-                  <form action={provisionDomainAction}>
+              {canManageDomains ? (
+                domain.dnsInstructions ? (
+                  <div className="flex flex-col gap-2 md:items-end">
+                    <form action={provisionDomainAction}>
+                      <input name="siteId" type="hidden" value={siteId} />
+                      <input name="domain" type="hidden" value={domain.domain} />
+                      <Button type="submit" variant="outline">
+                        Provision
+                      </Button>
+                    </form>
+                    <form action={refreshDomainAction}>
+                      <input name="siteId" type="hidden" value={siteId} />
+                      <input name="domain" type="hidden" value={domain.domain} />
+                      <Button type="submit" variant="ghost">
+                        Refresh
+                      </Button>
+                    </form>
+                  </div>
+                ) : (
+                  <form action={verifyDomainAction} className="flex flex-col gap-2 md:items-end">
                     <input name="siteId" type="hidden" value={siteId} />
                     <input name="domain" type="hidden" value={domain.domain} />
+                    <Input
+                      aria-label="Test token (optional)"
+                      className="w-full"
+                      name="token"
+                      placeholder="Test token (optional)"
+                    />
                     <Button type="submit" variant="outline">
-                      Provision
+                      Check now
                     </Button>
                   </form>
-                  <form action={refreshDomainAction}>
-                    <input name="siteId" type="hidden" value={siteId} />
-                    <input name="domain" type="hidden" value={domain.domain} />
-                    <Button type="submit" variant="ghost">
-                      Refresh
-                    </Button>
-                  </form>
-                </div>
-              ) : (
-                <form action={verifyDomainAction} className="flex flex-col gap-2 md:items-end">
-                  <input name="siteId" type="hidden" value={siteId} />
-                  <input name="domain" type="hidden" value={domain.domain} />
-                  <Input
-                    aria-label="Test token (optional)"
-                    className="w-full"
-                    name="token"
-                    placeholder="Test token (optional)"
-                  />
-                  <Button type="submit" variant="outline">
-                    Check now
-                  </Button>
-                </form>
-              )}
+                )
+              ) : null}
             </div>
           ))
         )}
