@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function NewSitePage() {
   const auth = await requireDashboardAuth();
-  if (!auth.has({ feature: "site_create" })) {
+  if (!auth.has({ allFeatures: ["edit", "site_create"] })) {
     redirect("/dashboard/sites");
   }
   const sitePlan = resolveSitePlanForAccount(auth.account!.planType);

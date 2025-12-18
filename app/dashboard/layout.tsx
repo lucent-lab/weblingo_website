@@ -22,7 +22,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const navItems = [
     { href: "/dashboard", label: "Overview" },
     { href: "/dashboard/sites", label: "Sites" },
-    ...(auth.has({ feature: "site_create" })
+    ...(auth.has({ allFeatures: ["edit", "site_create"] })
       ? [{ href: "/dashboard/sites/new", label: "New site" }]
       : []),
     { href: "/dashboard/developer-tools", label: "Developer tools" },

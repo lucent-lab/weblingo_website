@@ -42,7 +42,7 @@ export default async function SitePage({ params }: SitePageProps) {
   try {
     site = await fetchSite(token, id);
     deployments = await fetchDeployments(token, id);
-    if (auth.has({ feature: "glossary" })) {
+    if (auth.has({ allFeatures: ["edit", "glossary"] })) {
       glossary = await fetchGlossary(token, id);
     }
   } catch (err) {
@@ -99,13 +99,13 @@ export default async function SitePage({ params }: SitePageProps) {
       </Card>
 
       <DomainSection
-        canManageDomains={auth.has({ feature: "domain_verify" })}
+        canManageDomains={auth.has({ allFeatures: ["edit", "domain_verify"] })}
         domains={site.domains}
         siteId={site.id}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        {auth.has({ feature: "crawl_trigger" }) ? (
+        {auth.has({ allFeatures: ["edit", "crawl_trigger"] }) ? (
           <Card>
             <CardHeader>
               <CardTitle>Trigger crawl</CardTitle>
@@ -127,7 +127,7 @@ export default async function SitePage({ params }: SitePageProps) {
         <DeploymentsCard deployments={deployments} />
       </div>
 
-      {auth.has({ feature: "glossary" }) ? (
+      {auth.has({ allFeatures: ["edit", "glossary"] }) ? (
         <Card>
           <CardHeader>
             <CardTitle>Glossary</CardTitle>
@@ -142,8 +142,10 @@ export default async function SitePage({ params }: SitePageProps) {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {auth.has({ feature: "overrides" }) ? <OverrideForm siteId={site.id} /> : null}
-        {auth.has({ feature: "slug_edit" }) ? <SlugForm siteId={site.id} /> : null}
+        {auth.has({ allFeatures: ["edit", "overrides"] }) ? (
+          <OverrideForm siteId={site.id} />
+        ) : null}
+        {auth.has({ allFeatures: ["edit", "slug_edit"] }) ? <SlugForm siteId={site.id} /> : null}
       </div>
     </div>
   );
