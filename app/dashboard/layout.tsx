@@ -1,43 +1,32 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { DashboardNav } from "./_components/dashboard-nav";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/auth/logout/actions";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 export const metadata: Metadata = {
   title: "Customer Dashboard",
   robots: { index: false, follow: false },
 };
 
-const navItems = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/sites", label: "Sites" },
-  { href: "/dashboard/sites/new", label: "New site" },
-  { href: "/dashboard/developer-tools", label: "Developer tools" },
-];
-
 type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!session || !user) {
-    redirect("/auth/login");
-  }
-
-  const email = user.email ?? "demo@weblingo.com";
+  const auth = await requireDashboardAuth();
+  const email = auth.user?.email ?? "demo@weblingo.com";
+  const navItems = [
+    { href: "/dashboard", label: "Overview" },
+    { href: "/dashboard/sites", label: "Sites" },
+    ...(auth.has({ feature: "site_create" })
+      ? [{ href: "/dashboard/sites/new", label: "New site" }]
+      : []),
+    { href: "/dashboard/developer-tools", label: "Developer tools" },
+  ];
 
   return (
     <div className="min-h-screen bg-muted/30 text-foreground">
