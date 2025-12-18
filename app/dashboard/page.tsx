@@ -1,19 +1,20 @@
 import Link from "next/link";
 
-import { getWebhooksToken } from "./_lib/webhooks-token";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 export default async function DashboardPage() {
   let sites: Site[] = [];
   let loadError: string | null = null;
+  let canCreateSite = false;
 
   try {
-    const { token } = await getWebhooksToken();
-    sites = await listSites(token);
+    const auth = await requireDashboardAuth();
+    sites = await listSites(auth.webhooksToken!);
+    canCreateSite = auth.has({ feature: "site_create" });
   } catch (error) {
     loadError =
       error instanceof Error ? error.message : "Unable to load sites from the webhooks worker.";
@@ -40,9 +41,11 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href="/dashboard/sites/new">Add a site</Link>
-          </Button>
+          {canCreateSite ? (
+            <Button asChild>
+              <Link href="/dashboard/sites/new">Add a site</Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline">
             <Link href="/dashboard/sites">All sites</Link>
           </Button>
@@ -51,7 +54,11 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard title="Active sites" value={activeSites} helper="Ready for traffic" />
-        <SummaryCard title="Unverified domains" value={unverifiedDomains} helper="Check DNS tokens" />
+        <SummaryCard
+          title="Unverified domains"
+          value={unverifiedDomains}
+          helper="Check DNS tokens"
+        />
         <SummaryCard title="Configured locales" value={totalLocales} helper="Source + targets" />
       </div>
 
@@ -63,8 +70,9 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Check that <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code>{" "}
-              is reachable and that your Supabase session is valid.
+              Check that{" "}
+              <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
+              reachable and that your Supabase session is valid.
             </p>
           </CardContent>
         </Card>
@@ -77,9 +85,11 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/dashboard/sites/new">Start onboarding</Link>
-            </Button>
+            {canCreateSite ? (
+              <Button asChild>
+                <Link href="/dashboard/sites/new">Start onboarding</Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <Link href="/dashboard/developer-tools">View API docs</Link>
             </Button>
@@ -103,12 +113,15 @@ export default async function DashboardPage() {
                     <StatusBadge status={site.status} />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {site.locales.map((locale) => `${locale.sourceLang}→${locale.targetLang}`).join(" · ")}
+                    {site.locales
+                      .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
+                      .join(" · ")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {site.domains.filter((d) => d.status === "verified").length} / {site.domains.length} domains
+                    {site.domains.filter((d) => d.status === "verified").length} /{" "}
+                    {site.domains.length} domains
                   </Badge>
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/dashboard/sites/${site.id}`}>Manage</Link>

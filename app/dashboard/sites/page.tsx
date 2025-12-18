@@ -1,19 +1,20 @@
 import Link from "next/link";
 
-import { getWebhooksToken } from "../_lib/webhooks-token";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 export default async function SitesPage() {
   let sites: Site[] = [];
   let error: string | null = null;
+  let canCreateSite = false;
 
   try {
-    const { token } = await getWebhooksToken();
-    sites = await listSites(token);
+    const auth = await requireDashboardAuth();
+    sites = await listSites(auth.webhooksToken!);
+    canCreateSite = auth.has({ feature: "site_create" });
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load sites.";
   }
@@ -27,9 +28,11 @@ export default async function SitesPage() {
             Review onboarding status, domains, and locales for every property.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/sites/new">Add a site</Link>
-        </Button>
+        {canCreateSite ? (
+          <Button asChild>
+            <Link href="/dashboard/sites/new">Add a site</Link>
+          </Button>
+        ) : null}
       </div>
 
       {error ? (
@@ -43,12 +46,16 @@ export default async function SitesPage() {
         <Card>
           <CardHeader>
             <CardTitle>No sites yet</CardTitle>
-            <CardDescription>Start with the onboarding wizard to set up your first site.</CardDescription>
+            <CardDescription>
+              Start with the onboarding wizard to set up your first site.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <Link href="/dashboard/sites/new">Start onboarding</Link>
-            </Button>
+            {canCreateSite ? (
+              <Button asChild>
+                <Link href="/dashboard/sites/new">Start onboarding</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : (
@@ -62,14 +69,15 @@ export default async function SitesPage() {
                     <StatusBadge status={site.status} />
                   </div>
                   <CardDescription>
-                    {site.locales.map((locale) => `${locale.sourceLang}→${locale.targetLang}`).join(" · ")}
+                    {site.locales
+                      .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
+                      .join(" · ")}
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">
-                    Domains:{" "}
-                    {site.domains.filter((domain) => domain.status === "verified").length} /{" "}
-                    {site.domains.length}
+                    Domains: {site.domains.filter((domain) => domain.status === "verified").length}{" "}
+                    / {site.domains.length}
                   </Badge>
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/dashboard/sites/${site.id}`}>Manage</Link>
