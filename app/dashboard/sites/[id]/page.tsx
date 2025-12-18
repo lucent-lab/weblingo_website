@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getWebhooksToken } from "../../_lib/webhooks-token";
-import { triggerCrawlAction, updateSiteStatusAction, verifyDomainAction } from "../../actions";
+import {
+  provisionDomainAction,
+  refreshDomainAction,
+  triggerCrawlAction,
+  updateSiteStatusAction,
+  verifyDomainAction,
+} from "../../actions";
 import { GlossaryEditor } from "./glossary-editor";
 import { OverrideForm, SlugForm } from "./translation-forms";
 
@@ -18,6 +23,7 @@ import {
   type Deployment,
   type Site,
 } from "@internal/dashboard/webhooks";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 type SitePageProps = {
   params: { id: string };
@@ -25,7 +31,8 @@ type SitePageProps = {
 
 export default async function SitePage({ params }: SitePageProps) {
   const { id } = params;
-  const { token } = await getWebhooksToken();
+  const auth = await requireDashboardAuth();
+  const token = auth.webhooksToken!;
 
   let site: Site | null = null;
   let deployments: Deployment[] = [];
@@ -35,7 +42,9 @@ export default async function SitePage({ params }: SitePageProps) {
   try {
     site = await fetchSite(token, id);
     deployments = await fetchDeployments(token, id);
-    glossary = await fetchGlossary(token, id);
+    if (auth.has({ feature: "glossary" })) {
+      glossary = await fetchGlossary(token, id);
+    }
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site.";
   }
@@ -61,7 +70,7 @@ export default async function SitePage({ params }: SitePageProps) {
 
   return (
     <div className="space-y-8">
-      <Header site={site} />
+      <Header site={site} canEdit={auth.has({ feature: "edit" })} />
 
       <Card>
         <CardHeader>
@@ -74,7 +83,9 @@ export default async function SitePage({ params }: SitePageProps) {
           <InfoBlock label="Source URL" value={site.sourceUrl} />
           <InfoBlock
             label="Languages"
-            value={site.locales.map((locale) => `${locale.sourceLang}→${locale.targetLang}`).join(", ")}
+            value={site.locales
+              .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
+              .join(", ")}
           />
           <InfoBlock label="Route pattern" value={site.routeConfig?.pattern ?? "—"} />
           <InfoBlock
@@ -90,45 +101,51 @@ export default async function SitePage({ params }: SitePageProps) {
       <DomainSection domains={site.domains} siteId={site.id} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Trigger crawl</CardTitle>
-            <CardDescription>Refresh translations from the source site.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <form action={triggerCrawlAction}>
-              <input name="siteId" type="hidden" value={site.id} />
-              <Button type="submit">Enqueue crawl</Button>
-            </form>
-            <p className="text-sm text-muted-foreground">
-              Crawls use the latest route config and glossary. You will see deployment updates below
-              after processing.
-            </p>
-          </CardContent>
-        </Card>
+        {auth.has({ feature: "crawl_trigger" }) ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Trigger crawl</CardTitle>
+              <CardDescription>Refresh translations from the source site.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <form action={triggerCrawlAction}>
+                <input name="siteId" type="hidden" value={site.id} />
+                <Button type="submit">Enqueue crawl</Button>
+              </form>
+              <p className="text-sm text-muted-foreground">
+                Crawls use the latest route config and glossary. You will see deployment updates
+                below after processing.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <DeploymentsCard deployments={deployments} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Glossary</CardTitle>
-          <CardDescription>Maintain terminology control and optional retranslate.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GlossaryEditor initialEntries={glossary} siteId={site.id} />
-        </CardContent>
-      </Card>
+      {auth.has({ feature: "glossary" }) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Glossary</CardTitle>
+            <CardDescription>
+              Maintain terminology control and optional retranslate.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GlossaryEditor initialEntries={glossary} siteId={site.id} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <OverrideForm siteId={site.id} />
-        <SlugForm siteId={site.id} />
+        {auth.has({ feature: "overrides" }) ? <OverrideForm siteId={site.id} /> : null}
+        {auth.has({ feature: "slug_edit" }) ? <SlugForm siteId={site.id} /> : null}
       </div>
     </div>
   );
 }
 
-function Header({ site }: { site: Site }) {
+function Header({ site, canEdit }: { site: Site; canEdit: boolean }) {
   const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
   return (
     <Card>
@@ -140,20 +157,24 @@ function Header({ site }: { site: Site }) {
             <span>{verifiedDomains} verified domain(s)</span>
           </CardDescription>
         </div>
-        <form action={updateSiteStatusAction} className="flex items-center gap-2">
-          <input name="siteId" type="hidden" value={site.id} />
-          <input
-            name="status"
-            type="hidden"
-            value={site.status === "active" ? "inactive" : "active"}
-          />
-          <Button type="submit" variant="outline">
-            {site.status === "active" ? "Pause translations" : "Activate translations"}
-          </Button>
+        <div className="flex items-center gap-2">
+          {canEdit ? (
+            <form action={updateSiteStatusAction}>
+              <input name="siteId" type="hidden" value={site.id} />
+              <input
+                name="status"
+                type="hidden"
+                value={site.status === "active" ? "inactive" : "active"}
+              />
+              <Button type="submit" variant="outline">
+                {site.status === "active" ? "Pause translations" : "Activate translations"}
+              </Button>
+            </form>
+          ) : null}
           <Button asChild variant="link">
             <Link href="/dashboard/sites">Back to list</Link>
           </Button>
-        </form>
+        </div>
       </CardHeader>
     </Card>
   );
@@ -181,7 +202,7 @@ function DomainSection({ domains, siteId }: { domains: Site["domains"]; siteId: 
       <CardHeader>
         <CardTitle>Domains</CardTitle>
         <CardDescription>
-          Copy the verification token into a DNS TXT record, then run a check.
+          Configure DNS for each hostname, then run a provisioning check.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -200,26 +221,74 @@ function DomainSection({ domains, siteId }: { domains: Site["domains"]; siteId: 
                     {domain.status}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Verification token: <code className="rounded bg-muted px-1 py-0.5">{domain.verificationToken}</code>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {domain.verifiedAt ? `Verified at ${domain.verifiedAt}` : "Not verified yet"}
-                </p>
+                {domain.dnsInstructions ? (
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    <p>
+                      DNS record:{" "}
+                      <code className="rounded bg-muted px-1 py-0.5">
+                        {domain.dnsInstructions.type} {domain.dnsInstructions.name} →{" "}
+                        {domain.dnsInstructions.target}
+                      </code>
+                    </p>
+                    {domain.cloudflare ? (
+                      <p>
+                        Cloudflare:{" "}
+                        <span className="font-mono text-foreground">
+                          {domain.cloudflare.hostnameStatus ?? "unknown"} /{" "}
+                          {domain.cloudflare.certStatus ?? "unknown"}
+                        </span>
+                      </p>
+                    ) : null}
+                    <p>
+                      {domain.verifiedAt ? `Verified at ${domain.verifiedAt}` : "Not verified yet"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    <p>
+                      Verification token:{" "}
+                      <code className="rounded bg-muted px-1 py-0.5">
+                        {domain.verificationToken}
+                      </code>
+                    </p>
+                    <p>
+                      {domain.verifiedAt ? `Verified at ${domain.verifiedAt}` : "Not verified yet"}
+                    </p>
+                  </div>
+                )}
               </div>
-              <form action={verifyDomainAction} className="flex flex-col gap-2 md:items-end">
-                <input name="siteId" type="hidden" value={siteId} />
-                <input name="domain" type="hidden" value={domain.domain} />
-                <Input
-                  aria-label="Test token (optional)"
-                  className="w-full"
-                  name="token"
-                  placeholder="Test token (optional)"
-                />
-                <Button type="submit" variant="outline">
-                  Check now
-                </Button>
-              </form>
+              {domain.dnsInstructions ? (
+                <div className="flex flex-col gap-2 md:items-end">
+                  <form action={provisionDomainAction}>
+                    <input name="siteId" type="hidden" value={siteId} />
+                    <input name="domain" type="hidden" value={domain.domain} />
+                    <Button type="submit" variant="outline">
+                      Provision
+                    </Button>
+                  </form>
+                  <form action={refreshDomainAction}>
+                    <input name="siteId" type="hidden" value={siteId} />
+                    <input name="domain" type="hidden" value={domain.domain} />
+                    <Button type="submit" variant="ghost">
+                      Refresh
+                    </Button>
+                  </form>
+                </div>
+              ) : (
+                <form action={verifyDomainAction} className="flex flex-col gap-2 md:items-end">
+                  <input name="siteId" type="hidden" value={siteId} />
+                  <input name="domain" type="hidden" value={domain.domain} />
+                  <Input
+                    aria-label="Test token (optional)"
+                    className="w-full"
+                    name="token"
+                    placeholder="Test token (optional)"
+                  />
+                  <Button type="submit" variant="outline">
+                    Check now
+                  </Button>
+                </form>
+              )}
             </div>
           ))
         )}
@@ -245,19 +314,25 @@ function DeploymentsCard({ deployments }: { deployments: Deployment[] }) {
               className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/30 p-3"
             >
               <div className="flex items-center gap-2">
-                <p className="font-semibold text-foreground">{deployment.targetLang.toUpperCase()}</p>
+                <p className="font-semibold text-foreground">
+                  {deployment.targetLang.toUpperCase()}
+                </p>
                 <Badge variant="outline">{deployment.status}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">
-                Deployment ID: <span className="font-mono text-foreground">{deployment.deploymentId}</span>
+                Deployment ID:{" "}
+                <span className="font-mono text-foreground">{deployment.deploymentId}</span>
               </p>
               {deployment.activeDeploymentId ? (
                 <p className="text-xs text-muted-foreground">
-                  Active ID: <span className="font-mono text-foreground">{deployment.activeDeploymentId}</span>
+                  Active ID:{" "}
+                  <span className="font-mono text-foreground">{deployment.activeDeploymentId}</span>
                 </p>
               ) : null}
               {deployment.routePrefix ? (
-                <p className="text-xs text-muted-foreground">Route prefix: {deployment.routePrefix}</p>
+                <p className="text-xs text-muted-foreground">
+                  Route prefix: {deployment.routePrefix}
+                </p>
               ) : null}
             </div>
           ))

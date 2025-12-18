@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import {
   createOverride,
   createSite,
+  provisionDomain,
+  refreshDomain,
   triggerCrawl,
   updateGlossary,
   updateSite,
@@ -12,6 +14,8 @@ import {
   verifyDomain,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { resolveSitePlanForAccount } from "@internal/dashboard/entitlements";
 
 import { withWebhooksToken } from "./_lib/webhooks-token";
 
@@ -74,15 +78,27 @@ export async function createSiteAction(
   }
 
   try {
-    const site = await withWebhooksToken((token) =>
-      createSite(token, {
-        sourceUrl,
-        sourceLang,
-        targetLangs: uniqueTargets,
-        subdomainPattern,
-        siteProfile,
-      }),
-    );
+    const auth = await requireDashboardAuth();
+    if (!auth.account || !auth.webhooksToken) {
+      return failed("Unable to resolve account entitlements.");
+    }
+
+    const sitePlan = resolveSitePlanForAccount(auth.account.planType);
+    const maxLocales = auth.account.featureFlags.maxLocales;
+
+    if (maxLocales !== null && uniqueTargets.length > maxLocales) {
+      return failed(`Your plan allows up to ${maxLocales} locale(s) per site.`);
+    }
+
+    const site = await createSite(auth.webhooksToken, {
+      sourceUrl,
+      sourceLang,
+      targetLangs: uniqueTargets,
+      subdomainPattern,
+      siteProfile,
+      sitePlan,
+      maxLocales,
+    });
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
@@ -100,52 +116,76 @@ export async function createSiteAction(
   }
 }
 
-export async function triggerCrawlAction(formData: FormData): Promise<ActionResponse> {
+export async function triggerCrawlAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
 
   if (!siteId) {
-    return failed("Missing site identifier.");
+    return;
   }
 
   try {
     const status = await withWebhooksToken((token) => triggerCrawl(token, siteId));
     if (status.enqueued) {
       revalidatePath(`/dashboard/sites/${siteId}`);
-      return succeeded("Crawl enqueued.", { status });
     }
-    return failed("Unable to enqueue crawl.", { status });
   } catch (error) {
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to trigger crawl.");
+    console.error("[dashboard] triggerCrawlAction failed:", error);
   }
 }
 
-export async function verifyDomainAction(formData: FormData): Promise<ActionResponse> {
+export async function verifyDomainAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const domain = formData.get("domain")?.toString();
   const overrideToken = formData.get("token")?.toString() || undefined;
 
   if (!siteId || !domain) {
-    return failed("Domain verification requires both site ID and domain.");
+    return;
   }
 
   try {
-    const result = await withWebhooksToken((token) =>
-      verifyDomain(token, siteId, domain, overrideToken),
-    );
+    await withWebhooksToken((token) => verifyDomain(token, siteId, domain, overrideToken));
     revalidatePath(`/dashboard/sites/${siteId}`);
-    return succeeded("Verification check completed.", { domain: result.domain });
   } catch (error) {
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Domain verification failed.");
+    console.error("[dashboard] verifyDomainAction failed:", error);
   }
 }
 
-export async function updateGlossaryAction(formData: FormData): Promise<ActionResponse> {
+export async function provisionDomainAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const domain = formData.get("domain")?.toString();
+
+  if (!siteId || !domain) {
+    return;
+  }
+
+  try {
+    await withWebhooksToken((token) => provisionDomain(token, siteId, domain));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+  } catch (error) {
+    console.error("[dashboard] provisionDomainAction failed:", error);
+  }
+}
+
+export async function refreshDomainAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const domain = formData.get("domain")?.toString();
+
+  if (!siteId || !domain) {
+    return;
+  }
+
+  try {
+    await withWebhooksToken((token) => refreshDomain(token, siteId, domain));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+  } catch (error) {
+    console.error("[dashboard] refreshDomainAction failed:", error);
+  }
+}
+
+export async function updateGlossaryAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
   const siteId = formData.get("siteId")?.toString();
   const entriesRaw = formData.get("entries")?.toString();
   const retranslate = formData.get("retranslate") === "true";
@@ -188,7 +228,8 @@ export async function updateGlossaryAction(formData: FormData): Promise<ActionRe
     normalized.push({
       source,
       target,
-      matchType: typeof entry.matchType === "string" ? entry.matchType.trim() || undefined : undefined,
+      matchType:
+        typeof entry.matchType === "string" ? entry.matchType.trim() || undefined : undefined,
       targetLangs,
       caseSensitive: entry.caseSensitive === true,
     });
@@ -208,13 +249,16 @@ export async function updateGlossaryAction(formData: FormData): Promise<ActionRe
   }
 }
 
-export async function createOverrideAction(formData: FormData): Promise<ActionResponse> {
+export async function createOverrideAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
   const siteId = formData.get("siteId")?.toString().trim();
   const segmentId = formData.get("segmentId")?.toString().trim();
   const targetLang = formData.get("targetLang")?.toString().trim();
   const text = formData.get("text")?.toString().trim();
   const contextHashScopeRaw = formData.get("contextHashScope")?.toString().trim();
-  const contextHashScope = contextHashScopeRaw ? contextHashScopeRaw : undefined;
+  const contextHashScope = contextHashScopeRaw ? contextHashScopeRaw : null;
 
   if (!siteId || !segmentId || !targetLang || !text) {
     return failed("Override requires segment, target language, and text.");
@@ -234,7 +278,10 @@ export async function createOverrideAction(formData: FormData): Promise<ActionRe
   }
 }
 
-export async function updateSlugAction(formData: FormData): Promise<ActionResponse> {
+export async function updateSlugAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
   const siteId = formData.get("siteId")?.toString().trim();
   const pageId = formData.get("pageId")?.toString().trim();
   const lang = formData.get("lang")?.toString().trim();
@@ -258,16 +305,16 @@ export async function updateSlugAction(formData: FormData): Promise<ActionRespon
   }
 }
 
-export async function updateSiteStatusAction(formData: FormData): Promise<ActionResponse> {
+export async function updateSiteStatusAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const status = formData.get("status")?.toString() as "active" | "inactive" | undefined;
 
   if (!siteId || !status) {
-    return failed("Site ID and status are required.");
+    return;
   }
 
   if (status !== "active" && status !== "inactive") {
-    return failed("Invalid status value.");
+    return;
   }
 
   try {
@@ -275,11 +322,7 @@ export async function updateSiteStatusAction(formData: FormData): Promise<Action
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
-    return succeeded("Site status updated.");
   } catch (error) {
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to update site status.");
+    console.error("[dashboard] updateSiteStatusAction failed:", error);
   }
 }
