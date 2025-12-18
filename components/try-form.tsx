@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createClientTranslator, i18nConfig, type ClientMessages, type Locale } from "@internal/i18n";
+import {
+  createClientTranslator,
+  i18nConfig,
+  type ClientMessages,
+  type Locale,
+} from "@internal/i18n";
 
 type TryFormProps = {
   locale: string;
@@ -215,7 +220,7 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
       const contentType = response.headers.get("content-type") ?? "";
 
       if (contentType.includes("text/event-stream")) {
-        await consumeEventStream(response, trimmed);
+        await consumeEventStream(response);
         return;
       }
 
@@ -248,7 +253,7 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
     }
   }
 
-  async function consumeEventStream(response: Response, sourceUrl: string) {
+  async function consumeEventStream(response: Response) {
     if (!response.body) {
       throw new Error("Stream response missing body");
     }

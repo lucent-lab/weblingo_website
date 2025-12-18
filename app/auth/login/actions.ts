@@ -9,7 +9,7 @@ type AuthFormState = {
   error: string | null;
 };
 
-export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState | void> {
+export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const supabase = await createClient();
 
   const data = {
@@ -28,7 +28,7 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
   redirect("/dashboard");
 }
 
-export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState | void> {
+export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const supabase = await createClient();
 
   const data = {

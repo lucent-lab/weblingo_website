@@ -7,10 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   if (!API_BASE || !PREVIEW_TOKEN) {
-    return NextResponse.json(
-      { error: "Preview service is not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Preview service is not configured." }, { status: 500 });
   }
 
   let payload: unknown;

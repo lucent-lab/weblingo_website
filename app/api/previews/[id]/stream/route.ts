@@ -5,15 +5,14 @@ const PREVIEW_TOKEN = process.env.NEXT_PUBLIC_TRY_NOW_TOKEN;
 
 export const runtime = "nodejs";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   if (!API_BASE || !PREVIEW_TOKEN) {
     return new Response("Preview service is not configured.", { status: 500 });
   }
 
-  const upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(params.id)}/stream`, {
+  const upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(id)}/stream`, {
     method: "GET",
     headers: {
       Accept: "text/event-stream",

@@ -5,17 +5,11 @@ const PREVIEW_TOKEN = process.env.NEXT_PUBLIC_TRY_NOW_TOKEN;
 
 export const runtime = "nodejs";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   if (!API_BASE || !PREVIEW_TOKEN) {
-    return NextResponse.json(
-      { error: "Preview service is not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Preview service is not configured." }, { status: 500 });
   }
 
   if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
@@ -42,4 +36,3 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
-
