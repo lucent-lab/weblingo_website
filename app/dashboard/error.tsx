@@ -25,7 +25,8 @@ export default function DashboardError({
     console.error(error);
   }, [error]);
 
-  const isAccountMissing = typeof error?.message === "string" && /account not found/i.test(error.message);
+  const isAccountMissing =
+    typeof error?.message === "string" && /account not found/i.test(error.message);
 
   const primaryMessage = useMemo(() => {
     if (isAccountMissing) {
@@ -41,7 +42,9 @@ export default function DashboardError({
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
-              <CardTitle>{isAccountMissing ? "Account not provisioned" : "Dashboard error"}</CardTitle>
+              <CardTitle>
+                {isAccountMissing ? "Account not provisioned" : "Dashboard error"}
+              </CardTitle>
               <CardDescription>
                 {isAccountMissing
                   ? "You are signed in, but your account is not yet enabled for the dashboard. You can try a fresh session or contact support to request access."

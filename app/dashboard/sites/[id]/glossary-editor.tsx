@@ -59,10 +59,15 @@ export function GlossaryEditor({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Add glossary pairs to keep brand terms consistent. Placeholder counts must match the source
-          text.
+          Add glossary pairs to keep brand terms consistent. Placeholder counts must match the
+          source text.
         </p>
-        <Button onClick={() => setRows((current) => [...current, blankRow()])} type="button" variant="outline" size="sm">
+        <Button
+          onClick={() => setRows((current) => [...current, blankRow()])}
+          type="button"
+          variant="outline"
+          size="sm"
+        >
           Add entry
         </Button>
       </div>
@@ -136,7 +141,9 @@ export function GlossaryEditor({
                 </div>
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => setRows((current) => current.filter((candidate) => candidate.id !== row.id))}
+                    onClick={() =>
+                      setRows((current) => current.filter((candidate) => candidate.id !== row.id))
+                    }
                     type="button"
                     variant="ghost"
                     size="sm"

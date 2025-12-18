@@ -64,8 +64,8 @@ export default async function DeveloperToolsPage() {
           </label>
           <Input readOnly value={`Bearer ${token}`} />
           <p className="text-xs text-muted-foreground">
-            Do not store this token in long-lived storage. Regenerate after Supabase session refresh or
-            when requests begin failing with 401 responses.
+            Do not store this token in long-lived storage. Regenerate after Supabase session refresh
+            or when requests begin failing with 401 responses.
           </p>
         </CardContent>
       </Card>

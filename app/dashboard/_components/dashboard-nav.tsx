@@ -17,8 +17,7 @@ export function DashboardNav({ items }: { items: NavItem[] }) {
     <nav className="flex flex-col gap-1">
       {items.map((item) => {
         const isActive =
-          pathname !== null &&
-          (pathname === item.href || pathname.startsWith(`${item.href}/`));
+          pathname !== null && (pathname === item.href || pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.href}

@@ -39,8 +39,8 @@ export default function NoAccountPage({ searchParams }: NoAccountPageProps) {
           <div>
             <CardTitle>No account found</CardTitle>
             <CardDescription>
-              You are signed in, but no dashboard account is linked yet. Pick a plan to get started or
-              sign out and switch accounts.
+              You are signed in, but no dashboard account is linked yet. Pick a plan to get started
+              or sign out and switch accounts.
             </CardDescription>
           </div>
           <Badge variant="outline">Status: pending access</Badge>

@@ -3,6 +3,7 @@
 Purpose: single source of truth for the customer dashboard. Includes API contracts (backend), UX feature map (front-end), and integration steps. The dashboard is a separate project that uses Supabase Auth and calls the WebLingo webhooks worker APIs documented here.
 
 ## Table of Contents
+
 - [Auth & Base URLs](#auth--base-urls)
 - [Resource Shapes & Error Format](#resource-shapes--error-format)
 - [API Surfaces (Backend)](#api-surfaces-backend)
@@ -21,6 +22,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 ### Auth bridge (Supabase Auth → webhooks-worker token)
 
 `POST /api/auth/token`
+
 - Headers: `Authorization: Bearer <Supabase access token>`.
 - Behavior: validates the Supabase token via `/auth/v1/user`, then returns a short-lived webhooks JWT (`sub = user.id`, exp ≈ 1h).
 - Response `200`: `{ token, expiresAt, entitlements: { planType, planStatus }, actorAccountId, subjectAccountId }`.
@@ -54,6 +56,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 ### Sites (onboarding & management)
 
 `POST /api/sites`
+
 - Payload (all required): `{ sourceUrl, sourceLang, targetLangs: [...], subdomainPattern, siteProfile, sitePlan?, maxLocales? }`.
   - `subdomainPattern` must contain `{lang}`; it can be a bare host (`{lang}.example.com`) or include scheme/path (`https://www.example.com/{lang}/docs`). Hostnames derived from this pattern seed `site_domains`; path segments become `routePrefix` per locale.
   - `siteProfile` must be a non-empty object with JSON-safe scalar/array/object values (empty strings/arrays rejected).
@@ -66,6 +69,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 `GET /api/sites/:id` → `Site`.
 
 `PATCH /api/sites/:id`
+
 - Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, status? ("active"|"inactive"), siteProfile? (object|null), sitePlan?, maxLocales? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
@@ -74,12 +78,14 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 `DELETE /api/sites/:id` → marks site inactive (`204`).
 
 `POST /api/sites/:id/crawl`
+
 - Enqueues crawl for the site’s source URL.
 - Response: `202 { enqueued: true }` or `502 { enqueued: false, error }` if enqueue fails.
 
 ### Domain verification
 
 `POST /api/sites/:id/domains/:domain/verify`
+
 - DNS-first: performs a DNS TXT lookup (Cloudflare DoH) for the stored `verificationToken`.
 - Test bypass: when the worker runs with `ENV=test` (or body includes `"env": "test"`), a matching `token` in the request body is accepted instead of DNS. Production must use DNS.
 - Response `200`: `{ domain: { domain,status,verificationToken,verifiedAt,lastCheckedAt } }` or `400/404` on mismatch/missing domain.
@@ -87,26 +93,31 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 ### Deployment status
 
 `GET /api/sites/:id/deployments`
+
 - Returns one record per configured locale: `{ deployments: [{ targetLang, status, deploymentId, activatedAt, routePrefix, artifactManifest, activeDeploymentId }] }`.
 - `activeDeploymentId` is read from KV key `dep:{site_id}:{lang}` (no service key needed on the dashboard).
 
 ### Try-now previews
 
 `POST /api/previews`
+
 - Headers: `x-preview-token: <TRY_NOW_TOKEN>` **or** `Authorization: Bearer <dashboard JWT>`.
 - Body: `{ sourceUrl, sourceLang, targetLang }`.
 - Behavior: fetches the page, translates in-process (deterministic provider unless `OPENAI_API_KEY` is set), renders HTML, stores in R2 with TTL.
 - Response `202`: `{ previewId, status, previewUrl, expiresAt }`.
 
 `GET /api/previews/:previewId`
+
 - Response: `{ previewId, status, previewUrl|null, expiresAt, error|null }`.
 
 ### Glossary management
 
 `GET /api/sites/:id/glossary`
+
 - Response `200`: `{ entries: GlossaryEntry[] }` (latest `glossaries` row).
 
 `PUT /api/sites/:id/glossary`
+
 - Payload: `{ entries: GlossaryEntry[], retranslate?: boolean }`.
 - Behavior: validates entries, upserts `glossaries`, optionally enqueues a site crawl when `retranslate` is true. Returns 403 on starter plan.
 - Response `200`: `{ entries, crawlStatus? }`.
@@ -114,11 +125,13 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 ### Manual translations & slugs
 
 `POST /api/sites/:id/overrides`
+
 - Payload: `{ segmentId, targetLang, text, contextHashScope? }`.
 - Behavior: fetches the segment source scoped to the site, validates placeholder multiset, then upserts `segment_overrides`. Returns 403 on starter plan.
 - Response `200`: `{ segmentId, targetLang, contextHashScope }`.
 
 `POST /api/sites/:id/slugs`
+
 - Payload: `{ pageId, lang, path }` (path normalized to start with `/`).
 - Behavior: wraps `set_page_translated_path` RPC (slug-collision guarded per page), then enqueues a crawl to refresh render/publish. Returns 403 on starter plan.
 - Response `200`: `{ pageId, lang, path, crawlStatus }`.
@@ -141,9 +154,9 @@ The serve worker reads `site_configs`, `site_domains`, and `sites` directly. Use
 
 ## Integration steps
 
-1) After Supabase Auth login, call `POST /api/auth/token` with the Supabase access token; store the returned webhooks JWT.
-2) Use that JWT for all `/api/sites/*` and other calls listed above. Include `sitePlan`/`maxLocales` on create/patch when needed; handle 400/403 responses for locale caps and starter gates.
-3) Avoid direct Supabase calls from the browser; rely on these endpoints. For the remaining gaps (usage metrics, billing/team), plan server-side services that can use the Supabase service key safely.
+1. After Supabase Auth login, call `POST /api/auth/token` with the Supabase access token; store the returned webhooks JWT.
+2. Use that JWT for all `/api/sites/*` and other calls listed above. Include `sitePlan`/`maxLocales` on create/patch when needed; handle 400/403 responses for locale caps and starter gates.
+3. Avoid direct Supabase calls from the browser; rely on these endpoints. For the remaining gaps (usage metrics, billing/team), plan server-side services that can use the Supabase service key safely.
 
 ## Service-key-only surfaces
 
