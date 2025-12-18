@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
+import type { SitePlan } from "@internal/dashboard/entitlements";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ const initialState: ActionResponse = {
   message: "",
 };
 
-export function OnboardingForm(props: { sitePlan: "starter" | "pro"; maxLocales: number | null }) {
+export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number | null }) {
   const [state, formAction] = useActionState(createSiteAction, initialState);
   const router = useRouter();
   const [targets, setTargets] = useState<string[]>([]);
