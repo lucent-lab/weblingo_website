@@ -27,10 +27,16 @@ import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 type SitePageProps = {
   params: { id: string };
+  searchParams?: {
+    toast?: string | string[];
+    error?: string | string[];
+  };
 };
 
-export default async function SitePage({ params }: SitePageProps) {
+export default async function SitePage({ params, searchParams }: SitePageProps) {
   const { id } = params;
+  const toastMessage = decodeSearchParam(searchParams?.toast);
+  const actionErrorMessage = decodeSearchParam(searchParams?.error);
   const auth = await requireDashboardAuth();
   const token = auth.webhooksToken!;
 
@@ -70,6 +76,21 @@ export default async function SitePage({ params }: SitePageProps) {
 
   return (
     <div className="space-y-8">
+      {actionErrorMessage ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {actionErrorMessage}{" "}
+          <Link className="font-medium underline" href={`/dashboard/sites/${id}`}>
+            Dismiss
+          </Link>
+        </div>
+      ) : toastMessage ? (
+        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
+          {toastMessage}{" "}
+          <Link className="font-medium underline" href={`/dashboard/sites/${id}`}>
+            Dismiss
+          </Link>
+        </div>
+      ) : null}
       <Header site={site} canEdit={auth.has({ feature: "edit" })} />
 
       <Card>
@@ -149,6 +170,22 @@ export default async function SitePage({ params }: SitePageProps) {
       </div>
     </div>
   );
+}
+
+function decodeSearchParam(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
 }
 
 function Header({ site, canEdit }: { site: Site; canEdit: boolean }) {

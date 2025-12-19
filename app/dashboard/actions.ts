@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import {
   createOverride,
@@ -35,6 +36,42 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   message,
   meta,
 });
+
+function siteRedirect(siteId: string, params: { toast?: string; error?: string }) {
+  const base = `/dashboard/sites/${encodeURIComponent(siteId)}`;
+  if (params.error) {
+    return `${base}?error=${encodeURIComponent(params.error)}`;
+  }
+  if (params.toast) {
+    return `${base}?toast=${encodeURIComponent(params.toast)}`;
+  }
+  return base;
+}
+
+function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
+  const isDev = process.env.NODE_ENV !== "production";
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (!message) {
+      return fallback;
+    }
+    if (!isDev && message.includes("NEXT_PUBLIC_WEBHOOKS_API_BASE")) {
+      return fallback;
+    }
+    return isDev ? message : fallback;
+  }
+  return fallback;
+}
+
+function isNextRedirectError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
 
 function parseJsonObject(input: string): Record<string, unknown> | null {
   try {
@@ -109,6 +146,9 @@ export async function createSiteAction(
       crawlStatus: site.crawlStatus,
     });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       return failed(error.message);
     }
@@ -123,14 +163,27 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
     return;
   }
 
+  let nextRedirect: string;
+
   try {
     const status = await withWebhooksToken((token) => triggerCrawl(token, siteId));
-    if (status.enqueued) {
-      revalidatePath(`/dashboard/sites/${siteId}`);
-    }
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    nextRedirect = status.enqueued
+      ? siteRedirect(siteId, { toast: "Crawl enqueued." })
+      : status.error
+        ? siteRedirect(siteId, { error: status.error })
+        : siteRedirect(siteId, { toast: "Crawl is already queued." });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("[dashboard] triggerCrawlAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."),
+    });
   }
+
+  redirect(nextRedirect);
 }
 
 export async function verifyDomainAction(formData: FormData): Promise<void> {
@@ -142,12 +195,30 @@ export async function verifyDomainAction(formData: FormData): Promise<void> {
     return;
   }
 
+  let nextRedirect: string;
+
   try {
-    await withWebhooksToken((token) => verifyDomain(token, siteId, domain, overrideToken));
+    const { domain: updated } = await withWebhooksToken((token) =>
+      verifyDomain(token, siteId, domain, overrideToken),
+    );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    nextRedirect =
+      updated.status === "verified"
+        ? siteRedirect(siteId, { toast: `Domain verified: ${domain}.` })
+        : updated.status === "pending"
+          ? siteRedirect(siteId, { toast: `Domain verification pending: ${domain}.` })
+          : siteRedirect(siteId, { error: `Domain verification failed for ${domain}.` });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("[dashboard] verifyDomainAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, `Unable to verify ${domain} right now.`),
+    });
   }
+
+  redirect(nextRedirect);
 }
 
 export async function provisionDomainAction(formData: FormData): Promise<void> {
@@ -158,12 +229,28 @@ export async function provisionDomainAction(formData: FormData): Promise<void> {
     return;
   }
 
+  let nextRedirect: string;
+
   try {
-    await withWebhooksToken((token) => provisionDomain(token, siteId, domain));
+    const { domain: updated } = await withWebhooksToken((token) =>
+      provisionDomain(token, siteId, domain),
+    );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    nextRedirect =
+      updated.status === "failed"
+        ? siteRedirect(siteId, { error: `Provisioning failed for ${domain}.` })
+        : siteRedirect(siteId, { toast: `Provisioning requested for ${domain}.` });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("[dashboard] provisionDomainAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, `Unable to provision ${domain} right now.`),
+    });
   }
+
+  redirect(nextRedirect);
 }
 
 export async function refreshDomainAction(formData: FormData): Promise<void> {
@@ -174,12 +261,28 @@ export async function refreshDomainAction(formData: FormData): Promise<void> {
     return;
   }
 
+  let nextRedirect: string;
+
   try {
-    await withWebhooksToken((token) => refreshDomain(token, siteId, domain));
+    const { domain: updated } = await withWebhooksToken((token) =>
+      refreshDomain(token, siteId, domain),
+    );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    nextRedirect =
+      updated.status === "failed"
+        ? siteRedirect(siteId, { error: `Refresh failed for ${domain}.` })
+        : siteRedirect(siteId, { toast: `Refresh requested for ${domain}.` });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("[dashboard] refreshDomainAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, `Unable to refresh ${domain} right now.`),
+    });
   }
+
+  redirect(nextRedirect);
 }
 
 export async function updateGlossaryAction(
@@ -242,6 +345,9 @@ export async function updateGlossaryAction(
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Glossary saved.", { crawlStatus: result.crawlStatus });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       return failed(error.message);
     }
@@ -271,6 +377,9 @@ export async function createOverrideAction(
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Override saved.", { override: result });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       return failed(error.message);
     }
@@ -298,6 +407,9 @@ export async function updateSlugAction(
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Slug saved and crawl enqueued.", { status: result.crawlStatus });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       return failed(error.message);
     }
@@ -317,12 +429,25 @@ export async function updateSiteStatusAction(formData: FormData): Promise<void> 
     return;
   }
 
+  let nextRedirect: string;
+
   try {
-    await withWebhooksToken((token) => updateSite(token, siteId, { status }));
+    const updated = await withWebhooksToken((token) => updateSite(token, siteId, { status }));
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
+    nextRedirect = siteRedirect(siteId, {
+      toast: updated.status === "active" ? "Translations activated." : "Translations paused.",
+    });
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("[dashboard] updateSiteStatusAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, "Unable to update site status right now."),
+    });
   }
+
+  redirect(nextRedirect);
 }
