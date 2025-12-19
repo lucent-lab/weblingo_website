@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TryForm } from "@/components/try-form";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
+import { listSupportedLanguages } from "@internal/dashboard/webhooks";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -15,6 +16,7 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
     Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
+  const supportedLanguages = await listSupportedLanguages();
 
   return (
     <div className="bg-background pb-24 pt-20">
@@ -29,7 +31,12 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
         <p className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
           {t("try.disabled.notice")}
         </p>
-        <TryForm locale={locale} messages={messages} disabled={!hasPreviewConfig} />
+        <TryForm
+          locale={locale}
+          messages={messages}
+          disabled={!hasPreviewConfig}
+          supportedLanguages={supportedLanguages}
+        />
       </div>
     </div>
   );

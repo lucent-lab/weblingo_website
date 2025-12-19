@@ -2,32 +2,35 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   createClientTranslator,
   i18nConfig,
+  normalizeLangTag,
   type ClientMessages,
-  type Locale,
 } from "@internal/i18n";
+import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
 type TryFormProps = {
   locale: string;
   messages: ClientMessages;
   disabled?: boolean;
+  supportedLanguages: SupportedLanguage[];
 };
 
 type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
 
-export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
+export function TryForm({ locale, messages, disabled = false, supportedLanguages }: TryFormProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [url, setUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
-  const [sourceLang, setSourceLang] = useState<Locale>(i18nConfig.defaultLocale);
-  const [targetLang, setTargetLang] = useState<Locale>(locale as Locale);
+  const [sourceLang, setSourceLang] = useState<string>(i18nConfig.defaultLocale);
+  const [targetLang, setTargetLang] = useState<string>(locale);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -200,6 +203,12 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
         throw new Error(t("try.form.invalidUrl"));
       }
 
+      const normalizedSourceLang = normalizeLangTag(sourceLang) ?? sourceLang.trim();
+      const normalizedTargetLang = normalizeLangTag(targetLang) ?? targetLang.trim();
+      if (!normalizedSourceLang || !normalizedTargetLang) {
+        throw new Error("Source and target languages are required.");
+      }
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -211,8 +220,8 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
         },
         body: JSON.stringify({
           sourceUrl: trimmed,
-          sourceLang,
-          targetLang,
+          sourceLang: normalizedSourceLang,
+          targetLang: normalizedTargetLang,
         }),
         signal: controller.signal,
       });
@@ -399,33 +408,25 @@ export function TryForm({ locale, messages, disabled = false }: TryFormProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex flex-1 flex-col gap-2 text-sm">
           <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <LanguageTagCombobox
             value={sourceLang}
-            onChange={(event) => setSourceLang(event.target.value as Locale)}
+            onValueChange={setSourceLang}
+            supportedLanguages={supportedLanguages}
+            displayLocale={locale}
             disabled={isDisabled}
-          >
-            {i18nConfig.locales.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang.toUpperCase()}
-              </option>
-            ))}
-          </select>
+            placeholder="en"
+          />
         </label>
         <label className="flex flex-1 flex-col gap-2 text-sm">
           <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <LanguageTagCombobox
             value={targetLang}
-            onChange={(event) => setTargetLang(event.target.value as Locale)}
+            onValueChange={setTargetLang}
+            supportedLanguages={supportedLanguages}
+            displayLocale={locale}
             disabled={isDisabled}
-          >
-            {i18nConfig.locales.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang.toUpperCase()}
-              </option>
-            ))}
-          </select>
+            placeholder={locale}
+          />
         </label>
       </div>
 
