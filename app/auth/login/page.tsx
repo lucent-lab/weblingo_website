@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { login, signup } from "@/app/auth/login/actions";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-type AuthFormState = { error: string | null };
-const initialAuthState: AuthFormState = { error: null };
+type AuthFormState = { error: string | null; notice: string | null };
+const initialAuthState: AuthFormState = { error: null, notice: null };
+type AuthIntent = "login" | "signup";
 
 export default function LoginPage() {
   const [loginState, loginAction, loginPending] = useActionState<AuthFormState, FormData>(
@@ -26,8 +27,19 @@ export default function LoginPage() {
     signup,
     initialAuthState,
   );
+  const [intent, setIntent] = useState<AuthIntent | null>(null);
 
-  const displayError = loginState.error ?? signupState.error ?? null;
+  const activeState =
+    intent === "signup"
+      ? signupState
+      : intent === "login"
+        ? loginState
+        : signupState.error || signupState.notice
+          ? signupState
+          : loginState;
+
+  const displayError = activeState.error ?? null;
+  const displayNotice = displayError ? null : (activeState.notice ?? null);
   const isSubmitting = loginPending || signupPending;
 
   return (
@@ -43,6 +55,10 @@ export default function LoginPage() {
           {displayError ? (
             <div className="mx-6 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {displayError}
+            </div>
+          ) : displayNotice ? (
+            <div className="mx-6 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
+              {displayNotice}
             </div>
           ) : null}
           <CardContent className="space-y-4">
@@ -75,7 +91,12 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 sm:flex-row">
-            <Button className="w-full sm:flex-1" disabled={isSubmitting} formAction={loginAction}>
+            <Button
+              className="w-full sm:flex-1"
+              disabled={isSubmitting}
+              formAction={loginAction}
+              onClick={() => setIntent("login")}
+            >
               {loginPending ? "Signing in..." : "Log in"}
             </Button>
             <Button
@@ -83,6 +104,7 @@ export default function LoginPage() {
               disabled={isSubmitting}
               variant="outline"
               formAction={signupAction}
+              onClick={() => setIntent("signup")}
             >
               {signupPending ? "Creating..." : "Create account"}
             </Button>
