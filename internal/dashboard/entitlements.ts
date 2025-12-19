@@ -5,15 +5,6 @@ export type PlanStatus = AccountMe["planStatus"];
 export type FeatureFlags = AccountMe["featureFlags"];
 
 /**
- * Site-scoped tier used by the webhooks API for per-site capabilities.
- *
- * This is intentionally narrower than `PlanType`:
- * - `agency` is account-level only (who is paying / who can act on behalf of others).
- * - `free` maps to starter capabilities for sites in v1 (the OpenAPI `sitePlan` enum is starter|pro).
- */
-export type SitePlan = "starter" | "pro";
-
-/**
  * Dashboard-side authorization helper inspired by `@weblingo/common` entitlements,
  * kept local to avoid cross-repo dependencies.
  */
@@ -187,10 +178,6 @@ export function has(
 
 export function createHas(account: Pick<AccountMe, "planType" | "planStatus" | "featureFlags">) {
   return (requirement: HasCheck) => has(account, requirement);
-}
-
-export function resolveSitePlanForAccount(planType: PlanType): SitePlan {
-  return planType === "pro" || planType === "agency" ? "pro" : "starter";
 }
 
 function assertNever(value: never): never {

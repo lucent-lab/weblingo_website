@@ -1,7 +1,8 @@
 import { OnboardingForm } from "./onboarding-form";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { resolveSitePlanForAccount } from "@internal/dashboard/entitlements";
+import { listSupportedLanguages } from "@internal/dashboard/webhooks";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export const metadata = {
@@ -11,11 +12,12 @@ export const metadata = {
 
 export default async function NewSitePage() {
   const auth = await requireDashboardAuth();
-  if (!auth.has({ allFeatures: ["edit", "site_create"] })) {
+  if (!auth.has({ feature: "site_create" })) {
     redirect("/dashboard/sites");
   }
-  const sitePlan = resolveSitePlanForAccount(auth.account!.planType);
   const maxLocales = auth.account!.featureFlags.maxLocales;
+  const supportedLanguages = await listSupportedLanguages();
+  const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
 
   return (
     <div className="space-y-6">
@@ -25,7 +27,16 @@ export default async function NewSitePage() {
           Guided setup to capture your source URL, languages, and domain pattern.
         </p>
       </div>
-      <OnboardingForm maxLocales={maxLocales} sitePlan={sitePlan} />
+      <OnboardingForm
+        maxLocales={maxLocales}
+        supportedLanguages={supportedLanguages}
+        displayLocale={displayLocale}
+      />
     </div>
   );
+}
+
+function pickPreferredLocale(acceptLanguageHeader: string): string {
+  const first = acceptLanguageHeader.split(",")[0]?.split(";")[0]?.trim();
+  return first && first.length ? first : "en";
 }

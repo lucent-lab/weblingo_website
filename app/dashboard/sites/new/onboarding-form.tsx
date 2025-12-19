@@ -5,15 +5,15 @@ import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
-import type { SitePlan } from "@internal/dashboard/entitlements";
 
+import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-
-const languageOptions = ["en", "fr", "ja", "es", "de", "pt", "it"];
+import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import { createLanguageNameResolver, normalizeLangTag } from "@internal/i18n";
 
 const initialProfile = JSON.stringify(
   {
@@ -30,14 +30,31 @@ const initialState: ActionResponse = {
   message: "",
 };
 
-export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number | null }) {
+export function OnboardingForm(props: {
+  maxLocales: number | null;
+  supportedLanguages: SupportedLanguage[];
+  displayLocale: string;
+}) {
   const [state, formAction] = useActionState(createSiteAction, initialState);
   const router = useRouter();
   const [targets, setTargets] = useState<string[]>([]);
-  const [customTarget, setCustomTarget] = useState("");
+  const [sourceLang, setSourceLang] = useState("");
+  const [targetPickerValue, setTargetPickerValue] = useState("");
   const [pattern, setPattern] = useState("https://{lang}.example.com");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const resolveLanguageName = useMemo(
+    () => createLanguageNameResolver(props.displayLocale),
+    [props.displayLocale],
+  );
+
+  const supportedByTag = useMemo(() => {
+    const map = new Map<string, SupportedLanguage>();
+    for (const lang of props.supportedLanguages) {
+      map.set(lang.tag, lang);
+    }
+    return map;
+  }, [props.supportedLanguages]);
 
   useEffect(() => {
     const siteId = state.meta?.siteId;
@@ -54,37 +71,26 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
     return output.replace(/(?<!:)\/{2,}/g, "/");
   }, [pattern, targets]);
 
-  const handleToggleTarget = (lang: string) => {
+  const handleRemoveTarget = (lang: string) => {
     setLimitMessage(null);
-    setTargets((current) => {
-      if (current.includes(lang)) {
-        return current.filter((l) => l !== lang);
-      }
-
-      if (props.maxLocales !== null && current.length >= props.maxLocales) {
-        setLimitMessage(`Your plan allows up to ${props.maxLocales} target locale(s) per site.`);
-        return current;
-      }
-
-      return [...current, lang];
-    });
+    setTargets((current) => current.filter((entry) => entry !== lang));
   };
 
-  const handleAddCustomTarget = () => {
-    const trimmed = customTarget.trim();
-    if (!trimmed) return;
+  const handlePickTarget = (nextValue: string) => {
+    const normalized = normalizeLangTag(nextValue);
+    if (!normalized) return;
     setLimitMessage(null);
     setTargets((current) => {
-      if (current.includes(trimmed)) {
+      if (current.includes(normalized)) {
         return current;
       }
       if (props.maxLocales !== null && current.length >= props.maxLocales) {
         setLimitMessage(`Your plan allows up to ${props.maxLocales} target locale(s) per site.`);
         return current;
       }
-      return [...current, trimmed];
+      return [...current, normalized];
     });
-    setCustomTarget("");
+    setTargetPickerValue("");
   };
 
   return (
@@ -97,9 +103,6 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
         </CardDescription>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-1">
-            Site plan: <span className="font-semibold text-foreground">{props.sitePlan}</span>
-          </span>
-          <span className="rounded-full bg-muted px-2 py-1">
             Locale limit:{" "}
             <span className="font-semibold text-foreground">
               {props.maxLocales === null ? "Unlimited" : props.maxLocales}
@@ -109,6 +112,13 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-8">
+          {props.supportedLanguages.length === 0 ? (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Language suggestions are unavailable right now. You can still enter BCP 47 tags
+              manually (for example <code>en</code>, <code>fr-CA</code>, <code>pt-BR</code>).
+            </div>
+          ) : null}
+
           <section className="space-y-3">
             <StepHeader
               step={1}
@@ -138,15 +148,18 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
                   <label className="text-sm font-medium text-foreground" htmlFor="sourceLang">
                     Source language
                   </label>
-                  <Input
+                  <LanguageTagCombobox
                     id="sourceLang"
                     name="sourceLang"
-                    placeholder="en"
-                    autoComplete="off"
+                    value={sourceLang}
+                    onValueChange={setSourceLang}
+                    supportedLanguages={props.supportedLanguages}
+                    displayLocale={props.displayLocale}
+                    placeholder="en (or a BCP 47 tag)"
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Two-letter code preferred (e.g., en, fr, ja).
+                    Pick a language tag (BCP 47 style). Examples: en, fr-CA, pt-BR.
                   </p>
                 </div>
               </div>
@@ -163,57 +176,57 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
             />
             {step === 2 ? (
               <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {languageOptions.map((lang) => (
-                    <label
-                      key={lang}
-                      className={cn(
-                        "cursor-pointer rounded-lg border px-3 py-2 text-sm shadow-sm",
-                        targets.includes(lang)
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted/40 text-foreground",
-                      )}
-                    >
-                      <input
-                        checked={targets.includes(lang)}
-                        disabled={
-                          props.maxLocales !== null &&
-                          !targets.includes(lang) &&
-                          targets.length >= props.maxLocales
-                        }
-                        className="sr-only"
-                        name="targetLangs"
-                        type="checkbox"
-                        value={lang}
-                        onChange={() => handleToggleTarget(lang)}
-                      />
-                      {lang.toUpperCase()}
-                    </label>
-                  ))}
-                </div>
+                {targets.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {targets.map((tag) => {
+                      const fallbackEnglishName = supportedByTag.get(tag)?.englishName;
+                      const label = resolveLanguageName(tag, {
+                        fallbackEnglishName,
+                      });
+                      return (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm"
+                        >
+                          <span className="font-medium text-foreground">
+                            {label === tag ? tag : `${label} (${tag})`}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => handleRemoveTarget(tag)}
+                          >
+                            Remove
+                          </Button>
+                          <input type="hidden" name="targetLangs" value={tag} />
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Add at least one target language to start translating.
+                  </p>
+                )}
                 {limitMessage ? <p className="text-xs text-destructive">{limitMessage}</p> : null}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
+                  <LanguageTagCombobox
                     className="sm:max-w-xs"
-                    placeholder="Add another (e.g., nl)"
-                    value={customTarget}
-                    onChange={(event) => setCustomTarget(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        handleAddCustomTarget();
-                      }
-                    }}
-                  />
-                  <Button
+                    placeholder="Add a target language..."
+                    value={targetPickerValue}
+                    onValueChange={handlePickTarget}
+                    supportedLanguages={props.supportedLanguages}
+                    displayLocale={props.displayLocale}
                     disabled={props.maxLocales !== null && targets.length >= props.maxLocales}
-                    onClick={handleAddCustomTarget}
-                    type="button"
-                    variant="outline"
-                  >
-                    Add language
-                  </Button>
+                  />
                 </div>
+                {props.supportedLanguages.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Search by language name or tag, or enter a custom language tag.
+                  </p>
+                ) : null}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground" htmlFor="subdomainPattern">
                     Subdomain pattern
@@ -237,21 +250,6 @@ export function OnboardingForm(props: { sitePlan: SitePlan; maxLocales: number |
                     <p className="text-xs text-destructive">Pattern must contain {"{lang}"}.</p>
                   ) : null}
                 </div>
-                {targets
-                  .filter((lang) => !languageOptions.includes(lang))
-                  .map((lang) => (
-                    <input key={lang} hidden name="targetLangs" readOnly value={lang} />
-                  ))}
-                {targets.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Selected:</span>
-                    {targets.map((lang) => (
-                      <span key={lang} className="rounded-full bg-muted px-2 py-1 text-foreground">
-                        {lang.toUpperCase()}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             ) : null}
           </section>

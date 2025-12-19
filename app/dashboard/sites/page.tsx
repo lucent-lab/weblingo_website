@@ -14,7 +14,7 @@ export default async function SitesPage() {
   try {
     const auth = await requireDashboardAuth();
     sites = await listSites(auth.webhooksToken!);
-    canCreateSite = auth.has({ allFeatures: ["edit", "site_create"] });
+    canCreateSite = auth.has({ feature: "site_create" });
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load sites.";
   }

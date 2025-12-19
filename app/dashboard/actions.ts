@@ -15,7 +15,6 @@ import {
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { resolveSitePlanForAccount } from "@internal/dashboard/entitlements";
 
 import { withWebhooksToken } from "./_lib/webhooks-token";
 
@@ -82,8 +81,10 @@ export async function createSiteAction(
     if (!auth.account || !auth.webhooksToken) {
       return failed("Unable to resolve account entitlements.");
     }
+    if (!auth.has({ feature: "site_create" })) {
+      return failed("Site creation is disabled for this account.");
+    }
 
-    const sitePlan = resolveSitePlanForAccount(auth.account.planType);
     const maxLocales = auth.account.featureFlags.maxLocales;
 
     if (maxLocales !== null && uniqueTargets.length > maxLocales) {
@@ -96,7 +97,6 @@ export async function createSiteAction(
       targetLangs: uniqueTargets,
       subdomainPattern,
       siteProfile,
-      sitePlan,
       maxLocales,
     });
 

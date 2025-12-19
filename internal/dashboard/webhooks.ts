@@ -30,6 +30,20 @@ const entitlementsSchema = z
   })
   .strict();
 
+const supportedLanguageSchema = z
+  .object({
+    tag: z.string().min(1),
+    englishName: z.string().min(1),
+    direction: z.enum(["ltr", "rtl"]),
+  })
+  .strict();
+
+const supportedLanguagesResponseSchema = z
+  .object({
+    languages: z.array(supportedLanguageSchema),
+  })
+  .strict();
+
 const dnsInstructionsSchema = z
   .object({
     type: z.literal("CNAME"),
@@ -80,7 +94,6 @@ const siteSchema = z.object({
   id: z.string(),
   sourceUrl: z.string(),
   status: z.enum(["active", "inactive"]),
-  sitePlan: z.enum(["starter", "pro"]),
   maxLocales: z.number().int().positive().nullable(),
   siteProfile: siteProfileSchema,
   locales: z.array(
@@ -175,6 +188,52 @@ export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
+export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
+
+const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
+  { tag: "ar", englishName: "Arabic", direction: "rtl" },
+  { tag: "bg", englishName: "Bulgarian (Bulgaria)", direction: "ltr" },
+  { tag: "cs", englishName: "Czech (Czech Republic)", direction: "ltr" },
+  { tag: "da", englishName: "Danish (Denmark)", direction: "ltr" },
+  { tag: "de", englishName: "German (Germany)", direction: "ltr" },
+  { tag: "el", englishName: "Greek (Greece)", direction: "ltr" },
+  { tag: "en", englishName: "English", direction: "ltr" },
+  { tag: "en-GB", englishName: "English (United Kingdom)", direction: "ltr" },
+  { tag: "es", englishName: "Spanish (Spain)", direction: "ltr" },
+  { tag: "es-419", englishName: "Spanish (Latin America)", direction: "ltr" },
+  { tag: "et", englishName: "Estonian (Estonia)", direction: "ltr" },
+  { tag: "fi", englishName: "Finnish (Finland)", direction: "ltr" },
+  { tag: "fil", englishName: "Filipino (Philippines)", direction: "ltr" },
+  { tag: "fr", englishName: "French (France)", direction: "ltr" },
+  { tag: "fr-CA", englishName: "French (Canada)", direction: "ltr" },
+  { tag: "he", englishName: "Hebrew (Israel)", direction: "rtl" },
+  { tag: "hr", englishName: "Croatian (Croatia)", direction: "ltr" },
+  { tag: "hu", englishName: "Hungarian (Hungary)", direction: "ltr" },
+  { tag: "id", englishName: "Indonesian (Indonesia)", direction: "ltr" },
+  { tag: "it", englishName: "Italian (Italy)", direction: "ltr" },
+  { tag: "ja", englishName: "Japanese (Japan)", direction: "ltr" },
+  { tag: "ko", englishName: "Korean (Korea)", direction: "ltr" },
+  { tag: "lt", englishName: "Lithuanian (Lithuania)", direction: "ltr" },
+  { tag: "lv", englishName: "Latvian (Latvia)", direction: "ltr" },
+  { tag: "ms", englishName: "Malay (Malaysia)", direction: "ltr" },
+  { tag: "mt", englishName: "Maltese (Malta)", direction: "ltr" },
+  { tag: "nb", englishName: "Norwegian Bokmål", direction: "ltr" },
+  { tag: "nl", englishName: "Dutch (Netherlands)", direction: "ltr" },
+  { tag: "pl", englishName: "Polish (Poland)", direction: "ltr" },
+  { tag: "pt", englishName: "Portuguese", direction: "ltr" },
+  { tag: "pt-BR", englishName: "Portuguese (Brazil)", direction: "ltr" },
+  { tag: "ro", englishName: "Romanian (Romania)", direction: "ltr" },
+  { tag: "ru", englishName: "Russian (Russia)", direction: "ltr" },
+  { tag: "sk", englishName: "Slovak (Slovakia)", direction: "ltr" },
+  { tag: "sl", englishName: "Slovenian (Slovenia)", direction: "ltr" },
+  { tag: "sv", englishName: "Swedish (Sweden)", direction: "ltr" },
+  { tag: "th", englishName: "Thai (Thailand)", direction: "ltr" },
+  { tag: "tr", englishName: "Turkish (Turkey)", direction: "ltr" },
+  { tag: "vi", englishName: "Vietnamese (Vietnam)", direction: "ltr" },
+  { tag: "zh", englishName: "Chinese Simplified (China)", direction: "ltr" },
+  { tag: "zh-HK", englishName: "Chinese Traditional (Hong Kong)", direction: "ltr" },
+  { tag: "zh-TW", englishName: "Chinese Traditional (Taiwan)", direction: "ltr" },
+] as const;
 
 type RequestOptions<T> = {
   path: string;
@@ -265,6 +324,19 @@ export async function fetchAccountMe(token: string): Promise<AccountMe> {
   });
 }
 
+export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
+  try {
+    const data = await request({
+      path: "/meta/languages",
+      schema: supportedLanguagesResponseSchema,
+    });
+    return data.languages;
+  } catch (error) {
+    console.warn("[webhooks] listSupportedLanguages failed; using fallback list:", error);
+    return [...FALLBACK_SUPPORTED_LANGUAGES];
+  }
+}
+
 export async function listSites(token: string): Promise<Site[]> {
   const data = await request({
     path: "/sites",
@@ -289,7 +361,6 @@ export type CreateSitePayload = {
   targetLangs: string[];
   subdomainPattern: string;
   siteProfile: Record<string, unknown> | null;
-  sitePlan: "starter" | "pro";
   maxLocales: number | null;
 };
 
