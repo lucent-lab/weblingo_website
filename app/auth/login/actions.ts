@@ -28,49 +28,61 @@ function toFriendlySupabaseAuthError(error: unknown): string {
 }
 
 export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  let supabase: Awaited<ReturnType<typeof createClient>>;
   try {
-    const supabase = await createClient();
+    supabase = await createClient();
+  } catch (error) {
+    console.error("Supabase login failed:", error);
+    return { error: toFriendlySupabaseAuthError(error) };
+  }
 
-    const data = {
-      email: (formData.get("email") as string | null)?.trim() ?? "",
-      password: (formData.get("password") as string | null) ?? "",
-    };
+  const data = {
+    email: (formData.get("email") as string | null)?.trim() ?? "",
+    password: (formData.get("password") as string | null) ?? "",
+  };
 
+  try {
     const { error } = await supabase.auth.signInWithPassword(data);
 
     if (error) {
       console.error("Supabase login failed:", error);
       return { error: toFriendlySupabaseAuthError(error) };
     }
-
-    revalidatePath("/", "layout");
-    redirect("/dashboard");
   } catch (error) {
     console.error("Supabase login failed:", error);
     return { error: toFriendlySupabaseAuthError(error) };
   }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
 
 export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  let supabase: Awaited<ReturnType<typeof createClient>>;
   try {
-    const supabase = await createClient();
+    supabase = await createClient();
+  } catch (error) {
+    console.error("Supabase signup failed:", error);
+    return { error: toFriendlySupabaseAuthError(error) };
+  }
 
-    const data = {
-      email: (formData.get("email") as string | null)?.trim() ?? "",
-      password: (formData.get("password") as string | null) ?? "",
-    };
+  const data = {
+    email: (formData.get("email") as string | null)?.trim() ?? "",
+    password: (formData.get("password") as string | null) ?? "",
+  };
 
+  try {
     const { error } = await supabase.auth.signUp(data);
 
     if (error) {
       console.error("Supabase signup failed:", error);
       return { error: toFriendlySupabaseAuthError(error) };
     }
-
-    revalidatePath("/", "layout");
-    redirect("/dashboard");
   } catch (error) {
     console.error("Supabase signup failed:", error);
     return { error: toFriendlySupabaseAuthError(error) };
   }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }

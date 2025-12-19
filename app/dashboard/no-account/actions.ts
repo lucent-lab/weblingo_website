@@ -17,6 +17,9 @@ export async function claimAccount() {
 
   const apiBase = env.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
 
+  let shouldRedirectToDashboard = false;
+  let errorMessage: string | null = null;
+
   try {
     const response = await fetch(`${apiBase}/accounts/claim`, {
       method: "POST",
@@ -28,18 +31,24 @@ export async function claimAccount() {
     });
 
     if (response.ok || response.status === 409) {
-      // 200 = created/linked, 409 = already exists; both can proceed to dashboard
-      redirect("/dashboard");
+      // 200 = created/linked, 409 = already exists; both can proceed to dashboard.
+      shouldRedirectToDashboard = true;
+    } else {
+      const payload = await response.json().catch(() => ({}));
+      errorMessage =
+        (payload?.error as string) ??
+        (payload?.message as string) ??
+        `Request failed with status ${response.status}`;
     }
-
-    const payload = await response.json().catch(() => ({}));
-    const reason =
-      (payload?.error as string) ??
-      (payload?.message as string) ??
-      `Request failed with status ${response.status}`;
-    redirect(`/dashboard/no-account?error=${encodeURIComponent(reason)}`);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "Unable to claim account";
-    redirect(`/dashboard/no-account?error=${encodeURIComponent(reason)}`);
+    errorMessage = error instanceof Error ? error.message : "Unable to claim account";
   }
+
+  if (shouldRedirectToDashboard) {
+    redirect("/dashboard");
+  }
+
+  redirect(
+    `/dashboard/no-account?error=${encodeURIComponent(errorMessage ?? "Unable to claim account")}`,
+  );
 }
