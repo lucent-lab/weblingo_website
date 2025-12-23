@@ -5,16 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { i18nConfig } from "@internal/i18n";
 
 export default async function SitesPage() {
   let sites: Site[] = [];
   let error: string | null = null;
   let canCreateSite = false;
+  let billingBlocked = false;
+  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
 
   try {
     const auth = await requireDashboardAuth();
-    sites = await listSites(auth.webhooksToken!);
-    canCreateSite = auth.has({ feature: "site_create" });
+    sites = await listSites(auth.webhooksAuth!);
+    billingBlocked = !auth.mutationsAllowed;
+    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked;
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load sites.";
   }
@@ -25,14 +29,22 @@ export default async function SitesPage() {
         <div>
           <h2 className="text-2xl font-semibold">Sites</h2>
           <p className="text-sm text-muted-foreground">
-            Review onboarding status, domains, and locales for every property.
+            Review onboarding status, domains, and languages for every property.
           </p>
         </div>
         {canCreateSite ? (
           <Button asChild>
             <Link href="/dashboard/sites/new">Add a site</Link>
           </Button>
-        ) : null}
+        ) : billingBlocked ? (
+          <Button asChild variant="secondary">
+            <Link href={pricingPath}>Update billing</Link>
+          </Button>
+        ) : (
+          <Button asChild variant="secondary">
+            <Link href={pricingPath}>Upgrade to add a site</Link>
+          </Button>
+        )}
       </div>
 
       {error ? (

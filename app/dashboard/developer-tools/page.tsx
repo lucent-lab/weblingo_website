@@ -3,7 +3,7 @@ import { env } from "@internal/core";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getWebhooksToken } from "../_lib/webhooks-token";
+import { getWebhooksAuth } from "../_lib/webhooks-token";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 export default async function DeveloperToolsPage() {
-  const { token, expiresAt } = await getWebhooksToken();
+  const { token, expiresAt } = await getWebhooksAuth();
   const supabase = await createClient();
   const {
     data: { session },
@@ -53,7 +53,8 @@ export default async function DeveloperToolsPage() {
           <div>
             <CardTitle>Webhooks JWT</CardTitle>
             <CardDescription>
-              Short-lived token derived from your Supabase session. Renew on or before expiry.
+              Short-lived token derived from your Supabase session. Refresh on load, before expiry,
+              and on 401 responses.
             </CardDescription>
           </div>
           <Badge variant="outline">Expires at {expiresAt}</Badge>
@@ -64,8 +65,8 @@ export default async function DeveloperToolsPage() {
           </label>
           <Input readOnly value={`Bearer ${token}`} />
           <p className="text-xs text-muted-foreground">
-            Do not store this token in long-lived storage. Regenerate after Supabase session refresh
-            or when requests begin failing with 401 responses.
+            Do not store this token in long-lived storage. Regenerate from the Supabase session
+            before expiry or whenever the API returns 401.
           </p>
         </CardContent>
       </Card>

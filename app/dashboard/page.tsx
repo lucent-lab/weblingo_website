@@ -5,16 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { i18nConfig } from "@internal/i18n";
 
 export default async function DashboardPage() {
   let sites: Site[] = [];
   let loadError: string | null = null;
   let canCreateSite = false;
+  let billingBlocked = false;
+  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
 
   try {
     const auth = await requireDashboardAuth();
-    sites = await listSites(auth.webhooksToken!);
-    canCreateSite = auth.has({ feature: "site_create" });
+    sites = await listSites(auth.webhooksAuth!);
+    billingBlocked = !auth.mutationsAllowed;
+    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked;
   } catch (error) {
     loadError =
       error instanceof Error ? error.message : "Unable to load sites from the webhooks worker.";
@@ -25,7 +29,7 @@ export default async function DashboardPage() {
     (total, site) => total + site.domains.filter((domain) => domain.status !== "verified").length,
     0,
   );
-  const totalLocales = sites.reduce((total, site) => total + site.locales.length, 0);
+  const totalLanguages = sites.reduce((total, site) => total + site.locales.length, 0);
 
   return (
     <div className="space-y-6">
@@ -45,7 +49,25 @@ export default async function DashboardPage() {
             <Button asChild>
               <Link href="/dashboard/sites/new">Add a site</Link>
             </Button>
-          ) : null}
+          ) : billingBlocked ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled variant="outline">
+                Add a site
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href={pricingPath}>Update billing</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled variant="outline">
+                Add a site
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href={pricingPath}>Upgrade to unlock</Link>
+              </Button>
+            </div>
+          )}
           <Button asChild variant="outline">
             <Link href="/dashboard/sites">All sites</Link>
           </Button>
@@ -59,7 +81,11 @@ export default async function DashboardPage() {
           value={unverifiedDomains}
           helper="Check DNS tokens"
         />
-        <SummaryCard title="Configured locales" value={totalLocales} helper="Source + targets" />
+        <SummaryCard
+          title="Configured languages"
+          value={totalLanguages}
+          helper="Source + targets"
+        />
       </div>
 
       {loadError ? (
@@ -89,7 +115,15 @@ export default async function DashboardPage() {
               <Button asChild>
                 <Link href="/dashboard/sites/new">Start onboarding</Link>
               </Button>
-            ) : null}
+            ) : billingBlocked ? (
+              <Button asChild variant="secondary">
+                <Link href={pricingPath}>Update billing</Link>
+              </Button>
+            ) : (
+              <Button asChild variant="secondary">
+                <Link href={pricingPath}>Upgrade to start onboarding</Link>
+              </Button>
+            )}
             <Button asChild variant="outline">
               <Link href="/dashboard/developer-tools">View API docs</Link>
             </Button>

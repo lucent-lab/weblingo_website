@@ -1,19 +1,12 @@
 "use server";
 
-import { requireWebhooksToken } from "@internal/dashboard/auth";
+import { requireWebhooksAuth, type WebhooksAuthContext } from "@internal/dashboard/auth";
 
-type WebhooksToken = {
-  token: string;
-  expiresAt: string;
-};
-
-export async function getWebhooksToken(): Promise<WebhooksToken> {
-  return requireWebhooksToken();
+export async function getWebhooksAuth(): Promise<WebhooksAuthContext> {
+  return requireWebhooksAuth();
 }
 
-export async function withWebhooksToken<T>(
-  callback: (token: string, expiresAt: string) => Promise<T>,
-) {
-  const { token, expiresAt } = await getWebhooksToken();
-  return callback(token, expiresAt);
+export async function withWebhooksAuth<T>(callback: (auth: WebhooksAuthContext) => Promise<T>) {
+  const auth = await getWebhooksAuth();
+  return callback(auth);
 }

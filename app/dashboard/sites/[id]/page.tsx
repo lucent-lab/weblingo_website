@@ -24,6 +24,7 @@ import {
   type Site,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { i18nConfig } from "@internal/i18n";
 
 type SitePageProps = {
   params: { id: string };
@@ -38,7 +39,17 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   const toastMessage = decodeSearchParam(searchParams?.toast);
   const actionErrorMessage = decodeSearchParam(searchParams?.error);
   const auth = await requireDashboardAuth();
-  const token = auth.webhooksToken!;
+  const authToken = auth.webhooksAuth!;
+  const mutationsAllowed = auth.mutationsAllowed;
+  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
+  const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
+  const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
+  const canSlugs = auth.has({ allFeatures: ["edit", "slug_edit"] }) && mutationsAllowed;
+  const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
+  const canDomains = auth.has({ allFeatures: ["edit", "domain_verify"] }) && mutationsAllowed;
+  const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
+  const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
 
   let site: Site | null = null;
   let deployments: Deployment[] = [];
@@ -46,10 +57,10 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   let error: string | null = null;
 
   try {
-    site = await fetchSite(token, id);
-    deployments = await fetchDeployments(token, id);
-    if (auth.has({ allFeatures: ["edit", "glossary"] })) {
-      glossary = await fetchGlossary(token, id);
+    site = await fetchSite(authToken, id);
+    deployments = await fetchDeployments(authToken, id);
+    if (canGlossary) {
+      glossary = await fetchGlossary(authToken, id);
     }
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site.";
@@ -74,6 +85,8 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     notFound();
   }
 
+  const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
+
   return (
     <div className="space-y-8">
       {actionErrorMessage ? (
@@ -91,7 +104,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
           </Link>
         </div>
       ) : null}
-      <Header site={site} canEdit={auth.has({ feature: "edit" })} />
+      <Header site={site} canEdit={canEdit} mutationsAllowed={mutationsAllowed} />
 
       <Card>
         <CardHeader>
@@ -120,13 +133,17 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
       </Card>
 
       <DomainSection
-        canManageDomains={auth.has({ allFeatures: ["edit", "domain_verify"] })}
+        canManageDomains={canDomains}
         domains={site.domains}
         siteId={site.id}
+        pricingPath={pricingPath}
+        lockCtaLabel={lockCtaLabel}
+        lockBadgeLabel={lockBadgeLabel}
+        billingBlocked={!mutationsAllowed}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        {auth.has({ allFeatures: ["edit", "crawl_trigger"] }) ? (
+        {canCrawl ? (
           <Card>
             <CardHeader>
               <CardTitle>Trigger crawl</CardTitle>
@@ -143,12 +160,24 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
               </p>
             </CardContent>
           </Card>
-        ) : null}
+        ) : (
+          <LockedFeatureCard
+            title="Trigger crawl"
+            description={
+              mutationsAllowed
+                ? "Unlock manual crawl triggers to refresh translations on demand."
+                : "Update billing to resume manual crawl triggers."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={lockCtaLabel}
+            badgeLabel={lockBadgeLabel}
+          />
+        )}
 
         <DeploymentsCard deployments={deployments} />
       </div>
 
-      {auth.has({ allFeatures: ["edit", "glossary"] }) ? (
+      {canGlossary ? (
         <Card>
           <CardHeader>
             <CardTitle>Glossary</CardTitle>
@@ -157,16 +186,54 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <GlossaryEditor initialEntries={glossary} siteId={site.id} />
+            <GlossaryEditor initialEntries={glossary} siteId={site.id} targetLangs={targetLangs} />
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <LockedFeatureCard
+          title="Glossary"
+          description={
+            mutationsAllowed
+              ? "Upgrade to manage glossary entries and keep terminology consistent."
+              : "Update billing to resume glossary management."
+          }
+          pricingPath={pricingPath}
+          ctaLabel={lockCtaLabel}
+          badgeLabel={lockBadgeLabel}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {auth.has({ allFeatures: ["edit", "overrides"] }) ? (
+        {canOverrides ? (
           <OverrideForm siteId={site.id} />
-        ) : null}
-        {auth.has({ allFeatures: ["edit", "slug_edit"] }) ? <SlugForm siteId={site.id} /> : null}
+        ) : (
+          <LockedFeatureCard
+            title="Manual overrides"
+            description={
+              mutationsAllowed
+                ? "Upgrade to override individual translations."
+                : "Update billing to resume manual overrides."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={lockCtaLabel}
+            badgeLabel={lockBadgeLabel}
+          />
+        )}
+        {canSlugs ? (
+          <SlugForm siteId={site.id} />
+        ) : (
+          <LockedFeatureCard
+            title="Localized slugs"
+            description={
+              mutationsAllowed
+                ? "Upgrade to customize translated URL slugs."
+                : "Update billing to resume localized slug edits."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={lockCtaLabel}
+            badgeLabel={lockBadgeLabel}
+          />
+        )}
       </div>
     </div>
   );
@@ -188,7 +255,15 @@ function decodeSearchParam(value: string | string[] | undefined): string | null 
   }
 }
 
-function Header({ site, canEdit }: { site: Site; canEdit: boolean }) {
+function Header({
+  site,
+  canEdit,
+  mutationsAllowed,
+}: {
+  site: Site;
+  canEdit: boolean;
+  mutationsAllowed: boolean;
+}) {
   const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
   return (
     <Card>
@@ -213,6 +288,10 @@ function Header({ site, canEdit }: { site: Site; canEdit: boolean }) {
                 {site.status === "active" ? "Pause translations" : "Activate translations"}
               </Button>
             </form>
+          ) : mutationsAllowed ? (
+            <Button disabled variant="outline">
+              Pause translations
+            </Button>
           ) : null}
           <Button asChild variant="link">
             <Link href="/dashboard/sites">Back to list</Link>
@@ -243,11 +322,35 @@ function DomainSection({
   canManageDomains,
   domains,
   siteId,
+  pricingPath,
+  lockCtaLabel,
+  lockBadgeLabel,
+  billingBlocked,
 }: {
   canManageDomains: boolean;
   domains: Site["domains"];
   siteId: string;
+  pricingPath: string;
+  lockCtaLabel: string;
+  lockBadgeLabel: string;
+  billingBlocked: boolean;
 }) {
+  if (!canManageDomains) {
+    return (
+      <LockedFeatureCard
+        title="Domains"
+        description={
+          billingBlocked
+            ? "Update billing to resume domain verification and provisioning."
+            : "Upgrade to manage domain verification and provisioning."
+        }
+        pricingPath={pricingPath}
+        ctaLabel={lockCtaLabel}
+        badgeLabel={lockBadgeLabel}
+      />
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -355,7 +458,7 @@ function DeploymentsCard({ deployments }: { deployments: Deployment[] }) {
     <Card>
       <CardHeader>
         <CardTitle>Deployments</CardTitle>
-        <CardDescription>Per-locale status, deployment IDs, and route prefixes.</CardDescription>
+        <CardDescription>Per-language status, deployment IDs, and route prefixes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {deployments.length === 0 ? (
@@ -390,6 +493,35 @@ function DeploymentsCard({ deployments }: { deployments: Deployment[] }) {
             </div>
           ))
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LockedFeatureCard({
+  title,
+  description,
+  pricingPath,
+  ctaLabel = "Upgrade plan",
+  badgeLabel = "Locked",
+}: {
+  title: string;
+  description: string;
+  pricingPath: string;
+  ctaLabel?: string;
+  badgeLabel?: string;
+}) {
+  return (
+    <Card className="border-dashed">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-3">
+        <Button asChild variant="secondary">
+          <Link href={pricingPath}>{ctaLabel}</Link>
+        </Button>
+        <Badge variant="outline">{badgeLabel}</Badge>
       </CardContent>
     </Card>
   );

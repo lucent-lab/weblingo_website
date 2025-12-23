@@ -181,6 +181,43 @@ const accountMeSchema = z
   })
   .strict();
 
+const agencyCustomerPlanSchema = z.enum(["starter", "pro"]);
+const agencyCustomerStatusSchema = z.enum(["active", "suspended"]);
+
+const agencyCustomerSchema = z
+  .object({
+    agencyAccountId: z.string(),
+    customerAccountId: z.string(),
+    customerPlan: agencyCustomerPlanSchema,
+    planStatus: planStatusSchema,
+    status: agencyCustomerStatusSchema,
+    createdAt: z.string().nullable().optional(),
+    activeSiteCount: z.number().int().nonnegative(),
+    customerEmail: z.string().nullable().optional(),
+  })
+  .strict();
+
+const agencyCustomersSummarySchema = z
+  .object({
+    totalActiveSites: z.number().int().nonnegative(),
+    maxSites: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+
+const listAgencyCustomersResponseSchema = z
+  .object({
+    customers: z.array(agencyCustomerSchema),
+    summary: agencyCustomersSummarySchema,
+  })
+  .strict();
+
+const createAgencyCustomerResponseSchema = z
+  .object({
+    customer: agencyCustomerSchema,
+    inviteLink: z.string(),
+  })
+  .strict();
+
 export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
@@ -189,6 +226,17 @@ export type Deployment = z.infer<typeof deploymentSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
+export type AgencyCustomer = z.infer<typeof agencyCustomerSchema>;
+export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema>;
+export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
+export type CreateAgencyCustomerResponse = z.infer<typeof createAgencyCustomerResponseSchema>;
+
+export type WebhooksAuth = {
+  token: string;
+  refresh?: () => Promise<string>;
+};
+
+type AuthInput = string | WebhooksAuth;
 
 const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
   { tag: "ar", englishName: "Arabic", direction: "rtl" },
@@ -238,20 +286,24 @@ const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
 type RequestOptions<T> = {
   path: string;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  token?: string;
+  auth?: AuthInput;
   body?: unknown;
   schema: z.ZodSchema<T>;
   headers?: HeadersInit;
+  retry?: boolean;
 };
 
 async function request<T>({
   path,
   method = "GET",
-  token,
+  auth,
   body,
   schema,
   headers,
+  retry = false,
 }: RequestOptions<T>): Promise<T> {
+  const resolvedAuth = normalizeAuth(auth);
+  const token = resolvedAuth?.token;
   const url = path.startsWith("http")
     ? path
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
@@ -279,6 +331,23 @@ async function request<T>({
   const parsed = text ? safeParseJson(text) : undefined;
 
   if (!response.ok) {
+    if (response.status === 401 && resolvedAuth?.refresh && !retry) {
+      try {
+        const refreshed = await resolvedAuth.refresh();
+        resolvedAuth.token = refreshed;
+        return request({
+          path,
+          method,
+          auth: resolvedAuth,
+          body,
+          schema,
+          headers,
+          retry: true,
+        });
+      } catch (refreshError) {
+        console.warn("[webhooks] token refresh failed:", refreshError);
+      }
+    }
     const parsedError = parsed ? errorResponseSchema.safeParse(parsed) : null;
     const message =
       parsedError?.success && parsedError.data.error
@@ -303,24 +372,63 @@ function safeParseJson(input: string) {
   }
 }
 
+function normalizeAuth(auth?: AuthInput): WebhooksAuth | null {
+  if (!auth) {
+    return null;
+  }
+  if (typeof auth === "string") {
+    return { token: auth };
+  }
+  return auth;
+}
+
 export async function exchangeWebhooksToken(
   supabaseAccessToken: string,
-): Promise<{ token: string; expiresAt: string }> {
+  subjectAccountId?: string | null,
+): Promise<{
+  token: string;
+  expiresAt: string;
+  entitlements: z.infer<typeof entitlementsSchema>;
+  actorAccountId: string;
+  subjectAccountId: string;
+}> {
   return request({
     path: "/auth/token",
     method: "POST",
     headers: {
       Authorization: `Bearer ${supabaseAccessToken}`,
     },
+    body: subjectAccountId ? { subjectAccountId } : undefined,
     schema: authResponseSchema,
   });
 }
 
-export async function fetchAccountMe(token: string): Promise<AccountMe> {
+export async function fetchAccountMe(auth: AuthInput): Promise<AccountMe> {
   return request({
     path: "/accounts/me",
-    token,
+    auth,
     schema: accountMeSchema,
+  });
+}
+
+export async function listAgencyCustomers(auth: AuthInput): Promise<AgencyCustomersResponse> {
+  return request({
+    path: "/agency/customers",
+    auth,
+    schema: listAgencyCustomersResponseSchema,
+  });
+}
+
+export async function createAgencyCustomer(
+  auth: AuthInput,
+  payload: { email: string; customerPlan: "starter" | "pro" },
+): Promise<CreateAgencyCustomerResponse> {
+  return request({
+    path: "/agency/customers",
+    method: "POST",
+    auth,
+    body: payload,
+    schema: createAgencyCustomerResponseSchema,
   });
 }
 
@@ -337,20 +445,20 @@ export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
   }
 }
 
-export async function listSites(token: string): Promise<Site[]> {
+export async function listSites(auth: AuthInput): Promise<Site[]> {
   const data = await request({
     path: "/sites",
-    token,
+    auth,
     schema: z.object({ sites: z.array(siteSchema) }),
   });
 
   return data.sites;
 }
 
-export async function fetchSite(token: string, siteId: string): Promise<Site> {
+export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> {
   return request({
     path: `/sites/${siteId}`,
-    token,
+    auth,
     schema: siteSchema,
   });
 }
@@ -360,22 +468,22 @@ export type CreateSitePayload = {
   sourceLang: string;
   targetLangs: string[];
   subdomainPattern: string;
-  siteProfile: Record<string, unknown> | null;
+  siteProfile?: Record<string, unknown> | null;
   maxLocales: number | null;
 };
 
-export async function createSite(token: string, payload: CreateSitePayload) {
+export async function createSite(auth: AuthInput, payload: CreateSitePayload) {
   return request({
     path: "/sites",
     method: "POST",
-    token,
+    auth,
     body: payload,
     schema: siteSchema.extend({ crawlStatus: crawlStatusSchema }).strict(),
   });
 }
 
 export async function updateSite(
-  token: string,
+  auth: AuthInput,
   siteId: string,
   payload: Partial<Omit<CreateSitePayload, "targetLangs">> & {
     targetLangs?: string[];
@@ -385,23 +493,23 @@ export async function updateSite(
   return request({
     path: `/sites/${siteId}`,
     method: "PATCH",
-    token,
+    auth,
     body: payload,
     schema: siteSchema,
   });
 }
 
-export async function triggerCrawl(token: string, siteId: string) {
+export async function triggerCrawl(auth: AuthInput, siteId: string) {
   return request({
     path: `/sites/${siteId}/crawl`,
     method: "POST",
-    token,
+    auth,
     schema: crawlStatusSchema,
   });
 }
 
 export async function verifyDomain(
-  token: string,
+  auth: AuthInput,
   siteId: string,
   domain: string,
   overrideToken?: string,
@@ -409,44 +517,44 @@ export async function verifyDomain(
   return request({
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/verify`,
     method: "POST",
-    token,
+    auth,
     body: overrideToken ? { token: overrideToken } : {},
     schema: z.object({ domain: domainSchema }),
   });
 }
 
-export async function provisionDomain(token: string, siteId: string, domain: string) {
+export async function provisionDomain(auth: AuthInput, siteId: string, domain: string) {
   return request({
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/provision`,
     method: "POST",
-    token,
+    auth,
     schema: z.object({ domain: domainSchema }),
   });
 }
 
-export async function refreshDomain(token: string, siteId: string, domain: string) {
+export async function refreshDomain(auth: AuthInput, siteId: string, domain: string) {
   return request({
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/refresh`,
     method: "POST",
-    token,
+    auth,
     schema: z.object({ domain: domainSchema }),
   });
 }
 
-export async function fetchDeployments(token: string, siteId: string): Promise<Deployment[]> {
+export async function fetchDeployments(auth: AuthInput, siteId: string): Promise<Deployment[]> {
   const data = await request({
     path: `/sites/${siteId}/deployments`,
-    token,
+    auth,
     schema: z.object({ deployments: z.array(deploymentSchema) }),
   });
 
   return data.deployments;
 }
 
-export async function fetchGlossary(token: string, siteId: string): Promise<GlossaryEntry[]> {
+export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<GlossaryEntry[]> {
   const data = await request({
     path: `/sites/${siteId}/glossary`,
-    token,
+    auth,
     schema: z.object({ entries: z.array(glossaryEntrySchema) }),
   });
 
@@ -454,7 +562,7 @@ export async function fetchGlossary(token: string, siteId: string): Promise<Glos
 }
 
 export async function updateGlossary(
-  token: string,
+  auth: AuthInput,
   siteId: string,
   entries: GlossaryEntry[],
   retranslate?: boolean,
@@ -462,7 +570,7 @@ export async function updateGlossary(
   return request({
     path: `/sites/${siteId}/glossary`,
     method: "PUT",
-    token,
+    auth,
     body: { entries, retranslate },
     schema: z
       .object({
@@ -474,14 +582,14 @@ export async function updateGlossary(
 }
 
 export async function createOverride(
-  token: string,
+  auth: AuthInput,
   siteId: string,
   payload: { segmentId: string; targetLang: string; text: string; contextHashScope: string | null },
 ) {
   return request({
     path: `/sites/${siteId}/overrides`,
     method: "POST",
-    token,
+    auth,
     body: payload,
     schema: z
       .object({
@@ -494,14 +602,14 @@ export async function createOverride(
 }
 
 export async function updateSlug(
-  token: string,
+  auth: AuthInput,
   siteId: string,
   payload: { pageId: string; lang: string; path: string },
 ) {
   return request({
     path: `/sites/${siteId}/slugs`,
     method: "POST",
-    token,
+    auth,
     body: payload,
     schema: z
       .object({

@@ -26,7 +26,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Headers: `Authorization: Bearer <Supabase access token>`.
 - Behavior: validates the Supabase token via `/auth/v1/user`, then returns a short-lived webhooks JWT (`sub = user.id`, exp ≈ 1h).
 - Response `200`: `{ token, expiresAt, entitlements: { planType, planStatus }, actorAccountId, subjectAccountId }`.
-- Client flow: after Supabase login, exchange the access token here, then store/use the returned token for all subsequent API calls.
+- Client flow: after Supabase login, exchange the access token here, use the JWT server-side (no client storage), refresh before expiry (5-minute buffer), and retry once on 401.
 
 ## Resource shapes & error format
 
@@ -39,12 +39,11 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
     - Crawl trigger disabled: `{ error: "Crawl triggers are disabled for this account", details: { code: "crawl_trigger_disabled" } }`
     - Slug edits disabled: `{ error: "Slug edits are disabled for this account", details: { code: "slug_edit_disabled" } }`
 - **Site**:
-- **Site**:
   - `id`, `sourceUrl`, `status` (`"active"|"inactive"`), `siteProfile` (non-empty JSON object or `null`), `locales` (`[{ sourceLang, targetLang }]`).
-  - `sitePlan`: `"starter"` | `"pro"`.
   - `maxLocales`: number or `null` (null = no cap).
   - `routeConfig`: `{ sourceLang, sourceOrigin, pattern, locales: [{ lang, origin, routePrefix }] }` or `null`.
   - `domains`: `[{ domain, status ("pending"|"verified"|"failed"), verificationToken, verifiedAt, lastCheckedAt }]`.
+  - Account plan/feature gating is sourced from `/accounts/me` (no per-site plan field).
 - **CrawlStatus**: `{ enqueued: boolean, error?: string }`.
 - **Deployment**: `{ targetLang, status ("publishing"|"active"|"failed"|"unknown"), deploymentId, activatedAt, routePrefix, artifactManifest, activeDeploymentId }`.
 - **GlossaryEntry**: `{ source, target, targetLangs?, matchType?, caseSensitive? }` (all strings except `caseSensitive`).
@@ -57,10 +56,10 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `POST /api/sites`
 
-- Payload (all required): `{ sourceUrl, sourceLang, targetLangs: [...], subdomainPattern, siteProfile, sitePlan?, maxLocales? }`.
+- Payload (all required): `{ sourceUrl, sourceLang, targetLangs: [...], subdomainPattern, siteProfile, maxLocales? }`.
   - `subdomainPattern` must contain `{lang}`; it can be a bare host (`{lang}.example.com`) or include scheme/path (`https://www.example.com/{lang}/docs`). Hostnames derived from this pattern seed `site_domains`; path segments become `routePrefix` per locale.
   - `siteProfile` must be a non-empty object with JSON-safe scalar/array/object values (empty strings/arrays rejected).
-  - `sitePlan` may be `"starter"` or `"pro"` (default `"pro"`); `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
+  - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
 - Behavior: creates site + locales + route config, inserts domain records with verification tokens, enqueues crawl.
 - Response `201`: `{ ...site, crawlStatus }`.
 
@@ -70,7 +69,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `PATCH /api/sites/:id`
 
-- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, status? ("active"|"inactive"), siteProfile? (object|null), sitePlan?, maxLocales? }`.
+- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, status? ("active"|"inactive"), siteProfile? (object|null), maxLocales? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
 - Response `200`: updated `Site`.
@@ -154,8 +153,8 @@ The serve worker reads `site_configs`, `site_domains`, and `sites` directly. Use
 
 ## Integration steps
 
-1. After Supabase Auth login, call `POST /api/auth/token` with the Supabase access token; store the returned webhooks JWT.
-2. Use that JWT for all `/api/sites/*` and other calls listed above. Include `sitePlan`/`maxLocales` on create/patch when needed; handle 400/403 responses for locale caps and starter gates.
+1. After Supabase Auth login, call `POST /api/auth/token` with the Supabase access token; keep the returned JWT server-side (httpOnly/session).
+2. Use that JWT for all `/api/sites/*` and other calls listed above. Refresh before expiry (5-minute buffer) and retry once on 401. Include `maxLocales` on create/patch when needed; handle 400/403 responses for locale caps and starter gates.
 3. Avoid direct Supabase calls from the browser; rely on these endpoints. For the remaining gaps (usage metrics, billing/team), plan server-side services that can use the Supabase service key safely.
 
 ## Service-key-only surfaces
@@ -168,8 +167,8 @@ The serve worker reads `site_configs`, `site_domains`, and `sites` directly. Use
 - Team management, billing, RBAC/usage analytics — not implemented.
 - Webhook/event callbacks for dashboard (deployment success, errors) — not exposed yet.
 
-## Plan & feature matrix (starter vs pro)
+## Plan & feature matrix (account-level)
 
-- `sitePlan` enum: `"starter" | "pro"`.
+- `planType` enum: `free | starter | pro | agency` (account-level; sites inherit feature gating from `/accounts/me`).
 - Starter: translations only; glossary/overrides/slugs are blocked (403). `maxLocales` may be set (positive int) or `null` (no cap); if set, adding `targetLangs` over the cap returns 400.
 - Pro: all features allowed; `maxLocales` can be used to cap per-site locales or left `null`.

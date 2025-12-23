@@ -12,12 +12,19 @@ type NavItem = {
 
 export function DashboardNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const activeHref = pathname
+    ? items.reduce((best, item) => {
+        if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+          return item.href.length > best.length ? item.href : best;
+        }
+        return best;
+      }, "")
+    : "";
 
   return (
     <nav className="flex flex-col gap-1">
       {items.map((item) => {
-        const isActive =
-          pathname !== null && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+        const isActive = pathname !== null && item.href === activeHref;
         return (
           <Link
             key={item.href}

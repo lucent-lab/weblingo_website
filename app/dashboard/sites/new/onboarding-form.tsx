@@ -2,9 +2,12 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
+
+import { GlossaryTable } from "../glossary-table";
 
 import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
@@ -12,18 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { GlossaryEntry, SupportedLanguage } from "@internal/dashboard/webhooks";
 import { createLanguageNameResolver, normalizeLangTag } from "@internal/i18n";
-
-const initialProfile = JSON.stringify(
-  {
-    brandVoice: "Concise, confident, helpful",
-    audience: "Growth and marketing teams",
-    glossary: ["WebLingo", "translation", "Cloudflare"],
-  },
-  null,
-  2,
-);
 
 const initialState: ActionResponse = {
   ok: false,
@@ -34,15 +27,22 @@ export function OnboardingForm(props: {
   maxLocales: number | null;
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
+  canGlossary: boolean;
+  pricingPath: string;
 }) {
   const [state, formAction] = useActionState(createSiteAction, initialState);
   const router = useRouter();
   const [targets, setTargets] = useState<string[]>([]);
   const [sourceLang, setSourceLang] = useState("");
   const [targetPickerValue, setTargetPickerValue] = useState("");
-  const [pattern, setPattern] = useState("https://{lang}.example.com");
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [subdomainToken, setSubdomainToken] = useState("{lang}");
+  const [patternEditing, setPatternEditing] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [brandVoice, setBrandVoice] = useState("");
+  const [siteProfileNotes, setSiteProfileNotes] = useState("");
+  const [glossaryEntries, setGlossaryEntries] = useState<GlossaryEntry[]>([]);
   const resolveLanguageName = useMemo(
     () => createLanguageNameResolver(props.displayLocale),
     [props.displayLocale],
@@ -59,17 +59,61 @@ export function OnboardingForm(props: {
   useEffect(() => {
     const siteId = state.meta?.siteId;
     if (state.ok && typeof siteId === "string" && siteId.length > 0) {
-      router.push(`/dashboard/sites/${siteId}`);
+      const toast = state.meta?.toast;
+      const nextUrl =
+        typeof toast === "string" && toast.length > 0
+          ? `/dashboard/sites/${siteId}?toast=${encodeURIComponent(toast)}`
+          : `/dashboard/sites/${siteId}`;
+      router.push(nextUrl);
     }
-  }, [router, state.meta?.siteId, state.ok]);
+  }, [router, state.meta?.siteId, state.meta?.toast, state.ok]);
 
+  const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
+  const sourceUrlValid = parsedSourceUrl !== null;
+  const showSourceUrlError = sourceUrl.trim().length > 0 && !sourceUrlValid;
+  const sourceHost = parsedSourceUrl?.hostname ?? "";
+  const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
+  const displayHost = trimmedHost || "customer-url.com";
+  const scheme = parsedSourceUrl?.protocol ? `${parsedSourceUrl.protocol}//` : "https://";
+  const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
+  const subdomainPattern = useMemo(() => {
+    if (!trimmedHost || !normalizedSubdomainToken) {
+      return "";
+    }
+    return `${scheme}${normalizedSubdomainToken}.${trimmedHost}`;
+  }, [normalizedSubdomainToken, scheme, trimmedHost]);
+  const patternIsValid =
+    sourceUrlValid && subdomainPattern.includes("{lang}") && Boolean(trimmedHost);
+  const showPatternError = sourceUrlValid && sourceUrl.trim().length > 0 && !patternIsValid;
   const patternPreview = useMemo(() => {
-    const sampleLang = targets[0] || "{lang}";
-    const output = pattern.includes("{lang}")
-      ? pattern.replace("{lang}", sampleLang)
-      : `${pattern}/${sampleLang}`;
-    return output.replace(/(?<!:)\/{2,}/g, "/");
-  }, [pattern, targets]);
+    if (!subdomainPattern) {
+      return "";
+    }
+    const sampleLang = targets[0] || "preview";
+    return subdomainPattern.includes("{lang}")
+      ? subdomainPattern.replace("{lang}", sampleLang)
+      : subdomainPattern;
+  }, [subdomainPattern, targets]);
+  const profilePayload = useMemo(() => {
+    const payload: Record<string, unknown> = {};
+    const trimmedVoice = brandVoice.trim();
+    if (trimmedVoice) {
+      payload.brandVoice = trimmedVoice;
+    }
+    const trimmedNotes = siteProfileNotes.trim();
+    if (trimmedNotes) {
+      payload.description = trimmedNotes;
+    }
+    return Object.keys(payload).length > 0 ? payload : null;
+  }, [brandVoice, siteProfileNotes]);
+  const profileJson = useMemo(
+    () => (profilePayload ? JSON.stringify(profilePayload) : ""),
+    [profilePayload],
+  );
+  const glossaryEntriesJson = useMemo(() => JSON.stringify(glossaryEntries), [glossaryEntries]);
+  const languageLimitReached = props.maxLocales !== null && targets.length >= props.maxLocales;
+  const languageSlotLabel = props.maxLocales === 1 ? "language slot" : "language slots";
+  const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
 
   const handleRemoveTarget = (lang: string) => {
     setLimitMessage(null);
@@ -85,7 +129,7 @@ export function OnboardingForm(props: {
         return current;
       }
       if (props.maxLocales !== null && current.length >= props.maxLocales) {
-        setLimitMessage(`Your plan allows up to ${props.maxLocales} target locale(s) per site.`);
+        setLimitMessage(`Your plan allows up to ${props.maxLocales} target language(s) per site.`);
         return current;
       }
       return [...current, normalized];
@@ -103,7 +147,7 @@ export function OnboardingForm(props: {
         </CardDescription>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-1">
-            Locale limit:{" "}
+            Language limit:{" "}
             <span className="font-semibold text-foreground">
               {props.maxLocales === null ? "Unlimited" : props.maxLocales}
             </span>
@@ -119,165 +163,235 @@ export function OnboardingForm(props: {
             </div>
           ) : null}
 
-          <section className="space-y-3">
-            <StepHeader
-              step={1}
-              title="Site basics"
-              helper="We use this to crawl your source pages and seed localized routes."
-              active={step === 1}
-              onClick={() => setStep(1)}
-            />
-            {step === 1 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="sourceUrl">
-                    Source URL
-                  </label>
-                  <Input
-                    id="sourceUrl"
-                    name="sourceUrl"
-                    placeholder="https://www.example.com"
-                    type="url"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    The canonical origin we should crawl for translations.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="sourceLang">
-                    Source language
-                  </label>
-                  <LanguageTagCombobox
-                    id="sourceLang"
-                    name="sourceLang"
-                    value={sourceLang}
-                    onValueChange={setSourceLang}
-                    supportedLanguages={props.supportedLanguages}
-                    displayLocale={props.displayLocale}
-                    placeholder="en (or a BCP 47 tag)"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Pick a language tag (BCP 47 style). Examples: en, fr-CA, pt-BR.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </section>
+          <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
+          <input name="siteProfile" type="hidden" value={profileJson} />
+          <input name="glossaryEntries" type="hidden" value={glossaryEntriesJson} />
 
-          <section className="space-y-3">
-            <StepHeader
-              step={2}
-              title="Target languages & routing"
-              helper="Select target locales and preview how subdomains will look."
-              active={step === 2}
-              onClick={() => setStep(2)}
-            />
-            {step === 2 ? (
-              <div className="space-y-4">
-                {targets.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {targets.map((tag) => {
-                      const fallbackEnglishName = supportedByTag.get(tag)?.englishName;
-                      const label = resolveLanguageName(tag, {
-                        fallbackEnglishName,
-                      });
-                      return (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm"
-                        >
-                          <span className="font-medium text-foreground">
-                            {label === tag ? tag : `${label} (${tag})`}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => handleRemoveTarget(tag)}
-                          >
-                            Remove
-                          </Button>
-                          <input type="hidden" name="targetLangs" value={tag} />
-                        </span>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Add at least one target language to start translating.
-                  </p>
-                )}
-                {limitMessage ? <p className="text-xs text-destructive">{limitMessage}</p> : null}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <LanguageTagCombobox
-                    className="sm:max-w-xs"
-                    placeholder="Add a target language..."
-                    value={targetPickerValue}
-                    onValueChange={handlePickTarget}
-                    supportedLanguages={props.supportedLanguages}
-                    displayLocale={props.displayLocale}
-                    disabled={props.maxLocales !== null && targets.length >= props.maxLocales}
-                  />
-                </div>
-                {props.supportedLanguages.length ? (
-                  <p className="text-xs text-muted-foreground">
-                    Search by language name or tag, or enter a custom language tag.
-                  </p>
-                ) : null}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="subdomainPattern">
-                    Subdomain pattern
-                  </label>
-                  <Input
-                    id="subdomainPattern"
-                    name="subdomainPattern"
-                    placeholder="https://{lang}.example.com"
-                    required
-                    value={pattern}
-                    pattern=".*\\{lang\\}.*"
-                    title="Pattern must include {lang}"
-                    onChange={(event) => setPattern(event.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Must include <code>{`{lang}`}</code>. We seed domain records and route prefixes
-                    from this pattern. Preview:{" "}
-                    <span className="font-semibold text-foreground">{patternPreview}</span>
-                  </p>
-                  {!pattern.includes("{lang}") ? (
-                    <p className="text-xs text-destructive">Pattern must contain {"{lang}"}.</p>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="space-y-3">
-            <StepHeader
-              step={3}
-              title="Brand voice"
-              helper="Share tone and glossary hints. We reject empty objects to keep translations consistent."
-              active={step === 3}
-              onClick={() => setStep(3)}
-            />
-            {step === 3 ? (
+          <section className="space-y-5">
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-foreground">Site basics &amp; routing</h3>
+              <p className="text-sm text-muted-foreground">
+                Source, languages, and routing pattern. All fields are required.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground" htmlFor="siteProfile">
-                  Site profile JSON
+                <label className="text-sm font-medium text-foreground" htmlFor="sourceUrl">
+                  Source URL
                 </label>
-                <Textarea
-                  id="siteProfile"
-                  name="siteProfile"
-                  defaultValue={initialProfile}
+                <Input
+                  id="sourceUrl"
+                  name="sourceUrl"
+                  placeholder="https://www.example.com"
+                  type="url"
                   required
-                  spellCheck={false}
+                  value={sourceUrl}
+                  onChange={(event) => setSourceUrl(event.target.value)}
+                  aria-invalid={showSourceUrlError}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Keep it short and structured — values are validated and empty objects are
-                  rejected.
+                  The canonical origin we should crawl for translations.
                 </p>
+                {showSourceUrlError ? (
+                  <p className="text-xs text-destructive">
+                    Enter a valid URL that starts with http:// or https://.
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="sourceLang">
+                  Source language
+                </label>
+                <LanguageTagCombobox
+                  id="sourceLang"
+                  name="sourceLang"
+                  value={sourceLang}
+                  onValueChange={setSourceLang}
+                  supportedLanguages={props.supportedLanguages}
+                  displayLocale={props.displayLocale}
+                  placeholder="en (or a BCP 47 tag)"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Pick a language tag (BCP 47 style). Examples: en, fr-CA, pt-BR.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {targets.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {targets.map((tag) => {
+                    const fallbackEnglishName = supportedByTag.get(tag)?.englishName;
+                    const label = resolveLanguageName(tag, {
+                      fallbackEnglishName,
+                    });
+                    return (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm"
+                      >
+                        <span className="font-medium text-foreground">
+                          {label === tag ? tag : `${label} (${tag})`}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => handleRemoveTarget(tag)}
+                        >
+                          Remove
+                        </Button>
+                        <input type="hidden" name="targetLangs" value={tag} />
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Add at least one target language to start translating.
+                </p>
+              )}
+              {limitMessage ? <p className="text-xs text-destructive">{limitMessage}</p> : null}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <LanguageTagCombobox
+                  className="sm:max-w-xs"
+                  placeholder={
+                    languageLimitReached ? "All language slots used" : "Add a target language..."
+                  }
+                  value={targetPickerValue}
+                  onValueChange={handlePickTarget}
+                  supportedLanguages={props.supportedLanguages}
+                  displayLocale={props.displayLocale}
+                  disabled={languageLimitReached}
+                />
+              </div>
+              {props.supportedLanguages.length ? (
+                <p className="text-xs text-muted-foreground">
+                  {languageLimitReached && props.maxLocales !== null
+                    ? `You've used all ${props.maxLocales} ${languageSlotLabel}. Remove one to add another.`
+                    : "Search by language name or tag, or enter a custom language tag."}
+                </p>
+              ) : null}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-sm font-medium text-foreground" htmlFor="subdomainToken">
+                    Subdomain pattern
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPatternEditing((current) => !current)}
+                  >
+                    {patternEditing ? "Preview" : "Edit"}
+                  </Button>
+                </div>
+                {patternEditing ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                      {scheme}
+                    </span>
+                    <Input
+                      id="subdomainToken"
+                      name="subdomainToken"
+                      className="w-36"
+                      value={subdomainToken}
+                      onChange={(event) => setSubdomainToken(event.target.value)}
+                      pattern=".*\\{lang\\}.*"
+                      title="Pattern must include {lang}"
+                      required
+                    />
+                    <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                      .{displayHost}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
+                      {patternPreview || "Enter a source URL to generate a preview."}
+                    </div>
+                  </div>
+                )}
+                {!patternEditing ? (
+                  <p className="text-xs text-muted-foreground">
+                    We generate this from your source URL. Insert <code>{`{lang}`}</code> where the
+                    locale should appear. Preview:{" "}
+                    <span className="font-semibold text-foreground">{patternPreview || "-"}</span>
+                  </p>
+                ) : null}
+                {showPatternError ? (
+                  <p className="text-xs text-destructive">
+                    Pattern must contain {"{lang}"} and a valid source domain.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-foreground">Advanced</h3>
+                <p className="text-sm text-muted-foreground">
+                  Optional brand voice and glossary rules.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAdvancedOpen((current) => !current)}
+              >
+                {advancedOpen ? "Hide" : "Show"}
+              </Button>
+            </div>
+            {advancedOpen ? (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="brandVoice">
+                    Brand voice (optional)
+                  </label>
+                  <Input
+                    id="brandVoice"
+                    name="brandVoice"
+                    value={brandVoice}
+                    onChange={(event) => setBrandVoice(event.target.value)}
+                    placeholder="Concise, confident, friendly"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Leave blank if you do not want tone guidance.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground" htmlFor="siteProfileNotes">
+                    Site profile (optional)
+                  </label>
+                  <Textarea
+                    id="siteProfileNotes"
+                    name="siteProfileNotes"
+                    value={siteProfileNotes}
+                    onChange={(event) => setSiteProfileNotes(event.target.value)}
+                    placeholder="Examples: B2B SaaS for finance teams. Prefer formal tone. Keep product names untranslated."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional context for translators. This does not override glossary rules.
+                  </p>
+                </div>
+                {props.canGlossary ? (
+                  <GlossaryTable
+                    targetLangs={targetLangs}
+                    initialEntries={[]}
+                    onEntriesChange={setGlossaryEntries}
+                  />
+                ) : (
+                  <div className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                    Glossary editing is locked on your plan.{" "}
+                    <Button asChild variant="link" size="sm">
+                      <Link href={props.pricingPath}>Upgrade to unlock</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : null}
           </section>
@@ -297,12 +411,10 @@ export function OnboardingForm(props: {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              We will create domains and enqueue a crawl right after this step. You can verify DNS
+              We will create domains and enqueue a crawl right after you submit. You can verify DNS
               and update glossary from the site detail view.
             </p>
-            <SubmitButton
-              disabled={targets.length === 0 || step !== 3 || !pattern.includes("{lang}")}
-            />
+            <SubmitButton disabled={targets.length === 0 || !patternIsValid || !sourceUrlValid} />
           </div>
         </form>
       </CardContent>
@@ -319,29 +431,22 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-function StepHeader(props: {
-  step: number;
-  title: string;
-  helper: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className={cn(
-        "flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
-        props.active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50",
-      )}
-      onClick={props.onClick}
-      type="button"
-    >
-      <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 text-center text-sm font-semibold text-primary">
-        {props.step}
-      </div>
-      <div>
-        <p className="text-base font-semibold text-foreground">{props.title}</p>
-        <p className="text-sm text-muted-foreground">{props.helper}</p>
-      </div>
-    </button>
-  );
+function parseSourceUrl(raw: string): URL | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function stripWwwPrefix(host: string): string {
+  return host.startsWith("www.") ? host.slice(4) : host;
 }
