@@ -5,6 +5,7 @@ import {
   provisionDomainAction,
   refreshDomainAction,
   triggerCrawlAction,
+  triggerPageCrawlAction,
   updateSiteStatusAction,
   verifyDomainAction,
 } from "../../actions";
@@ -19,9 +20,11 @@ import {
   fetchDeployments,
   fetchGlossary,
   fetchSite,
+  fetchSitePages,
   type GlossaryEntry,
   type Deployment,
   type Site,
+  type SitePageSummary,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
@@ -54,11 +57,13 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   let site: Site | null = null;
   let deployments: Deployment[] = [];
   let glossary: GlossaryEntry[] = [];
+  let pages: SitePageSummary[] = [];
   let error: string | null = null;
 
   try {
     site = await fetchSite(authToken, id);
     deployments = await fetchDeployments(authToken, id);
+    pages = await fetchSitePages(authToken, id);
     if (canGlossary) {
       glossary = await fetchGlossary(authToken, id);
     }
@@ -129,6 +134,64 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
             } verified`}
           />
           <InfoBlock label="Profile" value={site.siteProfile ? "Provided" : "Not set"} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pages</CardTitle>
+          <CardDescription>
+            Discovered pages from the latest crawl. Use Trigger crawl to refresh all pages or crawl a
+            single page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No pages discovered yet. Run a crawl to populate this list.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Page</th>
+                    <th className="px-3 py-2 text-left">Last crawled</th>
+                    <th className="px-3 py-2 text-left">Last update</th>
+                    {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pages.map((page) => (
+                    <tr key={page.id} className="border-t border-border/50">
+                      <td className="px-3 py-3 align-top">
+                        <span className="rounded bg-muted/60 px-2 py-1 font-mono text-xs text-foreground">
+                          {page.sourcePath}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-top text-muted-foreground">
+                        {formatTimestamp(page.lastSeenAt)}
+                      </td>
+                      <td className="px-3 py-3 align-top text-muted-foreground">
+                        {formatTimestamp(page.lastVersionAt)}
+                      </td>
+                      {canCrawl ? (
+                        <td className="px-3 py-3 text-right align-top">
+                          <form action={triggerPageCrawlAction}>
+                            <input name="siteId" type="hidden" value={site.id} />
+                            <input name="pageId" type="hidden" value={page.id} />
+                            <Button type="submit" size="sm" variant="outline">
+                              Force crawl
+                            </Button>
+                          </form>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -266,39 +329,40 @@ function Header({
 }) {
   const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle className="text-2xl font-semibold">{site.sourceUrl}</CardTitle>
-          <CardDescription className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={site.status} />
-            <span>{verifiedDomains} verified domain(s)</span>
-          </CardDescription>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold">{site.sourceUrl}</h2>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <StatusBadge status={site.status} />
+          <span>{verifiedDomains} verified domain(s)</span>
         </div>
-        <div className="flex items-center gap-2">
-          {canEdit ? (
-            <form action={updateSiteStatusAction}>
-              <input name="siteId" type="hidden" value={site.id} />
-              <input
-                name="status"
-                type="hidden"
-                value={site.status === "active" ? "inactive" : "active"}
-              />
-              <Button type="submit" variant="outline">
-                {site.status === "active" ? "Pause translations" : "Activate translations"}
-              </Button>
-            </form>
-          ) : mutationsAllowed ? (
-            <Button disabled variant="outline">
-              Pause translations
+      </div>
+      <div className="flex items-center gap-2">
+        {canEdit ? (
+          <form action={updateSiteStatusAction}>
+            <input name="siteId" type="hidden" value={site.id} />
+            <input
+              name="status"
+              type="hidden"
+              value={site.status === "active" ? "inactive" : "active"}
+            />
+            <Button type="submit" variant="outline">
+              {site.status === "active" ? "Pause translations" : "Activate translations"}
             </Button>
-          ) : null}
-          <Button asChild variant="link">
-            <Link href="/dashboard/sites">Back to list</Link>
+          </form>
+        ) : mutationsAllowed ? (
+          <Button disabled variant="outline">
+            Pause translations
           </Button>
-        </div>
-      </CardHeader>
-    </Card>
+        ) : null}
+        <Button asChild variant="outline">
+          <Link href={`/dashboard/sites/${site.id}/admin`}>Settings</Link>
+        </Button>
+        <Button asChild variant="link">
+          <Link href="/dashboard/sites">Back to list</Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -316,6 +380,17 @@ function StatusBadge({ status }: { status: Site["status"] }) {
     return <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>;
   }
   return <Badge variant="outline">Inactive</Badge>;
+}
+
+function formatTimestamp(value?: string | null): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    return value;
+  }
+  return date.toLocaleString();
 }
 
 function DomainSection({

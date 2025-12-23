@@ -14,7 +14,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createLanguageNameResolver, normalizeLangTag } from "@internal/i18n";
+import { createLanguageNameResolver } from "@internal/i18n";
 
 type SupportedLanguage = {
   tag: string;
@@ -35,6 +35,7 @@ type LanguageTagComboboxProps = {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
+  invalid?: boolean;
 };
 
 export function LanguageTagCombobox({
@@ -50,6 +51,7 @@ export function LanguageTagCombobox({
   emptyText = "No language found.",
   disabled = false,
   className,
+  invalid = false,
 }: LanguageTagComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -91,20 +93,6 @@ export function LanguageTagCombobox({
     return label === value ? value : `${label} (${value})`;
   }, [placeholder, resolveLanguageName, supportedByTag, value]);
 
-  const customCandidate = useMemo(() => {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      return null;
-    }
-    return normalizeLangTag(trimmed) ?? trimmed;
-  }, [query]);
-
-  const shouldOfferCustom =
-    customCandidate !== null &&
-    customCandidate.length > 0 &&
-    !supportedByTag.has(customCandidate) &&
-    customCandidate !== value;
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
@@ -115,8 +103,13 @@ export function LanguageTagCombobox({
           role="combobox"
           aria-expanded={open}
           aria-required={required}
+          aria-invalid={invalid || undefined}
           disabled={disabled}
-          className={cn("w-full justify-between", className)}
+          className={cn(
+            "w-full justify-between",
+            invalid ? "border-destructive focus-visible:ring-destructive" : "",
+            className,
+          )}
         >
           <span className={cn("truncate", value ? "text-foreground" : "text-muted-foreground")}>
             {displayValue}
@@ -130,34 +123,13 @@ export function LanguageTagCombobox({
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {shouldOfferCustom ? (
-                <CommandItem
-                  key={`custom:${customCandidate}`}
-                  value={customCandidate ?? ""}
-                  onSelect={(currentValue) => {
-                    const normalized = normalizeLangTag(currentValue) ?? currentValue.trim();
-                    if (!normalized) {
-                      return;
-                    }
-                    onValueChange(normalized);
-                    setOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <span className="truncate">{`Use "${customCandidate}"`}</span>
-                </CommandItem>
-              ) : null}
               {options.map((option) => (
                 <CommandItem
                   key={option.tag}
                   value={option.tag}
                   keywords={option.keywords}
-                  onSelect={(currentValue) => {
-                    const normalized = normalizeLangTag(currentValue) ?? currentValue.trim();
-                    if (!normalized) {
-                      return;
-                    }
-                    onValueChange(normalized);
+                  onSelect={() => {
+                    onValueChange(option.tag);
                     setOpen(false);
                     setQuery("");
                   }}

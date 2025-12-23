@@ -9,6 +9,7 @@ import {
   provisionDomain,
   refreshDomain,
   triggerCrawl,
+  triggerPageCrawl,
   updateGlossary,
   updateSite,
   updateSlug,
@@ -106,6 +107,60 @@ function parseJsonObject(input: string): Record<string, unknown> | null {
   }
 }
 
+function normalizeLocaleAliasValue(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new Error("Aliases must be strings.");
+  }
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length > 63) {
+    throw new Error("Aliases must be 63 characters or fewer.");
+  }
+  if (trimmed.startsWith("-") || trimmed.endsWith("-")) {
+    throw new Error("Aliases cannot start or end with a hyphen.");
+  }
+  if (!/^[a-z0-9-]+$/.test(trimmed)) {
+    throw new Error("Aliases must use lowercase letters, numbers, or hyphens.");
+  }
+  return trimmed;
+}
+
+function parseLocaleAliases(
+  raw: string,
+  targetLangs: string[],
+): Record<string, string | null> | string | null {
+  if (!raw) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return "Locale aliases must be valid JSON.";
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "Locale aliases must be an object.";
+  }
+  const targetSet = new Set(targetLangs);
+  const aliases: Record<string, string | null> = {};
+  for (const [lang, value] of Object.entries(parsed)) {
+    if (!targetSet.has(lang)) {
+      return `Alias provided for unknown language "${lang}".`;
+    }
+    try {
+      aliases[lang] = normalizeLocaleAliasValue(value);
+    } catch (error) {
+      return error instanceof Error ? error.message : "Invalid alias value.";
+    }
+  }
+  return aliases;
+}
+
 function validateSourceUrl(value: string): string | null {
   try {
     const url = new URL(value);
@@ -169,6 +224,7 @@ export async function createSiteAction(
     .filter(Boolean);
   const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
   const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
+  const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
   const glossaryEntriesRaw = formData.get("glossaryEntries")?.toString().trim() ?? "";
 
   const uniqueTargets = Array.from(new Set(targetLangs));
@@ -185,6 +241,11 @@ export async function createSiteAction(
   const siteProfile = siteProfileRaw ? parseJsonObject(siteProfileRaw) : null;
   if (siteProfileRaw && !siteProfile) {
     return failed("Site profile must be a non-empty JSON object.");
+  }
+
+  const localeAliases = parseLocaleAliases(localeAliasesRaw, uniqueTargets);
+  if (typeof localeAliases === "string") {
+    return failed(localeAliases);
   }
 
   let normalizedGlossary: GlossaryEntry[] = [];
@@ -224,6 +285,7 @@ export async function createSiteAction(
       sourceLang,
       targetLangs: uniqueTargets,
       subdomainPattern,
+      localeAliases: localeAliases ?? undefined,
       siteProfile,
       maxLocales,
     });
@@ -262,6 +324,78 @@ export async function createSiteAction(
   }
 }
 
+export async function updateSiteSettingsAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const sourceUrl = formData.get("sourceUrl")?.toString().trim() ?? "";
+  const targetLangs = formData
+    .getAll("targetLangs")
+    .map((lang) => lang.toString().trim())
+    .filter(Boolean);
+  const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
+  const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
+  const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
+
+  const uniqueTargets = Array.from(new Set(targetLangs));
+
+  if (!siteId || !sourceUrl || uniqueTargets.length === 0 || !subdomainPattern) {
+    return failed("Please fill every required field and pick at least one target language.");
+  }
+
+  const sourceUrlError = validateSourceUrl(sourceUrl);
+  if (sourceUrlError) {
+    return failed(sourceUrlError);
+  }
+
+  const siteProfile = siteProfileRaw ? parseJsonObject(siteProfileRaw) : null;
+  if (siteProfileRaw && !siteProfile) {
+    return failed("Site profile must be a non-empty JSON object.");
+  }
+
+  const localeAliases = parseLocaleAliases(localeAliasesRaw, uniqueTargets);
+  if (typeof localeAliases === "string") {
+    return failed(localeAliases);
+  }
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.account || !auth.webhooksAuth) {
+      return failed("Unable to resolve account entitlements.");
+    }
+    if (!auth.mutationsAllowed) {
+      return failed(formatBillingBlockMessage(auth, "edit site settings"));
+    }
+    if (!auth.has({ allFeatures: ["edit", "locale_update"] })) {
+      return failed("Site updates are disabled for this account.");
+    }
+
+    await updateSite(auth.webhooksAuth, siteId, {
+      sourceUrl,
+      targetLangs: uniqueTargets,
+      subdomainPattern,
+      localeAliases: localeAliases ?? undefined,
+      siteProfile,
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/sites");
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+
+    return succeeded("Site settings saved.");
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      return failed(error.message);
+    }
+    return failed("Unable to update site settings.");
+  }
+}
+
 export async function triggerCrawlAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
 
@@ -286,6 +420,37 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
     console.error("[dashboard] triggerCrawlAction failed:", error);
     nextRedirect = siteRedirect(siteId, {
       error: toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."),
+    });
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function triggerPageCrawlAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const pageId = formData.get("pageId")?.toString();
+
+  if (!siteId || !pageId) {
+    return;
+  }
+
+  let nextRedirect: string;
+
+  try {
+    const status = await withWebhooksAuth((auth) => triggerPageCrawl(auth, siteId, pageId));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    nextRedirect = status.enqueued
+      ? siteRedirect(siteId, { toast: "Page crawl enqueued." })
+      : status.error
+        ? siteRedirect(siteId, { error: status.error })
+        : siteRedirect(siteId, { toast: "Page crawl is already queued." });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] triggerPageCrawlAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, "Unable to enqueue a page crawl right now."),
     });
   }
 

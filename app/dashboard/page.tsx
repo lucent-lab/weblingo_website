@@ -33,8 +33,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
+          <h2 className="text-2xl font-semibold">Overview</h2>
           <p className="text-sm text-muted-foreground">
             Welcome back. Set up a new site or check deployment health.
           </p>

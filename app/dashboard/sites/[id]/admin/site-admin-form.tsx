@@ -1,20 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-import { createSiteAction, type ActionResponse } from "../../actions";
-
-import { GlossaryTable } from "../glossary-table";
-import { TargetLanguagePicker } from "../target-language-picker";
+import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
+import { TargetLanguagePicker } from "../../target-language-picker";
 import {
   buildLocaleAliases,
+  extractSubdomainToken,
   hasInvalidAliases,
   parseSourceUrl,
   stripWwwPrefix,
-} from "../site-form-utils";
+} from "../../site-form-utils";
 
 import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
@@ -23,45 +20,51 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { GlossaryEntry, SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
-const initialState: ActionResponse = {
-  ok: false,
-  message: "",
-};
+const initialState: ActionResponse = { ok: false, message: "" };
 const REQUIRED_FIELDS_MESSAGE = "Please fill every required field and pick at least one target language.";
 
-export function OnboardingForm(props: {
+type SiteAdminFormProps = {
+  siteId: string;
+  sourceUrl: string;
+  sourceLang: string;
+  targets: string[];
+  aliases: Record<string, string | null>;
+  pattern: string | null;
   maxLocales: number | null;
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
-  canGlossary: boolean;
-  pricingPath: string;
-}) {
-  const [state, formAction] = useActionState(createSiteAction, initialState);
-  const router = useRouter();
-  const [targets, setTargets] = useState<string[]>([]);
-  const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>({});
-  const [sourceLang, setSourceLang] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [subdomainToken, setSubdomainToken] = useState("{lang}");
+  initialBrandVoice?: string;
+  initialSiteProfileNotes?: string;
+};
+
+export function SiteAdminForm({
+  siteId,
+  sourceUrl: initialSourceUrl,
+  sourceLang,
+  targets: initialTargets,
+  aliases,
+  pattern,
+  maxLocales,
+  supportedLanguages,
+  displayLocale,
+  initialBrandVoice = "",
+  initialSiteProfileNotes = "",
+}: SiteAdminFormProps) {
+  const [state, formAction] = useActionState(updateSiteSettingsAction, initialState);
+  const [targets, setTargets] = useState<string[]>(() => initialTargets);
+  const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {
+    const entries = Object.entries(aliases).filter(
+      ([, alias]) => typeof alias === "string" && alias.trim().length > 0,
+    );
+    return Object.fromEntries(entries) as Record<string, string>;
+  });
+  const [sourceUrl, setSourceUrl] = useState(initialSourceUrl);
+  const [brandVoice, setBrandVoice] = useState(initialBrandVoice);
+  const [siteProfileNotes, setSiteProfileNotes] = useState(initialSiteProfileNotes);
   const [patternEditing, setPatternEditing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [brandVoice, setBrandVoice] = useState("");
-  const [siteProfileNotes, setSiteProfileNotes] = useState("");
-  const [glossaryEntries, setGlossaryEntries] = useState<GlossaryEntry[]>([]);
-
-  useEffect(() => {
-    const siteId = state.meta?.siteId;
-    if (state.ok && typeof siteId === "string" && siteId.length > 0) {
-      const toast = state.meta?.toast;
-      const nextUrl =
-        typeof toast === "string" && toast.length > 0
-          ? `/dashboard/sites/${siteId}?toast=${encodeURIComponent(toast)}`
-          : `/dashboard/sites/${siteId}`;
-      router.push(nextUrl);
-    }
-  }, [router, state.meta?.siteId, state.meta?.toast, state.ok]);
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const sourceUrlValid = parsedSourceUrl !== null;
@@ -70,13 +73,10 @@ export function OnboardingForm(props: {
   const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
   const displayHost = trimmedHost || "customer-url.com";
   const scheme = parsedSourceUrl?.protocol ? `${parsedSourceUrl.protocol}//` : "https://";
-  const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
-  const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
-  const localeAliases = useMemo(
-    () => buildLocaleAliases(targetLangs, aliasesByLang),
-    [aliasesByLang, targetLangs],
+  const [subdomainToken, setSubdomainToken] = useState(() =>
+    extractSubdomainToken(pattern, parsedSourceUrl),
   );
-  const localeAliasesJson = useMemo(() => JSON.stringify(localeAliases), [localeAliases]);
+  const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
       return "";
@@ -86,6 +86,12 @@ export function OnboardingForm(props: {
   const patternIsValid =
     sourceUrlValid && subdomainPattern.includes("{lang}") && Boolean(trimmedHost);
   const showPatternError = sourceUrlValid && sourceUrl.trim().length > 0 && !patternIsValid;
+  const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
+  const localeAliases = useMemo(
+    () => buildLocaleAliases(targetLangs, aliasesByLang),
+    [aliasesByLang, targetLangs],
+  );
+  const localeAliasesJson = useMemo(() => JSON.stringify(localeAliases), [localeAliases]);
   const patternPreview = useMemo(() => {
     if (!subdomainPattern) {
       return "";
@@ -113,41 +119,34 @@ export function OnboardingForm(props: {
     () => (profilePayload ? JSON.stringify(profilePayload) : ""),
     [profilePayload],
   );
-  const glossaryEntriesJson = useMemo(() => JSON.stringify(glossaryEntries), [glossaryEntries]);
   const showRequiredErrors = state.message === REQUIRED_FIELDS_MESSAGE;
   const sourceUrlRequiredError = showRequiredErrors && !sourceUrl.trim();
-  const sourceLangRequiredError = showRequiredErrors && !sourceLang.trim();
-  const targetsRequiredError = showRequiredErrors && targetLangs.length === 0;
+  const targetsRequiredError = showRequiredErrors && targets.length === 0;
   const hasInvalidAlias = hasInvalidAliases(aliasesByLang);
   const submitDisabled =
-    targetLangs.length === 0 ||
-    !patternIsValid ||
-    !sourceUrlValid ||
-    !sourceLang.trim() ||
-    hasInvalidAlias;
+    targets.length === 0 || !patternIsValid || !sourceUrlValid || hasInvalidAlias;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Onboarding wizard</CardTitle>
+        <CardTitle>Site settings</CardTitle>
         <CardDescription>
-          Provide your source site, pick target languages, and define the subdomain pattern. We will
-          enqueue a crawl immediately after creation.
+          Update language coverage, routing patterns, and translation context for this site.
         </CardDescription>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-1">
             Language limit:{" "}
             <span className="font-semibold text-foreground">
-              {props.maxLocales === null ? "Unlimited" : props.maxLocales}
+              {maxLocales === null ? "Unlimited" : maxLocales}
             </span>
           </span>
         </div>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-8">
+          <input name="siteId" type="hidden" value={siteId} />
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           <input name="siteProfile" type="hidden" value={profileJson} />
-          <input name="glossaryEntries" type="hidden" value={glossaryEntriesJson} />
           <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
           <section className="space-y-5">
@@ -194,19 +193,18 @@ export function OnboardingForm(props: {
               <Field
                 label="Source language"
                 htmlFor="sourceLang"
-                description="Pick a language tag (BCP 47 style). Examples: en, fr-CA, pt-BR."
-                error={sourceLangRequiredError ? "Select a source language." : undefined}
+                description="Source language is fixed once a site is created."
               >
                 <LanguageTagCombobox
                   id="sourceLang"
                   name="sourceLang"
                   value={sourceLang}
-                  onValueChange={setSourceLang}
-                  supportedLanguages={props.supportedLanguages}
-                  displayLocale={props.displayLocale}
-                  placeholder="Select a language"
+                  onValueChange={() => undefined}
+                  supportedLanguages={supportedLanguages}
+                  displayLocale={displayLocale}
+                  placeholder={sourceLang}
                   required
-                  invalid={sourceLangRequiredError}
+                  disabled
                 />
               </Field>
             </div>
@@ -216,9 +214,9 @@ export function OnboardingForm(props: {
                 aliases={aliasesByLang}
                 onTargetsChange={setTargets}
                 onAliasesChange={setAliasesByLang}
-                supportedLanguages={props.supportedLanguages}
-                displayLocale={props.displayLocale}
-                maxLocales={props.maxLocales}
+                supportedLanguages={supportedLanguages}
+                displayLocale={displayLocale}
+                maxLocales={maxLocales}
                 error={targetsRequiredError ? "Pick at least one target language." : undefined}
               />
               <Field
@@ -285,7 +283,7 @@ export function OnboardingForm(props: {
                 <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
                 <div className="space-y-1">
                   <CardTitle className="text-base font-semibold">Advanced</CardTitle>
-                  <CardDescription>Optional brand voice and glossary rules.</CardDescription>
+                  <CardDescription>Optional brand voice and site profile notes.</CardDescription>
                 </div>
               </div>
               <Button
@@ -325,20 +323,6 @@ export function OnboardingForm(props: {
                     placeholder="Examples: B2B SaaS for finance teams. Prefer formal tone. Keep product names untranslated."
                   />
                 </Field>
-                {props.canGlossary ? (
-                  <GlossaryTable
-                    targetLangs={targetLangs}
-                    initialEntries={[]}
-                    onEntriesChange={setGlossaryEntries}
-                  />
-                ) : (
-                  <div className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-                    Glossary editing is locked on your plan.{" "}
-                    <Button asChild variant="link" size="sm">
-                      <Link href={props.pricingPath}>Upgrade to unlock</Link>
-                    </Button>
-                  </div>
-                )}
               </div>
             ) : null}
           </section>
@@ -358,8 +342,8 @@ export function OnboardingForm(props: {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              We will create domains and enqueue a crawl right after you submit. You can verify DNS
-              and update glossary from the site detail view.
+              Updates do not trigger a crawl automatically. Use Trigger crawl when you are ready to
+              refresh translations.
             </p>
             <SubmitButton disabled={submitDisabled} />
           </div>
@@ -373,7 +357,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button disabled={disabled || pending} type="submit">
-      {pending ? "Creating..." : "Create site"}
+      {pending ? "Saving..." : "Save changes"}
     </Button>
   );
 }

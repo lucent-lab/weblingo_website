@@ -26,7 +26,7 @@ export default async function SitesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="space-y-1">
           <h2 className="text-2xl font-semibold">Sites</h2>
           <p className="text-sm text-muted-foreground">
             Review onboarding status, domains, and languages for every property.

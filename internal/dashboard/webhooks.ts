@@ -100,10 +100,18 @@ const siteSchema = z.object({
     z.object({
       sourceLang: z.string(),
       targetLang: z.string(),
+      alias: z.string().nullable().optional(),
     }),
   ),
   routeConfig: routeConfigSchema.optional(),
   domains: z.array(domainSchema),
+});
+
+const sitePageSummarySchema = z.object({
+  id: z.string(),
+  sourcePath: z.string(),
+  lastSeenAt: z.string().nullable().optional(),
+  lastVersionAt: z.string().nullable().optional(),
 });
 
 const crawlStatusSchema = z.object({
@@ -137,6 +145,12 @@ const authResponseSchema = z.object({
   actorAccountId: z.string().min(1),
   subjectAccountId: z.string().min(1),
 });
+
+const listSitePagesResponseSchema = z
+  .object({
+    pages: z.array(sitePageSummarySchema),
+  })
+  .strict();
 
 const featureFlagsSchema = z
   .object({
@@ -223,6 +237,7 @@ export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
+export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
@@ -468,6 +483,7 @@ export type CreateSitePayload = {
   sourceLang: string;
   targetLangs: string[];
   subdomainPattern: string;
+  localeAliases?: Record<string, string | null>;
   siteProfile?: Record<string, unknown> | null;
   maxLocales: number | null;
 };
@@ -502,6 +518,15 @@ export async function updateSite(
 export async function triggerCrawl(auth: AuthInput, siteId: string) {
   return request({
     path: `/sites/${siteId}/crawl`,
+    method: "POST",
+    auth,
+    schema: crawlStatusSchema,
+  });
+}
+
+export async function triggerPageCrawl(auth: AuthInput, siteId: string, pageId: string) {
+  return request({
+    path: `/sites/${siteId}/pages/${pageId}/crawl`,
     method: "POST",
     auth,
     schema: crawlStatusSchema,
@@ -549,6 +574,16 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
   });
 
   return data.deployments;
+}
+
+export async function fetchSitePages(auth: AuthInput, siteId: string): Promise<SitePageSummary[]> {
+  const data = await request({
+    path: `/sites/${siteId}/pages`,
+    auth,
+    schema: listSitePagesResponseSchema,
+  });
+
+  return data.pages;
 }
 
 export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<GlossaryEntry[]> {

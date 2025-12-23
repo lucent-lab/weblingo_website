@@ -6,7 +6,6 @@ import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSites } from "@internal/dashboard/webhooks";
@@ -38,6 +37,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const subjectLabel =
     workspaceOptions.find((option) => option.id === auth.subjectAccountId)?.label ??
     "Current workspace";
+  const maxDailyRecrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
+  const manualCrawlRemainingLabel =
+    maxDailyRecrawls === null ? "Unlimited" : String(maxDailyRecrawls);
 
   let usageBadge: { label: string; helper?: string } | null = null;
   try {
@@ -79,6 +81,16 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 <Badge variant="outline">
                   Agency status: {auth.actorAccount.planStatus ?? "unknown"}
                 </Badge>
+              ) : null}
+              {auth.account ? (
+                <>
+                  <Badge variant="outline">
+                    Manual site crawls remaining: {manualCrawlRemainingLabel}
+                  </Badge>
+                  <Badge variant="outline">
+                    Manual page crawls remaining: {manualCrawlRemainingLabel}
+                  </Badge>
+                </>
               ) : null}
               {usageBadge ? <Badge variant="outline">{usageBadge.label}</Badge> : null}
               {auth.actingAsCustomer ? (
@@ -135,14 +147,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </div>
           </aside>
 
-          <main
-            className={cn(
-              "rounded-xl border border-border bg-background p-6 shadow-sm",
-              "flex flex-col gap-6",
-            )}
-          >
-            {children}
-          </main>
+          <main className="flex min-w-0 flex-col gap-6">{children}</main>
         </div>
       </div>
     </div>

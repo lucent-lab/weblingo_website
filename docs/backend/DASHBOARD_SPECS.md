@@ -39,7 +39,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
     - Crawl trigger disabled: `{ error: "Crawl triggers are disabled for this account", details: { code: "crawl_trigger_disabled" } }`
     - Slug edits disabled: `{ error: "Slug edits are disabled for this account", details: { code: "slug_edit_disabled" } }`
 - **Site**:
-  - `id`, `sourceUrl`, `status` (`"active"|"inactive"`), `siteProfile` (non-empty JSON object or `null`), `locales` (`[{ sourceLang, targetLang }]`).
+  - `id`, `sourceUrl`, `status` (`"active"|"inactive"`), `siteProfile` (non-empty JSON object or `null`), `locales` (`[{ sourceLang, targetLang, alias? }]`).
   - `maxLocales`: number or `null` (null = no cap).
   - `routeConfig`: `{ sourceLang, sourceOrigin, pattern, locales: [{ lang, origin, routePrefix }] }` or `null`.
   - `domains`: `[{ domain, status ("pending"|"verified"|"failed"), verificationToken, verifiedAt, lastCheckedAt }]`.
@@ -59,6 +59,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Payload (all required): `{ sourceUrl, sourceLang, targetLangs: [...], subdomainPattern, siteProfile, maxLocales? }`.
   - `subdomainPattern` must contain `{lang}`; it can be a bare host (`{lang}.example.com`) or include scheme/path (`https://www.example.com/{lang}/docs`). Hostnames derived from this pattern seed `site_domains`; path segments become `routePrefix` per locale.
   - `siteProfile` must be a non-empty object with JSON-safe scalar/array/object values (empty strings/arrays rejected).
+  - Optional: `localeAliases` map of `{ [targetLang]: "alias" | null }` to override the `{lang}` token per locale (lowercase letters/numbers/hyphens only).
   - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
 - Behavior: creates site + locales + route config, inserts domain records with verification tokens, enqueues crawl.
 - Response `201`: `{ ...site, crawlStatus }`.
@@ -69,7 +70,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `PATCH /api/sites/:id`
 
-- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, status? ("active"|"inactive"), siteProfile? (object|null), maxLocales? }`.
+- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, localeAliases?, status? ("active"|"inactive"), siteProfile? (object|null), maxLocales? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
 - Response `200`: updated `Site`.
@@ -79,6 +80,11 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 `POST /api/sites/:id/crawl`
 
 - Enqueues crawl for the site’s source URL.
+- Response: `202 { enqueued: true }` or `502 { enqueued: false, error }` if enqueue fails.
+
+`POST /api/sites/:id/pages/:pageId/crawl`
+
+- Enqueues extract for a single page.
 - Response: `202 { enqueued: true }` or `502 { enqueued: false, error }` if enqueue fails.
 
 ### Domain verification
