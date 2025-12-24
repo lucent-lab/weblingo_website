@@ -253,7 +253,8 @@ export function OnboardingForm(props: {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                We validate the URL and seed pages. Activate after domain verification.
+                We discover your site right away. Translations start after activation, and the next
+                screen includes setup instructions.
               </AlertDescription>
             </Alert>
           </div>

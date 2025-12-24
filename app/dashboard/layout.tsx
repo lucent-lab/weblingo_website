@@ -7,7 +7,6 @@ import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSites } from "@internal/dashboard/webhooks";
@@ -124,29 +123,27 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               </form>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard label="Plan" value={planLabel} badgeVariant="secondary" />
-            <StatCard
-              label="Status"
-              value={statusLabel}
-              badgeVariant={resolveStatusVariant(rawStatusLabel)}
-            />
-            <StatCard
-              label="Manual site crawls"
-              value={`${manualCrawlRemainingLabel} remaining`}
-              badgeVariant="outline"
-            />
-            <StatCard
-              label="Manual page crawls"
-              value={`${manualCrawlRemainingLabel} remaining`}
-              badgeVariant="outline"
-            />
-            <StatCard
-              label="Sites"
-              value={sitesUsage?.value ?? "—"}
-              helper={sitesUsage?.helper}
-              badgeVariant="outline"
-            />
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline">Plan: {planLabel}</Badge>
+            <Badge variant={resolveStatusVariant(rawStatusLabel)}>Status: {statusLabel}</Badge>
+            {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
+              <Badge variant="outline">
+                Agency status: {auth.actorAccount.planStatus ?? "unknown"}
+              </Badge>
+            ) : null}
+            {auth.account ? (
+              <>
+                <Badge variant="outline">
+                  Manual site crawls remaining: {manualCrawlRemainingLabel}
+                </Badge>
+                <Badge variant="outline">
+                  Manual page crawls remaining: {manualCrawlRemainingLabel}
+                </Badge>
+              </>
+            ) : null}
+            <Badge variant="outline" title={sitesUsage?.helper}>
+              Sites: {sitesUsage?.value ?? "—"}
+            </Badge>
           </div>
         </header>
 
@@ -252,9 +249,9 @@ function resolveBillingBanner(auth: DashboardAuth): { message: string; ctaLabel:
   };
 }
 
-type StatBadgeVariant = "default" | "secondary" | "destructive" | "outline";
+type StatusBadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
-function resolveStatusVariant(status: string): StatBadgeVariant {
+function resolveStatusVariant(status: string): StatusBadgeVariant {
   if (status === "active") {
     return "default";
   }
@@ -262,30 +259,4 @@ function resolveStatusVariant(status: string): StatBadgeVariant {
     return "destructive";
   }
   return "outline";
-}
-
-function StatCard({
-  label,
-  value,
-  helper,
-  badgeVariant = "secondary",
-}: {
-  label: string;
-  value: string;
-  helper?: string;
-  badgeVariant?: StatBadgeVariant;
-}) {
-  return (
-    <Card className="border-border/70 bg-background">
-      <div className="space-y-2 p-4">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <Badge variant={badgeVariant} className="w-fit capitalize">
-          {value}
-        </Badge>
-        {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
-      </div>
-    </Card>
-  );
 }
