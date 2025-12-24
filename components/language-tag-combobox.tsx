@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronsUpDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ export function LanguageTagCombobox({
 }: LanguageTagComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const value = rawValue.trim();
 
@@ -95,6 +96,34 @@ export function LanguageTagCombobox({
     return label === value ? value : `${label} (${value})`;
   }, [placeholder, resolveLanguageName, supportedByTag, value]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [open]);
+
+  const handleTriggerFocus = () => {
+    if (!disabled) {
+      setOpen(true);
+    }
+  };
+
+  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) {
+      return;
+    }
+    if (event.key.length === 1 || event.key === "Backspace") {
+      setOpen(true);
+      setQuery(event.key === "Backspace" ? "" : event.key);
+      event.preventDefault();
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
@@ -107,6 +136,8 @@ export function LanguageTagCombobox({
           aria-required={required}
           aria-invalid={invalid || undefined}
           disabled={disabled}
+          onFocus={handleTriggerFocus}
+          onKeyDown={handleTriggerKeyDown}
           className={cn(
             "w-full justify-between",
             invalid ? "border-destructive focus-visible:ring-destructive" : "",
@@ -121,7 +152,12 @@ export function LanguageTagCombobox({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
+          <CommandInput
+            ref={inputRef}
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>

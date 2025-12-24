@@ -12,6 +12,7 @@ import {
   buildLocaleAliases,
   hasInvalidAliases,
   parseSourceUrl,
+  suggestLocaleAlias,
   stripWwwPrefix,
 } from "../site-form-utils";
 
@@ -84,7 +85,7 @@ export function OnboardingForm(props: {
       return "";
     }
     const sampleLang = targets[0] || "preview";
-    const sampleAlias = localeAliases[sampleLang] ?? sampleLang;
+    const sampleAlias = localeAliases[sampleLang] ?? suggestLocaleAlias(sampleLang);
     return subdomainPattern.includes("{lang}")
       ? subdomainPattern.replace("{lang}", sampleAlias)
       : subdomainPattern;
