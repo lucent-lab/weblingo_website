@@ -16,7 +16,7 @@ import {
 
 import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -103,12 +103,7 @@ export function OnboardingForm(props: {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Onboarding wizard</CardTitle>
-        <CardDescription>
-          Provide your source site, pick target languages, and define the subdomain pattern. We will
-          validate the site and seed pages from sitemaps. Activate after domain verification to
-          start crawling.
-        </CardDescription>
+        <CardTitle>Site setup</CardTitle>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-1">
             Language limit:{" "}
@@ -123,25 +118,11 @@ export function OnboardingForm(props: {
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
-          <section className="space-y-5">
-            <div className="border-b border-border/60 pb-3">
-              <div className="flex items-start gap-3">
-                <span className="mt-1 h-5 w-1 rounded-full bg-primary/70" aria-hidden="true" />
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">
-                    Site basics &amp; routing
-                  </CardTitle>
-                  <CardDescription>
-                    Source, languages, and routing pattern. All fields are required.
-                  </CardDescription>
-                </div>
-              </div>
-            </div>
+          <section className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Field
                 label="Source URL"
                 htmlFor="sourceUrl"
-                description="The canonical origin we should crawl for translations."
                 error={
                   sourceUrlRequiredError
                     ? "Source URL is required."
@@ -167,7 +148,7 @@ export function OnboardingForm(props: {
               <Field
                 label="Source language"
                 htmlFor="sourceLang"
-                description="Pick a language tag (BCP 47 style). Examples: en, fr-CA, pt-BR."
+                description="Examples: en, fr-CA, pt-BR."
                 error={sourceLangRequiredError ? "Select a source language." : undefined}
               >
                 <LanguageTagCombobox
@@ -208,13 +189,16 @@ export function OnboardingForm(props: {
                   </Button>
                 }
                 description={
-                  !patternEditing ? (
+                  patternEditing ? (
                     <>
-                      We generate this from your source URL. Insert <code>{`{lang}`}</code> where
-                      the locale should appear. Preview:{" "}
+                      Insert <code>{`{lang}`}</code> where the locale should appear.
+                    </>
+                  ) : (
+                    <>
+                      Preview:{" "}
                       <span className="font-semibold text-foreground">{patternPreview || "-"}</span>
                     </>
-                  ) : undefined
+                  )
                 }
                 error={
                   showPatternError
@@ -252,8 +236,7 @@ export function OnboardingForm(props: {
             </div>
           </section>
           <p className="text-sm text-muted-foreground">
-            Advanced settings (brand voice, site profile, glossary) can be configured later in site
-            settings.
+            Advanced settings can be configured later in site settings.
           </p>
 
           {state.message ? (
@@ -271,8 +254,7 @@ export function OnboardingForm(props: {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              We will validate the source URL, create domains, and seed the initial page list. Once
-              your domain is verified, activate the site to start crawling.
+              We validate the URL and seed pages. Activate after domain verification.
             </p>
             <SubmitButton disabled={submitDisabled} />
           </div>

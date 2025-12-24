@@ -36,6 +36,7 @@ export function TargetLanguagePicker({
   const [targetPickerValue, setTargetPickerValue] = useState("");
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const showError = Boolean(error);
+  const hasAliases = Object.keys(aliases).length > 0;
 
   const resolveLanguageName = useMemo(
     () => createLanguageNameResolver(displayLocale),
@@ -183,9 +184,7 @@ export function TargetLanguagePicker({
           })}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          Add at least one target language to start translating.
-        </p>
+        <p className="text-xs text-muted-foreground">Add at least one target language.</p>
       )}
 
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
@@ -210,18 +209,18 @@ export function TargetLanguagePicker({
       </div>
 
       {supportedLanguages.length ? (
-        <p className="text-xs text-muted-foreground">
-          {languageLimitReached && maxLocales !== null
-            ? `You've used all ${maxLocales} ${languageSlotLabel}. Remove one to add another.`
-            : "Search by language name or tag from the supported list."}
-        </p>
+        languageLimitReached && maxLocales !== null ? (
+          <p className="text-xs text-muted-foreground">
+            You've used all {maxLocales} {languageSlotLabel}. Remove one to add another.
+          </p>
+        ) : null
       ) : (
         <p className="text-xs text-muted-foreground">
           Language suggestions are unavailable right now. Please try again in a moment.
         </p>
       )}
 
-      {targets.length ? (
+      {hasAliases ? (
         <p className="text-xs text-muted-foreground">
           Aliases replace <code>{`{lang}`}</code> in the URL pattern.
         </p>
