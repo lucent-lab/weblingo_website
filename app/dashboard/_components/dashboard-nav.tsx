@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 type NavItem = {
   href: string;
@@ -24,26 +23,22 @@ export function DashboardNav({ items }: { items: NavItem[] }) {
     : "";
 
   return (
-    <nav className="flex flex-col gap-1">
+    <SidebarMenu>
       {items.map((item) => {
         const isActive = pathname !== null && item.href === activeHref;
         return (
-          <Link
-            key={item.href}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-            href={item.href}
-          >
-            {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
-            <span className="flex-1 text-left">{item.label}</span>
-            {isActive ? <ChevronRight className="h-4 w-4" /> : null}
-          </Link>
+          <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+              <Link href={item.href} aria-current={isActive ? "page" : undefined}>
+                {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
+                <span className="truncate group-data-[collapsible=icon]:sr-only">
+                  {item.label}
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         );
       })}
-    </nav>
+    </SidebarMenu>
   );
 }

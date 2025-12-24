@@ -5,8 +5,20 @@ import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 import { DashboardNav } from "./_components/dashboard-nav";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSites } from "@internal/dashboard/webhooks";
@@ -89,105 +101,135 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     console.warn("[dashboard] usage badge fetch failed:", error);
   }
   const billingBanner = resolveBillingBanner(auth);
+  const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
+  const teamSwitcherDisabled = workspaceOptions.length <= 1;
 
   return (
-    <div className="min-h-screen bg-muted/30 text-foreground">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 lg:px-10">
-        <header className="space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-primary">
-                <span>WebLingo Dashboard</span>
-                {auth.actingAsCustomer ? (
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                    Acting as {subjectLabel}
-                  </Badge>
-                ) : null}
-              </div>
-              <h1 className="text-balance text-3xl font-semibold">Manage your translated sites</h1>
-              <p className="text-sm text-muted-foreground">
-                Onboard new sites, monitor deployments, and fine-tune translations.
-              </p>
+    <SidebarProvider defaultOpen>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="gap-4">
+          <div className="flex items-center gap-2 px-2 pt-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pt-1">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Globe className="h-4 w-4" />
             </div>
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
-              <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Signed in
-                </span>
-                <span className="text-sm font-medium">{email}</span>
-              </div>
-              <form action={logout}>
-                <Button size="sm" variant="outline" type="submit">
-                  Sign out
-                </Button>
-              </form>
+            <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+              <span className="text-sm font-semibold">WebLingo</span>
+              <span className="text-xs text-sidebar-foreground/70">Dashboard</span>
             </div>
+            <SidebarTrigger className="ml-auto md:hidden" />
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline">Plan: {planLabel}</Badge>
-            <Badge variant={resolveStatusVariant(rawStatusLabel)}>Status: {statusLabel}</Badge>
-            {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
-              <Badge variant="outline">
-                Agency status: {auth.actorAccount.planStatus ?? "unknown"}
+          {showTeamSwitcher ? (
+            <div className="px-2 group-data-[collapsible=icon]:hidden">
+              <WorkspaceSwitcher
+                label="Teams"
+                options={workspaceOptions}
+                currentId={auth.subjectAccountId ?? auth.actorAccountId ?? ""}
+                disabled={teamSwitcherDisabled}
+              />
+            </div>
+          ) : null}
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <div className="flex items-center justify-between group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+              <Badge
+                variant="secondary"
+                className="text-[10px] uppercase tracking-wide group-data-[collapsible=icon]:hidden"
+              >
+                Beta
               </Badge>
-            ) : null}
-            {auth.account ? (
-              <>
+            </div>
+            <SidebarGroupContent>
+              <DashboardNav items={navItems} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
+          <div className="rounded-md border border-sidebar-border bg-sidebar-accent/60 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
+            <p className="text-sm font-semibold text-sidebar-foreground">Need help?</p>
+            <p>Check DNS instructions on each domain or email support@weblingo.com.</p>
+            <Button asChild variant="outline" size="sm" className="mt-3 w-full bg-transparent">
+              <Link href="mailto:support@weblingo.com">Get support</Link>
+            </Button>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+
+      <SidebarInset className="bg-muted/30">
+        <header className="border-b bg-background">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6 lg:px-10">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-primary">
+                  <SidebarTrigger className="shrink-0" />
+                  <span>WebLingo Dashboard</span>
+                  {auth.actingAsCustomer ? (
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                      Acting as {subjectLabel}
+                    </Badge>
+                  ) : null}
+                </div>
+                <h1 className="text-balance text-3xl font-semibold">
+                  Manage your translated sites
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Onboard new sites, monitor deployments, and fine-tune translations.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Signed in
+                  </span>
+                  <span className="text-sm font-medium">{email}</span>
+                </div>
+                <form action={logout}>
+                  <Button size="sm" variant="outline" type="submit">
+                    Sign out
+                  </Button>
+                </form>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">Plan: {planLabel}</Badge>
+              <Badge variant={resolveStatusVariant(rawStatusLabel)}>Status: {statusLabel}</Badge>
+              {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
                 <Badge variant="outline">
-                  Manual site crawls remaining: {manualCrawlRemainingLabel}
+                  Agency status: {auth.actorAccount.planStatus ?? "unknown"}
                 </Badge>
-                <Badge variant="outline">
-                  Manual page crawls remaining: {manualCrawlRemainingLabel}
-                </Badge>
-              </>
-            ) : null}
-            <Badge variant="outline" title={sitesUsage?.helper}>
-              Sites: {sitesUsage?.value ?? "—"}
-            </Badge>
+              ) : null}
+              {auth.account ? (
+                <>
+                  <Badge variant="outline">
+                    Manual site crawls remaining: {manualCrawlRemainingLabel}
+                  </Badge>
+                  <Badge variant="outline">
+                    Manual page crawls remaining: {manualCrawlRemainingLabel}
+                  </Badge>
+                </>
+              ) : null}
+              <Badge variant="outline" title={sitesUsage?.helper}>
+                Sites: {sitesUsage?.value ?? "—"}
+              </Badge>
+            </div>
           </div>
         </header>
 
-        {billingBanner ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
-            <p>{billingBanner.message}</p>
-            <Button asChild size="sm" variant="secondary">
-              <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
-            </Button>
-          </div>
-        ) : null}
-
-        <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-          <aside className="rounded-xl border border-border bg-background p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">Navigation</p>
-              <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                Beta
-              </span>
-            </div>
-            <div className="mt-4">
-              <DashboardNav items={navItems} />
-            </div>
-            {isAgency && workspaceOptions.length > 1 ? (
-              <div className="mt-6">
-                <WorkspaceSwitcher
-                  options={workspaceOptions}
-                  currentId={auth.subjectAccountId ?? auth.actorAccountId ?? ""}
-                />
-              </div>
-            ) : null}
-            <div className="mt-6 space-y-2 rounded-md bg-muted/70 p-3 text-xs text-muted-foreground">
-              <p className="font-semibold text-foreground">Need help?</p>
-              <p>Check DNS instructions on each domain or email support@weblingo.com.</p>
-              <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
-                <Link href="mailto:support@weblingo.com">Get support</Link>
+        <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+          {billingBanner ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
+              <p>{billingBanner.message}</p>
+              <Button asChild size="sm" variant="secondary">
+                <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
               </Button>
             </div>
-          </aside>
+          ) : null}
 
-          <main className="flex min-w-0 flex-col gap-6">{children}</main>
-        </div>
-      </div>
-    </div>
+          {children}
+        </section>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
