@@ -57,6 +57,7 @@ export function LanguageTagCombobox({
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const skipNextFocusOpen = useRef(false);
+  const pointerDownRef = useRef(false);
 
   const value = rawValue.trim();
 
@@ -122,7 +123,17 @@ export function LanguageTagCombobox({
         skipNextFocusOpen.current = false;
         return;
       }
+      if (pointerDownRef.current) {
+        pointerDownRef.current = false;
+        return;
+      }
       setOpen(true);
+    }
+  };
+
+  const handleTriggerPointerDown = () => {
+    if (!disabled) {
+      pointerDownRef.current = true;
     }
   };
 
@@ -174,6 +185,7 @@ export function LanguageTagCombobox({
           disabled={disabled}
           onFocus={handleTriggerFocus}
           onKeyDown={handleTriggerKeyDown}
+          onPointerDown={handleTriggerPointerDown}
           className={cn(
             "w-full justify-between",
             invalid ? "border-destructive focus-visible:ring-destructive" : "",
