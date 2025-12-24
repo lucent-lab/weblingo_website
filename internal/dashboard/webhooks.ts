@@ -306,6 +306,7 @@ type RequestOptions<T> = {
   schema: z.ZodSchema<T>;
   headers?: HeadersInit;
   retry?: boolean;
+  allowEmptyResponse?: boolean;
 };
 
 async function request<T>({
@@ -316,6 +317,7 @@ async function request<T>({
   schema,
   headers,
   retry = false,
+  allowEmptyResponse = false,
 }: RequestOptions<T>): Promise<T> {
   const resolvedAuth = normalizeAuth(auth);
   const token = resolvedAuth?.token;
@@ -373,6 +375,9 @@ async function request<T>({
   }
 
   if (parsed === undefined) {
+    if (allowEmptyResponse) {
+      return schema.parse(undefined);
+    }
     throw new WebhooksApiError("Empty response from API", response.status);
   }
 
@@ -512,6 +517,16 @@ export async function updateSite(
     auth,
     body: payload,
     schema: siteSchema,
+  });
+}
+
+export async function deactivateSite(auth: AuthInput, siteId: string) {
+  return request({
+    path: `/sites/${siteId}`,
+    method: "DELETE",
+    auth,
+    schema: z.void(),
+    allowEmptyResponse: true,
   });
 }
 

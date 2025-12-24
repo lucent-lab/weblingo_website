@@ -91,6 +91,11 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   }
 
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
+  const hasVerifiedDomain = site.domains.some((domain) => domain.status === "verified");
+  const crawlReady = site.status === "active" && hasVerifiedDomain;
+  const crawlGateNote = crawlReady
+    ? "Crawls use the latest route config and glossary. You will see deployment updates below after processing."
+    : "Activate the site and verify at least one domain to start crawling.";
 
   return (
     <div className="space-y-8">
@@ -141,14 +146,15 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         <CardHeader>
           <CardTitle>Pages</CardTitle>
           <CardDescription>
-            Discovered pages from the latest crawl. Use Trigger crawl to refresh all pages or crawl a
-            single page.
+            Discovered pages from sitemaps and crawls. Activate and verify a domain before
+            triggering a new crawl.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {pages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No pages discovered yet. Run a crawl to populate this list.
+              No pages discovered yet. We will seed from sitemaps after validation, then crawl to
+              refresh once the site is active.
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border/60">
@@ -180,7 +186,17 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
                           <form action={triggerPageCrawlAction}>
                             <input name="siteId" type="hidden" value={site.id} />
                             <input name="pageId" type="hidden" value={page.id} />
-                            <Button type="submit" size="sm" variant="outline">
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="outline"
+                              disabled={!crawlReady}
+                              title={
+                                crawlReady
+                                  ? "Enqueue a crawl for this page."
+                                  : "Activate the site and verify a domain to crawl."
+                              }
+                            >
                               Force crawl
                             </Button>
                           </form>
@@ -210,17 +226,26 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
           <Card>
             <CardHeader>
               <CardTitle>Trigger crawl</CardTitle>
-              <CardDescription>Refresh translations from the source site.</CardDescription>
+              <CardDescription>
+                Refresh translations from the source site once the site is active and verified.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <form action={triggerCrawlAction}>
                 <input name="siteId" type="hidden" value={site.id} />
-                <Button type="submit">Enqueue crawl</Button>
+                <Button
+                  type="submit"
+                  disabled={!crawlReady}
+                  title={
+                    crawlReady
+                      ? "Enqueue a full-site crawl."
+                      : "Activate the site and verify a domain to crawl."
+                  }
+                >
+                  Enqueue crawl
+                </Button>
               </form>
-              <p className="text-sm text-muted-foreground">
-                Crawls use the latest route config and glossary. You will see deployment updates
-                below after processing.
-              </p>
+              <p className="text-sm text-muted-foreground">{crawlGateNote}</p>
             </CardContent>
           </Card>
         ) : (
@@ -298,6 +323,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
           />
         )}
       </div>
+
     </div>
   );
 }

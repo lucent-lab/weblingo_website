@@ -132,7 +132,8 @@ export function OnboardingForm(props: {
         <CardTitle>Onboarding wizard</CardTitle>
         <CardDescription>
           Provide your source site, pick target languages, and define the subdomain pattern. We will
-          enqueue a crawl immediately after creation.
+          validate the site and seed pages from sitemaps. Activate after domain verification to
+          start crawling.
         </CardDescription>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-1">
@@ -235,7 +236,7 @@ export function OnboardingForm(props: {
                   </Button>
                 }
                 description={
-                  patternEditing ? (
+                  !patternEditing ? (
                     <>
                       We generate this from your source URL. Insert <code>{`{lang}`}</code> where
                       the locale should appear. Preview:{" "}
@@ -284,7 +285,9 @@ export function OnboardingForm(props: {
               <div className="flex items-start gap-3">
                 <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
                 <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">Advanced</CardTitle>
+                  <CardTitle className="text-base font-semibold">
+                    Advanced (can be done later)
+                  </CardTitle>
                   <CardDescription>Optional brand voice and glossary rules.</CardDescription>
                 </div>
               </div>

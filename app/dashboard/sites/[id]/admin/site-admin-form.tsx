@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
@@ -65,8 +65,13 @@ export function SiteAdminForm({
   const [siteProfileNotes, setSiteProfileNotes] = useState(initialSiteProfileNotes);
   const [patternEditing, setPatternEditing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
+  const initialParsedUrl = useMemo(
+    () => parseSourceUrl(initialSourceUrl),
+    [initialSourceUrl],
+  );
   const sourceUrlValid = parsedSourceUrl !== null;
   const showSourceUrlError = sourceUrl.trim().length > 0 && !sourceUrlValid;
   const sourceHost = parsedSourceUrl?.hostname ?? "";
@@ -77,6 +82,19 @@ export function SiteAdminForm({
     extractSubdomainToken(pattern, parsedSourceUrl),
   );
   const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
+  const normalizedInitialUrl = initialParsedUrl?.toString() ?? initialSourceUrl.trim();
+  const normalizedSourceUrl = parsedSourceUrl?.toString() ?? sourceUrl.trim();
+  const sourceUrlChanged =
+    Boolean(normalizedSourceUrl) &&
+    Boolean(normalizedInitialUrl) &&
+    normalizedSourceUrl !== normalizedInitialUrl;
+  const requiresResetConfirm = sourceUrlChanged && sourceUrlValid;
+
+  useEffect(() => {
+    if (!requiresResetConfirm) {
+      setConfirmReset(false);
+    }
+  }, [requiresResetConfirm]);
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
       return "";
@@ -123,8 +141,13 @@ export function SiteAdminForm({
   const sourceUrlRequiredError = showRequiredErrors && !sourceUrl.trim();
   const targetsRequiredError = showRequiredErrors && targets.length === 0;
   const hasInvalidAlias = hasInvalidAliases(aliasesByLang);
+  const resetConfirmationError = requiresResetConfirm && !confirmReset;
   const submitDisabled =
-    targets.length === 0 || !patternIsValid || !sourceUrlValid || hasInvalidAlias;
+    targets.length === 0 ||
+    !patternIsValid ||
+    !sourceUrlValid ||
+    hasInvalidAlias ||
+    resetConfirmationError;
 
   return (
     <Card>
@@ -208,6 +231,30 @@ export function SiteAdminForm({
                 />
               </Field>
             </div>
+            {requiresResetConfirm ? (
+              <Field
+                label="Confirm URL reset"
+                description="Changing the source URL clears pages, translations, and deployments. We'll re-scan sitemaps after verification."
+                error={resetConfirmationError ? "Confirm the reset to continue." : undefined}
+              >
+                <label className="flex items-start gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={confirmReset}
+                    onChange={(event) => setConfirmReset(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <span className="space-y-1">
+                    <span className="block font-medium text-foreground">
+                      I understand this resets site data.
+                    </span>
+                    <span className="block text-muted-foreground">
+                      Pages, translations, and deployments will be removed.
+                    </span>
+                  </span>
+                </label>
+              </Field>
+            ) : null}
             <div className="space-y-4">
               <TargetLanguagePicker
                 targets={targets}
@@ -233,7 +280,7 @@ export function SiteAdminForm({
                   </Button>
                 }
                 description={
-                  patternEditing ? (
+                  !patternEditing ? (
                     <>
                       We generate this from your source URL. Insert <code>{`{lang}`}</code> where
                       the locale should appear. Preview:{" "}

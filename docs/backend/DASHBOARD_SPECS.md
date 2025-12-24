@@ -61,8 +61,8 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `siteProfile` must be a non-empty object with JSON-safe scalar/array/object values (empty strings/arrays rejected).
   - Optional: `localeAliases` map of `{ [targetLang]: "alias" | null }` to override the `{lang}` token per locale (lowercase letters/numbers/hyphens only).
   - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
-- Behavior: creates site + locales + route config, inserts domain records with verification tokens, enqueues crawl.
-- Response `201`: `{ ...site, crawlStatus }`.
+- Behavior: validates `sourceUrl` (HTTP 200), reads robots/sitemaps to seed initial pages, creates site + locales + route config, inserts domain records with verification tokens, and sets the site to `inactive` until activation.
+- Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
 `GET /api/sites` → `{ sites: Site[] }` scoped to account.
 
@@ -73,18 +73,20 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, localeAliases?, status? ("active"|"inactive"), siteProfile? (object|null), maxLocales? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
+  - If `sourceUrl` changes: wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling.
+  - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
 - Response `200`: updated `Site`.
 
 `DELETE /api/sites/:id` → marks site inactive (`204`).
 
 `POST /api/sites/:id/crawl`
 
-- Enqueues crawl for the site’s source URL.
+- Enqueues crawl for the site’s source URL (requires site status `active` and at least one verified domain).
 - Response: `202 { enqueued: true }` or `502 { enqueued: false, error }` if enqueue fails.
 
 `POST /api/sites/:id/pages/:pageId/crawl`
 
-- Enqueues extract for a single page.
+- Enqueues extract for a single page (requires site status `active` and at least one verified domain).
 - Response: `202 { enqueued: true }` or `502 { enqueued: false, error }` if enqueue fails.
 
 ### Domain verification
