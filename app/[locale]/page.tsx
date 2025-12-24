@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
+import { TryForm } from "@/components/try-form";
 import { Button } from "@/components/ui/button";
+import { listSupportedLanguages } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
@@ -30,7 +32,11 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
   if (locale !== rawLocale) {
     notFound();
   }
-  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const hasPreviewConfig =
+    Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
+    Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
+  const supportedLanguages = await listSupportedLanguages();
 
   const featureCards = [
     {
@@ -61,32 +67,56 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
 
   return (
     <div className="min-h-screen bg-background">
-      <section className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-48">
+      <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32">
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-block rounded-full border border-border bg-secondary px-4 py-2">
-            <span className="text-sm font-medium text-secondary-foreground">
-              {t("home.hero.tagline")}
-            </span>
+        <div className="relative mx-auto max-w-6xl">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="text-center lg:text-left">
+              <div className="mb-6 inline-flex items-center rounded-full border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow-sm">
+                {t("home.hero.tagline")}
+              </div>
+              <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
+                {t("home.hero.title")}
+              </h1>
+              <p className="mb-10 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
+                {t("home.hero.description")}
+              </p>
+              <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+                  <Link href={`/${locale}/try`}>
+                    {t("home.hero.cta.primary")}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href={`/${locale}/pricing`}>{t("home.hero.cta.secondary")}</Link>
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">{t("home.hero.trust")}</p>
+            </div>
+            <div className="relative lg:justify-self-end">
+              <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
+              <div className="relative rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur lg:max-w-md">
+                <div className="mb-4 flex items-center">
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    {t("try.header.tagline")}
+                  </span>
+                </div>
+                <h2 className="mb-2 text-lg font-semibold text-foreground">
+                  {t("try.header.title")}
+                </h2>
+                <p className="mb-6 text-sm text-muted-foreground">
+                  {t("try.header.description")}
+                </p>
+                <TryForm
+                  locale={locale}
+                  messages={messages}
+                  disabled={!hasPreviewConfig}
+                  supportedLanguages={supportedLanguages}
+                />
+              </div>
+            </div>
           </div>
-          <h1 className="mb-8 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
-            {t("home.hero.title")}
-          </h1>
-          <p className="mx-auto mb-12 max-w-2xl text-balance text-xl text-muted-foreground leading-relaxed">
-            {t("home.hero.description")}
-          </p>
-          <div className="mb-12 flex flex-col justify-center gap-4 sm:flex-row">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-              <Link href={`/${locale}/try`}>
-                {t("home.hero.cta.primary")}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/pricing`}>{t("home.hero.cta.secondary")}</Link>
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground">{t("home.hero.trust")}</p>
         </div>
       </section>
 
