@@ -74,10 +74,12 @@ export function LanguageTagCombobox({
   const options = useMemo(() => {
     const mapped = supportedLanguages.map((lang) => {
       const label = resolveLanguageName(lang.tag, { fallbackEnglishName: lang.englishName });
+      const keywords = [lang.tag, lang.englishName, label].filter(Boolean);
       return {
         tag: lang.tag,
         label,
-        keywords: [lang.tag, lang.englishName, label].filter(Boolean),
+        keywords,
+        searchValue: keywords.join(" "),
       };
     });
     mapped.sort((a, b) => a.label.localeCompare(b.label, displayLocale, { sensitivity: "base" }));
@@ -126,7 +128,7 @@ export function LanguageTagCombobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.tag}
-                  value={option.tag}
+                  value={option.searchValue}
                   keywords={option.keywords}
                   onSelect={() => {
                     onValueChange(option.tag);
