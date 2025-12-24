@@ -1,13 +1,13 @@
 import Link from "next/link";
+import { Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { Translator } from "@internal/i18n";
 
 const navLinks = [
-  { href: "/pricing#compare", labelKey: "nav.features" },
+  { href: "#features", labelKey: "nav.features" },
   { href: "#how-it-works", labelKey: "nav.how" },
   { href: "/pricing", labelKey: "nav.pricing" },
-  { href: "#faq", labelKey: "nav.faq" },
 ];
 
 type SiteHeaderProps = {
@@ -17,39 +17,32 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ locale, t }: SiteHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-        <Link href={`/${locale}`} className="text-base font-semibold text-foreground">
-          WebLingo
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <Link href={`/${locale}`} className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <Globe className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-bold text-foreground">WebLingo</span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
+        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           {navLinks.map((link) => {
-            const href = `/${locale}${
-              link.href.startsWith("/") || link.href.startsWith("#") ? link.href : `/${link.href}`
-            }`;
+            const href = link.href.startsWith("#")
+              ? `/${locale}${link.href}`
+              : `/${locale}${link.href.startsWith("/") ? link.href : `/${link.href}`}`;
             return (
-              <Link
-                key={link.href}
-                href={href}
-                className="transition hover:text-primary focus-visible:text-primary"
-              >
+              <Link key={link.href} href={href} className="transition hover:text-foreground">
                 {t(link.labelKey)}
               </Link>
             );
           })}
         </nav>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" className="hidden sm:inline-flex">
+        <div className="flex items-center gap-4">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${locale}/login`}>{t("nav.login")}</Link>
+          </Button>
+          <Button asChild size="sm">
             <Link href={`/${locale}/try`}>{t("nav.try")}</Link>
-          </Button>
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href={`/${locale}/pricing`}>{t("nav.start")}</Link>
-          </Button>
-          <Button asChild variant="ghost" className="sm:hidden">
-            <Link href={`/${locale}/try`}>{t("nav.try")}</Link>
-          </Button>
-          <Button asChild className="sm:hidden">
-            <Link href={`/${locale}/pricing`}>{t("nav.start")}</Link>
           </Button>
         </div>
       </div>

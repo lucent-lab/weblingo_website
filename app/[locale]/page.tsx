@@ -1,16 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
-const benefitsCount = [1, 2, 3, 4, 5];
-const planIds = ["starter", "pro", "agency"] as const;
-const faqKeys = ["home.faq.q1", "home.faq.q2", "home.faq.q3", "home.faq.q4", "home.faq.q5"];
+const benefitCardIndexes = [1, 2, 4];
+const benefitIcons = [Globe, Lock, RefreshCcw] as const;
+
+function splitBenefit(text: string) {
+  const separators = [" — ", " —", "—", " - "];
+  for (const separator of separators) {
+    const index = text.indexOf(separator);
+    if (index !== -1) {
+      return {
+        title: text.slice(0, index).trim(),
+        description: text.slice(index + separator.length).trim(),
+      };
+    }
+  }
+  return { title: text, description: "" };
+}
 
 export default async function LocaleHomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -20,23 +32,55 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
   }
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
+  const featureCards = [
+    {
+      title: t("home.features.ai.title"),
+      description: t("home.features.ai.description"),
+      icon: Zap,
+    },
+    {
+      title: t("home.features.sync.title"),
+      description: t("home.features.sync.description"),
+      icon: Cloud,
+    },
+    {
+      title: t("home.features.seo.title"),
+      description: t("home.features.seo.description"),
+      icon: BarChart3,
+    },
+    ...benefitCardIndexes.map((index, idx) => {
+      const benefit = splitBenefit(t(`home.benefits.${index}`));
+      const Icon = benefitIcons[idx] ?? Globe;
+      return {
+        title: benefit.title,
+        description: benefit.description || benefit.title,
+        icon: Icon,
+      };
+    }),
+  ];
+
   return (
-    <div className="bg-background">
-      <section className="relative overflow-hidden pb-24 pt-20">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.15),_transparent_65%)]" />
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 text-center">
-          <Badge variant="secondary" className="mx-auto">
-            {t("home.hero.tagline")}
-          </Badge>
-          <h1 className="text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
+    <div className="min-h-screen bg-background">
+      <section className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-48">
+        <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
+        <div className="relative mx-auto max-w-4xl text-center">
+          <div className="mb-6 inline-block rounded-full border border-border bg-secondary px-4 py-2">
+            <span className="text-sm font-medium text-secondary-foreground">
+              {t("home.hero.tagline")}
+            </span>
+          </div>
+          <h1 className="mb-8 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
             {t("home.hero.title")}
           </h1>
-          <p className="mx-auto max-w-3xl text-base text-muted-foreground sm:text-lg">
+          <p className="mx-auto mb-12 max-w-2xl text-balance text-xl text-muted-foreground leading-relaxed">
             {t("home.hero.description")}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button asChild size="lg">
-              <Link href={`/${locale}/try`}>{t("home.hero.cta.primary")}</Link>
+          <div className="mb-12 flex flex-col justify-center gap-4 sm:flex-row">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+              <Link href={`/${locale}/try`}>
+                {t("home.hero.cta.primary")}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href={`/${locale}/pricing`}>{t("home.hero.cta.secondary")}</Link>
@@ -46,163 +90,102 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
         </div>
       </section>
 
-      <section id="faq" className="bg-background py-20">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 text-center">
-          <h2 className="text-3xl font-semibold text-foreground">{t("home.problem.title")}</h2>
-          <p className="text-base text-muted-foreground">{t("home.problem.description")}</p>
-          <Card className="border-border">
-            <CardContent className="space-y-4 p-8 text-left text-muted-foreground">
-              <p>{t("home.problem.solution")}</p>
-              <Button asChild variant="link" className="px-0 text-primary">
-                <Link href={`/${locale}/docs#how-it-works`}>{t("home.problem.cta")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="border-y border-border bg-muted py-20">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6">
-          <h2 className="text-3xl font-semibold text-foreground text-center">
-            {t("home.howItWorks.title", "How it works")}
+      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
+            {t("home.problem.title")}
           </h2>
-          <ol className="space-y-6">
-            {howItWorksSteps.map((step) => (
-              <li
-                key={step}
-                className="rounded-2xl border border-border bg-background p-6 shadow-sm"
-              >
-                <span className="text-sm font-semibold text-primary">
-                  {t(`home.steps.${step}.title`)}
-                </span>
-                <p className="mt-3 text-base text-muted-foreground">
-                  {t(`home.steps.${step}.description`)}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section id="features" className="bg-background py-20">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 text-center">
-          <h2 className="text-3xl font-semibold text-foreground">{t("home.languages.title")}</h2>
-          <p className="text-base text-muted-foreground">{t("home.languages.body")}</p>
-          <div className="rounded-3xl border border-border bg-muted p-8 text-left shadow-sm">
-            <p className="text-sm text-muted-foreground">{t("home.languages.supportedIntro")}</p>
-            <p className="mt-4 text-sm text-muted-foreground">
-              {t("home.languages.supportedExamples")}
-            </p>
-            <Button asChild variant="link" className="mt-4 px-0 text-primary">
-              <Link href={`/${locale}/docs#languages`}>{t("home.languages.link")}</Link>
-            </Button>
-            <p className="mt-4 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              {t("home.languages.future")}
-            </p>
+          <p className="mb-12 text-lg text-muted-foreground">
+            {t("home.problem.description")}
+          </p>
+          <div className="rounded-lg border border-border bg-card p-8">
+            <p className="mb-6 text-foreground">{t("home.problem.solution")}</p>
+            <Link
+              href={`/${locale}#how-it-works`}
+              className="inline-flex items-center gap-2 font-medium text-primary transition hover:text-primary/80"
+            >
+              {t("home.problem.cta")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="bg-background py-20">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6">
-          <h2 className="text-3xl font-semibold text-foreground text-center">
+      <section id="features" className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="mb-4 text-center text-3xl font-bold text-foreground sm:text-4xl">
             {t("home.benefits.title", "Why WebLingo")}
           </h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            {benefitsCount.map((idx) => (
-              <Card key={idx} className="border-border">
-                <CardContent className="p-6 text-sm text-muted-foreground">
-                  {t(`home.benefits.${idx}`)}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-muted py-20">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 text-center">
-          <h2 className="text-3xl font-semibold text-foreground">{t("home.pricing.title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("home.pricing.note")}</p>
+          <p className="mx-auto mb-16 max-w-2xl text-center text-muted-foreground">
+            {t("home.languages.body")}
+          </p>
           <div className="grid gap-6 md:grid-cols-3">
-            {planIds.map((planId) => {
-              const title = t(`home.pricing.rows.${planId}.title`);
-              const price = t(`home.pricing.rows.${planId}.price`);
-              const core = t(`home.pricing.rows.${planId}.core`);
-              const highlightKeys = [1, 2, 3]
-                .map((index) => `home.pricing.rows.${planId}.highlight${index}`)
-                .map((key) => {
-                  const text = t(key);
-                  return text === key ? null : text;
-                })
-                .filter((text): text is string => Boolean(text));
-              return (
-                <Card key={planId} className="border-border text-left">
-                  <CardHeader>
-                    <CardTitle>{title}</CardTitle>
-                    <CardDescription>{price}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">{core}</p>
-                    {highlightKeys.length > 0 ? (
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        {highlightKeys.map((highlight) => (
-                          <li key={highlight} className="rounded-xl bg-background px-3 py-2">
-                            {highlight}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button asChild size="lg">
-              <Link href={`/${locale}/pricing`}>{t("home.pricing.cta")}</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/pricing#compare`}>{t("pricing.compare.title")}</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-background py-20">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 text-center">
-          <p className="text-sm text-muted-foreground">{t("home.trust.placeholder")}</p>
-        </div>
-      </section>
-
-      <section className="bg-background py-20">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6">
-          <h2 className="text-3xl font-semibold text-foreground text-center">
-            {t("home.faq.title", "FAQ")}
-          </h2>
-          <div className="space-y-6">
-            {faqKeys.map((key) => (
-              <Card key={key} className="border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    {t(`${key}.question`)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{t(`${key}.answer`)}</p>
-                </CardContent>
-              </Card>
+            {featureCards.map((feature, index) => (
+              <div
+                key={`${feature.title}-${index}`}
+                className="rounded-lg border border-border bg-card p-6 transition hover:border-primary/50"
+              >
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <feature.icon className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 text-lg font-bold text-foreground">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-t border-border bg-background pb-24 pt-20">
-        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 px-6 text-center">
-          <h2 className="text-3xl font-semibold text-foreground">{t("home.final.title")}</h2>
-          <p className="text-base text-muted-foreground">{t("home.final.subtitle")}</p>
-          <Button asChild size="lg">
-            <Link href={`/${locale}/try`}>{t("home.final.cta")}</Link>
+      <section
+        id="how-it-works"
+        className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
+      >
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-16 text-center text-3xl font-bold text-foreground sm:text-4xl">
+            {t("home.howItWorks.title", "How it works")}
+          </h2>
+          <div className="space-y-8">
+            {howItWorksSteps.map((step) => (
+              <div key={step} className="flex gap-6">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
+                  {step}
+                </div>
+                <div className="pt-1">
+                  <h3 className="mb-2 text-lg font-bold text-foreground">
+                    {t(`home.steps.${step}.title`)}
+                  </h3>
+                  <p className="text-muted-foreground">{t(`home.steps.${step}.description`)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
+            {t("home.languages.title")}
+          </h2>
+          <p className="mb-8 text-muted-foreground">{t("home.languages.body")}</p>
+          <p className="text-sm text-muted-foreground">{t("home.languages.supportedIntro")}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("home.languages.supportedExamples")}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="mb-6 text-4xl font-bold text-foreground sm:text-5xl">
+            {t("home.final.title")}
+          </h2>
+          <p className="mb-12 text-lg text-muted-foreground">{t("home.final.subtitle")}</p>
+          <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+            <Link href={`/${locale}/try`}>
+              {t("home.final.cta")}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </Button>
         </div>
       </section>
