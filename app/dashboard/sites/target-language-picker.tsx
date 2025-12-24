@@ -20,6 +20,7 @@ type TargetLanguagePickerProps = {
   maxLocales: number | null;
   disabled?: boolean;
   error?: string;
+  showAliasHelp?: boolean;
 };
 
 export function TargetLanguagePicker({
@@ -32,6 +33,7 @@ export function TargetLanguagePicker({
   maxLocales,
   disabled = false,
   error,
+  showAliasHelp = true,
 }: TargetLanguagePickerProps) {
   const [targetPickerValue, setTargetPickerValue] = useState("");
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
@@ -190,23 +192,23 @@ export function TargetLanguagePicker({
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
       {limitMessage ? <p className="text-xs text-destructive">{limitMessage}</p> : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <LanguageTagCombobox
-          className={cn(
-            "sm:max-w-xs",
-            showError ? "border-destructive focus-visible:ring-destructive" : "",
-          )}
-          placeholder={
-            languageLimitReached ? "All language slots used" : "Add a target language..."
-          }
-          value={targetPickerValue}
-          onValueChange={handlePickTarget}
-          supportedLanguages={supportedLanguages}
-          displayLocale={displayLocale}
-          invalid={showError}
-          disabled={disabled || languageLimitReached}
-        />
-      </div>
+      {!languageLimitReached ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <LanguageTagCombobox
+            className={cn(
+              "sm:max-w-xs",
+              showError ? "border-destructive focus-visible:ring-destructive" : "",
+            )}
+            placeholder="Add a target language..."
+            value={targetPickerValue}
+            onValueChange={handlePickTarget}
+            supportedLanguages={supportedLanguages}
+            displayLocale={displayLocale}
+            invalid={showError}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
 
       {supportedLanguages.length ? (
         languageLimitReached && maxLocales !== null ? (
@@ -220,7 +222,7 @@ export function TargetLanguagePicker({
         </p>
       )}
 
-      {hasAliases ? (
+      {showAliasHelp && hasAliases ? (
         <p className="text-xs text-muted-foreground">
           Aliases replace <code>{`{lang}`}</code> in the URL pattern.
         </p>

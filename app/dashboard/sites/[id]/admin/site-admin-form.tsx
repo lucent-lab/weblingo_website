@@ -266,6 +266,7 @@ export function SiteAdminForm({
                   displayLocale={displayLocale}
                   maxLocales={maxLocales}
                   error={targetsRequiredError ? "Pick at least one target language." : undefined}
+                  showAliasHelp={patternEditing}
                 />
               </Field>
               <Field

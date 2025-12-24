@@ -17,8 +17,7 @@ import {
 
 import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -106,15 +105,7 @@ export function OnboardingForm(props: {
   return (
     <Card>
       <CardHeader className="space-y-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-xl">Site setup</CardTitle>
-            <CardDescription>Configure your source site and translation languages.</CardDescription>
-          </div>
-          <Badge variant="secondary" className="shrink-0">
-            Language limit: {props.maxLocales === null ? "Unlimited" : props.maxLocales}
-          </Badge>
-        </div>
+        <CardTitle className="text-xl">Site setup</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-6">
@@ -152,7 +143,6 @@ export function OnboardingForm(props: {
               <Field
                 label="Source language"
                 htmlFor="sourceLang"
-                description="Examples: en, fr-CA, pt-BR."
                 error={sourceLangRequiredError ? "Select a source language." : undefined}
               >
                 <LanguageTagCombobox
@@ -179,6 +169,7 @@ export function OnboardingForm(props: {
                   displayLocale={props.displayLocale}
                   maxLocales={props.maxLocales}
                   error={targetsRequiredError ? "Pick at least one target language." : undefined}
+                  showAliasHelp={patternEditing}
                 />
               </Field>
               <Field
