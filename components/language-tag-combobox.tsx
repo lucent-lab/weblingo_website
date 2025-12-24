@@ -56,6 +56,7 @@ export function LanguageTagCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const skipNextFocusOpen = useRef(false);
 
   const value = rawValue.trim();
 
@@ -96,6 +97,14 @@ export function LanguageTagCombobox({
     return label === value ? value : `${label} (${value})`;
   }, [placeholder, resolveLanguageName, supportedByTag, value]);
 
+  const closePopover = (options: { clearQuery?: boolean } = {}) => {
+    skipNextFocusOpen.current = true;
+    setOpen(false);
+    if (options.clearQuery) {
+      setQuery("");
+    }
+  };
+
   useEffect(() => {
     if (!open) {
       return;
@@ -109,12 +118,20 @@ export function LanguageTagCombobox({
 
   const handleTriggerFocus = () => {
     if (!disabled) {
+      if (skipNextFocusOpen.current) {
+        skipNextFocusOpen.current = false;
+        return;
+      }
       setOpen(true);
     }
   };
 
   const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) {
+      return;
+    }
+    if (event.key === "Escape") {
+      closePopover({ clearQuery: true });
       return;
     }
     if (event.key.length === 1 || event.key === "Backspace") {
@@ -124,8 +141,27 @@ export function LanguageTagCombobox({
     }
   };
 
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePopover({ clearQuery: true });
+      return;
+    }
+    if (event.key === "Tab") {
+      closePopover();
+    }
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      skipNextFocusOpen.current = true;
+      setQuery("");
+    }
+    setOpen(nextOpen);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <PopoverTrigger asChild>
         <Button
@@ -157,6 +193,7 @@ export function LanguageTagCombobox({
             placeholder={searchPlaceholder}
             value={query}
             onValueChange={setQuery}
+            onKeyDown={handleInputKeyDown}
           />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
@@ -168,8 +205,7 @@ export function LanguageTagCombobox({
                   keywords={option.keywords}
                   onSelect={() => {
                     onValueChange(option.tag);
-                    setOpen(false);
-                    setQuery("");
+                    closePopover({ clearQuery: true });
                   }}
                 >
                   <span className="truncate">{option.label}</span>

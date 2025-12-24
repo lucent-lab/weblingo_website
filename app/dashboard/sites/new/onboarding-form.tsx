@@ -256,8 +256,8 @@ export function OnboardingForm(props: {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                We discover your site right away. Translations start after activation, and the next
-                screen includes setup instructions.
+                We discover your site right away. Translations start after activation, and the
+                next screen provides activation instructions.
               </AlertDescription>
             </Alert>
             <Alert>
