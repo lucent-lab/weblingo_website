@@ -17,7 +17,6 @@ export default async function NewSitePage() {
   const auth = await requireDashboardAuth();
   const billingBlocked = !auth.mutationsAllowed;
   const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked;
-  const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && !billingBlocked;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   if (!canCreateSite) {
     return (
@@ -59,8 +58,6 @@ export default async function NewSitePage() {
         maxLocales={maxLocales}
         supportedLanguages={supportedLanguages}
         displayLocale={displayLocale}
-        canGlossary={canGlossary}
-        pricingPath={pricingPath}
       />
     </div>
   );

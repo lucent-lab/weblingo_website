@@ -2,12 +2,10 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
 
-import { GlossaryTable } from "../glossary-table";
 import { TargetLanguagePicker } from "../target-language-picker";
 import {
   buildLocaleAliases,
@@ -21,9 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { GlossaryEntry, SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = {
   ok: false,
@@ -35,8 +32,6 @@ export function OnboardingForm(props: {
   maxLocales: number | null;
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
-  canGlossary: boolean;
-  pricingPath: string;
 }) {
   const [state, formAction] = useActionState(createSiteAction, initialState);
   const router = useRouter();
@@ -46,10 +41,6 @@ export function OnboardingForm(props: {
   const [sourceUrl, setSourceUrl] = useState("");
   const [subdomainToken, setSubdomainToken] = useState("{lang}");
   const [patternEditing, setPatternEditing] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [brandVoice, setBrandVoice] = useState("");
-  const [siteProfileNotes, setSiteProfileNotes] = useState("");
-  const [glossaryEntries, setGlossaryEntries] = useState<GlossaryEntry[]>([]);
 
   useEffect(() => {
     const siteId = state.meta?.siteId;
@@ -97,23 +88,6 @@ export function OnboardingForm(props: {
       : subdomainPattern;
   }, [localeAliases, subdomainPattern, targets]);
   const subdomainLabelFor = patternEditing ? "subdomainToken" : undefined;
-  const profilePayload = useMemo(() => {
-    const payload: Record<string, unknown> = {};
-    const trimmedVoice = brandVoice.trim();
-    if (trimmedVoice) {
-      payload.brandVoice = trimmedVoice;
-    }
-    const trimmedNotes = siteProfileNotes.trim();
-    if (trimmedNotes) {
-      payload.description = trimmedNotes;
-    }
-    return Object.keys(payload).length > 0 ? payload : null;
-  }, [brandVoice, siteProfileNotes]);
-  const profileJson = useMemo(
-    () => (profilePayload ? JSON.stringify(profilePayload) : ""),
-    [profilePayload],
-  );
-  const glossaryEntriesJson = useMemo(() => JSON.stringify(glossaryEntries), [glossaryEntries]);
   const showRequiredErrors = state.message === REQUIRED_FIELDS_MESSAGE;
   const sourceUrlRequiredError = showRequiredErrors && !sourceUrl.trim();
   const sourceLangRequiredError = showRequiredErrors && !sourceLang.trim();
@@ -147,8 +121,6 @@ export function OnboardingForm(props: {
       <CardContent>
         <form action={formAction} className="space-y-8">
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
-          <input name="siteProfile" type="hidden" value={profileJson} />
-          <input name="glossaryEntries" type="hidden" value={glossaryEntriesJson} />
           <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
           <section className="space-y-5">
@@ -279,72 +251,10 @@ export function OnboardingForm(props: {
               </Field>
             </div>
           </section>
-
-          <section className="space-y-3 border-t border-border/60 pt-6">
-            <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-              <div className="flex items-start gap-3">
-                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">
-                    Advanced (can be done later)
-                  </CardTitle>
-                  <CardDescription>Optional brand voice and glossary rules.</CardDescription>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setAdvancedOpen((current) => !current)}
-              >
-                {advancedOpen ? "Hide" : "Show"}
-              </Button>
-            </div>
-            {advancedOpen ? (
-              <div className="space-y-6">
-                <Field
-                  label="Brand voice (optional)"
-                  htmlFor="brandVoice"
-                  description="Optional. Leave blank if you do not want tone guidance."
-                >
-                  <Input
-                    id="brandVoice"
-                    name="brandVoice"
-                    value={brandVoice}
-                    onChange={(event) => setBrandVoice(event.target.value)}
-                    placeholder="Concise, confident, friendly"
-                  />
-                </Field>
-                <Field
-                  label="Site profile (optional)"
-                  htmlFor="siteProfileNotes"
-                  description="Optional context for translators. This does not override glossary rules."
-                >
-                  <Textarea
-                    id="siteProfileNotes"
-                    name="siteProfileNotes"
-                    value={siteProfileNotes}
-                    onChange={(event) => setSiteProfileNotes(event.target.value)}
-                    placeholder="Examples: B2B SaaS for finance teams. Prefer formal tone. Keep product names untranslated."
-                  />
-                </Field>
-                {props.canGlossary ? (
-                  <GlossaryTable
-                    targetLangs={targetLangs}
-                    initialEntries={[]}
-                    onEntriesChange={setGlossaryEntries}
-                  />
-                ) : (
-                  <div className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-                    Glossary editing is locked on your plan.{" "}
-                    <Button asChild variant="link" size="sm">
-                      <Link href={props.pricingPath}>Upgrade to unlock</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </section>
+          <p className="text-sm text-muted-foreground">
+            Advanced settings (brand voice, site profile, glossary) can be configured later in site
+            settings.
+          </p>
 
           {state.message ? (
             <div
@@ -361,8 +271,8 @@ export function OnboardingForm(props: {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              We will create domains and enqueue a crawl right after you submit. You can verify DNS
-              and update glossary from the site detail view.
+              We will validate the source URL, create domains, and seed the initial page list. Once
+              your domain is verified, activate the site to start crawling.
             </p>
             <SubmitButton disabled={submitDisabled} />
           </div>
