@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
+import { AlertCircle, Info } from "lucide-react";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
 
@@ -16,9 +17,11 @@ import {
 
 import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
@@ -102,23 +105,23 @@ export function OnboardingForm(props: {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Site setup</CardTitle>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-muted px-2 py-1">
-            Language limit:{" "}
-            <span className="font-semibold text-foreground">
-              {props.maxLocales === null ? "Unlimited" : props.maxLocales}
-            </span>
-          </span>
+      <CardHeader className="space-y-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-xl">Site setup</CardTitle>
+            <CardDescription>Configure your source site and translation languages.</CardDescription>
+          </div>
+          <Badge variant="secondary" className="shrink-0">
+            Language limit: {props.maxLocales === null ? "Unlimited" : props.maxLocales}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-8">
+        <form action={formAction} className="space-y-6">
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
-          <section className="space-y-6">
+          <section className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <Field
                 label="Source URL"
@@ -140,9 +143,10 @@ export function OnboardingForm(props: {
                   value={sourceUrl}
                   onChange={(event) => setSourceUrl(event.target.value)}
                   aria-invalid={sourceUrlRequiredError || showSourceUrlError}
-                  className={
-                    sourceUrlRequiredError ? "border-destructive focus-visible:ring-destructive" : ""
-                  }
+                  className={cn(
+                    "font-mono text-sm",
+                    sourceUrlRequiredError ? "border-destructive focus-visible:ring-destructive" : "",
+                  )}
                 />
               </Field>
               <Field
@@ -165,16 +169,18 @@ export function OnboardingForm(props: {
               </Field>
             </div>
             <div className="space-y-4">
-              <TargetLanguagePicker
-                targets={targets}
-                aliases={aliasesByLang}
-                onTargetsChange={setTargets}
-                onAliasesChange={setAliasesByLang}
-                supportedLanguages={props.supportedLanguages}
-                displayLocale={props.displayLocale}
-                maxLocales={props.maxLocales}
-                error={targetsRequiredError ? "Pick at least one target language." : undefined}
-              />
+              <Field label="Target languages">
+                <TargetLanguagePicker
+                  targets={targets}
+                  aliases={aliasesByLang}
+                  onTargetsChange={setTargets}
+                  onAliasesChange={setAliasesByLang}
+                  supportedLanguages={props.supportedLanguages}
+                  displayLocale={props.displayLocale}
+                  maxLocales={props.maxLocales}
+                  error={targetsRequiredError ? "Pick at least one target language." : undefined}
+                />
+              </Field>
               <Field
                 label="Subdomain pattern"
                 htmlFor={subdomainLabelFor}
@@ -193,12 +199,7 @@ export function OnboardingForm(props: {
                     <>
                       Insert <code>{`{lang}`}</code> where the locale should appear.
                     </>
-                  ) : (
-                    <>
-                      Preview:{" "}
-                      <span className="font-semibold text-foreground">{patternPreview || "-"}</span>
-                    </>
-                  )
+                  ) : null
                 }
                 error={
                   showPatternError
@@ -226,18 +227,36 @@ export function OnboardingForm(props: {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-                      {patternPreview || "Enter a source URL to generate a preview."}
-                    </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm">
+                    {patternPreview ? (
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                        <div className="font-mono text-sm text-foreground">{patternPreview}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Enter a source URL to generate a preview.
+                      </span>
+                    )}
                   </div>
                 )}
               </Field>
             </div>
           </section>
-          <p className="text-sm text-muted-foreground">
-            Advanced settings can be configured later in site settings.
-          </p>
+          <div className="grid gap-3">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Advanced settings can be configured later in site settings.
+              </AlertDescription>
+            </Alert>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                We validate the URL and seed pages. Activate after domain verification.
+              </AlertDescription>
+            </Alert>
+          </div>
 
           {state.message ? (
             <div
@@ -252,10 +271,7 @@ export function OnboardingForm(props: {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              We validate the URL and seed pages. Activate after domain verification.
-            </p>
+          <div className="flex justify-end">
             <SubmitButton disabled={submitDisabled} />
           </div>
         </form>

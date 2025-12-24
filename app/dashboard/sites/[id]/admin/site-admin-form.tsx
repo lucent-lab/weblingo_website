@@ -256,16 +256,18 @@ export function SiteAdminForm({
               </Field>
             ) : null}
             <div className="space-y-4">
-              <TargetLanguagePicker
-                targets={targets}
-                aliases={aliasesByLang}
-                onTargetsChange={setTargets}
-                onAliasesChange={setAliasesByLang}
-                supportedLanguages={supportedLanguages}
-                displayLocale={displayLocale}
-                maxLocales={maxLocales}
-                error={targetsRequiredError ? "Pick at least one target language." : undefined}
-              />
+              <Field label="Target languages">
+                <TargetLanguagePicker
+                  targets={targets}
+                  aliases={aliasesByLang}
+                  onTargetsChange={setTargets}
+                  onAliasesChange={setAliasesByLang}
+                  supportedLanguages={supportedLanguages}
+                  displayLocale={displayLocale}
+                  maxLocales={maxLocales}
+                  error={targetsRequiredError ? "Pick at least one target language." : undefined}
+                />
+              </Field>
               <Field
                 label="Subdomain pattern"
                 htmlFor={subdomainLabelFor}
@@ -280,13 +282,11 @@ export function SiteAdminForm({
                   </Button>
                 }
                 description={
-                  !patternEditing ? (
+                  patternEditing ? (
                     <>
-                      We generate this from your source URL. Insert <code>{`{lang}`}</code> where
-                      the locale should appear. Preview:{" "}
-                      <span className="font-semibold text-foreground">{patternPreview || "-"}</span>
+                      Insert <code>{`{lang}`}</code> where the locale should appear.
                     </>
-                  ) : undefined
+                  ) : null
                 }
                 error={
                   showPatternError
@@ -314,10 +314,17 @@ export function SiteAdminForm({
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-                      {patternPreview || "Enter a source URL to generate a preview."}
-                    </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm">
+                    {patternPreview ? (
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                        <div className="font-mono text-sm text-foreground">{patternPreview}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Enter a source URL to generate a preview.
+                      </span>
+                    )}
                   </div>
                 )}
               </Field>

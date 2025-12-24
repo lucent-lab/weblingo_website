@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSites } from "@internal/dashboard/webhooks";
@@ -26,11 +28,35 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const isAgency = auth.actorAccount?.planType === "agency";
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const navItems = [
-    { href: "/dashboard", label: "Overview" },
-    ...(isAgency ? [{ href: "/dashboard/agency", label: "Agency overview" }] : []),
-    ...(isAgency ? [{ href: "/dashboard/agency/customers", label: "Customers" }] : []),
-    { href: "/dashboard/sites", label: "Sites" },
-    { href: "/dashboard/developer-tools", label: "Developer tools" },
+    {
+      href: "/dashboard",
+      label: "Overview",
+      icon: <LayoutDashboard className="h-4 w-4" />,
+    },
+    ...(isAgency
+      ? [
+          {
+            href: "/dashboard/agency",
+            label: "Agency overview",
+            icon: <Briefcase className="h-4 w-4" />,
+          },
+        ]
+      : []),
+    ...(isAgency
+      ? [
+          {
+            href: "/dashboard/agency/customers",
+            label: "Customers",
+            icon: <Users className="h-4 w-4" />,
+          },
+        ]
+      : []),
+    { href: "/dashboard/sites", label: "Sites", icon: <Globe className="h-4 w-4" /> },
+    {
+      href: "/dashboard/developer-tools",
+      label: "Developer tools",
+      icon: <Wrench className="h-4 w-4" />,
+    },
   ];
 
   const workspaceOptions = buildWorkspaceOptions(auth);
@@ -40,23 +66,24 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const maxDailyRecrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const manualCrawlRemainingLabel =
     maxDailyRecrawls === null ? "Unlimited" : String(maxDailyRecrawls);
+  const planLabel = auth.account?.planType ?? "unknown";
+  const rawStatusLabel = auth.account?.planStatus ?? "unknown";
+  const statusLabel = rawStatusLabel.replace("_", " ");
 
-  let usageBadge: { label: string; helper?: string } | null = null;
+  let sitesUsage: { value: string; helper?: string } | null = null;
   try {
     if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {
       const summary = auth.agencyCustomers.summary;
-      usageBadge = {
-        label: `Sites: ${summary.totalActiveSites} / ${
-          summary.maxSites === null ? "Unlimited" : summary.maxSites
-        }`,
+      sitesUsage = {
+        value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
         helper: "Agency usage",
       };
     } else {
       const sites = await listSites(auth.webhooksAuth!);
       const activeSites = sites.filter((site) => site.status === "active").length;
       const maxSites = auth.account?.featureFlags.maxSites ?? null;
-      usageBadge = {
-        label: `Sites: ${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
+      sitesUsage = {
+        value: `${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
       };
     }
   } catch (error) {
@@ -67,49 +94,59 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   return (
     <div className="min-h-screen bg-muted/30 text-foreground">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 lg:px-10">
-        <header className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">WebLingo Dashboard</p>
-            <h1 className="text-3xl font-semibold">Manage your translated sites</h1>
-            <p className="text-sm text-muted-foreground">
-              Onboard new sites, monitor deployments, and fine-tune translations.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline">Plan: {auth.account?.planType ?? "unknown"}</Badge>
-              <Badge variant="outline">Status: {auth.account?.planStatus ?? "unknown"}</Badge>
-              {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
-                <Badge variant="outline">
-                  Agency status: {auth.actorAccount.planStatus ?? "unknown"}
-                </Badge>
-              ) : null}
-              {auth.account ? (
-                <>
-                  <Badge variant="outline">
-                    Manual site crawls remaining: {manualCrawlRemainingLabel}
+        <header className="space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-primary">
+                <span>WebLingo Dashboard</span>
+                {auth.actingAsCustomer ? (
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Acting as {subjectLabel}
                   </Badge>
-                  <Badge variant="outline">
-                    Manual page crawls remaining: {manualCrawlRemainingLabel}
-                  </Badge>
-                </>
-              ) : null}
-              {usageBadge ? <Badge variant="outline">{usageBadge.label}</Badge> : null}
-              {auth.actingAsCustomer ? (
-                <Badge className="bg-primary/10 text-primary">Acting as {subjectLabel}</Badge>
-              ) : null}
+                ) : null}
+              </div>
+              <h1 className="text-balance text-3xl font-semibold">Manage your translated sites</h1>
+              <p className="text-sm text-muted-foreground">
+                Onboard new sites, monitor deployments, and fine-tune translations.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
+              <div className="flex flex-col">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Signed in
+                </span>
+                <span className="text-sm font-medium">{email}</span>
+              </div>
+              <form action={logout}>
+                <Button size="sm" variant="outline" type="submit">
+                  Sign out
+                </Button>
+              </form>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
-            <div className="flex flex-col">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Signed in
-              </span>
-              <span className="text-sm font-medium">{email}</span>
-            </div>
-            <form action={logout}>
-              <Button size="sm" variant="outline" type="submit">
-                Sign out
-              </Button>
-            </form>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard label="Plan" value={planLabel} badgeVariant="secondary" />
+            <StatCard
+              label="Status"
+              value={statusLabel}
+              badgeVariant={resolveStatusVariant(rawStatusLabel)}
+            />
+            <StatCard
+              label="Manual site crawls"
+              value={`${manualCrawlRemainingLabel} remaining`}
+              badgeVariant="outline"
+            />
+            <StatCard
+              label="Manual page crawls"
+              value={`${manualCrawlRemainingLabel} remaining`}
+              badgeVariant="outline"
+            />
+            <StatCard
+              label="Sites"
+              value={sitesUsage?.value ?? "—"}
+              helper={sitesUsage?.helper}
+              badgeVariant="outline"
+            />
           </div>
         </header>
 
@@ -141,9 +178,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 />
               </div>
             ) : null}
-            <div className="mt-6 space-y-1 rounded-md bg-muted/70 p-3 text-xs text-muted-foreground">
+            <div className="mt-6 space-y-2 rounded-md bg-muted/70 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground">Need help?</p>
               <p>Check DNS instructions on each domain or email support@weblingo.com.</p>
+              <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
+                <Link href="mailto:support@weblingo.com">Get support</Link>
+              </Button>
             </div>
           </aside>
 
@@ -210,4 +250,42 @@ function resolveBillingBanner(auth: DashboardAuth): { message: string; ctaLabel:
     message: `Your plan is ${status}. Actions that change data are restricted until billing is updated.`,
     ctaLabel: "Update billing",
   };
+}
+
+type StatBadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+function resolveStatusVariant(status: string): StatBadgeVariant {
+  if (status === "active") {
+    return "default";
+  }
+  if (status === "past_due" || status === "cancelled") {
+    return "destructive";
+  }
+  return "outline";
+}
+
+function StatCard({
+  label,
+  value,
+  helper,
+  badgeVariant = "secondary",
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  badgeVariant?: StatBadgeVariant;
+}) {
+  return (
+    <Card className="border-border/70 bg-background">
+      <div className="space-y-2 p-4">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <Badge variant={badgeVariant} className="w-fit capitalize">
+          {value}
+        </Badge>
+        {helper ? <p className="text-xs text-muted-foreground">{helper}</p> : null}
+      </div>
+    </Card>
+  );
 }

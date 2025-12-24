@@ -49,8 +49,8 @@ export default async function NewSitePage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-2xl font-semibold">Add a new site</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-balance text-2xl font-semibold">Add a new site</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Guided setup to capture your source URL, language settings, and domain pattern.
         </p>
       </div>
