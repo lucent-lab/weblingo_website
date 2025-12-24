@@ -28,6 +28,7 @@ import {
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
+import { DashboardTitleSetter } from "../../_components/dashboard-title-context";
 
 type SitePageProps = {
   params: { id: string };
@@ -99,6 +100,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
 
   return (
     <div className="space-y-8">
+      <DashboardTitleSetter title={site.sourceUrl} />
       {actionErrorMessage ? (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {actionErrorMessage}{" "}

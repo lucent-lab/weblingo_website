@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
+import { DashboardHeaderTitle } from "./_components/dashboard-header-title";
+import { DashboardTitleProvider } from "./_components/dashboard-title-context";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +71,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       icon: <Wrench className="h-4 w-4" />,
     },
   ];
+  const navTitleItems = navItems.map(({ href, label }) => ({ href, label }));
 
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =
@@ -77,9 +80,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const maxDailyRecrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const manualCrawlRemainingLabel =
     maxDailyRecrawls === null ? "Unlimited" : String(maxDailyRecrawls);
+  const manualCrawlDisplay =
+    maxDailyRecrawls === null ? "Unlimited" : `${manualCrawlRemainingLabel} left`;
   const planLabel = auth.account?.planType ?? "unknown";
   const rawStatusLabel = auth.account?.planStatus ?? "unknown";
   const statusLabel = rawStatusLabel.replace("_", " ");
+  const statusTone = resolveStatusTone(rawStatusLabel);
 
   let sitesUsage: { value: string; helper?: string } | null = null;
   try {
@@ -105,8 +111,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const teamSwitcherDisabled = workspaceOptions.length <= 1;
 
   return (
-    <SidebarProvider defaultOpen>
-      <Sidebar collapsible="icon">
+    <DashboardTitleProvider>
+      <SidebarProvider defaultOpen>
+        <Sidebar collapsible="icon">
         <SidebarHeader className="gap-4">
           <div className="flex items-center gap-2 px-2 pt-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pt-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -154,82 +161,90 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </Button>
           </div>
         </SidebarFooter>
-      </Sidebar>
+        </Sidebar>
 
-      <SidebarInset className="bg-muted/30">
-        <header className="border-b bg-background">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6 lg:px-10">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-primary">
+        <SidebarInset className="bg-muted/30">
+          <header className="border-b bg-background">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-10">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
                   <SidebarTrigger className="shrink-0" />
-                  <span>WebLingo Dashboard</span>
+                  <div className="hidden h-5 w-px bg-border sm:block" />
+                  <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
+                    <span className="flex items-center gap-1">
+                      <span className="text-muted-foreground">Plan</span>
+                      <span className="text-foreground">{planLabel}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-muted-foreground">Status</span>
+                      <span className={statusTone}>{statusLabel}</span>
+                    </span>
+                    {auth.account ? (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Site crawls</span>
+                          <span className="text-foreground">{manualCrawlDisplay}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Page crawls</span>
+                          <span className="text-foreground">{manualCrawlDisplay}</span>
+                        </span>
+                      </>
+                    ) : null}
+                    <span className="flex items-center gap-1" title={sitesUsage?.helper}>
+                      <span className="text-muted-foreground">Sites</span>
+                      <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
+                    </span>
+                  </nav>
                   {auth.actingAsCustomer ? (
                     <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                       Acting as {subjectLabel}
                     </Badge>
                   ) : null}
+                  {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                      Agency status: {auth.actorAccount.planStatus ?? "unknown"}
+                    </Badge>
+                  ) : null}
                 </div>
-                <h1 className="text-balance text-3xl font-semibold">
-                  Manage your translated sites
-                </h1>
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Signed in
+                    </span>
+                    <span className="text-sm font-medium">{email}</span>
+                  </div>
+                  <form action={logout}>
+                    <Button size="sm" variant="outline" type="submit">
+                      Sign out
+                    </Button>
+                  </form>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <DashboardHeaderTitle items={navTitleItems} />
                 <p className="text-sm text-muted-foreground">
                   Onboard new sites, monitor deployments, and fine-tune translations.
                 </p>
               </div>
-              <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
-                <div className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Signed in
-                  </span>
-                  <span className="text-sm font-medium">{email}</span>
-                </div>
-                <form action={logout}>
-                  <Button size="sm" variant="outline" type="submit">
-                    Sign out
-                  </Button>
-                </form>
+            </div>
+          </header>
+
+          <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
+            {billingBanner ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
+                <p>{billingBanner.message}</p>
+                <Button asChild size="sm" variant="secondary">
+                  <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
+                </Button>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline">Plan: {planLabel}</Badge>
-              <Badge variant={resolveStatusVariant(rawStatusLabel)}>Status: {statusLabel}</Badge>
-              {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
-                <Badge variant="outline">
-                  Agency status: {auth.actorAccount.planStatus ?? "unknown"}
-                </Badge>
-              ) : null}
-              {auth.account ? (
-                <>
-                  <Badge variant="outline">
-                    Manual site crawls remaining: {manualCrawlRemainingLabel}
-                  </Badge>
-                  <Badge variant="outline">
-                    Manual page crawls remaining: {manualCrawlRemainingLabel}
-                  </Badge>
-                </>
-              ) : null}
-              <Badge variant="outline" title={sitesUsage?.helper}>
-                Sites: {sitesUsage?.value ?? "—"}
-              </Badge>
-            </div>
-          </div>
-        </header>
+            ) : null}
 
-        <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
-          {billingBanner ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
-              <p>{billingBanner.message}</p>
-              <Button asChild size="sm" variant="secondary">
-                <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
-              </Button>
-            </div>
-          ) : null}
-
-          {children}
-        </section>
-      </SidebarInset>
-    </SidebarProvider>
+            {children}
+          </section>
+        </SidebarInset>
+      </SidebarProvider>
+    </DashboardTitleProvider>
   );
 }
 
@@ -291,14 +306,12 @@ function resolveBillingBanner(auth: DashboardAuth): { message: string; ctaLabel:
   };
 }
 
-type StatusBadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
-function resolveStatusVariant(status: string): StatusBadgeVariant {
+function resolveStatusTone(status: string): string {
   if (status === "active") {
-    return "default";
+    return "text-emerald-600";
   }
   if (status === "past_due" || status === "cancelled") {
-    return "destructive";
+    return "text-destructive";
   }
-  return "outline";
+  return "text-muted-foreground";
 }
