@@ -234,22 +234,6 @@ export function OnboardingForm(props: {
               </Field>
             </div>
           </section>
-          <div className="grid gap-3">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Advanced settings can be configured later in site settings.
-              </AlertDescription>
-            </Alert>
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                We discover your site right away. Translations start after activation, and the next
-                screen includes setup instructions.
-              </AlertDescription>
-            </Alert>
-          </div>
-
           {state.message ? (
             <div
               className={cn(
@@ -265,6 +249,22 @@ export function OnboardingForm(props: {
 
           <div className="flex justify-end">
             <SubmitButton disabled={submitDisabled} />
+          </div>
+
+          <div className="grid gap-3">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                We discover your site right away. Translations start after activation, and the next
+                screen includes setup instructions.
+              </AlertDescription>
+            </Alert>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Advanced settings can be configured later in site settings.
+              </AlertDescription>
+            </Alert>
           </div>
         </form>
       </CardContent>
