@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Globe } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   SidebarMenu,
@@ -58,14 +58,9 @@ type SiteNavItemProps = {
 function SiteNavItem({ site, pathname }: SiteNavItemProps) {
   const baseHref = `/dashboard/sites/${site.id}`;
   const isActive = Boolean(pathname && (pathname === baseHref || pathname.startsWith(`${baseHref}/`)));
-  const [open, setOpen] = useState(isActive);
+  const [manualOpen, setManualOpen] = useState(false);
+  const open = isActive || manualOpen;
   const menuId = `site-nav-${site.id}`;
-
-  useEffect(() => {
-    if (isActive) {
-      setOpen(true);
-    }
-  }, [isActive]);
 
   const subItems = [
     { href: baseHref, label: "Configuration" },
@@ -78,7 +73,7 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
     <SidebarMenuItem>
       <SidebarMenuButton
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => setManualOpen((prev) => (isActive ? true : !prev))}
         isActive={isActive}
         aria-expanded={open}
         aria-controls={menuId}

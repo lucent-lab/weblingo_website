@@ -310,7 +310,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
           ) : null}
           {site.status === "inactive" && slotCheckUnavailable ? (
             <p className="text-xs text-muted-foreground">
-              We could not verify slot availability right now. We'll validate when you enable
+              We could not verify slot availability right now. We will validate when you enable
               localization.
             </p>
           ) : null}

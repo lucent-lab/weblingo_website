@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
@@ -91,11 +91,6 @@ export function SiteAdminForm({
     normalizedSourceUrl !== normalizedInitialUrl;
   const requiresResetConfirm = sourceUrlChanged && sourceUrlValid;
 
-  useEffect(() => {
-    if (!requiresResetConfirm) {
-      setConfirmReset(false);
-    }
-  }, [requiresResetConfirm]);
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
       return "";
@@ -204,10 +199,15 @@ export function SiteAdminForm({
                   id="sourceUrl"
                   name="sourceUrl"
                   placeholder="https://www.example.com"
-                  type="url"
-                  required
-                  value={sourceUrl}
-                  onChange={(event) => setSourceUrl(event.target.value)}
+                    type="url"
+                    required
+                    value={sourceUrl}
+                    onChange={(event) => {
+                      setSourceUrl(event.target.value);
+                      if (confirmReset) {
+                        setConfirmReset(false);
+                      }
+                    }}
                   aria-invalid={sourceUrlRequiredError || showSourceUrlError}
                   className={
                     sourceUrlRequiredError ? "border-destructive focus-visible:ring-destructive" : ""

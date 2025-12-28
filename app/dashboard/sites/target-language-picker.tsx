@@ -213,7 +213,7 @@ export function TargetLanguagePicker({
       {supportedLanguages.length ? (
         languageLimitReached && maxLocales !== null ? (
           <p className="text-xs text-muted-foreground">
-            You've used all {maxLocales} {languageSlotLabel}. Remove one to add another.
+            You have used all {maxLocales} {languageSlotLabel}. Remove one to add another.
           </p>
         ) : null
       ) : (
