@@ -18,13 +18,21 @@ type TryFormProps = {
   messages: ClientMessages;
   disabled?: boolean;
   supportedLanguages: SupportedLanguage[];
+  showEmailField?: boolean;
 };
 
 type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
 
-export function TryForm({ locale, messages, disabled = false, supportedLanguages }: TryFormProps) {
+export function TryForm({
+  locale,
+  messages,
+  disabled = false,
+  supportedLanguages,
+  showEmailField = false,
+}: TryFormProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [url, setUrl] = useState("");
+  const [email, setEmail] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -377,19 +385,33 @@ export function TryForm({ locale, messages, disabled = false, supportedLanguages
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <Input
-          value={url}
-          onChange={(event) => setUrl(event.currentTarget.value)}
-          placeholder={t("try.form.placeholder")}
-          type="url"
-          pattern="https?://.*"
-          required
-          disabled={isDisabled}
-        />
-        <Button onClick={handleGenerate} disabled={!url || isDisabled}>
-          {isDisabled ? `${t("try.form.button")}…` : t("try.form.button")}
-        </Button>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Input
+            value={url}
+            onChange={(event) => setUrl(event.currentTarget.value)}
+            placeholder={t("try.form.placeholder")}
+            type="url"
+            pattern="https?://.*"
+            required
+            disabled={isDisabled}
+          />
+          <Button onClick={handleGenerate} disabled={!url || isDisabled}>
+            {isDisabled ? `${t("try.form.button")}…` : t("try.form.button")}
+          </Button>
+        </div>
+        {showEmailField ? (
+          <Input
+            value={email}
+            onChange={(event) => setEmail(event.currentTarget.value)}
+            placeholder={t("try.form.emailPlaceholder")}
+            aria-label={t("try.form.emailLabel")}
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            disabled={isDisabled}
+          />
+        ) : null}
       </div>
 
       {statusMessage && (

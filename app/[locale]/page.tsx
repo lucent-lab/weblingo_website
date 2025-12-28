@@ -78,20 +78,9 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
               <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {t("home.hero.title")}
               </h1>
-              <p className="mb-10 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
+              <p className="mb-8 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t("home.hero.description")}
               </p>
-              <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
-                <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-                  <Link href={`/${locale}/try`}>
-                    {t("home.hero.cta.primary")}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href={`/${locale}/pricing`}>{t("home.hero.cta.secondary")}</Link>
-                </Button>
-              </div>
               <p className="text-sm text-muted-foreground">{t("home.hero.trust")}</p>
             </div>
             <div className="relative lg:justify-self-end">
@@ -113,6 +102,7 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
+                  showEmailField
                 />
               </div>
             </div>
