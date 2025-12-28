@@ -7,6 +7,7 @@ import { SiteAdminForm } from "./site-admin-form";
 
 import {
   activateSiteAction,
+  cancelTranslationRunAction,
   deactivateSiteAction,
   deleteSiteAction,
   translateAndServeAction,
@@ -409,6 +410,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                       const servingVariant = resolveServingStatusVariant(deployment.servingStatus);
                       const domainVariant = resolveDomainStatusVariant(domainStatus);
                       const canStartServing = canCrawl && !siteCrawlLimitReached;
+                      const canManageTranslations = canCrawl;
                       return (
                         <tr
                           key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
@@ -442,24 +444,63 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                                 </Link>
                               </Button>
                             ) : deployment.servingStatus === "ready" ? (
-                              <form action={translateAndServeAction}>
-                                <input name="siteId" type="hidden" value={site.id} />
-                                <input name="siteStatus" type="hidden" value={site.status} />
-                                <input name="returnTo" type="hidden" value={returnTo} />
-                                <Button
-                                  type="submit"
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={!canStartServing}
-                                  title={
-                                    canStartServing
-                                      ? undefined
-                                      : "Daily site crawl limit reached."
-                                  }
-                                >
-                                  {servingActionTranslate}
-                                </Button>
-                              </form>
+                              <div className="flex flex-col items-end gap-2">
+                                <form action={translateAndServeAction}>
+                                  <input name="siteId" type="hidden" value={site.id} />
+                                  <input name="siteStatus" type="hidden" value={site.status} />
+                                  <input
+                                    name="targetLang"
+                                    type="hidden"
+                                    value={deployment.targetLang}
+                                  />
+                                  <input name="returnTo" type="hidden" value={returnTo} />
+                                  <Button
+                                    type="submit"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={!canStartServing || Boolean(deployment.translationRun)}
+                                    title={
+                                      deployment.translationRun
+                                        ? "Translation already running."
+                                        : canStartServing
+                                          ? undefined
+                                          : "Daily site crawl limit reached."
+                                    }
+                                  >
+                                    {servingActionTranslate}
+                                  </Button>
+                                </form>
+                                {deployment.translationRun ? (
+                                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+                                    <span>
+                                      Translation{" "}
+                                      {deployment.translationRun.status === "queued"
+                                        ? "queued"
+                                        : "in progress"}
+                                      {deployment.translationRun.pagesTotal
+                                        ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
+                                        : ""}
+                                    </span>
+                                    <form action={cancelTranslationRunAction}>
+                                      <input name="siteId" type="hidden" value={site.id} />
+                                      <input
+                                        name="runId"
+                                        type="hidden"
+                                        value={deployment.translationRun.id}
+                                      />
+                                      <input name="returnTo" type="hidden" value={returnTo} />
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        type="submit"
+                                        disabled={!canManageTranslations}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </form>
+                                  </div>
+                                ) : null}
+                              </div>
                             ) : deployment.servingStatus === "needs_domain" ? (
                               <Button asChild size="sm" variant="outline">
                                 <Link href={`/dashboard/sites/${site.id}#domains`}>

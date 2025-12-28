@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
+  cancelTranslationRunAction,
   refreshDomainAction,
   translateAndServeAction,
   verifyDomainAction,
@@ -17,8 +18,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  fetchDeployments,
   fetchSite,
   WebhooksApiError,
+  type Deployment,
   type Site,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
@@ -66,6 +69,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
 
   let site: Site | null = null;
+  let deployments: Deployment[] = [];
   let error: string | null = null;
 
   try {
@@ -109,7 +113,17 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     notFound();
   }
 
+  try {
+    deployments = await fetchDeployments(authToken, id);
+  } catch (err) {
+    console.warn("[dashboard] fetchDeployments failed:", err);
+  }
+
   const domainLocales = buildDomainLocaleLookup(site.routeConfig);
+  const deploymentsByLang = deployments.reduce<Record<string, Deployment>>((acc, deployment) => {
+    acc[deployment.targetLang] = deployment;
+    return acc;
+  }, {});
   const nextCrawlAt = formatNextDailyCrawlUtc(new Date());
   const nextCrawlValue =
     site.status === "active" ? nextCrawlAt : `${nextCrawlAt} (activate to run)`;
@@ -183,6 +197,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         canTranslate={canCrawl}
         domains={site.domains}
         domainLocales={domainLocales}
+        deploymentsByLang={deploymentsByLang}
         siteId={site.id}
         siteStatus={site.status}
         pricingPath={pricingPath}
@@ -283,6 +298,7 @@ function DomainSection({
   canTranslate,
   domains,
   domainLocales,
+  deploymentsByLang,
   siteId,
   siteStatus,
   pricingPath,
@@ -299,6 +315,7 @@ function DomainSection({
   canTranslate: boolean;
   domains: Site["domains"];
   domainLocales: Record<string, string>;
+  deploymentsByLang: Record<string, Deployment>;
   siteId: string;
   siteStatus: Site["status"];
   pricingPath: string;
@@ -343,9 +360,17 @@ function DomainSection({
           domains.map((domain) => {
             const domainLocale = domainLocales[domain.domain.toLowerCase()];
             const isVerified = domain.status === "verified";
-            const translateDisabled = !canTranslate;
+            const deployment = domainLocale ? deploymentsByLang[domainLocale] : undefined;
+            const translationRun = deployment?.translationRun ?? null;
+            const runActive =
+              translationRun?.status === "queued" || translationRun?.status === "in_progress";
+            const translateDisabled = !canTranslate || !domainLocale || runActive;
             const translateTitle = translateDisabled
-              ? "Upgrade to enable translation triggers."
+              ? !canTranslate
+                ? "Upgrade to enable translation triggers."
+                : !domainLocale
+                  ? "No language configured for this hostname."
+                  : "Translation already running."
               : undefined;
 
             return (
@@ -442,18 +467,42 @@ function DomainSection({
                 </div>
                 <div className="flex flex-col gap-2 md:items-end">
                   {isVerified ? (
-                    <form action={translateAndServeAction} className="w-full md:w-auto">
-                      <input name="siteId" type="hidden" value={siteId} />
-                      <input name="siteStatus" type="hidden" value={siteStatus} />
-                      <Button
-                        type="submit"
-                        className="w-full md:w-auto"
-                        disabled={translateDisabled}
-                        title={translateTitle}
-                      >
-                        Translate & serve
-                      </Button>
-                    </form>
+                    <div className="flex w-full flex-col gap-2 md:items-end">
+                      <form action={translateAndServeAction} className="w-full md:w-auto">
+                        <input name="siteId" type="hidden" value={siteId} />
+                        <input name="siteStatus" type="hidden" value={siteStatus} />
+                        <input name="targetLang" type="hidden" value={domainLocale ?? ""} />
+                        <Button
+                          type="submit"
+                          className="w-full md:w-auto"
+                          disabled={translateDisabled}
+                          title={translateTitle}
+                        >
+                          Translate & serve
+                        </Button>
+                      </form>
+                      {runActive ? (
+                        <div className="w-full rounded-md border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground md:text-right">
+                          <div className="flex flex-wrap items-center justify-between gap-2 md:justify-end">
+                            <span>
+                              Translation {translationRun?.status === "queued" ? "queued" : "in progress"}
+                              {translationRun?.pagesTotal
+                                ? ` (${translationRun.pagesCompleted}/${translationRun.pagesTotal})`
+                                : ""}
+                            </span>
+                            {translationRun?.id && canTranslate ? (
+                              <form action={cancelTranslationRunAction}>
+                                <input name="siteId" type="hidden" value={siteId} />
+                                <input name="runId" type="hidden" value={translationRun.id} />
+                                <Button size="sm" variant="outline" type="submit">
+                                  Cancel
+                                </Button>
+                              </form>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : domain.dnsInstructions ? (
                     <form action={refreshDomainAction} className="w-full md:w-auto">
                       <input name="siteId" type="hidden" value={siteId} />

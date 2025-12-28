@@ -120,6 +120,29 @@ const crawlStatusSchema = z.object({
   error: z.string().optional(),
 });
 
+const translationRunSchema = z
+  .object({
+    id: z.string(),
+    siteId: z.string(),
+    targetLang: z.string(),
+    status: z.enum(["queued", "in_progress", "completed", "failed", "cancelled"]),
+    pagesTotal: z.number().int().nonnegative(),
+    pagesCompleted: z.number().int().nonnegative(),
+    pagesFailed: z.number().int().nonnegative(),
+    startedAt: z.string().nullable().optional(),
+    finishedAt: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const translateSiteResponseSchema = z
+  .object({
+    run: translationRunSchema,
+    enqueued: z.number().int().nonnegative(),
+  })
+  .strict();
+
 const deploymentSchema = z.object({
   targetLang: z.string(),
   status: z.string(),
@@ -131,6 +154,7 @@ const deploymentSchema = z.object({
   domain: z.string().nullable().optional(),
   domainStatus: z.enum(["pending", "verified", "failed"]).nullable().optional(),
   servingStatus: z.enum(["inactive", "needs_domain", "ready", "serving"]),
+  translationRun: translationRunSchema.nullable().optional(),
 });
 
 const glossaryEntrySchema = z.object({
@@ -251,6 +275,7 @@ export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
+export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
@@ -563,6 +588,35 @@ export async function triggerCrawl(
     auth,
     schema: crawlStatusSchema,
   });
+}
+
+export async function translateSite(auth: AuthInput, siteId: string, targetLang: string) {
+  return request({
+    path: `/sites/${siteId}/translate`,
+    method: "POST",
+    auth,
+    body: { targetLang },
+    schema: translateSiteResponseSchema,
+  });
+}
+
+export async function fetchTranslationRun(auth: AuthInput, siteId: string, runId: string) {
+  const data = await request({
+    path: `/sites/${siteId}/translation-runs/${runId}`,
+    auth,
+    schema: z.object({ run: translationRunSchema }).strict(),
+  });
+  return data.run;
+}
+
+export async function cancelTranslationRun(auth: AuthInput, siteId: string, runId: string) {
+  const data = await request({
+    path: `/sites/${siteId}/translation-runs/${runId}/cancel`,
+    method: "POST",
+    auth,
+    schema: z.object({ run: translationRunSchema }).strict(),
+  });
+  return data.run;
 }
 
 export async function triggerPageCrawl(auth: AuthInput, siteId: string, pageId: string) {

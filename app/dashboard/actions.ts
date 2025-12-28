@@ -8,8 +8,10 @@ import {
   createSite,
   deactivateSite,
   deleteSite,
+  cancelTranslationRun,
   provisionDomain,
   refreshDomain,
+  translateSite,
   triggerCrawl,
   triggerPageCrawl,
   updateGlossary,
@@ -94,6 +96,16 @@ function toFriendlyDashboardActionError(error: unknown, fallback: string): strin
     return isDev ? message : fallback;
   }
   return fallback;
+}
+
+function toTranslateAndServeError(error: unknown, fallback: string): string {
+  if (error instanceof WebhooksApiError && error.status === 409) {
+    const message = error.message.toLowerCase();
+    if (message.includes("snapshot")) {
+      return "Snapshots missing or incomplete. Run a crawl first, then try Translate & serve.";
+    }
+  }
+  return toFriendlyDashboardActionError(error, fallback);
 }
 
 function toFriendlyDashboardActionErrorWithDetails(
@@ -528,9 +540,10 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
 export async function translateAndServeAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const siteStatus = formData.get("siteStatus")?.toString();
+  const targetLang = formData.get("targetLang")?.toString();
   const returnTo = formData.get("returnTo")?.toString();
 
-  if (!siteId) {
+  if (!siteId || !targetLang) {
     return;
   }
 
@@ -538,11 +551,11 @@ export async function translateAndServeAction(formData: FormData): Promise<void>
   let nextRedirect: string;
 
   try {
-    const status = await withWebhooksAuth(async (auth) => {
+    await withWebhooksAuth(async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
       }
-      return triggerCrawl(auth, siteId, { intent: "translate_and_serve" });
+      return translateSite(auth, siteId, targetLang);
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     if (shouldActivate) {
@@ -551,21 +564,50 @@ export async function translateAndServeAction(formData: FormData): Promise<void>
       revalidatePath("/dashboard/sites");
     }
     const activationPrefix = shouldActivate ? "Localization enabled. " : "";
-    nextRedirect = status.enqueued
-      ? siteRedirect(siteId, { toast: `${activationPrefix}Crawl enqueued.` }, returnTo)
-      : status.error
-        ? siteRedirect(siteId, { error: status.error }, returnTo)
-        : siteRedirect(siteId, { toast: `${activationPrefix}Crawl is already queued.` }, returnTo);
+    nextRedirect = siteRedirect(
+      siteId,
+      { toast: `${activationPrefix}Translation run started.` },
+      returnTo,
+    );
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("[dashboard] translateAndServeAction failed:", error);
     nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(
+      error: toTranslateAndServeError(
         error,
         "Unable to start translation and serving right now.",
       ),
+    }, returnTo);
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function cancelTranslationRunAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const runId = formData.get("runId")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
+
+  if (!siteId || !runId) {
+    return;
+  }
+
+  let nextRedirect: string;
+
+  try {
+    await withWebhooksAuth((auth) => cancelTranslationRun(auth, siteId, runId));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    nextRedirect = siteRedirect(siteId, { toast: "Translation run cancelled." }, returnTo);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] cancelTranslationRunAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, "Unable to cancel the translation run."),
     }, returnTo);
   }
 
