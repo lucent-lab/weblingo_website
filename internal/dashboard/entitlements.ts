@@ -42,7 +42,12 @@ const FEATURE_FLAG_BY_FEATURE: Record<WebLingoFeature, keyof FeatureFlags> = {
   agency_actions: "agencyActionsEnabled",
 };
 
-export type WebLingoQuota = "maxSites" | "maxLocales" | "maxDailyRecrawls" | "maxGlossarySources";
+export type WebLingoQuota =
+  | "maxSites"
+  | "maxLocales"
+  | "maxDailyRecrawls"
+  | "maxDailyPageRecrawls"
+  | "maxGlossarySources";
 
 export type HasCheck =
   | { plan: PlanType | readonly PlanType[] }

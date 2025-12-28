@@ -60,6 +60,7 @@ const cloudflareHostnameStateSchema = z
     certStatus: z.string().nullable(),
     lastSyncedAt: z.string().nullable(),
     errors: z.unknown().nullable(),
+    errorMessages: z.array(z.string()).nullable().optional(),
   })
   .strict();
 
@@ -127,6 +128,9 @@ const deploymentSchema = z.object({
   routePrefix: z.string().nullable().optional(),
   artifactManifest: z.string().nullable().optional(),
   activeDeploymentId: z.string().nullable().optional(),
+  domain: z.string().nullable().optional(),
+  domainStatus: z.enum(["pending", "verified", "failed"]).nullable().optional(),
+  servingStatus: z.enum(["inactive", "needs_domain", "ready", "serving"]),
 });
 
 const glossaryEntrySchema = z.object({
@@ -172,8 +176,17 @@ const featureFlagsSchema = z
     maxSites: z.number().int().nonnegative().nullable(),
     maxLocales: z.number().int().nonnegative().nullable(),
     maxDailyRecrawls: z.number().int().nonnegative().nullable(),
+    maxDailyPageRecrawls: z.number().int().nonnegative().nullable(),
     maxGlossarySources: z.number().int().nonnegative().nullable(),
     featurePreview: z.array(z.string()),
+  })
+  .strict();
+
+const dailyCrawlUsageSchema = z
+  .object({
+    date: z.string(),
+    siteCrawls: z.number().int().nonnegative(),
+    pageCrawls: z.number().int().nonnegative(),
   })
   .strict();
 
@@ -191,6 +204,7 @@ const accountMeSchema = z
     planType: planTypeSchema,
     planStatus: planStatusSchema,
     featureFlags: featureFlagsSchema,
+    dailyCrawlUsage: dailyCrawlUsageSchema,
     quotas: quotasSchema,
   })
   .strict();
@@ -521,6 +535,10 @@ export async function updateSite(
 }
 
 export async function deactivateSite(auth: AuthInput, siteId: string) {
+  return updateSite(auth, siteId, { status: "inactive" });
+}
+
+export async function deleteSite(auth: AuthInput, siteId: string) {
   return request({
     path: `/sites/${siteId}`,
     method: "DELETE",
@@ -530,9 +548,17 @@ export async function deactivateSite(auth: AuthInput, siteId: string) {
   });
 }
 
-export async function triggerCrawl(auth: AuthInput, siteId: string) {
+export async function triggerCrawl(
+  auth: AuthInput,
+  siteId: string,
+  options?: { intent?: "translate_and_serve" },
+) {
+  const searchParams = new URLSearchParams();
+  if (options?.intent) {
+    searchParams.set("intent", options.intent);
+  }
   return request({
-    path: `/sites/${siteId}/crawl`,
+    path: `/sites/${siteId}/crawl${searchParams.toString() ? `?${searchParams}` : ""}`,
     method: "POST",
     auth,
     schema: crawlStatusSchema,

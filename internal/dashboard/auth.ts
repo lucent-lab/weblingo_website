@@ -66,6 +66,7 @@ const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
   maxSites: null,
   maxLocales: null,
   maxDailyRecrawls: null,
+  maxDailyPageRecrawls: null,
   maxGlossarySources: null,
   featurePreview: [],
 };
@@ -84,6 +85,11 @@ function buildFallbackAccount(accountId: string, entitlements: TokenEntitlements
     planType: entitlements.planType,
     planStatus: entitlements.planStatus,
     featureFlags: FALLBACK_FEATURE_FLAGS,
+    dailyCrawlUsage: {
+      date: new Date().toISOString().slice(0, 10),
+      siteCrawls: 0,
+      pageCrawls: 0,
+    },
     quotas: FALLBACK_QUOTAS,
   };
 }
