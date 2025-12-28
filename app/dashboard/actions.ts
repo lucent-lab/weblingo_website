@@ -7,6 +7,7 @@ import {
   createOverride,
   createSite,
   deactivateSite,
+  deleteSite,
   provisionDomain,
   refreshDomain,
   triggerCrawl,
@@ -15,6 +16,7 @@ import {
   updateSite,
   updateSlug,
   verifyDomain,
+  WebhooksApiError,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
@@ -39,15 +41,33 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   meta,
 });
 
-function siteRedirect(siteId: string, params: { toast?: string; error?: string }) {
-  const base = `/dashboard/sites/${encodeURIComponent(siteId)}`;
+function siteRedirect(
+  siteId: string,
+  params: { toast?: string; error?: string; details?: string | null },
+  returnTo?: string | null,
+) {
+  const base = resolveSiteRedirectBase(siteId, returnTo);
   if (params.error) {
-    return `${base}?error=${encodeURIComponent(params.error)}`;
+    const encodedError = encodeURIComponent(params.error);
+    if (params.details) {
+      return `${base}?error=${encodedError}&details=${encodeURIComponent(params.details)}`;
+    }
+    return `${base}?error=${encodedError}`;
   }
   if (params.toast) {
     return `${base}?toast=${encodeURIComponent(params.toast)}`;
   }
   return base;
+}
+
+function resolveSiteRedirectBase(siteId: string, returnTo?: string | null) {
+  if (typeof returnTo === "string" && returnTo) {
+    const sanitized = returnTo.split("?")[0];
+    if (sanitized.startsWith(`/dashboard/sites/${siteId}`)) {
+      return sanitized;
+    }
+  }
+  return `/dashboard/sites/${encodeURIComponent(siteId)}`;
 }
 
 function siteSettingsRedirect(siteId: string, params: { toast?: string; error?: string }) {
@@ -74,6 +94,72 @@ function toFriendlyDashboardActionError(error: unknown, fallback: string): strin
     return isDev ? message : fallback;
   }
   return fallback;
+}
+
+function toFriendlyDashboardActionErrorWithDetails(
+  error: unknown,
+  fallback: string,
+): { message: string; details?: string | null } {
+  const message = toFriendlyDashboardActionError(error, fallback);
+  const details = extractSafeErrorDetails(error);
+  return { message, details };
+}
+
+function extractSafeErrorDetails(error: unknown): string | null {
+  if (!(error instanceof WebhooksApiError)) {
+    return null;
+  }
+  return formatCloudflareErrorDetails(error.details);
+}
+
+function formatCloudflareErrorDetails(details: unknown): string | null {
+  if (!details || typeof details !== "object") {
+    return null;
+  }
+  const payload = details as Record<string, unknown>;
+  const parts = [
+    ...extractErrorMessages(payload.errors),
+    ...extractErrorMessages(payload.messages),
+  ];
+  const normalized = Array.from(new Set(parts.map((entry) => entry.trim()))).filter(Boolean);
+  if (!normalized.length) {
+    return null;
+  }
+  return normalized.map((entry) => truncateText(entry, 200)).join("\n");
+}
+
+function extractErrorMessages(value: unknown): string[] {
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => extractErrorMessages(entry));
+  }
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const code = typeof record.code === "string" ? record.code.trim() : "";
+    const message = typeof record.message === "string" ? record.message.trim() : "";
+    if (code && message) {
+      return [`${code}: ${message}`];
+    }
+    if (message) {
+      return [message];
+    }
+    if (code) {
+      return [code];
+    }
+  }
+  return [];
+}
+
+function truncateText(value: string, limit: number) {
+  if (value.length <= limit) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, limit - 3))}...`;
 }
 
 function isNextRedirectError(error: unknown): boolean {
@@ -410,6 +496,7 @@ export async function updateSiteSettingsAction(
 
 export async function triggerCrawlAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
 
   if (!siteId) {
     return;
@@ -421,10 +508,10 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
     const status = await withWebhooksAuth((auth) => triggerCrawl(auth, siteId));
     revalidatePath(`/dashboard/sites/${siteId}`);
     nextRedirect = status.enqueued
-      ? siteRedirect(siteId, { toast: "Crawl enqueued." })
+      ? siteRedirect(siteId, { toast: "Crawl enqueued." }, returnTo)
       : status.error
-        ? siteRedirect(siteId, { error: status.error })
-        : siteRedirect(siteId, { toast: "Crawl is already queued." });
+        ? siteRedirect(siteId, { error: status.error }, returnTo)
+        : siteRedirect(siteId, { toast: "Crawl is already queued." }, returnTo);
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
@@ -432,7 +519,54 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
     console.error("[dashboard] triggerCrawlAction failed:", error);
     nextRedirect = siteRedirect(siteId, {
       error: toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."),
+    }, returnTo);
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function translateAndServeAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const siteStatus = formData.get("siteStatus")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
+
+  if (!siteId) {
+    return;
+  }
+
+  const shouldActivate = siteStatus === "inactive";
+  let nextRedirect: string;
+
+  try {
+    const status = await withWebhooksAuth(async (auth) => {
+      if (shouldActivate) {
+        await updateSite(auth, siteId, { status: "active" });
+      }
+      return triggerCrawl(auth, siteId, { intent: "translate_and_serve" });
     });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    if (shouldActivate) {
+      revalidatePath(`/dashboard/sites/${siteId}/admin`);
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/sites");
+    }
+    const activationPrefix = shouldActivate ? "Localization enabled. " : "";
+    nextRedirect = status.enqueued
+      ? siteRedirect(siteId, { toast: `${activationPrefix}Crawl enqueued.` }, returnTo)
+      : status.error
+        ? siteRedirect(siteId, { error: status.error }, returnTo)
+        : siteRedirect(siteId, { toast: `${activationPrefix}Crawl is already queued.` }, returnTo);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] translateAndServeAction failed:", error);
+    nextRedirect = siteRedirect(siteId, {
+      error: toFriendlyDashboardActionError(
+        error,
+        "Unable to start translation and serving right now.",
+      ),
+    }, returnTo);
   }
 
   redirect(nextRedirect);
@@ -441,6 +575,7 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
 export async function triggerPageCrawlAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const pageId = formData.get("pageId")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
 
   if (!siteId || !pageId) {
     return;
@@ -452,18 +587,22 @@ export async function triggerPageCrawlAction(formData: FormData): Promise<void> 
     const status = await withWebhooksAuth((auth) => triggerPageCrawl(auth, siteId, pageId));
     revalidatePath(`/dashboard/sites/${siteId}`);
     nextRedirect = status.enqueued
-      ? siteRedirect(siteId, { toast: "Page crawl enqueued." })
+      ? siteRedirect(siteId, { toast: "Page crawl enqueued." }, returnTo)
       : status.error
-        ? siteRedirect(siteId, { error: status.error })
-        : siteRedirect(siteId, { toast: "Page crawl is already queued." });
+        ? siteRedirect(siteId, { error: status.error }, returnTo)
+        : siteRedirect(siteId, { toast: "Page crawl is already queued." }, returnTo);
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("[dashboard] triggerPageCrawlAction failed:", error);
-    nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, "Unable to enqueue a page crawl right now."),
-    });
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to enqueue a page crawl right now."),
+      },
+      returnTo,
+    );
   }
 
   redirect(nextRedirect);
@@ -472,6 +611,7 @@ export async function triggerPageCrawlAction(formData: FormData): Promise<void> 
 export async function verifyDomainAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const domain = formData.get("domain")?.toString();
+  const siteStatus = formData.get("siteStatus")?.toString();
   const overrideToken = formData.get("token")?.toString() || undefined;
 
   if (!siteId || !domain) {
@@ -485,9 +625,13 @@ export async function verifyDomainAction(formData: FormData): Promise<void> {
       verifyDomain(auth, siteId, domain, overrideToken),
     );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    const verifiedToast =
+      siteStatus === "inactive"
+        ? `Domain verified: ${domain}. Activate the site to start crawling.`
+        : `Domain verified: ${domain}. Crawl enqueued.`;
     nextRedirect =
       updated.status === "verified"
-        ? siteRedirect(siteId, { toast: `Domain verified: ${domain}.` })
+        ? siteRedirect(siteId, { toast: verifiedToast })
         : updated.status === "pending"
           ? siteRedirect(siteId, { toast: `Domain verification pending: ${domain}.` })
           : siteRedirect(siteId, { error: `Domain verification failed for ${domain}.` });
@@ -496,8 +640,13 @@ export async function verifyDomainAction(formData: FormData): Promise<void> {
       throw error;
     }
     console.error("[dashboard] verifyDomainAction failed:", error);
+    const friendly = toFriendlyDashboardActionErrorWithDetails(
+      error,
+      `Unable to verify ${domain} right now.`,
+    );
     nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, `Unable to verify ${domain} right now.`),
+      error: friendly.message,
+      details: friendly.details ?? null,
     });
   }
 
@@ -507,6 +656,7 @@ export async function verifyDomainAction(formData: FormData): Promise<void> {
 export async function provisionDomainAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const domain = formData.get("domain")?.toString();
+  const siteStatus = formData.get("siteStatus")?.toString();
 
   if (!siteId || !domain) {
     return;
@@ -519,17 +669,28 @@ export async function provisionDomainAction(formData: FormData): Promise<void> {
       provisionDomain(auth, siteId, domain),
     );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    const verifiedToast =
+      siteStatus === "inactive"
+        ? `Domain verified: ${domain}. Activate the site to start crawling.`
+        : `Domain verified: ${domain}. Crawl enqueued.`;
     nextRedirect =
       updated.status === "failed"
         ? siteRedirect(siteId, { error: `Provisioning failed for ${domain}.` })
+        : updated.status === "verified"
+          ? siteRedirect(siteId, { toast: verifiedToast })
         : siteRedirect(siteId, { toast: `Provisioning requested for ${domain}.` });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("[dashboard] provisionDomainAction failed:", error);
+    const friendly = toFriendlyDashboardActionErrorWithDetails(
+      error,
+      `Unable to provision ${domain} right now.`,
+    );
     nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, `Unable to provision ${domain} right now.`),
+      error: friendly.message,
+      details: friendly.details ?? null,
     });
   }
 
@@ -539,6 +700,7 @@ export async function provisionDomainAction(formData: FormData): Promise<void> {
 export async function refreshDomainAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const domain = formData.get("domain")?.toString();
+  const siteStatus = formData.get("siteStatus")?.toString();
 
   if (!siteId || !domain) {
     return;
@@ -551,17 +713,28 @@ export async function refreshDomainAction(formData: FormData): Promise<void> {
       refreshDomain(auth, siteId, domain),
     );
     revalidatePath(`/dashboard/sites/${siteId}`);
+    const verifiedToast =
+      siteStatus === "inactive"
+        ? `Domain verified: ${domain}. Activate the site to start crawling.`
+        : `Domain verified: ${domain}. Crawl enqueued.`;
     nextRedirect =
       updated.status === "failed"
         ? siteRedirect(siteId, { error: `Refresh failed for ${domain}.` })
+        : updated.status === "verified"
+          ? siteRedirect(siteId, { toast: verifiedToast })
         : siteRedirect(siteId, { toast: `Refresh requested for ${domain}.` });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("[dashboard] refreshDomainAction failed:", error);
+    const friendly = toFriendlyDashboardActionErrorWithDetails(
+      error,
+      `Unable to refresh ${domain} right now.`,
+    );
     nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, `Unable to refresh ${domain} right now.`),
+      error: friendly.message,
+      details: friendly.details ?? null,
     });
   }
 
@@ -675,6 +848,7 @@ export async function updateSlugAction(
 export async function updateSiteStatusAction(formData: FormData): Promise<void> {
   const siteId = formData.get("siteId")?.toString();
   const status = formData.get("status")?.toString() as "active" | "inactive" | undefined;
+  const returnTo = formData.get("returnTo")?.toString();
 
   if (!siteId || !status) {
     return;
@@ -691,17 +865,26 @@ export async function updateSiteStatusAction(formData: FormData): Promise<void> 
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
-    nextRedirect = siteRedirect(siteId, {
-      toast: updated.status === "active" ? "Translations activated." : "Translations paused.",
-    });
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        toast:
+          updated.status === "active" ? "Localization reactivated." : "Localization deactivated.",
+      },
+      returnTo,
+    );
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("[dashboard] updateSiteStatusAction failed:", error);
-    nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, "Unable to update site status right now."),
-    });
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to update site status right now."),
+      },
+      returnTo,
+    );
   }
 
   redirect(nextRedirect);
@@ -722,7 +905,7 @@ export async function deactivateSiteAction(formData: FormData): Promise<void> {
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     nextRedirect = siteSettingsRedirect(siteId, {
-      toast: "Site deactivated. You can reactivate it anytime from this page.",
+      toast: "Localization paused. You can re-enable it anytime from this page.",
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -731,6 +914,42 @@ export async function deactivateSiteAction(formData: FormData): Promise<void> {
     console.error("[dashboard] deactivateSiteAction failed:", error);
     nextRedirect = siteSettingsRedirect(siteId, {
       error: toFriendlyDashboardActionError(error, "Unable to deactivate this site right now."),
+    });
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function deleteSiteAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const confirmation = formData.get("confirmation")?.toString().trim();
+
+  if (!siteId) {
+    return;
+  }
+
+  if (confirmation !== "DELETE") {
+    redirect(
+      siteSettingsRedirect(siteId, {
+        error: "Type DELETE to confirm.",
+      }),
+    );
+  }
+
+  let nextRedirect: string;
+
+  try {
+    await withWebhooksAuth((auth) => deleteSite(auth, siteId));
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/sites");
+    nextRedirect = `/dashboard/sites?toast=${encodeURIComponent("Site deleted.")}`;
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] deleteSiteAction failed:", error);
+    nextRedirect = siteSettingsRedirect(siteId, {
+      error: toFriendlyDashboardActionError(error, "Unable to delete this site right now."),
     });
   }
 
@@ -752,7 +971,7 @@ export async function activateSiteAction(formData: FormData): Promise<void> {
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     nextRedirect = siteSettingsRedirect(siteId, {
-      toast: "Site activated.",
+      toast: "Localization enabled.",
     });
   } catch (error) {
     if (isNextRedirectError(error)) {

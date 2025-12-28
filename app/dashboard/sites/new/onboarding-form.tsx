@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import type React from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Loader2 } from "lucide-react";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
 
@@ -46,8 +47,12 @@ export function OnboardingForm(props: {
   const [patternEditing, setPatternEditing] = useState(false);
 
   useEffect(() => {
-    const siteId = state.meta?.siteId;
-    if (state.ok && typeof siteId === "string" && siteId.length > 0) {
+    const siteIdRaw = state.meta?.siteId;
+    const siteId =
+      typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
+    const hasValidSiteId =
+      siteId.length > 0 && siteId !== "undefined" && siteId !== "null";
+    if (state.ok && hasValidSiteId) {
       const toast = state.meta?.toast;
       const nextUrl =
         typeof toast === "string" && toast.length > 0
@@ -63,7 +68,7 @@ export function OnboardingForm(props: {
   const sourceHost = parsedSourceUrl?.hostname ?? "";
   const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
   const displayHost = trimmedHost || "customer-url.com";
-  const scheme = parsedSourceUrl?.protocol ? `${parsedSourceUrl.protocol}//` : "https://";
+  const scheme = "https://";
   const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
   const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
   const localeAliases = useMemo(
@@ -109,164 +114,175 @@ export function OnboardingForm(props: {
         <CardTitle className="text-xl">Site setup</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-6">
-          <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
-          <input name="localeAliases" type="hidden" value={localeAliasesJson} />
+        <form action={formAction} className="relative">
+          <PendingOverlay />
+          <PendingFieldset>
+            <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
+            <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
-          <section className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                label="Source URL"
-                htmlFor="sourceUrl"
-                error={
-                  sourceUrlRequiredError
-                    ? "Source URL is required."
-                    : showSourceUrlError
-                      ? "Enter a valid URL that starts with http:// or https://."
-                      : undefined
-                }
-              >
-                <Input
-                  id="sourceUrl"
-                  name="sourceUrl"
-                  placeholder="https://www.example.com"
-                  type="url"
-                  required
-                  value={sourceUrl}
-                  onChange={(event) => setSourceUrl(event.target.value)}
-                  aria-invalid={sourceUrlRequiredError || showSourceUrlError}
-                  className={cn(
-                    "font-mono text-sm",
-                    sourceUrlRequiredError ? "border-destructive focus-visible:ring-destructive" : "",
-                  )}
-                />
-              </Field>
-              <Field
-                label="Source language"
-                htmlFor="sourceLang"
-                error={sourceLangRequiredError ? "Select a source language." : undefined}
-              >
-                <LanguageTagCombobox
-                  id="sourceLang"
-                  name="sourceLang"
-                  value={sourceLang}
-                  onValueChange={setSourceLang}
-                  supportedLanguages={props.supportedLanguages}
-                  displayLocale={props.displayLocale}
-                  placeholder="Select a language"
-                  required
-                  invalid={sourceLangRequiredError}
-                />
-              </Field>
-            </div>
-            <div className="space-y-4">
-              <Field label="Target languages">
-                <TargetLanguagePicker
-                  targets={targets}
-                  aliases={aliasesByLang}
-                  onTargetsChange={setTargets}
-                  onAliasesChange={setAliasesByLang}
-                  supportedLanguages={props.supportedLanguages}
-                  displayLocale={props.displayLocale}
-                  maxLocales={props.maxLocales}
-                  error={targetsRequiredError ? "Pick at least one target language." : undefined}
-                  showAliasHelp={patternEditing}
-                />
-              </Field>
-              <Field
-                label="Subdomain pattern"
-                htmlFor={subdomainLabelFor}
-                labelAction={
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setPatternEditing((current) => !current)}
-                  >
-                    {patternEditing ? "Preview" : "Edit"}
-                  </Button>
-                }
-                description={
-                  patternEditing ? (
-                    <>
-                      Insert <code>{`{lang}`}</code> where the locale should appear.
-                    </>
-                  ) : null
-                }
-                error={
-                  showPatternError
-                    ? "Pattern must contain {lang} and a valid source domain."
-                    : undefined
-                }
-              >
-                {patternEditing ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                      {scheme}
-                    </span>
-                    <Input
-                      id="subdomainToken"
-                      name="subdomainToken"
-                      className="w-36"
-                      value={subdomainToken}
-                      onChange={(event) => setSubdomainToken(event.target.value)}
-                      pattern=".*\\{lang\\}.*"
-                      title="Pattern must include {lang}"
-                      required
-                    />
-                    <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                      .{displayHost}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm">
-                    {patternPreview ? (
-                      <div className="space-y-1">
-                        <span className="text-xs font-medium text-muted-foreground">Preview</span>
-                        <div className="font-mono text-sm text-foreground">{patternPreview}</div>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Enter a source URL to generate a preview.
-                      </span>
+            <section className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  label="Source URL"
+                  htmlFor="sourceUrl"
+                  error={
+                    sourceUrlRequiredError
+                      ? "Source URL is required."
+                      : showSourceUrlError
+                        ? "Enter a valid URL that starts with http:// or https://."
+                        : undefined
+                  }
+                >
+                  <Input
+                    id="sourceUrl"
+                    name="sourceUrl"
+                    placeholder="https://www.example.com"
+                    type="url"
+                    required
+                    value={sourceUrl}
+                    onChange={(event) => setSourceUrl(event.target.value)}
+                    aria-invalid={sourceUrlRequiredError || showSourceUrlError}
+                    className={cn(
+                      "font-mono text-sm",
+                      sourceUrlRequiredError
+                        ? "border-destructive focus-visible:ring-destructive"
+                        : "",
                     )}
-                  </div>
+                  />
+                </Field>
+                <Field
+                  label="Source language"
+                  htmlFor="sourceLang"
+                  error={sourceLangRequiredError ? "Select a source language." : undefined}
+                >
+                  <LanguageTagCombobox
+                    id="sourceLang"
+                    name="sourceLang"
+                    value={sourceLang}
+                    onValueChange={setSourceLang}
+                    supportedLanguages={props.supportedLanguages}
+                    displayLocale={props.displayLocale}
+                    placeholder="Select a language"
+                    required
+                    invalid={sourceLangRequiredError}
+                  />
+                </Field>
+              </div>
+              <div className="space-y-4">
+                <Field label="Target languages">
+                  <TargetLanguagePicker
+                    targets={targets}
+                    aliases={aliasesByLang}
+                    onTargetsChange={setTargets}
+                    onAliasesChange={setAliasesByLang}
+                    supportedLanguages={props.supportedLanguages}
+                    displayLocale={props.displayLocale}
+                    maxLocales={props.maxLocales}
+                    error={targetsRequiredError ? "Pick at least one target language." : undefined}
+                    showAliasHelp={patternEditing}
+                  />
+                </Field>
+                <Field
+                  label="Subdomain pattern"
+                  htmlFor={subdomainLabelFor}
+                  labelAction={
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setPatternEditing((current) => !current)}
+                    >
+                      {patternEditing ? "Preview" : "Edit"}
+                    </Button>
+                  }
+                  description={
+                    patternEditing ? (
+                      <>
+                        Insert <code>{`{lang}`}</code> where the locale should appear.
+                      </>
+                    ) : null
+                  }
+                  error={
+                    showPatternError
+                      ? "Pattern must contain {lang} and a valid source domain."
+                      : undefined
+                  }
+                >
+                  {patternEditing ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                        {scheme}
+                      </span>
+                      <Input
+                        id="subdomainToken"
+                        name="subdomainToken"
+                        className="w-36"
+                        value={subdomainToken}
+                        onChange={(event) => setSubdomainToken(event.target.value)}
+                        pattern=".*\\{lang\\}.*"
+                        title="Pattern must include {lang}"
+                        required
+                      />
+                      <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                        .{displayHost}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm">
+                      {patternPreview ? (
+                        <div className="space-y-1">
+                          <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                          <div className="font-mono text-sm text-foreground">{patternPreview}</div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Enter a source URL to generate a preview.
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </Field>
+              </div>
+            </section>
+            {state.message ? (
+              <div
+                className={cn(
+                  "rounded-md border px-3 py-2 text-sm",
+                  state.ok
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-destructive/40 bg-destructive/10 text-destructive",
                 )}
-              </Field>
-            </div>
-          </section>
-          {state.message ? (
-            <div
-              className={cn(
-                "rounded-md border px-3 py-2 text-sm",
-                state.ok
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-destructive/40 bg-destructive/10 text-destructive",
-              )}
-            >
-              {state.message}
-            </div>
-          ) : null}
+              >
+                {state.message}
+              </div>
+            ) : null}
 
-          <div className="flex justify-end">
-            <SubmitButton disabled={submitDisabled} />
-          </div>
+            <div className="flex justify-end">
+              <SubmitButton disabled={submitDisabled} />
+            </div>
 
-          <div className="grid gap-3">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                We discover your site right away. Translations start after activation, and the
-                next screen provides activation instructions.
-              </AlertDescription>
-            </Alert>
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Advanced settings can be configured later in site settings.
-              </AlertDescription>
-            </Alert>
-          </div>
+            <div className="grid gap-3">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  We discover your site right away. Translations start after activation, and the
+                  next screen provides activation instructions.
+                </AlertDescription>
+              </Alert>
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Translated sites are served over HTTPS with automatic TLS certificates.
+                </AlertDescription>
+              </Alert>
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Advanced settings can be configured later in site settings.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </PendingFieldset>
         </form>
       </CardContent>
     </Card>
@@ -279,5 +295,33 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
     <Button disabled={disabled || pending} type="submit">
       {pending ? "Creating..." : "Create site"}
     </Button>
+  );
+}
+
+function PendingFieldset({ children }: { children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <fieldset
+      disabled={pending}
+      aria-busy={pending}
+      className={cn("space-y-6", pending ? "opacity-70" : "")}
+    >
+      {children}
+    </fieldset>
+  );
+}
+
+function PendingOverlay() {
+  const { pending } = useFormStatus();
+  if (!pending) {
+    return null;
+  }
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Creating site...
+      </div>
+    </div>
   );
 }
