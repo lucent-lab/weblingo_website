@@ -78,7 +78,7 @@ export function SiteAdminForm({
   const sourceHost = parsedSourceUrl?.hostname ?? "";
   const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
   const displayHost = trimmedHost || "customer-url.com";
-  const scheme = parsedSourceUrl?.protocol ? `${parsedSourceUrl.protocol}//` : "https://";
+  const scheme = "https://";
   const [subdomainToken, setSubdomainToken] = useState(() =>
     extractSubdomainToken(pattern, parsedSourceUrl),
   );
@@ -398,8 +398,8 @@ export function SiteAdminForm({
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Updates do not trigger a crawl automatically. Use Trigger crawl when you are ready to
-              refresh translations.
+              Updates do not trigger a crawl automatically. Use Force full website crawl when you
+              are ready to refresh translations.
             </p>
             <SubmitButton disabled={submitDisabled} />
           </div>
