@@ -7,7 +7,11 @@ import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { SUBJECT_ACCOUNT_COOKIE } from "@internal/dashboard/workspace";
 
 export async function setWorkspaceAction(formData: FormData) {
-  const subjectAccountId = String(formData.get("subjectAccountId") ?? "").trim();
+  const rawSubjectAccountId = String(formData.get("subjectAccountId") ?? "").trim();
+  const subjectAccountId =
+    rawSubjectAccountId === "undefined" || rawSubjectAccountId === "null"
+      ? ""
+      : rawSubjectAccountId;
   const redirectToRaw = String(formData.get("redirectTo") ?? "/dashboard");
   const redirectTo = redirectToRaw.startsWith("/dashboard") ? redirectToRaw : "/dashboard";
 

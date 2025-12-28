@@ -12,17 +12,18 @@ import { getPricingTableId } from "@internal/billing";
 import { i18nConfig } from "@internal/i18n";
 
 type NoAccountPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     error?: string;
-  };
+  }>;
 };
 
-export default function NoAccountPage({ searchParams }: NoAccountPageProps) {
+export default async function NoAccountPage({ searchParams }: NoAccountPageProps) {
   const locale = i18nConfig.defaultLocale;
   const pricingTableId = getPricingTableId(locale);
   const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-  const rawError = searchParams?.error;
+  const resolvedSearchParams = await searchParams;
+  const rawError = resolvedSearchParams?.error;
   let error: string | null = null;
   if (typeof rawError === "string") {
     try {

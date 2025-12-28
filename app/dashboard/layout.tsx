@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
-import { DashboardHeaderTitle } from "./_components/dashboard-header-title";
-import { DashboardTitleProvider } from "./_components/dashboard-title-context";
+import { SitesNav } from "./_components/sites-nav";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
-import { listSites } from "@internal/dashboard/webhooks";
+import { listSites, type Site } from "@internal/dashboard/webhooks";
 import { i18nConfig } from "@internal/i18n";
 
 export const metadata: Metadata = {
@@ -64,30 +63,51 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           },
         ]
       : []),
-    { href: "/dashboard/sites", label: "Sites", icon: <Globe className="h-4 w-4" /> },
     {
       href: "/dashboard/developer-tools",
       label: "Developer tools",
       icon: <Wrench className="h-4 w-4" />,
     },
   ];
-  const navTitleItems = navItems.map(({ href, label }) => ({ href, label }));
-
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =
     workspaceOptions.find((option) => option.id === auth.subjectAccountId)?.label ??
     "Current workspace";
-  const maxDailyRecrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
-  const manualCrawlRemainingLabel =
-    maxDailyRecrawls === null ? "Unlimited" : String(maxDailyRecrawls);
-  const manualCrawlDisplay =
-    maxDailyRecrawls === null ? "Unlimited" : `${manualCrawlRemainingLabel} left`;
+  const dailyUsage = auth.account?.dailyCrawlUsage;
+  const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
+  const maxDailyPageCrawls = auth.account?.featureFlags.maxDailyPageRecrawls ?? null;
+  const siteCrawlsUsed = dailyUsage?.siteCrawls ?? 0;
+  const pageCrawlsUsed = dailyUsage?.pageCrawls ?? 0;
+  const siteCrawlsRemaining =
+    maxDailySiteCrawls === null ? null : Math.max(maxDailySiteCrawls - siteCrawlsUsed, 0);
+  const pageCrawlsRemaining =
+    maxDailyPageCrawls === null ? null : Math.max(maxDailyPageCrawls - pageCrawlsUsed, 0);
+  const siteCrawlDisplay =
+    maxDailySiteCrawls === null ? "Unlimited" : `${siteCrawlsRemaining} left`;
+  const pageCrawlDisplay =
+    maxDailyPageCrawls === null ? "Unlimited" : `${pageCrawlsRemaining} left`;
+  const siteCrawlTitle =
+    maxDailySiteCrawls === null
+      ? "Unlimited per day"
+      : `${siteCrawlsUsed}/${maxDailySiteCrawls} used today`;
+  const pageCrawlTitle =
+    maxDailyPageCrawls === null
+      ? "Unlimited per day"
+      : `${pageCrawlsUsed}/${maxDailyPageCrawls} used today`;
   const planLabel = auth.account?.planType ?? "unknown";
   const rawStatusLabel = auth.account?.planStatus ?? "unknown";
   const statusLabel = rawStatusLabel.replace("_", " ");
   const statusTone = resolveStatusTone(rawStatusLabel);
 
   let sitesUsage: { value: string; helper?: string } | null = null;
+  let sites: Site[] = [];
+  let sitesLoaded = false;
+  try {
+    sites = await listSites(auth.webhooksAuth!);
+    sitesLoaded = true;
+  } catch (error) {
+    console.warn("[dashboard] listSites failed:", error);
+  }
   try {
     if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {
       const summary = auth.agencyCustomers.summary;
@@ -95,8 +115,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
         helper: "Agency usage",
       };
-    } else {
-      const sites = await listSites(auth.webhooksAuth!);
+    } else if (sitesLoaded) {
       const activeSites = sites.filter((site) => site.status === "active").length;
       const maxSites = auth.account?.featureFlags.maxSites ?? null;
       sitesUsage = {
@@ -106,14 +125,18 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
   }
+  const siteNavItems = sites.map((site) => ({
+    id: site.id,
+    label: formatSiteLabel(site.sourceUrl),
+    status: site.status,
+  }));
   const billingBanner = resolveBillingBanner(auth);
   const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
   const teamSwitcherDisabled = workspaceOptions.length <= 1;
 
   return (
-    <DashboardTitleProvider>
-      <SidebarProvider defaultOpen>
-        <Sidebar collapsible="icon">
+    <SidebarProvider defaultOpen>
+      <Sidebar collapsible="icon">
         <SidebarHeader className="gap-4">
           <div className="flex items-center gap-2 px-2 pt-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pt-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -151,6 +174,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               <DashboardNav items={navItems} />
             </SidebarGroupContent>
           </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Sites</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SitesNav sites={siteNavItems} />
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           <div className="rounded-md border border-sidebar-border bg-sidebar-accent/60 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
@@ -161,90 +190,83 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </Button>
           </div>
         </SidebarFooter>
-        </Sidebar>
+      </Sidebar>
 
-        <SidebarInset className="bg-muted/30">
-          <header className="border-b bg-background">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-10">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
-                  <SidebarTrigger className="shrink-0" />
-                  <div className="hidden h-5 w-px bg-border sm:block" />
-                  <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Plan</span>
-                      <span className="text-foreground">{planLabel}</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Status</span>
-                      <span className={statusTone}>{statusLabel}</span>
-                    </span>
-                    {auth.account ? (
-                      <>
-                        <span className="flex items-center gap-1">
-                          <span className="text-muted-foreground">Site crawls</span>
-                          <span className="text-foreground">{manualCrawlDisplay}</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="text-muted-foreground">Page crawls</span>
-                          <span className="text-foreground">{manualCrawlDisplay}</span>
-                        </span>
-                      </>
-                    ) : null}
-                    <span className="flex items-center gap-1" title={sitesUsage?.helper}>
-                      <span className="text-muted-foreground">Sites</span>
-                      <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
-                    </span>
-                  </nav>
-                  {auth.actingAsCustomer ? (
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                      Acting as {subjectLabel}
-                    </Badge>
+      <SidebarInset className="bg-muted/30">
+        <header className="border-b bg-background">
+          <div className="flex w-full flex-col gap-4 px-4 py-4 lg:px-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+                <SidebarTrigger className="shrink-0" />
+                <div className="hidden h-5 w-px bg-border sm:block" />
+                <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
+                  <span className="flex items-center gap-1">
+                    <span className="text-muted-foreground">Plan</span>
+                    <span className="text-foreground">{planLabel}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className={statusTone}>{statusLabel}</span>
+                  </span>
+                  {auth.account ? (
+                    <>
+                      <span className="flex items-center gap-1" title={siteCrawlTitle}>
+                        <span className="text-muted-foreground">Site crawls</span>
+                        <span className="text-foreground">{siteCrawlDisplay}</span>
+                      </span>
+                      <span className="flex items-center gap-1" title={pageCrawlTitle}>
+                        <span className="text-muted-foreground">Page crawls</span>
+                        <span className="text-foreground">{pageCrawlDisplay}</span>
+                      </span>
+                    </>
                   ) : null}
-                  {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                      Agency status: {auth.actorAccount.planStatus ?? "unknown"}
-                    </Badge>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
-                  <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Signed in
-                    </span>
-                    <span className="text-sm font-medium">{email}</span>
-                  </div>
-                  <form action={logout}>
-                    <Button size="sm" variant="outline" type="submit">
-                      Sign out
-                    </Button>
-                  </form>
-                </div>
+                  <span className="flex items-center gap-1" title={sitesUsage?.helper}>
+                    <span className="text-muted-foreground">Sites</span>
+                    <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
+                  </span>
+                </nav>
+                {auth.actingAsCustomer ? (
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Acting as {subjectLabel}
+                  </Badge>
+                ) : null}
+                {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Agency status: {auth.actorAccount.planStatus ?? "unknown"}
+                  </Badge>
+                ) : null}
               </div>
-              <div className="space-y-2">
-                <DashboardHeaderTitle items={navTitleItems} />
-                <p className="text-sm text-muted-foreground">
-                  Onboard new sites, monitor deployments, and fine-tune translations.
-                </p>
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Signed in
+                  </span>
+                  <span className="text-sm font-medium">{email}</span>
+                </div>
+                <form action={logout}>
+                  <Button size="sm" variant="outline" type="submit">
+                    Sign out
+                  </Button>
+                </form>
               </div>
             </div>
-          </header>
+          </div>
+        </header>
 
-          <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-6 py-8 lg:px-10">
-            {billingBanner ? (
-              <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
-                <p>{billingBanner.message}</p>
-                <Button asChild size="sm" variant="secondary">
-                  <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
-                </Button>
-              </div>
-            ) : null}
+        <section className="flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+          {billingBanner ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
+              <p>{billingBanner.message}</p>
+              <Button asChild size="sm" variant="secondary">
+                <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
+              </Button>
+            </div>
+          ) : null}
 
-            {children}
-          </section>
-        </SidebarInset>
-      </SidebarProvider>
-    </DashboardTitleProvider>
+          {children}
+        </section>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -314,4 +336,13 @@ function resolveStatusTone(status: string): string {
     return "text-destructive";
   }
   return "text-muted-foreground";
+}
+
+function formatSiteLabel(sourceUrl: string): string {
+  try {
+    const hostname = new URL(sourceUrl).hostname;
+    return hostname.replace(/^www\./, "");
+  } catch {
+    return sourceUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
 }

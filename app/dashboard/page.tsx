@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SitesList } from "./_components/sites-list";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
@@ -12,24 +13,23 @@ export default async function DashboardPage() {
   let loadError: string | null = null;
   let canCreateSite = false;
   let billingBlocked = false;
+  let atSiteLimit = false;
+  let maxSites: number | null = null;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
 
   try {
     const auth = await requireDashboardAuth();
     sites = await listSites(auth.webhooksAuth!);
     billingBlocked = !auth.mutationsAllowed;
-    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked;
+    maxSites = auth.account?.featureFlags.maxSites ?? null;
+    const activeSites = sites.filter((site) => site.status === "active").length;
+    const hasAvailableSlot = maxSites === null || activeSites < maxSites;
+    atSiteLimit = maxSites !== null && activeSites >= maxSites;
+    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   } catch (error) {
     loadError =
       error instanceof Error ? error.message : "Unable to load sites from the webhooks worker.";
   }
-
-  const activeSites = sites.filter((site) => site.status === "active").length;
-  const unverifiedDomains = sites.reduce(
-    (total, site) => total + site.domains.filter((domain) => domain.status !== "verified").length,
-    0,
-  );
-  const totalLanguages = sites.reduce((total, site) => total + site.locales.length, 0);
 
   return (
     <div className="space-y-6">
@@ -59,6 +59,15 @@ export default async function DashboardPage() {
                 <Link href={pricingPath}>Update billing</Link>
               </Button>
             </div>
+          ) : atSiteLimit ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled variant="outline">
+                Add a site
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href={pricingPath}>Upgrade for more sites</Link>
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Button disabled variant="outline">
@@ -73,20 +82,6 @@ export default async function DashboardPage() {
             <Link href="/dashboard/sites">All sites</Link>
           </Button>
         </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard title="Active sites" value={activeSites} helper="Ready for traffic" />
-        <SummaryCard
-          title="Unverified domains"
-          value={unverifiedDomains}
-          helper="Check DNS tokens"
-        />
-        <SummaryCard
-          title="Configured languages"
-          value={totalLanguages}
-          helper="Source + targets"
-        />
       </div>
 
       {loadError ? (
@@ -131,71 +126,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your sites</CardTitle>
-            <CardDescription>Quick view of active and in-progress properties.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {sites.slice(0, 5).map((site) => (
-              <div
-                key={site.id}
-                className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-foreground">{site.sourceUrl}</p>
-                    <StatusBadge status={site.status} />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {site.locales
-                      .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
-                      .join(" · ")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    {site.domains.filter((d) => d.status === "verified").length} /{" "}
-                    {site.domains.length} domains
-                  </Badge>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/dashboard/sites/${site.id}`}>Manage</Link>
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {sites.length > 5 ? (
-              <div className="text-right">
-                <Button asChild variant="link">
-                  <Link href="/dashboard/sites">View all</Link>
-                </Button>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
+        <SitesList sites={sites} />
       )}
     </div>
   );
-}
-
-function SummaryCard(props: { title: string; value: number; helper: string }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>{props.title}</CardDescription>
-        <CardTitle className="text-3xl font-semibold">{props.value}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{props.helper}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatusBadge({ status }: { status: Site["status"] }) {
-  if (status === "active") {
-    return <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>;
-  }
-
-  return <Badge variant="outline">Inactive</Badge>;
 }

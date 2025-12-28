@@ -9,11 +9,11 @@ import { setWorkspaceAction } from "../../_lib/workspace-actions";
 import { CustomerInviteForm } from "../customer-invite-form";
 
 type CustomersPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     status?: string;
     plan?: string;
     query?: string;
-  };
+  }>;
 };
 
 export default async function AgencyCustomersPage({ searchParams }: CustomersPageProps) {
@@ -22,10 +22,11 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
     redirect("/dashboard");
   }
 
+  const resolvedSearchParams = await searchParams;
   const customers = auth.agencyCustomers?.customers ?? [];
-  const statusFilter = searchParams?.status ?? "all";
-  const planFilter = searchParams?.plan ?? "all";
-  const query = searchParams?.query?.trim().toLowerCase() ?? "";
+  const statusFilter = resolvedSearchParams?.status ?? "all";
+  const planFilter = resolvedSearchParams?.plan ?? "all";
+  const query = resolvedSearchParams?.query?.trim().toLowerCase() ?? "";
 
   const filtered = customers.filter((customer) => {
     if (statusFilter !== "all" && customer.status !== statusFilter) {

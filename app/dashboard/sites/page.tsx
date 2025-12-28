@@ -1,24 +1,29 @@
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSites, type Site } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
+import { SitesList } from "../_components/sites-list";
 
 export default async function SitesPage() {
   let sites: Site[] = [];
   let error: string | null = null;
   let canCreateSite = false;
   let billingBlocked = false;
+  let atSiteLimit = false;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
 
   try {
     const auth = await requireDashboardAuth();
     sites = await listSites(auth.webhooksAuth!);
     billingBlocked = !auth.mutationsAllowed;
-    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked;
+    const maxSites = auth.account?.featureFlags.maxSites ?? null;
+    const activeSites = sites.filter((site) => site.status === "active").length;
+    const hasAvailableSlot = maxSites === null || activeSites < maxSites;
+    atSiteLimit = maxSites !== null && activeSites >= maxSites;
+    canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load sites.";
   }
@@ -40,6 +45,13 @@ export default async function SitesPage() {
           <Button asChild variant="secondary">
             <Link href={pricingPath}>Update billing</Link>
           </Button>
+        ) : atSiteLimit ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled>Add a site</Button>
+            <Button asChild variant="secondary">
+              <Link href={pricingPath}>Upgrade for more sites</Link>
+            </Button>
+          </div>
         ) : (
           <Button asChild variant="secondary">
             <Link href={pricingPath}>Upgrade to add a site</Link>
@@ -71,64 +83,8 @@ export default async function SitesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {sites.map((site) => (
-            <Card key={site.id}>
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg font-semibold">{site.sourceUrl}</CardTitle>
-                    <StatusBadge status={site.status} />
-                  </div>
-                  <CardDescription>
-                    {site.locales
-                      .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
-                      .join(" · ")}
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">
-                    Domains: {site.domains.filter((domain) => domain.status === "verified").length}{" "}
-                    / {site.domains.length}
-                  </Badge>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/dashboard/sites/${site.id}`}>Manage</Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-[2fr_1fr] md:items-start">
-                <div className="space-y-1 text-sm">
-                  <p className="font-semibold text-foreground">Domains</p>
-                  <div className="flex flex-wrap gap-2">
-                    {site.domains.map((domain) => (
-                      <Badge
-                        key={domain.domain}
-                        variant={domain.status === "verified" ? "secondary" : "outline"}
-                      >
-                        {domain.domain} ({domain.status})
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <p className="font-semibold text-foreground">Route config</p>
-                  <p className="text-muted-foreground">
-                    {site.routeConfig?.pattern ?? "No subdomain pattern recorded"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <SitesList sites={sites} />
       )}
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: Site["status"] }) {
-  if (status === "active") {
-    return <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>;
-  }
-
-  return <Badge variant="outline">Inactive</Badge>;
 }
