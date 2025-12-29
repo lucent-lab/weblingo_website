@@ -4,13 +4,16 @@ import { notFound } from "next/navigation";
 import { triggerPageCrawlAction } from "../../../actions";
 import { SiteHeader } from "../site-header";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import {
+  fetchDeployments,
   fetchSite,
   fetchSitePages,
   WebhooksApiError,
+  type Deployment,
   type Site,
   type SitePageSummary,
 } from "@internal/dashboard/webhooks";
@@ -49,9 +52,43 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
   const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
   const activateHelp = t("dashboard.site.status.activateHelp");
+  const servingTitle = t("dashboard.serving.languages.title");
+  const servingDescription = t("dashboard.serving.languages.description");
+  const servingLanguageLabel = t("dashboard.serving.languages.columns.language");
+  const servingDomainLabel = t("dashboard.serving.languages.columns.domain");
+  const servingStatusLabel = t("dashboard.serving.languages.columns.serving");
+  const servingActiveLabel = t("dashboard.deployments.activeId.label");
+  const deploymentsEmpty = t("dashboard.deployments.empty");
+  const crawlSummaryTitle = t("dashboard.crawl.summary.title");
+  const crawlSummaryDescription = t("dashboard.crawl.summary.description");
+  const crawlSummaryEmpty = t("dashboard.crawl.summary.empty");
+  const crawlStatusLabel = t("dashboard.crawl.summary.status");
+  const crawlTriggerLabel = t("dashboard.crawl.summary.trigger");
+  const crawlStartedLabel = t("dashboard.crawl.summary.startedAt");
+  const crawlFinishedLabel = t("dashboard.crawl.summary.finishedAt");
+  const crawlDiscoveredLabel = t("dashboard.crawl.summary.discovered");
+  const crawlEnqueuedLabel = t("dashboard.crawl.summary.enqueued");
+  const crawlErrorLabel = t("dashboard.crawl.summary.error");
+  const servingStatusLabels = {
+    inactive: t("dashboard.serving.status.inactive"),
+    disabled: t("dashboard.serving.status.disabled"),
+    needs_domain: t("dashboard.serving.status.needsDomain"),
+    ready: t("dashboard.serving.status.ready"),
+    serving: t("dashboard.serving.status.serving"),
+  };
+  const crawlStatusLabels = {
+    in_progress: t("dashboard.crawl.status.inProgress"),
+    completed: t("dashboard.crawl.status.completed"),
+    failed: t("dashboard.crawl.status.failed"),
+  };
+  const crawlTriggerLabels = {
+    cron: t("dashboard.crawl.trigger.cron"),
+    queue: t("dashboard.crawl.trigger.queue"),
+  };
 
   let site: Site | null = null;
   let pages: SitePageSummary[] = [];
+  let deployments: Deployment[] = [];
   let error: string | null = null;
 
   try {
@@ -96,12 +133,26 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     notFound();
   }
 
+  try {
+    deployments = await fetchDeployments(authToken, id);
+  } catch (err) {
+    console.warn("[dashboard] fetchDeployments failed:", err);
+  }
+
   const dailyUsage = auth.account?.dailyCrawlUsage;
   const maxDailyPageCrawls = auth.account?.featureFlags.maxDailyPageRecrawls ?? null;
   const pageCrawlLimitReached =
     maxDailyPageCrawls !== null && (dailyUsage?.pageCrawls ?? 0) >= maxDailyPageCrawls;
   const crawlReady = site.status === "active";
   const returnTo = `/dashboard/sites/${site.id}/pages`;
+  const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
+  const deploymentsByLang = new Map(
+    deployments.map((deployment) => [deployment.targetLang, deployment]),
+  );
+  const latestCrawlRun = site.latestCrawlRun ?? null;
+  const servingRows = targetLangs
+    .map((lang) => deploymentsByLang.get(lang))
+    .filter((deployment): deployment is Deployment => Boolean(deployment));
 
   return (
     <div className="space-y-8">
@@ -132,6 +183,135 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         activateHelpLabel={activateHelpLabel}
         activateHelp={activateHelp}
       />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{crawlSummaryTitle}</CardTitle>
+          <CardDescription>{crawlSummaryDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!latestCrawlRun ? (
+            <p className="text-sm text-muted-foreground">{crawlSummaryEmpty}</p>
+          ) : (
+            <div className="grid gap-4 text-sm md:grid-cols-2">
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlStatusLabel}</div>
+                <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.status)}>
+                  {crawlStatusLabels[latestCrawlRun.status] ?? latestCrawlRun.status}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlTriggerLabel}</div>
+                <span className="font-mono text-foreground">
+                  {crawlTriggerLabels[latestCrawlRun.trigger] ?? latestCrawlRun.trigger}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlStartedLabel}</div>
+                <span className="text-muted-foreground">
+                  {formatTimestamp(latestCrawlRun.startedAt)}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlFinishedLabel}</div>
+                <span className="text-muted-foreground">
+                  {formatTimestamp(latestCrawlRun.finishedAt)}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">
+                  {crawlDiscoveredLabel}
+                </div>
+                <span className="font-mono text-foreground">
+                  {latestCrawlRun.pagesDiscovered}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">
+                  {crawlEnqueuedLabel}
+                </div>
+                <span className="font-mono text-foreground">
+                  {latestCrawlRun.pagesEnqueued}
+                </span>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <div className="text-xs uppercase text-muted-foreground">{crawlErrorLabel}</div>
+                <span className={latestCrawlRun.error ? "text-destructive" : "text-muted-foreground"}>
+                  {latestCrawlRun.error ?? "—"}
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{servingTitle}</CardTitle>
+          <CardDescription>{servingDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {servingRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{deploymentsEmpty}</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">{servingLanguageLabel}</th>
+                    <th className="px-3 py-2 text-left">{servingDomainLabel}</th>
+                    <th className="px-3 py-2 text-left">{servingStatusLabel}</th>
+                    <th className="px-3 py-2 text-left">{servingActiveLabel}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {servingRows.map((deployment) => {
+                    const domainStatus = deployment.domainStatus ?? null;
+                    const servingLabel =
+                      servingStatusLabels[deployment.servingStatus] ?? deployment.servingStatus;
+                    const servingVariant = resolveServingStatusVariant(deployment.servingStatus);
+                    const domainVariant = resolveDomainStatusVariant(domainStatus);
+                    return (
+                      <tr
+                        key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
+                        className="border-t border-border/50"
+                      >
+                        <td className="px-3 py-3 align-top font-semibold text-foreground">
+                          {deployment.targetLang.toUpperCase()}
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-foreground">
+                              {deployment.domain ?? "—"}
+                            </span>
+                            {domainStatus ? (
+                              <Badge variant={domainVariant}>{domainStatus}</Badge>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <Badge variant={servingVariant}>{servingLabel}</Badge>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <span
+                            className={
+                              deployment.activeDeploymentId
+                                ? "font-mono text-foreground"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {deployment.activeDeploymentId ?? "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -233,4 +413,42 @@ function formatTimestamp(value?: string | null): string {
     return value;
   }
   return date.toLocaleString();
+}
+
+function resolveServingStatusVariant(status: Deployment["servingStatus"]) {
+  switch (status) {
+    case "serving":
+      return "default";
+    case "ready":
+      return "secondary";
+    case "disabled":
+    case "needs_domain":
+    case "inactive":
+    default:
+      return "outline";
+  }
+}
+
+function resolveCrawlStatusVariant(status: "in_progress" | "completed" | "failed") {
+  switch (status) {
+    case "completed":
+      return "secondary";
+    case "failed":
+      return "destructive";
+    case "in_progress":
+    default:
+      return "outline";
+  }
+}
+
+function resolveDomainStatusVariant(status: Deployment["domainStatus"] | null) {
+  switch (status) {
+    case "verified":
+      return "secondary";
+    case "failed":
+      return "destructive";
+    case "pending":
+    default:
+      return "outline";
+  }
 }

@@ -11,6 +11,7 @@ import {
   cancelTranslationRun,
   provisionDomain,
   refreshDomain,
+  setLocaleServing,
   translateSite,
   triggerCrawl,
   triggerPageCrawl,
@@ -924,6 +925,53 @@ export async function updateSiteStatusAction(formData: FormData): Promise<void> 
       siteId,
       {
         error: toFriendlyDashboardActionError(error, "Unable to update site status right now."),
+      },
+      returnTo,
+    );
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function setLocaleServingAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const targetLang = formData.get("targetLang")?.toString();
+  const enabledRaw = formData.get("enabled")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
+
+  if (!siteId || !targetLang || !enabledRaw) {
+    return;
+  }
+
+  if (enabledRaw !== "true" && enabledRaw !== "false") {
+    return;
+  }
+
+  const enabled = enabledRaw === "true";
+  let nextRedirect: string;
+
+  try {
+    await withWebhooksAuth((auth) => setLocaleServing(auth, siteId, targetLang, enabled));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/pages`);
+    nextRedirect = siteRedirect(
+      siteId,
+      { toast: enabled ? "Serving enabled." : "Serving disabled." },
+      returnTo,
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] setLocaleServingAction failed:", error);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(
+          error,
+          "Unable to update serving settings right now.",
+        ),
       },
       returnTo,
     );

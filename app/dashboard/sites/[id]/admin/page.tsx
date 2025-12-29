@@ -10,6 +10,7 @@ import {
   cancelTranslationRunAction,
   deactivateSiteAction,
   deleteSiteAction,
+  setLocaleServingAction,
   translateAndServeAction,
   triggerCrawlAction,
 } from "../../../actions";
@@ -53,6 +54,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const canDelete = auth.has({ feature: "edit" });
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
+  const canToggleServing = canEdit;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const returnTo = `/dashboard/sites/${id}/admin`;
   const { t } = await resolveLocaleTranslator(
@@ -155,6 +157,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const servingActionLabel = t("dashboard.serving.languages.columns.action");
   const servingStatusLabels = {
     inactive: t("dashboard.serving.status.inactive"),
+    disabled: t("dashboard.serving.status.disabled"),
     needs_domain: t("dashboard.serving.status.needsDomain"),
     ready: t("dashboard.serving.status.ready"),
     serving: t("dashboard.serving.status.serving"),
@@ -162,6 +165,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const servingActionTranslate = t("dashboard.serving.action.translate");
   const servingActionVerify = t("dashboard.serving.action.verify");
   const servingActionEnable = t("dashboard.serving.action.enable");
+  const servingActionDisable = t("dashboard.serving.action.disable");
   const servingActionView = t("dashboard.serving.action.view");
   const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const siteCrawlsUsed = auth.account?.dailyCrawlUsage?.siteCrawls ?? 0;
@@ -411,6 +415,11 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                       const domainVariant = resolveDomainStatusVariant(domainStatus);
                       const canStartServing = canCrawl && !siteCrawlLimitReached;
                       const canManageTranslations = canCrawl;
+                      const toggleLabel = deployment.serveEnabled
+                        ? servingActionDisable
+                        : servingActionEnable;
+                      const toggleValue = deployment.serveEnabled ? "false" : "true";
+                      const showToggle = deployment.servingStatus !== "inactive";
                       return (
                         <tr
                           key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
@@ -433,85 +442,102 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                             <Badge variant={servingVariant}>{servingLabel}</Badge>
                           </td>
                           <td className="px-3 py-3 text-right align-top">
-                            {deployment.servingStatus === "serving" && deployment.domain ? (
-                              <Button asChild size="sm" variant="outline">
-                                <Link
-                                  href={`https://${deployment.domain}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {servingActionView}
-                                </Link>
-                              </Button>
-                            ) : deployment.servingStatus === "ready" ? (
-                              <div className="flex flex-col items-end gap-2">
-                                <form action={translateAndServeAction}>
+                            <div className="flex flex-col items-end gap-2">
+                              {deployment.servingStatus === "serving" && deployment.domain ? (
+                                <Button asChild size="sm" variant="outline">
+                                  <Link
+                                    href={`https://${deployment.domain}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {servingActionView}
+                                  </Link>
+                                </Button>
+                              ) : deployment.servingStatus === "ready" ? (
+                                <div className="flex flex-col items-end gap-2">
+                                  <form action={translateAndServeAction}>
+                                    <input name="siteId" type="hidden" value={site.id} />
+                                    <input name="siteStatus" type="hidden" value={site.status} />
+                                    <input
+                                      name="targetLang"
+                                      type="hidden"
+                                      value={deployment.targetLang}
+                                    />
+                                    <input name="returnTo" type="hidden" value={returnTo} />
+                                    <Button
+                                      type="submit"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!canStartServing || Boolean(deployment.translationRun)}
+                                      title={
+                                        deployment.translationRun
+                                          ? "Translation already running."
+                                          : canStartServing
+                                            ? undefined
+                                            : "Daily site crawl limit reached."
+                                      }
+                                    >
+                                      {servingActionTranslate}
+                                    </Button>
+                                  </form>
+                                  {deployment.translationRun ? (
+                                    <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+                                      <span>
+                                        Translation{" "}
+                                        {deployment.translationRun.status === "queued"
+                                          ? "queued"
+                                          : "in progress"}
+                                        {deployment.translationRun.pagesTotal
+                                          ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
+                                          : ""}
+                                      </span>
+                                      <form action={cancelTranslationRunAction}>
+                                        <input name="siteId" type="hidden" value={site.id} />
+                                        <input
+                                          name="runId"
+                                          type="hidden"
+                                          value={deployment.translationRun.id}
+                                        />
+                                        <input name="returnTo" type="hidden" value={returnTo} />
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          type="submit"
+                                          disabled={!canManageTranslations}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </form>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : deployment.servingStatus === "needs_domain" ? (
+                                <Button asChild size="sm" variant="outline">
+                                  <Link href={`/dashboard/sites/${site.id}#domains`}>
+                                    {servingActionVerify}
+                                  </Link>
+                                </Button>
+                              ) : deployment.servingStatus === "disabled" ? null : (
+                                <Button size="sm" variant="outline" disabled>
+                                  {servingActionEnable}
+                                </Button>
+                              )}
+                              {showToggle ? (
+                                <form action={setLocaleServingAction}>
                                   <input name="siteId" type="hidden" value={site.id} />
-                                  <input name="siteStatus" type="hidden" value={site.status} />
                                   <input
                                     name="targetLang"
                                     type="hidden"
                                     value={deployment.targetLang}
                                   />
+                                  <input name="enabled" type="hidden" value={toggleValue} />
                                   <input name="returnTo" type="hidden" value={returnTo} />
-                                  <Button
-                                    type="submit"
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={!canStartServing || Boolean(deployment.translationRun)}
-                                    title={
-                                      deployment.translationRun
-                                        ? "Translation already running."
-                                        : canStartServing
-                                          ? undefined
-                                          : "Daily site crawl limit reached."
-                                    }
-                                  >
-                                    {servingActionTranslate}
+                                  <Button size="sm" variant="outline" disabled={!canToggleServing}>
+                                    {toggleLabel}
                                   </Button>
                                 </form>
-                                {deployment.translationRun ? (
-                                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
-                                    <span>
-                                      Translation{" "}
-                                      {deployment.translationRun.status === "queued"
-                                        ? "queued"
-                                        : "in progress"}
-                                      {deployment.translationRun.pagesTotal
-                                        ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
-                                        : ""}
-                                    </span>
-                                    <form action={cancelTranslationRunAction}>
-                                      <input name="siteId" type="hidden" value={site.id} />
-                                      <input
-                                        name="runId"
-                                        type="hidden"
-                                        value={deployment.translationRun.id}
-                                      />
-                                      <input name="returnTo" type="hidden" value={returnTo} />
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        type="submit"
-                                        disabled={!canManageTranslations}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </form>
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : deployment.servingStatus === "needs_domain" ? (
-                              <Button asChild size="sm" variant="outline">
-                                <Link href={`/dashboard/sites/${site.id}#domains`}>
-                                  {servingActionVerify}
-                                </Link>
-                              </Button>
-                            ) : (
-                              <Button size="sm" variant="outline" disabled>
-                                {servingActionEnable}
-                              </Button>
-                            )}
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -789,6 +815,8 @@ function resolveServingStatusVariant(status: Deployment["servingStatus"]) {
       return "default";
     case "ready":
       return "secondary";
+    case "disabled":
+      return "outline";
     case "needs_domain":
       return "outline";
     case "inactive":

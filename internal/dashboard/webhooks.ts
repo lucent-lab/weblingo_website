@@ -102,10 +102,27 @@ const siteSchema = z.object({
       sourceLang: z.string(),
       targetLang: z.string(),
       alias: z.string().nullable().optional(),
+      serveEnabled: z.boolean(),
     }),
   ),
   routeConfig: routeConfigSchema.optional(),
   domains: z.array(domainSchema),
+  latestCrawlRun: z
+    .object({
+      id: z.string(),
+      sourceUrl: z.string(),
+      trigger: z.enum(["cron", "queue"]),
+      status: z.enum(["in_progress", "completed", "failed"]),
+      pagesDiscovered: z.number().int().nonnegative(),
+      pagesEnqueued: z.number().int().nonnegative(),
+      error: z.string().nullable().optional(),
+      startedAt: z.string().nullable().optional(),
+      finishedAt: z.string().nullable().optional(),
+      createdAt: z.string().nullable().optional(),
+      updatedAt: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 const sitePageSummarySchema = z.object({
@@ -143,6 +160,15 @@ const translateSiteResponseSchema = z
   })
   .strict();
 
+const setLocaleServingResponseSchema = z
+  .object({
+    targetLang: z.string(),
+    serveEnabled: z.boolean(),
+    servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving"]),
+    activeDeploymentId: z.string().nullable().optional(),
+  })
+  .strict();
+
 const deploymentSchema = z.object({
   targetLang: z.string(),
   status: z.string(),
@@ -153,7 +179,8 @@ const deploymentSchema = z.object({
   activeDeploymentId: z.string().nullable().optional(),
   domain: z.string().nullable().optional(),
   domainStatus: z.enum(["pending", "verified", "failed"]).nullable().optional(),
-  servingStatus: z.enum(["inactive", "needs_domain", "ready", "serving"]),
+  serveEnabled: z.boolean(),
+  servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving"]),
   translationRun: translationRunSchema.nullable().optional(),
 });
 
@@ -597,6 +624,21 @@ export async function translateSite(auth: AuthInput, siteId: string, targetLang:
     auth,
     body: { targetLang },
     schema: translateSiteResponseSchema,
+  });
+}
+
+export async function setLocaleServing(
+  auth: AuthInput,
+  siteId: string,
+  targetLang: string,
+  enabled: boolean,
+) {
+  return request({
+    path: `/sites/${siteId}/locales/${encodeURIComponent(targetLang)}/serve`,
+    method: "POST",
+    auth,
+    body: { enabled },
+    schema: setLocaleServingResponseSchema,
   });
 }
 
