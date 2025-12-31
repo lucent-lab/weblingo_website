@@ -552,11 +552,11 @@ export async function translateAndServeAction(formData: FormData): Promise<void>
   let nextRedirect: string;
 
   try {
-    await withWebhooksAuth(async (auth) => {
+    const result = await withWebhooksAuth(async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
       }
-      return translateSite(auth, siteId, targetLang);
+      return translateSite(auth, siteId, targetLang, { intent: "translate_and_serve" });
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     if (shouldActivate) {
@@ -565,11 +565,16 @@ export async function translateAndServeAction(formData: FormData): Promise<void>
       revalidatePath("/dashboard/sites");
     }
     const activationPrefix = shouldActivate ? "Localization enabled. " : "";
-    nextRedirect = siteRedirect(
-      siteId,
-      { toast: `${activationPrefix}Translation run started.` },
-      returnTo,
-    );
+    const crawlEnqueued = Boolean(result.crawlEnqueued);
+    const missingSnapshots = result.missingSnapshots ?? 0;
+    const runStarted = Boolean(result.run);
+    let toast = "Translation run started.";
+    if (!runStarted && crawlEnqueued) {
+      toast = "Crawl queued. Translation will start once snapshots are ready.";
+    } else if (runStarted && crawlEnqueued && missingSnapshots > 0) {
+      toast = "Translation started for available snapshots. Crawl queued for missing pages.";
+    }
+    nextRedirect = siteRedirect(siteId, { toast: `${activationPrefix}${toast}` }, returnTo);
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;

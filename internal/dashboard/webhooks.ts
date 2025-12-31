@@ -155,8 +155,10 @@ const translationRunSchema = z
 
 const translateSiteResponseSchema = z
   .object({
-    run: translationRunSchema,
+    run: translationRunSchema.nullable(),
     enqueued: z.number().int().nonnegative(),
+    missingSnapshots: z.number().int().nonnegative().optional(),
+    crawlEnqueued: z.boolean().optional(),
   })
   .strict();
 
@@ -617,12 +619,17 @@ export async function triggerCrawl(
   });
 }
 
-export async function translateSite(auth: AuthInput, siteId: string, targetLang: string) {
+export async function translateSite(
+  auth: AuthInput,
+  siteId: string,
+  targetLang: string,
+  options?: { intent?: "translate_and_serve" },
+) {
   return request({
     path: `/sites/${siteId}/translate`,
     method: "POST",
     auth,
-    body: { targetLang },
+    body: { targetLang, ...(options?.intent ? { intent: options.intent } : {}) },
     schema: translateSiteResponseSchema,
   });
 }
