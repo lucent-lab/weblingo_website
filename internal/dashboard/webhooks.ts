@@ -171,13 +171,18 @@ const setLocaleServingResponseSchema = z
   })
   .strict();
 
+const artifactManifestSchema = z
+  .union([z.string(), z.object({}).passthrough()])
+  .nullable()
+  .optional();
+
 const deploymentSchema = z.object({
   targetLang: z.string(),
   status: z.string(),
   deploymentId: z.string().nullable().optional(),
   activatedAt: z.string().nullable().optional(),
   routePrefix: z.string().nullable().optional(),
-  artifactManifest: z.string().nullable().optional(),
+  artifactManifest: artifactManifestSchema,
   activeDeploymentId: z.string().nullable().optional(),
   domain: z.string().nullable().optional(),
   domainStatus: z.enum(["pending", "verified", "failed"]).nullable().optional(),
@@ -449,7 +454,17 @@ async function request<T>({
     throw new WebhooksApiError("Empty response from API", response.status);
   }
 
-  return schema.parse(parsed);
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    console.error("[webhooks] response schema mismatch", {
+      path,
+      method,
+      status: response.status,
+      issues: result.error.issues,
+    });
+    throw result.error;
+  }
+  return result.data;
 }
 
 function safeParseJson(input: string) {
