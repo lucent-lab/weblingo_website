@@ -129,6 +129,8 @@ const sitePageSummarySchema = z.object({
   id: z.string(),
   sourcePath: z.string(),
   lastSeenAt: z.string().nullable().optional(),
+  lastCrawledAt: z.string().nullable().optional(),
+  lastSnapshotAt: z.string().nullable().optional(),
   lastVersionAt: z.string().nullable().optional(),
 });
 

@@ -333,8 +333,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                 <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Page</th>
-                    <th className="px-3 py-2 text-left">Last crawled</th>
-                    <th className="px-3 py-2 text-left">Last update</th>
+                    <th className="px-3 py-2 text-left">Last crawl</th>
+                    <th className="px-3 py-2 text-left">Last change</th>
                     {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
                   </tr>
                 </thead>
@@ -347,10 +347,10 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                         </span>
                       </td>
                       <td className="px-3 py-3 align-top text-muted-foreground">
-                        {formatTimestamp(page.lastSeenAt)}
+                        {formatTimestamp(page.lastCrawledAt)}
                       </td>
                       <td className="px-3 py-3 align-top text-muted-foreground">
-                        {formatTimestamp(page.lastVersionAt)}
+                        {formatTimestamp(page.lastSnapshotAt)}
                       </td>
                       {canCrawl ? (
                         <td className="px-3 py-3 text-right align-top">
