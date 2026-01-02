@@ -30,7 +30,8 @@ const initialState: ActionResponse = {
   ok: false,
   message: "",
 };
-const REQUIRED_FIELDS_MESSAGE = "Please fill every required field and pick at least one target language.";
+const REQUIRED_FIELDS_MESSAGE =
+  "Please fill every required field and pick at least one target language.";
 
 export function OnboardingForm(props: {
   maxLocales: number | null;
@@ -48,10 +49,8 @@ export function OnboardingForm(props: {
 
   useEffect(() => {
     const siteIdRaw = state.meta?.siteId;
-    const siteId =
-      typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
-    const hasValidSiteId =
-      siteId.length > 0 && siteId !== "undefined" && siteId !== "null";
+    const siteId = typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
+    const hasValidSiteId = siteId.length > 0 && siteId !== "undefined" && siteId !== "null";
     if (state.ok && hasValidSiteId) {
       const toast = state.meta?.toast;
       const nextUrl =
@@ -119,6 +118,7 @@ export function OnboardingForm(props: {
           <PendingFieldset>
             <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
             <input name="localeAliases" type="hidden" value={localeAliasesJson} />
+            <input name="servingMode" type="hidden" value="strict" />
 
             <section className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">

@@ -171,8 +171,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const siteCrawlsUsed = auth.account?.dailyCrawlUsage?.siteCrawls ?? 0;
   const siteCrawlsRemaining =
     maxDailySiteCrawls === null ? null : Math.max(maxDailySiteCrawls - siteCrawlsUsed, 0);
-  const siteCrawlLimitReached =
-    maxDailySiteCrawls !== null && siteCrawlsUsed >= maxDailySiteCrawls;
+  const siteCrawlLimitReached = maxDailySiteCrawls !== null && siteCrawlsUsed >= maxDailySiteCrawls;
   const siteCrawlLimitLabel =
     maxDailySiteCrawls === null ? "Unlimited" : `${maxDailySiteCrawls} per day`;
   const siteCrawlRemainingLabel =
@@ -247,6 +246,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
           aliases={localeAliases}
           pattern={site.routeConfig?.pattern ?? null}
           maxLocales={site.maxLocales ?? null}
+          servingMode={site.servingMode}
           supportedLanguages={supportedLanguages}
           displayLocale={displayLocale}
           initialBrandVoice={brandVoice}
@@ -430,9 +430,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                           </td>
                           <td className="px-3 py-3 align-top">
                             <div className="flex flex-col gap-1">
-                              <span className="text-foreground">
-                                {deployment.domain ?? "—"}
-                              </span>
+                              <span className="text-foreground">{deployment.domain ?? "—"}</span>
                               {domainStatus ? (
                                 <Badge variant={domainVariant}>{domainStatus}</Badge>
                               ) : null}
@@ -468,7 +466,9 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                                       type="submit"
                                       size="sm"
                                       variant="outline"
-                                      disabled={!canStartServing || Boolean(deployment.translationRun)}
+                                      disabled={
+                                        !canStartServing || Boolean(deployment.translationRun)
+                                      }
                                       title={
                                         deployment.translationRun
                                           ? "Translation already running."
@@ -742,9 +742,7 @@ function formatPlanLabel(planType: string | null): string | null {
   if (!planType) {
     return null;
   }
-  return planType
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return planType.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function buildSlotSummary(

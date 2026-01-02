@@ -337,11 +337,15 @@ export async function createSiteAction(
   const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
   const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
   const glossaryEntriesRaw = formData.get("glossaryEntries")?.toString().trim() ?? "";
+  const servingMode = formData.get("servingMode")?.toString().trim() ?? "";
 
   const uniqueTargets = Array.from(new Set(targetLangs));
 
   if (!sourceUrl || !sourceLang || uniqueTargets.length === 0 || !subdomainPattern) {
     return failed("Please fill every required field and pick at least one target language.");
+  }
+  if (servingMode !== "strict" && servingMode !== "tolerant") {
+    return failed("Serving mode must be set to strict or tolerant.");
   }
 
   const sourceUrlError = validateSourceUrl(sourceUrl);
@@ -399,6 +403,7 @@ export async function createSiteAction(
       localeAliases: localeAliases ?? undefined,
       siteProfile,
       maxLocales,
+      servingMode,
     });
 
     let toast: string | null = null;
@@ -448,11 +453,15 @@ export async function updateSiteSettingsAction(
   const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
   const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
   const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
+  const servingMode = formData.get("servingMode")?.toString().trim() ?? "";
 
   const uniqueTargets = Array.from(new Set(targetLangs));
 
   if (!siteId || !sourceUrl || uniqueTargets.length === 0 || !subdomainPattern) {
     return failed("Please fill every required field and pick at least one target language.");
+  }
+  if (servingMode !== "strict" && servingMode !== "tolerant") {
+    return failed("Serving mode must be set to strict or tolerant.");
   }
 
   const sourceUrlError = validateSourceUrl(sourceUrl);
@@ -488,6 +497,7 @@ export async function updateSiteSettingsAction(
       subdomainPattern,
       localeAliases: localeAliases ?? undefined,
       siteProfile,
+      servingMode,
     });
 
     revalidatePath("/dashboard");
@@ -530,9 +540,13 @@ export async function triggerCrawlAction(formData: FormData): Promise<void> {
       throw error;
     }
     console.error("[dashboard] triggerCrawlAction failed:", error);
-    nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."),
-    }, returnTo);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."),
+      },
+      returnTo,
+    );
   }
 
   redirect(nextRedirect);
@@ -580,12 +594,16 @@ export async function translateAndServeAction(formData: FormData): Promise<void>
       throw error;
     }
     console.error("[dashboard] translateAndServeAction failed:", error);
-    nextRedirect = siteRedirect(siteId, {
-      error: toTranslateAndServeError(
-        error,
-        "Unable to start translation and serving right now.",
-      ),
-    }, returnTo);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toTranslateAndServeError(
+          error,
+          "Unable to start translation and serving right now.",
+        ),
+      },
+      returnTo,
+    );
   }
 
   redirect(nextRedirect);
@@ -612,9 +630,13 @@ export async function cancelTranslationRunAction(formData: FormData): Promise<vo
       throw error;
     }
     console.error("[dashboard] cancelTranslationRunAction failed:", error);
-    nextRedirect = siteRedirect(siteId, {
-      error: toFriendlyDashboardActionError(error, "Unable to cancel the translation run."),
-    }, returnTo);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to cancel the translation run."),
+      },
+      returnTo,
+    );
   }
 
   redirect(nextRedirect);
@@ -726,7 +748,7 @@ export async function provisionDomainAction(formData: FormData): Promise<void> {
         ? siteRedirect(siteId, { error: `Provisioning failed for ${domain}.` })
         : updated.status === "verified"
           ? siteRedirect(siteId, { toast: verifiedToast })
-        : siteRedirect(siteId, { toast: `Provisioning requested for ${domain}.` });
+          : siteRedirect(siteId, { toast: `Provisioning requested for ${domain}.` });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
@@ -770,7 +792,7 @@ export async function refreshDomainAction(formData: FormData): Promise<void> {
         ? siteRedirect(siteId, { error: `Refresh failed for ${domain}.` })
         : updated.status === "verified"
           ? siteRedirect(siteId, { toast: verifiedToast })
-        : siteRedirect(siteId, { toast: `Refresh requested for ${domain}.` });
+          : siteRedirect(siteId, { toast: `Refresh requested for ${domain}.` });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;

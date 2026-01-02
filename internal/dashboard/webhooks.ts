@@ -95,6 +95,7 @@ const siteSchema = z.object({
   id: z.string(),
   sourceUrl: z.string(),
   status: z.enum(["active", "inactive"]),
+  servingMode: z.enum(["strict", "tolerant"]),
   maxLocales: z.number().int().positive().nullable(),
   siteProfile: siteProfileSchema,
   locales: z.array(
@@ -576,6 +577,7 @@ export type CreateSitePayload = {
   localeAliases?: Record<string, string | null>;
   siteProfile?: Record<string, unknown> | null;
   maxLocales: number | null;
+  servingMode: "strict" | "tolerant";
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {

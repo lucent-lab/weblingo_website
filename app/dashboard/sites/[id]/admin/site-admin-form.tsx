@@ -24,7 +24,8 @@ import { cn } from "@/lib/utils";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = { ok: false, message: "" };
-const REQUIRED_FIELDS_MESSAGE = "Please fill every required field and pick at least one target language.";
+const REQUIRED_FIELDS_MESSAGE =
+  "Please fill every required field and pick at least one target language.";
 
 type SiteAdminFormProps = {
   siteId: string;
@@ -34,6 +35,7 @@ type SiteAdminFormProps = {
   aliases: Record<string, string | null>;
   pattern: string | null;
   maxLocales: number | null;
+  servingMode: "strict" | "tolerant";
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
   initialBrandVoice?: string;
@@ -48,6 +50,7 @@ export function SiteAdminForm({
   aliases,
   pattern,
   maxLocales,
+  servingMode: initialServingMode,
   supportedLanguages,
   displayLocale,
   initialBrandVoice = "",
@@ -67,12 +70,10 @@ export function SiteAdminForm({
   const [patternEditing, setPatternEditing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [servingMode, setServingMode] = useState<"strict" | "tolerant">(initialServingMode);
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
-  const initialParsedUrl = useMemo(
-    () => parseSourceUrl(initialSourceUrl),
-    [initialSourceUrl],
-  );
+  const initialParsedUrl = useMemo(() => parseSourceUrl(initialSourceUrl), [initialSourceUrl]);
   const sourceUrlValid = parsedSourceUrl !== null;
   const showSourceUrlError = sourceUrl.trim().length > 0 && !sourceUrlValid;
   const sourceHost = parsedSourceUrl?.hostname ?? "";
@@ -199,18 +200,20 @@ export function SiteAdminForm({
                   id="sourceUrl"
                   name="sourceUrl"
                   placeholder="https://www.example.com"
-                    type="url"
-                    required
-                    value={sourceUrl}
-                    onChange={(event) => {
-                      setSourceUrl(event.target.value);
-                      if (confirmReset) {
-                        setConfirmReset(false);
-                      }
-                    }}
+                  type="url"
+                  required
+                  value={sourceUrl}
+                  onChange={(event) => {
+                    setSourceUrl(event.target.value);
+                    if (confirmReset) {
+                      setConfirmReset(false);
+                    }
+                  }}
                   aria-invalid={sourceUrlRequiredError || showSourceUrlError}
                   className={
-                    sourceUrlRequiredError ? "border-destructive focus-visible:ring-destructive" : ""
+                    sourceUrlRequiredError
+                      ? "border-destructive focus-visible:ring-destructive"
+                      : ""
                   }
                 />
               </Field>
@@ -331,6 +334,44 @@ export function SiteAdminForm({
                 )}
               </Field>
             </div>
+          </section>
+
+          <section className="space-y-5 border-t border-border/60 pt-6">
+            <div className="border-b border-border/60 pb-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">Serving mode</CardTitle>
+                  <CardDescription>
+                    Choose how translation runs complete before serving updates.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+            <Field
+              label="Completion behavior"
+              htmlFor="servingMode"
+              description="Strict waits for every page. Tolerant can complete when some pages fail and keeps previous content for those pages."
+            >
+              <select
+                id="servingMode"
+                name="servingMode"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                value={servingMode}
+                onChange={(event) =>
+                  setServingMode(event.target.value === "tolerant" ? "tolerant" : "strict")
+                }
+              >
+                <option value="strict">Strict (require all pages)</option>
+                <option value="tolerant">Tolerant (serve with failures)</option>
+              </select>
+            </Field>
+            {servingMode === "tolerant" ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Tolerant mode keeps previously served pages when a page fails to translate. Use it
+                when you prefer availability over completeness.
+              </div>
+            ) : null}
           </section>
 
           <section className="space-y-3 border-t border-border/60 pt-6">
