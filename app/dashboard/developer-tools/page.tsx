@@ -3,8 +3,7 @@ import { env } from "@internal/core";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getWebhooksAuth } from "../_lib/webhooks-token";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 
 export const metadata = {
   title: "Developer tools",
@@ -12,15 +11,11 @@ export const metadata = {
 };
 
 export default async function DeveloperToolsPage() {
-  const { token, expiresAt } = await getWebhooksAuth();
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const formattedSessionExpiry = formatEpoch(session?.expires_at);
+  const auth = await requireDashboardAuth();
+  const formattedSessionExpiry = formatEpoch(auth.session?.expires_at);
+  const token = auth.webhooksAuth?.token ?? "";
+  const expiresAt = auth.webhooksAuth?.expiresAt ?? "—";
+  const user = auth.user;
 
   return (
     <div className="space-y-6">
