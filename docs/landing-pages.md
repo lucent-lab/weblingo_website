@@ -9,7 +9,7 @@ They reuse a shared layout and only swap copy + iconography.
 
 ## Add a new landing segment
 
-1) Add copy to the i18n message files:
+1. Add copy to the i18n message files:
    - `internal/i18n/messages/en.json`
    - `internal/i18n/messages/fr.json`
    - `internal/i18n/messages/ja.json`
@@ -17,15 +17,15 @@ They reuse a shared layout and only swap copy + iconography.
    Use the same key prefix (example: `landing.tourism.*`) and keep wording consistent with static-site support.
    Avoid claims about dynamic flows (checkout, carts, dashboards).
 
-2) Register the segment in `modules/landing/content.ts`:
+2. Register the segment in `modules/landing/content.ts`:
    - Add the segment slug to `landingSegments`.
    - Add a new entry in `landingContent` with the i18n keys and icons.
 
-3) Preview locally:
+3. Preview locally:
    - Run `pnpm dev`
    - Visit `http://localhost:3000/en/landing/<segment>`
 
-4) Indexing (when ready):
+4. Indexing (when ready):
    - Remove or conditionally disable the `robots: { index: false, follow: false }`
      block in `app/[locale]/landing/[segment]/page.tsx`.
    - Add the route to `app/sitemap.ts` so it appears in the sitemap.

@@ -103,7 +103,18 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     },
   ];
 
-  const planRows = {
+  type PlanRow = {
+    name: string;
+    description: string;
+    features: string[];
+    note: string;
+    price: string;
+    websites: string;
+    languages: string;
+    extra?: string;
+  };
+
+  const planRows: Record<(typeof planIds)[number], PlanRow> = {
     launch: {
       name: t("pricing.tiers.launch.name"),
       description: t("pricing.tiers.launch.description"),
@@ -229,7 +240,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                         </div>
                       ))}
                       <p className="text-xs text-muted-foreground">{plan.note}</p>
-                      {planId === "enterprise" ? (
+                      {plan.extra ? (
                         <p className="text-xs text-muted-foreground">{plan.extra}</p>
                       ) : null}
                     </div>

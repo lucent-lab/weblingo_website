@@ -29,8 +29,7 @@ export default async function NewSitePage() {
   }
   const hasAvailableSlot = maxSites === null || activeSites < maxSites;
   const atSiteLimit = maxSites !== null && activeSites >= maxSites;
-  const canCreateSite =
-    auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
+  const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   if (!canCreateSite) {
     const title = billingBlocked
       ? "Billing action required"
@@ -50,9 +49,7 @@ export default async function NewSitePage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>
-              {billingBlocked ? "Update billing" : "Upgrade plan"}
-            </Link>
+            <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/sites">Back to sites</Link>

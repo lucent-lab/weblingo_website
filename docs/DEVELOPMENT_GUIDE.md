@@ -4,7 +4,7 @@ This guide covers local development, Stripe setup, and the proto-package layout 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - pnpm 9+
 - Stripe CLI (for webhook forwarding)
 

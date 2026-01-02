@@ -144,10 +144,7 @@ function Sidebar({
     return (
       <>
         {openMobile ? (
-          <div
-            className="fixed inset-0 z-40 bg-black/40"
-            onClick={() => setOpenMobile(false)}
-          />
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setOpenMobile(false)} />
         ) : null}
         <aside
           data-slot="sidebar"
@@ -188,7 +185,9 @@ function Sidebar({
       className={cn(
         "group hidden h-screen shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear md:sticky md:flex md:top-0",
         widthClass,
-        showCollapse && collapsible === "offcanvas" ? "border-r-0" : "border-r border-sidebar-border",
+        showCollapse && collapsible === "offcanvas"
+          ? "border-r-0"
+          : "border-r border-sidebar-border",
         className,
       )}
       {...props}
@@ -198,11 +197,7 @@ function Sidebar({
   );
 }
 
-function SidebarTrigger({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button>) {
+function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -248,10 +243,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sidebar-header"
-      className={cn(
-        "flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-1",
-        className,
-      )}
+      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-1", className)}
       {...props}
     />
   );
@@ -261,10 +253,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sidebar-footer"
-      className={cn(
-        "flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-1",
-        className,
-      )}
+      className={cn("flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-1", className)}
       {...props}
     />
   );
@@ -318,9 +307,7 @@ function SidebarGroupLabel({
 }
 
 function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div data-slot="sidebar-group-content" className={cn("w-full", className)} {...props} />
-  );
+  return <div data-slot="sidebar-group-content" className={cn("w-full", className)} {...props} />;
 }
 
 function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
@@ -334,9 +321,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
 }
 
 function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
-  return (
-    <li data-slot="sidebar-menu-item" className={cn("relative", className)} {...props} />
-  );
+  return <li data-slot="sidebar-menu-item" className={cn("relative", className)} {...props} />;
 }
 
 const sidebarMenuButtonVariants = cva(

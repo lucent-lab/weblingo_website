@@ -31,9 +31,7 @@ export function DashboardNav({ items }: { items: NavItem[] }) {
             <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
               <Link href={item.href} aria-current={isActive ? "page" : undefined}>
                 {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
-                <span className="truncate group-data-[collapsible=icon]:sr-only">
-                  {item.label}
-                </span>
+                <span className="truncate group-data-[collapsible=icon]:sr-only">{item.label}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

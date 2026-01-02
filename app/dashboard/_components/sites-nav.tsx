@@ -57,7 +57,9 @@ type SiteNavItemProps = {
 
 function SiteNavItem({ site, pathname }: SiteNavItemProps) {
   const baseHref = `/dashboard/sites/${site.id}`;
-  const isActive = Boolean(pathname && (pathname === baseHref || pathname.startsWith(`${baseHref}/`)));
+  const isActive = Boolean(
+    pathname && (pathname === baseHref || pathname.startsWith(`${baseHref}/`)),
+  );
   const [manualOpen, setManualOpen] = useState(false);
   const open = isActive || manualOpen;
   const menuId = `site-nav-${site.id}`;

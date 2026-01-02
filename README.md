@@ -72,7 +72,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ## Deployment
 
 - **Build**: `pnpm run build` (Next.js static + server output).
-- **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 18+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
+- **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 20.9+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
 - **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.
 - **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin.
 - **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.

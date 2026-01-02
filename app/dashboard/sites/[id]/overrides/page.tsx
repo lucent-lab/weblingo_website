@@ -141,7 +141,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         <Card>
           <CardHeader>
             <CardTitle>Glossary</CardTitle>
-            <CardDescription>Maintain terminology control and optional retranslate.</CardDescription>
+            <CardDescription>
+              Maintain terminology control and optional retranslate.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <GlossaryEditor initialEntries={glossary} siteId={site.id} targetLangs={targetLangs} />

@@ -1,12 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Clock,
-  Laptop,
-  Plane,
-  Search,
-  ShoppingBag,
-  TrendingDown,
-} from "lucide-react";
+import { Clock, Laptop, Plane, Search, ShoppingBag, TrendingDown } from "lucide-react";
 
 type StatItem = {
   valueKey: string;

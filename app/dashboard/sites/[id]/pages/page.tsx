@@ -222,21 +222,17 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                 <div className="text-xs uppercase text-muted-foreground">
                   {crawlDiscoveredLabel}
                 </div>
-                <span className="font-mono text-foreground">
-                  {latestCrawlRun.pagesDiscovered}
-                </span>
+                <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered}</span>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">
-                  {crawlEnqueuedLabel}
-                </div>
-                <span className="font-mono text-foreground">
-                  {latestCrawlRun.pagesEnqueued}
-                </span>
+                <div className="text-xs uppercase text-muted-foreground">{crawlEnqueuedLabel}</div>
+                <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued}</span>
               </div>
               <div className="space-y-1 md:col-span-2">
                 <div className="text-xs uppercase text-muted-foreground">{crawlErrorLabel}</div>
-                <span className={latestCrawlRun.error ? "text-destructive" : "text-muted-foreground"}>
+                <span
+                  className={latestCrawlRun.error ? "text-destructive" : "text-muted-foreground"}
+                >
                   {latestCrawlRun.error ?? "—"}
                 </span>
               </div>
@@ -281,9 +277,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                         </td>
                         <td className="px-3 py-3 align-top">
                           <div className="flex flex-col gap-1">
-                            <span className="text-foreground">
-                              {deployment.domain ?? "—"}
-                            </span>
+                            <span className="text-foreground">{deployment.domain ?? "—"}</span>
                             {domainStatus ? (
                               <Badge variant={domainVariant}>{domainStatus}</Badge>
                             ) : null}
@@ -317,8 +311,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         <CardHeader>
           <CardTitle>Pages</CardTitle>
           <CardDescription>
-            Discovered pages from sitemaps and crawls. Enable localization before triggering a
-            new crawl.
+            Discovered pages from sitemaps and crawls. Enable localization before triggering a new
+            crawl.
           </CardDescription>
         </CardHeader>
         <CardContent>

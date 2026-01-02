@@ -94,9 +94,7 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
                 <h2 className="mb-2 text-lg font-semibold text-foreground">
                   {t("try.header.title")}
                 </h2>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {t("try.header.description")}
-                </p>
+                <p className="mb-6 text-sm text-muted-foreground">{t("try.header.description")}</p>
                 <TryForm
                   locale={locale}
                   messages={messages}
@@ -115,9 +113,7 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
           <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
             {t("home.problem.title")}
           </h2>
-          <p className="mb-12 text-lg text-muted-foreground">
-            {t("home.problem.description")}
-          </p>
+          <p className="mb-12 text-lg text-muted-foreground">{t("home.problem.description")}</p>
           <div className="rounded-lg border border-border bg-card p-8">
             <p className="mb-6 text-foreground">{t("home.problem.solution")}</p>
             <Link

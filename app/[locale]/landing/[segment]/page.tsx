@@ -74,9 +74,7 @@ export default async function LandingSegmentPage({
                 <h2 className="mb-2 text-lg font-semibold text-foreground">
                   {t("try.header.title")}
                 </h2>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {t("try.header.description")}
-                </p>
+                <p className="mb-6 text-sm text-muted-foreground">{t("try.header.description")}</p>
                 <TryForm
                   locale={locale}
                   messages={messages}
@@ -146,7 +144,10 @@ export default async function LandingSegmentPage({
           </p>
           <div className="grid gap-6 md:grid-cols-3">
             {content.useCases.items.map((item) => (
-              <div key={item.titleKey} className="rounded-2xl border border-border bg-card p-6 text-left">
+              <div
+                key={item.titleKey}
+                className="rounded-2xl border border-border bg-card p-6 text-left"
+              >
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <item.icon className="h-5 w-5" />
                 </div>

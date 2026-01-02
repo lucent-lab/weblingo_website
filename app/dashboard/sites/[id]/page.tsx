@@ -210,7 +210,6 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         cloudflareErrorsLabel={cloudflareErrorsLabel}
         billingBlocked={!mutationsAllowed}
       />
-
     </div>
   );
 }
@@ -448,7 +447,9 @@ function DomainSection({
                         </p>
                       ) : null}
                       <p>
-                        {domain.verifiedAt ? `Verified at ${domain.verifiedAt}` : "Not verified yet"}
+                        {domain.verifiedAt
+                          ? `Verified at ${domain.verifiedAt}`
+                          : "Not verified yet"}
                       </p>
                     </div>
                   ) : (
@@ -460,7 +461,9 @@ function DomainSection({
                         </code>
                       </p>
                       <p>
-                        {domain.verifiedAt ? `Verified at ${domain.verifiedAt}` : "Not verified yet"}
+                        {domain.verifiedAt
+                          ? `Verified at ${domain.verifiedAt}`
+                          : "Not verified yet"}
                       </p>
                     </div>
                   )}
@@ -485,7 +488,8 @@ function DomainSection({
                         <div className="w-full rounded-md border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground md:text-right">
                           <div className="flex flex-wrap items-center justify-between gap-2 md:justify-end">
                             <span>
-                              Translation {translationRun?.status === "queued" ? "queued" : "in progress"}
+                              Translation{" "}
+                              {translationRun?.status === "queued" ? "queued" : "in progress"}
                               {translationRun?.pagesTotal
                                 ? ` (${translationRun.pagesCompleted}/${translationRun.pagesTotal})`
                                 : ""}
@@ -513,7 +517,10 @@ function DomainSection({
                       </Button>
                     </form>
                   ) : (
-                    <form action={verifyDomainAction} className="flex w-full flex-col gap-2 md:items-end">
+                    <form
+                      action={verifyDomainAction}
+                      className="flex w-full flex-col gap-2 md:items-end"
+                    >
                       <input name="siteId" type="hidden" value={siteId} />
                       <input name="siteStatus" type="hidden" value={siteStatus} />
                       <input name="domain" type="hidden" value={domain.domain} />

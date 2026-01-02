@@ -57,7 +57,13 @@ export function buildLocaleAliases(
 export function suggestLocaleAlias(tag: string): string {
   const normalized = normalizeLangTag(tag) ?? tag.trim();
   const cleaned = normalized.toLowerCase().replace(/[^a-z0-9-]/g, "");
-  return cleaned || tag.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+  return (
+    cleaned ||
+    tag
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+  );
 }
 
 export function validateLocaleAlias(value: string): string | null {
