@@ -395,6 +395,26 @@ async function request<T>({
   retry = false,
   allowEmptyResponse = false,
 }: RequestOptions<T>): Promise<T> {
+  const startedAt = Date.now();
+  let loggedTiming = false;
+  const logTiming = (status: number, ok: boolean, note?: string) => {
+    if (loggedTiming) {
+      return;
+    }
+    loggedTiming = true;
+    const payload: Record<string, unknown> = {
+      path,
+      method,
+      status,
+      ok,
+      retry,
+      durationMs: Date.now() - startedAt,
+    };
+    if (note) {
+      payload.note = note;
+    }
+    console.info("[webhooks] timing", payload);
+  };
   const resolvedAuth = normalizeAuth(auth);
   const token = resolvedAuth?.token;
   const url = path.startsWith("http")
@@ -413,6 +433,7 @@ async function request<T>({
       cache: "no-store",
     });
   } catch (error) {
+    logTiming(0, false, "fetch_failed");
     throw new WebhooksApiError(
       "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
       0,
@@ -425,6 +446,7 @@ async function request<T>({
 
   if (!response.ok) {
     if (response.status === 401 && resolvedAuth?.refresh && !retry) {
+      logTiming(response.status, false, "auth_refresh");
       try {
         const refreshed = await resolvedAuth.refresh();
         resolvedAuth.token = refreshed;
@@ -441,6 +463,7 @@ async function request<T>({
         console.warn("[webhooks] token refresh failed:", refreshError);
       }
     }
+    logTiming(response.status, false);
     const parsedError = parsed ? errorResponseSchema.safeParse(parsed) : null;
     const message =
       parsedError?.success && parsedError.data.error
@@ -452,13 +475,16 @@ async function request<T>({
 
   if (parsed === undefined) {
     if (allowEmptyResponse) {
+      logTiming(response.status, true, "empty");
       return schema.parse(undefined);
     }
+    logTiming(response.status, false, "empty");
     throw new WebhooksApiError("Empty response from API", response.status);
   }
 
   const result = schema.safeParse(parsed);
   if (!result.success) {
+    logTiming(response.status, false, "schema_mismatch");
     console.error("[webhooks] response schema mismatch", {
       path,
       method,
@@ -467,6 +493,7 @@ async function request<T>({
     });
     throw result.error;
   }
+  logTiming(response.status, true);
   return result.data;
 }
 
