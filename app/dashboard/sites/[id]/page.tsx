@@ -72,9 +72,15 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   let deployments: Deployment[] = [];
   let error: string | null = null;
 
-  try {
-    site = await fetchSite(authToken, id);
-  } catch (err) {
+  const [siteResult, deploymentsResult] = await Promise.allSettled([
+    fetchSite(authToken, id),
+    fetchDeployments(authToken, id),
+  ]);
+
+  if (siteResult.status === "fulfilled") {
+    site = siteResult.value;
+  } else {
+    const err = siteResult.reason;
     error = err instanceof Error ? err.message : "Unable to load site.";
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSite failed", {
@@ -94,6 +100,12 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     }
   }
 
+  if (deploymentsResult.status === "fulfilled") {
+    deployments = deploymentsResult.value;
+  } else {
+    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
+  }
+
   if (!site) {
     if (error) {
       return (
@@ -111,12 +123,6 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
       );
     }
     notFound();
-  }
-
-  try {
-    deployments = await fetchDeployments(authToken, id);
-  } catch (err) {
-    console.warn("[dashboard] fetchDeployments failed:", err);
   }
 
   const domainLocales = buildDomainLocaleLookup(site.routeConfig);

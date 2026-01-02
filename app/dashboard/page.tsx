@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SitesList } from "./_components/sites-list";
-import { listSites, type Site } from "@internal/dashboard/webhooks";
+import { listSitesCached } from "@internal/dashboard/data";
+import { type Site } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
 
@@ -19,7 +20,7 @@ export default async function DashboardPage() {
 
   try {
     const auth = await requireDashboardAuth();
-    sites = await listSites(auth.webhooksAuth!);
+    sites = await listSitesCached(auth.webhooksAuth!);
     billingBlocked = !auth.mutationsAllowed;
     maxSites = auth.account?.featureFlags.maxSites ?? null;
     const activeSites = sites.filter((site) => site.status === "active").length;

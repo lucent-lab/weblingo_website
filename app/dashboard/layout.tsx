@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/sidebar";
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
-import { listSites, type Site } from "@internal/dashboard/webhooks";
+import { listSitesCached } from "@internal/dashboard/data";
+import { type Site } from "@internal/dashboard/webhooks";
 import { i18nConfig } from "@internal/i18n";
 
 export const metadata: Metadata = {
@@ -103,7 +104,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   let sites: Site[] = [];
   let sitesLoaded = false;
   try {
-    sites = await listSites(auth.webhooksAuth!);
+    sites = await listSitesCached(auth.webhooksAuth!);
     sitesLoaded = true;
   } catch (error) {
     console.warn("[dashboard] listSites failed:", error);

@@ -91,11 +91,39 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let deployments: Deployment[] = [];
   let error: string | null = null;
 
-  try {
-    site = await fetchSite(authToken, id);
-    pages = await fetchSitePages(authToken, id);
-  } catch (err) {
+  const [siteResult, pagesResult, deploymentsResult] = await Promise.allSettled([
+    fetchSite(authToken, id),
+    fetchSitePages(authToken, id),
+    fetchDeployments(authToken, id),
+  ]);
+
+  if (siteResult.status === "fulfilled") {
+    site = siteResult.value;
+  } else {
+    const err = siteResult.reason;
     error = err instanceof Error ? err.message : "Unable to load site pages.";
+    if (err instanceof WebhooksApiError) {
+      console.warn("[dashboard] fetchSite failed", {
+        siteId: id,
+        status: err.status,
+        message: err.message,
+        details: err.details ?? null,
+        subjectAccountId: auth.subjectAccountId,
+        actorAccountId: auth.actorAccountId,
+        actingAsCustomer: auth.actingAsCustomer,
+      });
+    } else {
+      console.warn("[dashboard] fetchSite failed (unknown error)", {
+        siteId: id,
+        message: error,
+      });
+    }
+  }
+
+  if (pagesResult.status === "fulfilled") {
+    pages = pagesResult.value;
+  } else {
+    const err = pagesResult.reason;
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSitePages failed", {
         siteId: id,
@@ -107,11 +135,18 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
+      const message = err instanceof Error ? err.message : "Unable to load site pages.";
       console.warn("[dashboard] fetchSitePages failed (unknown error)", {
         siteId: id,
-        message: error,
+        message,
       });
     }
+  }
+
+  if (deploymentsResult.status === "fulfilled") {
+    deployments = deploymentsResult.value;
+  } else {
+    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
   }
 
   if (!site) {
@@ -131,12 +166,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
       );
     }
     notFound();
-  }
-
-  try {
-    deployments = await fetchDeployments(authToken, id);
-  } catch (err) {
-    console.warn("[dashboard] fetchDeployments failed:", err);
   }
 
   const dailyUsage = auth.account?.dailyCrawlUsage;

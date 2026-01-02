@@ -21,13 +21,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
 import {
   fetchDeployments,
   fetchSite,
-  listSites,
-  listSupportedLanguages,
   type Deployment,
   type Site,
+  type SupportedLanguage,
 } from "@internal/dashboard/webhooks";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
@@ -66,6 +66,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   let deployments: Deployment[] = [];
   let activeSiteCount: number | null = null;
   let error: string | null = null;
+  let supportedLanguages: SupportedLanguage[] = [];
 
   try {
     site = await fetchSite(auth.webhooksAuth!, id);
@@ -74,19 +75,26 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   }
 
   if (site) {
-    try {
-      deployments = await fetchDeployments(auth.webhooksAuth!, id);
-    } catch (err) {
-      console.warn("[dashboard] fetchDeployments failed:", err);
-    }
-  }
+    const [deploymentsResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
+      fetchDeployments(auth.webhooksAuth!, id),
+      listSitesCached(auth.webhooksAuth!),
+      canEdit ? listSupportedLanguagesCached() : Promise.resolve([]),
+    ]);
 
-  if (site) {
-    try {
-      const sites = await listSites(auth.webhooksAuth!);
-      activeSiteCount = sites.filter((entry) => entry.status === "active").length;
-    } catch (err) {
-      console.warn("[dashboard] listSites failed while checking slots:", err);
+    if (deploymentsResult.status === "fulfilled") {
+      deployments = deploymentsResult.value;
+    } else {
+      console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
+    }
+
+    if (sitesResult.status === "fulfilled") {
+      activeSiteCount = sitesResult.value.filter((entry) => entry.status === "active").length;
+    } else {
+      console.warn("[dashboard] listSites failed while checking slots:", sitesResult.reason);
+    }
+
+    if (supportedLanguagesResult.status === "fulfilled") {
+      supportedLanguages = supportedLanguagesResult.value;
     }
   }
 
@@ -109,7 +117,6 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
     notFound();
   }
 
-  const supportedLanguages = canEdit ? await listSupportedLanguages() : [];
   const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const localeAliases = site.locales.reduce<Record<string, string | null>>((acc, locale) => {

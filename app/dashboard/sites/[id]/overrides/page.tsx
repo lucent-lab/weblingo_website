@@ -60,15 +60,18 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   let glossary: GlossaryEntry[] = [];
   let error: string | null = null;
 
-  try {
-    site = await fetchSite(authToken, id);
-    if (canGlossary) {
-      glossary = await fetchGlossary(authToken, id);
-    }
-  } catch (err) {
+  const [siteResult, glossaryResult] = await Promise.allSettled([
+    fetchSite(authToken, id),
+    canGlossary ? fetchGlossary(authToken, id) : Promise.resolve([] as GlossaryEntry[]),
+  ]);
+
+  if (siteResult.status === "fulfilled") {
+    site = siteResult.value;
+  } else {
+    const err = siteResult.reason;
     error = err instanceof Error ? err.message : "Unable to load overrides.";
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchOverrides failed", {
+      console.warn("[dashboard] fetchSite failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -78,9 +81,32 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchOverrides failed (unknown error)", {
+      console.warn("[dashboard] fetchSite failed (unknown error)", {
         siteId: id,
         message: error,
+      });
+    }
+  }
+
+  if (glossaryResult.status === "fulfilled") {
+    glossary = glossaryResult.value;
+  } else {
+    const err = glossaryResult.reason;
+    if (err instanceof WebhooksApiError) {
+      console.warn("[dashboard] fetchGlossary failed", {
+        siteId: id,
+        status: err.status,
+        message: err.message,
+        details: err.details ?? null,
+        subjectAccountId: auth.subjectAccountId,
+        actorAccountId: auth.actorAccountId,
+        actingAsCustomer: auth.actingAsCustomer,
+      });
+    } else {
+      const message = err instanceof Error ? err.message : "Unable to load overrides.";
+      console.warn("[dashboard] fetchGlossary failed (unknown error)", {
+        siteId: id,
+        message,
       });
     }
   }

@@ -1,7 +1,7 @@
 import { OnboardingForm } from "./onboarding-form";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { listSites, listSupportedLanguages } from "@internal/dashboard/webhooks";
+import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export default async function NewSitePage() {
   let activeSites = 0;
   if (auth.webhooksAuth) {
     try {
-      const sites = await listSites(auth.webhooksAuth);
+      const sites = await listSitesCached(auth.webhooksAuth);
       activeSites = sites.filter((site) => site.status === "active").length;
     } catch (error) {
       console.warn("[dashboard] listSites failed while checking slots:", error);
@@ -59,7 +59,7 @@ export default async function NewSitePage() {
     );
   }
   const maxLocales = auth.account!.featureFlags.maxLocales;
-  const supportedLanguages = await listSupportedLanguages();
+  const supportedLanguages = await listSupportedLanguagesCached();
   const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
 
   return (
