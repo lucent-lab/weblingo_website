@@ -1,7 +1,10 @@
+import { createHash } from "node:crypto";
+
 import type { Session, User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { redis } from "@/internal/core/redis";
 import { createClient } from "@/lib/supabase/server";
 
 import type { AccountMe } from "./webhooks";
@@ -45,7 +48,10 @@ export type DashboardAuth = {
   has: (requirement: HasCheck) => boolean;
 };
 
-const WEBHOOKS_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const BOOTSTRAP_CACHE_NAMESPACE = "dashboard:bootstrap";
+const BOOTSTRAP_CACHE_MAX_TTL_SECONDS = 300;
+const BOOTSTRAP_CACHE_MIN_TTL_SECONDS = 30;
+const BOOTSTRAP_CACHE_EXPIRY_BUFFER_SECONDS = 60;
 
 const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
   editEnabled: false,
@@ -79,6 +85,24 @@ const FALLBACK_QUOTAS: AccountMe["quotas"] = {
 
 type TokenEntitlements = Awaited<ReturnType<typeof exchangeWebhooksToken>>["entitlements"];
 
+type BootstrapCacheEntry = {
+  token: string;
+  expiresAt: string;
+  entitlements: TokenEntitlements;
+  actorAccountId: string;
+  subjectAccountId: string;
+  account: AccountMe;
+  agencyCustomers: AgencyCustomersResponse | null;
+};
+
+type BootstrapOptions = {
+  supabaseAccessToken: string;
+  subjectAccountId?: string | null;
+  includeAgencyCustomers?: boolean;
+};
+
+const bootstrapInflight = new Map<string, Promise<BootstrapCacheEntry>>();
+
 function buildFallbackAccount(accountId: string, entitlements: TokenEntitlements): AccountMe {
   return {
     accountId,
@@ -94,44 +118,141 @@ function buildFallbackAccount(accountId: string, entitlements: TokenEntitlements
   };
 }
 
-function isExpiringSoon(expiresAt: string): boolean {
-  const parsed = Date.parse(expiresAt);
-  if (!Number.isFinite(parsed)) {
-    return true;
-  }
-  return parsed - Date.now() <= WEBHOOKS_TOKEN_REFRESH_BUFFER_MS;
+function normalizeSubjectAccountId(subjectAccountId?: string | null): string {
+  return subjectAccountId?.trim() ?? "";
 }
 
-async function mintWebhooksAuth(
-  supabaseAccessToken: string,
-  subjectAccountId?: string | null,
-): Promise<{
-  auth: WebhooksAuthContext;
-  entitlements: TokenEntitlements;
-  actorAccountId: string;
-  subjectAccountId: string;
-}> {
-  const issueToken = () => exchangeWebhooksToken(supabaseAccessToken, subjectAccountId);
-  let tokenResponse = await issueToken();
-  if (isExpiringSoon(tokenResponse.expiresAt)) {
-    tokenResponse = await issueToken();
+function getCacheEnvPrefix(): string {
+  return process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown";
+}
+
+function getBootstrapCacheKey(supabaseAccessToken: string, subjectAccountId?: string | null): string {
+  const normalizedSubjectId = normalizeSubjectAccountId(subjectAccountId);
+  const digest = createHash("sha256")
+    .update(`${supabaseAccessToken}:${normalizedSubjectId}`)
+    .digest("hex");
+  return `${BOOTSTRAP_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
+}
+
+function getBootstrapCacheTtlSeconds(expiresAt: string): number | null {
+  const parsed = Date.parse(expiresAt);
+  if (!Number.isFinite(parsed)) {
+    return null;
   }
+  const secondsUntilExpiry = Math.floor((parsed - Date.now()) / 1000);
+  const ttlSeconds = Math.min(
+    BOOTSTRAP_CACHE_MAX_TTL_SECONDS,
+    secondsUntilExpiry - BOOTSTRAP_CACHE_EXPIRY_BUFFER_SECONDS,
+  );
+  if (ttlSeconds < BOOTSTRAP_CACHE_MIN_TTL_SECONDS) {
+    return null;
+  }
+  return ttlSeconds;
+}
+
+function buildWebhooksAuthContext(
+  payload: BootstrapCacheEntry,
+  supabaseAccessToken: string,
+): WebhooksAuthContext {
   const auth: WebhooksAuthContext = {
-    token: tokenResponse.token,
-    expiresAt: tokenResponse.expiresAt,
+    token: payload.token,
+    expiresAt: payload.expiresAt,
     refresh: async () => {
-      const refreshed = await issueToken();
+      const refreshed = await exchangeWebhooksToken(supabaseAccessToken, payload.subjectAccountId);
       auth.token = refreshed.token;
       auth.expiresAt = refreshed.expiresAt;
       return refreshed.token;
     },
   };
-  return {
-    auth,
-    entitlements: tokenResponse.entitlements,
-    actorAccountId: tokenResponse.actorAccountId,
-    subjectAccountId: tokenResponse.subjectAccountId,
-  };
+  return auth;
+}
+
+async function getBootstrap({
+  supabaseAccessToken,
+  subjectAccountId,
+  includeAgencyCustomers = false,
+}: BootstrapOptions): Promise<BootstrapCacheEntry> {
+  const cacheKey = getBootstrapCacheKey(supabaseAccessToken, subjectAccountId);
+
+  try {
+    const cached = await redis.get<BootstrapCacheEntry>(cacheKey);
+    if (cached) {
+      console.info("[dashboard] bootstrap cache hit");
+      return cached;
+    }
+  } catch (error) {
+    console.warn("[dashboard] bootstrap cache read failed:", error);
+  }
+
+  console.info("[dashboard] bootstrap cache miss");
+
+  const inflight = bootstrapInflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const promise = (async () => {
+    const tokenResponse = await exchangeWebhooksToken(supabaseAccessToken, subjectAccountId);
+    const auth: WebhooksAuthContext = {
+      token: tokenResponse.token,
+      expiresAt: tokenResponse.expiresAt,
+      refresh: async () => {
+        const refreshed = await exchangeWebhooksToken(
+          supabaseAccessToken,
+          tokenResponse.subjectAccountId,
+        );
+        auth.token = refreshed.token;
+        auth.expiresAt = refreshed.expiresAt;
+        return refreshed.token;
+      },
+    };
+    const account = await safeFetchAccount(
+      auth,
+      tokenResponse.entitlements,
+      tokenResponse.subjectAccountId,
+    );
+
+    let agencyCustomers: AgencyCustomersResponse | null = null;
+    if (
+      includeAgencyCustomers &&
+      account.planType === "agency" &&
+      account.featureFlags.agencyActionsEnabled
+    ) {
+      try {
+        agencyCustomers = await listAgencyCustomers(auth);
+      } catch (error) {
+        console.warn("[dashboard] listAgencyCustomers failed:", error);
+      }
+    }
+
+    const payload: BootstrapCacheEntry = {
+      token: auth.token,
+      expiresAt: auth.expiresAt,
+      entitlements: tokenResponse.entitlements,
+      actorAccountId: tokenResponse.actorAccountId,
+      subjectAccountId: tokenResponse.subjectAccountId,
+      account,
+      agencyCustomers,
+    };
+
+    const ttlSeconds = getBootstrapCacheTtlSeconds(payload.expiresAt);
+    if (ttlSeconds) {
+      try {
+        await redis.set(cacheKey, payload, { ex: ttlSeconds });
+      } catch (error) {
+        console.warn("[dashboard] bootstrap cache write failed:", error);
+      }
+    }
+
+    return payload;
+  })();
+
+  bootstrapInflight.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    bootstrapInflight.delete(cacheKey);
+  }
 }
 
 async function safeFetchAccount(
@@ -182,25 +303,17 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     };
   }
 
-  const actorToken = await mintWebhooksAuth(session.access_token);
-  const actorAccount = await safeFetchAccount(
-    actorToken.auth,
-    actorToken.entitlements,
-    actorToken.subjectAccountId,
-  );
+  const actorBootstrap = await getBootstrap({
+    supabaseAccessToken: session.access_token,
+    includeAgencyCustomers: true,
+  });
+  const actorAuth = buildWebhooksAuthContext(actorBootstrap, session.access_token);
+  const actorAccount = actorBootstrap.account;
   const requestedSubjectId = await readSubjectAccountId();
-
-  let agencyCustomers: AgencyCustomersResponse | null = null;
-  if (actorAccount.planType === "agency" && actorAccount.featureFlags.agencyActionsEnabled) {
-    try {
-      agencyCustomers = await listAgencyCustomers(actorToken.auth);
-    } catch (error) {
-      console.warn("[dashboard] listAgencyCustomers failed:", error);
-    }
-  }
+  const agencyCustomers = actorBootstrap.agencyCustomers;
 
   const allowedSubjectIds = new Set<string>();
-  allowedSubjectIds.add(actorToken.subjectAccountId);
+  allowedSubjectIds.add(actorBootstrap.subjectAccountId);
   if (agencyCustomers) {
     for (const customer of agencyCustomers.customers) {
       if (customer.status === "active") {
@@ -209,21 +322,22 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     }
   }
 
-  let subjectToken = actorToken;
+  let subjectBootstrap = actorBootstrap;
+  let subjectAuth = actorAuth;
   let subjectAccount = actorAccount;
   let actingAsCustomer = false;
   if (
     requestedSubjectId &&
-    requestedSubjectId !== actorToken.subjectAccountId &&
+    requestedSubjectId !== actorBootstrap.subjectAccountId &&
     allowedSubjectIds.has(requestedSubjectId)
   ) {
     try {
-      subjectToken = await mintWebhooksAuth(session.access_token, requestedSubjectId);
-      subjectAccount = await safeFetchAccount(
-        subjectToken.auth,
-        subjectToken.entitlements,
-        subjectToken.subjectAccountId,
-      );
+      subjectBootstrap = await getBootstrap({
+        supabaseAccessToken: session.access_token,
+        subjectAccountId: requestedSubjectId,
+      });
+      subjectAuth = buildWebhooksAuthContext(subjectBootstrap, session.access_token);
+      subjectAccount = subjectBootstrap.account;
       actingAsCustomer = true;
     } catch (error) {
       console.warn("[dashboard] subject account exchange failed:", error);
@@ -242,14 +356,14 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   return {
     user,
     session,
-    webhooksAuth: subjectToken.auth,
+    webhooksAuth: subjectAuth,
     account: subjectAccount,
     actorAccount,
     subjectAccount,
-    actorWebhooksAuth: actorToken.auth,
+    actorWebhooksAuth: actorAuth,
     agencyCustomers,
-    actorAccountId: actorToken.actorAccountId,
-    subjectAccountId: subjectToken.subjectAccountId,
+    actorAccountId: actorBootstrap.actorAccountId,
+    subjectAccountId: subjectBootstrap.subjectAccountId,
     actingAsCustomer,
     actorPlanActive,
     subjectPlanActive,
