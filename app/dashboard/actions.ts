@@ -22,6 +22,7 @@ import {
   WebhooksApiError,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
+import { invalidateSitesCache } from "@internal/dashboard/data";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 
 import { withWebhooksAuth } from "./_lib/webhooks-token";
@@ -420,6 +421,7 @@ export async function createSiteAction(
       }
     }
 
+    await invalidateSitesCache(auth.webhooksAuth);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${site.id}`);
@@ -500,6 +502,7 @@ export async function updateSiteSettingsAction(
       servingMode,
     });
 
+    await invalidateSitesCache(auth.webhooksAuth);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${siteId}`);
@@ -931,7 +934,11 @@ export async function updateSiteStatusAction(formData: FormData): Promise<void> 
   let nextRedirect: string;
 
   try {
-    const updated = await withWebhooksAuth((auth) => updateSite(auth, siteId, { status }));
+    const updated = await withWebhooksAuth(async (auth) => {
+      const updated = await updateSite(auth, siteId, { status });
+      await invalidateSitesCache(auth);
+      return updated;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
@@ -1017,7 +1024,10 @@ export async function deactivateSiteAction(formData: FormData): Promise<void> {
   let nextRedirect: string;
 
   try {
-    await withWebhooksAuth((auth) => deactivateSite(auth, siteId));
+    await withWebhooksAuth(async (auth) => {
+      await deactivateSite(auth, siteId);
+      await invalidateSitesCache(auth);
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
@@ -1056,7 +1066,10 @@ export async function deleteSiteAction(formData: FormData): Promise<void> {
   let nextRedirect: string;
 
   try {
-    await withWebhooksAuth((auth) => deleteSite(auth, siteId));
+    await withWebhooksAuth(async (auth) => {
+      await deleteSite(auth, siteId);
+      await invalidateSitesCache(auth);
+    });
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     nextRedirect = `/dashboard/sites?toast=${encodeURIComponent("Site deleted.")}`;
@@ -1083,7 +1096,10 @@ export async function activateSiteAction(formData: FormData): Promise<void> {
   let nextRedirect: string;
 
   try {
-    await withWebhooksAuth((auth) => updateSite(auth, siteId, { status: "active" }));
+    await withWebhooksAuth(async (auth) => {
+      await updateSite(auth, siteId, { status: "active" });
+      await invalidateSitesCache(auth);
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");

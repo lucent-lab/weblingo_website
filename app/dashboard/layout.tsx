@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 
@@ -100,37 +101,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const statusLabel = rawStatusLabel.replace("_", " ");
   const statusTone = resolveStatusTone(rawStatusLabel);
 
-  let sitesUsage: { value: string; helper?: string } | null = null;
-  let sites: Site[] = [];
-  let sitesLoaded = false;
-  try {
-    sites = await listSitesCached(auth.webhooksAuth!);
-    sitesLoaded = true;
-  } catch (error) {
-    console.warn("[dashboard] listSites failed:", error);
-  }
-  try {
-    if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {
-      const summary = auth.agencyCustomers.summary;
-      sitesUsage = {
-        value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
-        helper: "Agency usage",
-      };
-    } else if (sitesLoaded) {
-      const activeSites = sites.filter((site) => site.status === "active").length;
-      const maxSites = auth.account?.featureFlags.maxSites ?? null;
-      sitesUsage = {
-        value: `${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
-      };
-    }
-  } catch (error) {
-    console.warn("[dashboard] usage badge fetch failed:", error);
-  }
-  const siteNavItems = sites.map((site) => ({
-    id: site.id,
-    label: formatSiteLabel(site.sourceUrl),
-    status: site.status,
-  }));
   const billingBanner = resolveBillingBanner(auth);
   const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
   const teamSwitcherDisabled = workspaceOptions.length <= 1;
@@ -178,7 +148,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <SidebarGroup>
             <SidebarGroupLabel>Sites</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SitesNav sites={siteNavItems} />
+              <Suspense fallback={<SitesNavFallback />}>
+                <SitesNavSection auth={auth} />
+              </Suspense>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -221,10 +193,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                       </span>
                     </>
                   ) : null}
-                  <span className="flex items-center gap-1" title={sitesUsage?.helper}>
-                    <span className="text-muted-foreground">Sites</span>
-                    <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
-                  </span>
+                  <Suspense fallback={<SitesUsageFallback />}>
+                    <SitesUsageSummary auth={auth} isAgency={isAgency} />
+                  </Suspense>
                 </nav>
                 {auth.actingAsCustomer ? (
                   <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
@@ -268,6 +239,70 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         </section>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+async function SitesNavSection({ auth }: { auth: DashboardAuth }) {
+  let sites: Site[] = [];
+  try {
+    sites = await listSitesCached(auth.webhooksAuth!);
+  } catch (error) {
+    console.warn("[dashboard] listSites failed:", error);
+  }
+  const siteNavItems = sites.map((site) => ({
+    id: site.id,
+    label: formatSiteLabel(site.sourceUrl),
+    status: site.status,
+  }));
+
+  return <SitesNav sites={siteNavItems} />;
+}
+
+function SitesNavFallback() {
+  return <div className="px-2 py-2 text-xs text-sidebar-foreground/70">Loading sites...</div>;
+}
+
+async function SitesUsageSummary({
+  auth,
+  isAgency,
+}: {
+  auth: DashboardAuth;
+  isAgency: boolean;
+}) {
+  let sitesUsage: { value: string; helper?: string } | null = null;
+  try {
+    if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {
+      const summary = auth.agencyCustomers.summary;
+      sitesUsage = {
+        value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
+        helper: "Agency usage",
+      };
+    } else {
+      const sites = await listSitesCached(auth.webhooksAuth!);
+      const activeSites = sites.filter((site) => site.status === "active").length;
+      const maxSites = auth.account?.featureFlags.maxSites ?? null;
+      sitesUsage = {
+        value: `${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
+      };
+    }
+  } catch (error) {
+    console.warn("[dashboard] usage badge fetch failed:", error);
+  }
+
+  return (
+    <span className="flex items-center gap-1" title={sitesUsage?.helper}>
+      <span className="text-muted-foreground">Sites</span>
+      <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
+    </span>
+  );
+}
+
+function SitesUsageFallback() {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="text-muted-foreground">Sites</span>
+      <span className="text-foreground">—</span>
+    </span>
   );
 }
 

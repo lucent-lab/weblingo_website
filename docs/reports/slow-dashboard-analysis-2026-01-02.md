@@ -40,6 +40,9 @@ Public pages are fast; dashboard pages take several seconds. Example timing logs
 ### Post-Milestone 1 Update (Bootstrap Cache Enabled)
 After enabling the bootstrap cache, `/auth/token` and `/accounts/me` no longer appear on cache-hit navigations. Render times drop to ~1.8-2.1 s, with remaining time dominated by `/sites`, `/deployments`, and `/pages` calls (~1.2-1.4 s each). This confirms the auth bootstrap tax is removed and the remaining latency is in site data endpoints.
 
+### Post-Milestone 2 Update (Layout Fetch Reduction)
+The dashboard now defers the sites sidebar/usage behind Suspense, and `listSites` + `listSupportedLanguages` are cached with short TTLs. Site mutations invalidate the sites cache, keeping navigation data fresh without blocking first paint.
+
 ## Measurements and Interpretation
 Two independent signals are important:
 1) **Webhooks timing logs in Next.js** show 1-2.5 second response times per endpoint.
@@ -246,9 +249,9 @@ Goal: Remove repeated auth bootstrap cost without touching the Cloudflare worker
 
 ### Milestone 2: Layout Fetch Reduction (Frontend-only)
 Goal: Remove extra fixed calls that block rendering even after auth is cached.
-- [ ] Cache `listSites()` and `listSupportedLanguages()` with a short TTL or move them into the bootstrap response (minimal fields only).
-- [ ] Ensure the dashboard layout does not block on sidebar data (use Suspense or defer, render the shell immediately).
-- [ ] Add Next.js cache tags or revalidation hooks for mutations that change site lists.
+- [x] Cache `listSites()` and `listSupportedLanguages()` with a short TTL or move them into the bootstrap response (minimal fields only).
+- [x] Ensure the dashboard layout does not block on sidebar data (use Suspense or defer, render the shell immediately).
+- [x] Add Next.js cache tags or revalidation hooks for mutations that change site lists.
 
 ### Milestone 3: Cloudflare Bootstrap Endpoint + Worker Cache (Frontend + Backend)
 Goal: Reduce network hops further and avoid Vercel KV limits.

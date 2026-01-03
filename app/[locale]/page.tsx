@@ -5,7 +5,7 @@ import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "luci
 
 import { TryForm } from "@/components/try-form";
 import { Button } from "@/components/ui/button";
-import { listSupportedLanguages } from "@internal/dashboard/webhooks";
+import { listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
@@ -36,7 +36,7 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
     Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
-  const supportedLanguages = await listSupportedLanguages();
+  const supportedLanguages = await listSupportedLanguagesCached();
 
   const featureCards = [
     {

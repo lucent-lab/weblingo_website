@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
 import { Button } from "@/components/ui/button";
-import { listSupportedLanguages } from "@internal/dashboard/webhooks";
+import { listSupportedLanguagesCached } from "@internal/dashboard/data";
 import {
   createLocalizedMetadata,
   i18nConfig,
@@ -43,7 +43,7 @@ export default async function LandingSegmentPage({
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
     Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
-  const supportedLanguages = await listSupportedLanguages();
+  const supportedLanguages = await listSupportedLanguagesCached();
 
   return (
     <div className="min-h-screen bg-background">
