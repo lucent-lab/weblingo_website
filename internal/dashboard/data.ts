@@ -14,8 +14,8 @@ import {
 
 const SITES_CACHE_NAMESPACE = "dashboard:sites";
 const LANGUAGES_CACHE_KEY = "dashboard:supported-languages";
-const SITES_CACHE_TTL_SECONDS = 60;
-const LANGUAGES_CACHE_TTL_SECONDS = 300;
+const SITES_CACHE_TTL_SECONDS = 600;
+const LANGUAGES_CACHE_TTL_SECONDS = 21600;
 
 const sitesInflight = new Map<string, Promise<Site[]>>();
 const languagesInflight = new Map<string, Promise<SupportedLanguage[]>>();
