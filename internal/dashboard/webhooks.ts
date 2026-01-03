@@ -307,6 +307,18 @@ const createAgencyCustomerResponseSchema = z
   })
   .strict();
 
+const dashboardBootstrapResponseSchema = z
+  .object({
+    token: z.string().min(1),
+    expiresAt: z.string(),
+    entitlements: entitlementsSchema,
+    actorAccountId: z.string().min(1),
+    subjectAccountId: z.string().min(1),
+    account: accountMeSchema,
+    agencyCustomers: listAgencyCustomersResponseSchema.nullable(),
+  })
+  .strict();
+
 export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
@@ -321,6 +333,7 @@ export type AgencyCustomer = z.infer<typeof agencyCustomerSchema>;
 export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema>;
 export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
 export type CreateAgencyCustomerResponse = z.infer<typeof createAgencyCustomerResponseSchema>;
+export type DashboardBootstrapResponse = z.infer<typeof dashboardBootstrapResponseSchema>;
 
 export type WebhooksAuth = {
   token: string;
@@ -533,6 +546,28 @@ export async function exchangeWebhooksToken(
     },
     body: subjectAccountId ? { subjectAccountId } : undefined,
     schema: authResponseSchema,
+  });
+}
+
+export async function fetchDashboardBootstrap(
+  supabaseAccessToken: string,
+  payload?: { subjectAccountId?: string | null; includeAgencyCustomers?: boolean },
+): Promise<DashboardBootstrapResponse> {
+  const body =
+    payload && (payload.subjectAccountId || payload.includeAgencyCustomers)
+      ? {
+          subjectAccountId: payload.subjectAccountId ?? undefined,
+          includeAgencyCustomers: payload.includeAgencyCustomers ?? undefined,
+        }
+      : undefined;
+  return request({
+    path: "/dashboard/bootstrap",
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${supabaseAccessToken}`,
+    },
+    body,
+    schema: dashboardBootstrapResponseSchema,
   });
 }
 

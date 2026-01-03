@@ -255,10 +255,10 @@ Goal: Remove extra fixed calls that block rendering even after auth is cached.
 
 ### Milestone 3: Cloudflare Bootstrap Endpoint + Worker Cache (Frontend + Backend)
 Goal: Reduce network hops further and avoid Vercel KV limits.
-- [ ] Add `POST /dashboard/bootstrap` in the webhooks worker to return the combined payload in one response.
-- [ ] Cache the bootstrap response in Cloudflare (KV/DO/Cache API) with TTL bound by token expiry.
-- [ ] Update the Vercel bootstrap route to call the worker endpoint (single call).
-- [ ] Add logs/metrics for cache hit rate and total bootstrap latency.
+- [x] Add `POST /dashboard/bootstrap` in the webhooks worker to return the combined payload in one response.
+- [x] Cache the bootstrap response in Cloudflare (KV/DO/Cache API) with TTL bound by token expiry.
+- [x] Update the Vercel bootstrap route to call the worker endpoint (single call).
+- [x] Add logs/metrics for cache hit rate and total bootstrap latency.
 
 ### Milestone 4: Worker Query Optimization + DB Indexes (Backend)
 Goal: Reduce slow `/deployments` and `/pages` endpoints at scale.

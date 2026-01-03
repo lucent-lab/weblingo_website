@@ -10,8 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { AccountMe } from "./webhooks";
 import {
   exchangeWebhooksToken,
-  fetchAccountMe,
-  listAgencyCustomers,
+  fetchDashboardBootstrap,
   WebhooksApiError,
   type AgencyCustomersResponse,
 } from "./webhooks";
@@ -192,48 +191,41 @@ async function getBootstrap({
   }
 
   const promise = (async () => {
-    const tokenResponse = await exchangeWebhooksToken(supabaseAccessToken, subjectAccountId);
-    const auth: WebhooksAuthContext = {
-      token: tokenResponse.token,
-      expiresAt: tokenResponse.expiresAt,
-      refresh: async () => {
-        const refreshed = await exchangeWebhooksToken(
-          supabaseAccessToken,
-          tokenResponse.subjectAccountId,
-        );
-        auth.token = refreshed.token;
-        auth.expiresAt = refreshed.expiresAt;
-        return refreshed.token;
-      },
-    };
-    const account = await safeFetchAccount(
-      auth,
-      tokenResponse.entitlements,
-      tokenResponse.subjectAccountId,
-    );
-
-    let agencyCustomers: AgencyCustomersResponse | null = null;
-    if (
-      includeAgencyCustomers &&
-      account.planType === "agency" &&
-      account.featureFlags.agencyActionsEnabled
-    ) {
-      try {
-        agencyCustomers = await listAgencyCustomers(auth);
-      } catch (error) {
-        console.warn("[dashboard] listAgencyCustomers failed:", error);
+    let payload: BootstrapCacheEntry;
+    try {
+      const bootstrap = await fetchDashboardBootstrap(supabaseAccessToken, {
+        subjectAccountId,
+        includeAgencyCustomers,
+      });
+      payload = {
+        token: bootstrap.token,
+        expiresAt: bootstrap.expiresAt,
+        entitlements: bootstrap.entitlements,
+        actorAccountId: bootstrap.actorAccountId,
+        subjectAccountId: bootstrap.subjectAccountId,
+        account: bootstrap.account,
+        agencyCustomers: bootstrap.agencyCustomers,
+      };
+    } catch (error) {
+      if (error instanceof WebhooksApiError && error.status === 403) {
+        console.warn("[dashboard] bootstrap returned 403; using fallback entitlements.");
+        const tokenResponse = await exchangeWebhooksToken(supabaseAccessToken, subjectAccountId);
+        payload = {
+          token: tokenResponse.token,
+          expiresAt: tokenResponse.expiresAt,
+          entitlements: tokenResponse.entitlements,
+          actorAccountId: tokenResponse.actorAccountId,
+          subjectAccountId: tokenResponse.subjectAccountId,
+          account: buildFallbackAccount(
+            tokenResponse.subjectAccountId,
+            tokenResponse.entitlements,
+          ),
+          agencyCustomers: null,
+        };
+      } else {
+        throw error;
       }
     }
-
-    const payload: BootstrapCacheEntry = {
-      token: auth.token,
-      expiresAt: auth.expiresAt,
-      entitlements: tokenResponse.entitlements,
-      actorAccountId: tokenResponse.actorAccountId,
-      subjectAccountId: tokenResponse.subjectAccountId,
-      account,
-      agencyCustomers,
-    };
 
     const ttlSeconds = getBootstrapCacheTtlSeconds(payload.expiresAt);
     if (ttlSeconds) {
@@ -252,22 +244,6 @@ async function getBootstrap({
     return await promise;
   } finally {
     bootstrapInflight.delete(cacheKey);
-  }
-}
-
-async function safeFetchAccount(
-  auth: WebhooksAuthContext,
-  entitlements: TokenEntitlements,
-  accountId: string,
-): Promise<AccountMe> {
-  try {
-    return await fetchAccountMe(auth);
-  } catch (error) {
-    if (error instanceof WebhooksApiError && error.status === 403) {
-      console.warn("[dashboard] account is not active; using fallback entitlements.");
-      return buildFallbackAccount(accountId, entitlements);
-    }
-    throw error;
   }
 }
 
