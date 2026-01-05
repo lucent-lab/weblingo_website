@@ -3,9 +3,11 @@
 This marketing site supports segment-specific landing pages under `/{locale}/landing/{segment}`.
 They reuse a shared layout and only swap copy + iconography.
 
-## Current segments
+## Segment tracker
 
-- `expansion` → `/en/landing/expansion` (noindex for now)
+| slug | path | focus | status |
+| --- | --- | --- | --- |
+| expansion | `/{locale}/landing/expansion` | Global expansion demand capture | noindex |
 
 ## Add a new landing segment
 
