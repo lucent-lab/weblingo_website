@@ -20,6 +20,7 @@ import {
   updateSlug,
   verifyDomain,
   WebhooksApiError,
+  type CrawlCaptureMode,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
 import { invalidateSitesCache } from "@internal/dashboard/data";
@@ -44,6 +45,12 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   message,
   meta,
 });
+
+const CRAWL_CAPTURE_MODES: CrawlCaptureMode[] = [
+  "template_plus_hydrated",
+  "template_only",
+  "hydrated_only",
+];
 
 function siteRedirect(
   siteId: string,
@@ -456,6 +463,7 @@ export async function updateSiteSettingsAction(
   const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
   const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
   const servingMode = formData.get("servingMode")?.toString().trim() ?? "";
+  const crawlCaptureModeRaw = formData.get("crawlCaptureMode")?.toString().trim() ?? "";
 
   const uniqueTargets = Array.from(new Set(targetLangs));
 
@@ -464,6 +472,13 @@ export async function updateSiteSettingsAction(
   }
   if (servingMode !== "strict" && servingMode !== "tolerant") {
     return failed("Serving mode must be set to strict or tolerant.");
+  }
+  const crawlCaptureMode =
+    crawlCaptureModeRaw.length > 0
+      ? (crawlCaptureModeRaw as CrawlCaptureMode)
+      : undefined;
+  if (crawlCaptureMode && !CRAWL_CAPTURE_MODES.includes(crawlCaptureMode)) {
+    return failed("Crawl capture mode must be set to a supported option.");
   }
 
   const sourceUrlError = validateSourceUrl(sourceUrl);
@@ -500,6 +515,7 @@ export async function updateSiteSettingsAction(
       localeAliases: localeAliases ?? undefined,
       siteProfile,
       servingMode,
+      crawlCaptureMode,
     });
 
     await invalidateSitesCache(auth.webhooksAuth);

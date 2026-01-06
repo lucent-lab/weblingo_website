@@ -21,7 +21,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { CrawlCaptureMode, SupportedLanguage } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 const REQUIRED_FIELDS_MESSAGE =
@@ -36,6 +36,18 @@ type SiteAdminFormProps = {
   pattern: string | null;
   maxLocales: number | null;
   servingMode: "strict" | "tolerant";
+  crawlCaptureMode: CrawlCaptureMode;
+  crawlCaptureCopy: {
+    title: string;
+    description: string;
+    label: string;
+    help: string;
+    options: {
+      templatePlusHydrated: string;
+      templateOnly: string;
+      hydratedOnly: string;
+    };
+  };
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
   initialBrandVoice?: string;
@@ -51,6 +63,8 @@ export function SiteAdminForm({
   pattern,
   maxLocales,
   servingMode: initialServingMode,
+  crawlCaptureMode: initialCrawlCaptureMode,
+  crawlCaptureCopy,
   supportedLanguages,
   displayLocale,
   initialBrandVoice = "",
@@ -71,6 +85,9 @@ export function SiteAdminForm({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [servingMode, setServingMode] = useState<"strict" | "tolerant">(initialServingMode);
+  const [crawlCaptureMode, setCrawlCaptureMode] = useState<CrawlCaptureMode>(
+    initialCrawlCaptureMode,
+  );
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const initialParsedUrl = useMemo(() => parseSourceUrl(initialSourceUrl), [initialSourceUrl]);
@@ -372,6 +389,43 @@ export function SiteAdminForm({
                 when you prefer availability over completeness.
               </div>
             ) : null}
+          </section>
+
+          <section className="space-y-5 border-t border-border/60 pt-6">
+            <div className="border-b border-border/60 pb-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">
+                    {crawlCaptureCopy.title}
+                  </CardTitle>
+                  <CardDescription>
+                    {crawlCaptureCopy.description}
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+            <Field
+              label={crawlCaptureCopy.label}
+              htmlFor="crawlCaptureMode"
+              description={crawlCaptureCopy.help}
+            >
+              <select
+                id="crawlCaptureMode"
+                name="crawlCaptureMode"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                value={crawlCaptureMode}
+                onChange={(event) =>
+                  setCrawlCaptureMode(event.target.value as CrawlCaptureMode)
+                }
+              >
+                <option value="template_plus_hydrated">
+                  {crawlCaptureCopy.options.templatePlusHydrated}
+                </option>
+                <option value="template_only">{crawlCaptureCopy.options.templateOnly}</option>
+                <option value="hydrated_only">{crawlCaptureCopy.options.hydratedOnly}</option>
+              </select>
+            </Field>
           </section>
 
           <section className="space-y-3 border-t border-border/60 pt-6">

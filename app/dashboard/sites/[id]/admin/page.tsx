@@ -174,6 +174,19 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const servingActionEnable = t("dashboard.serving.action.enable");
   const servingActionDisable = t("dashboard.serving.action.disable");
   const servingActionView = t("dashboard.serving.action.view");
+  const crawlCaptureTitle = t("dashboard.site.settings.crawlCapture.title");
+  const crawlCaptureDescription = t("dashboard.site.settings.crawlCapture.description");
+  const crawlCaptureLabel = t("dashboard.site.settings.crawlCapture.label");
+  const crawlCaptureHelp = t("dashboard.site.settings.crawlCapture.help");
+  const crawlCaptureOptionTemplatePlusHydrated = t(
+    "dashboard.site.settings.crawlCapture.option.template_plus_hydrated",
+  );
+  const crawlCaptureOptionTemplateOnly = t(
+    "dashboard.site.settings.crawlCapture.option.template_only",
+  );
+  const crawlCaptureOptionHydratedOnly = t(
+    "dashboard.site.settings.crawlCapture.option.hydrated_only",
+  );
   const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const siteCrawlsUsed = auth.account?.dailyCrawlUsage?.siteCrawls ?? 0;
   const siteCrawlsRemaining =
@@ -254,6 +267,18 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
           pattern={site.routeConfig?.pattern ?? null}
           maxLocales={site.maxLocales ?? null}
           servingMode={site.servingMode}
+          crawlCaptureMode={site.routeConfig?.crawlCaptureMode ?? "template_plus_hydrated"}
+          crawlCaptureCopy={{
+            title: crawlCaptureTitle,
+            description: crawlCaptureDescription,
+            label: crawlCaptureLabel,
+            help: crawlCaptureHelp,
+            options: {
+              templatePlusHydrated: crawlCaptureOptionTemplatePlusHydrated,
+              templateOnly: crawlCaptureOptionTemplateOnly,
+              hydratedOnly: crawlCaptureOptionHydratedOnly,
+            },
+          }}
           supportedLanguages={supportedLanguages}
           displayLocale={displayLocale}
           initialBrandVoice={brandVoice}

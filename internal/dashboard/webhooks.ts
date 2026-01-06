@@ -80,12 +80,19 @@ const routeLocaleSchema = z.object({
   routePrefix: z.string().nullable().optional(),
 });
 
+const crawlCaptureModeSchema = z.enum([
+  "template_plus_hydrated",
+  "template_only",
+  "hydrated_only",
+]);
+
 const routeConfigSchema = z
   .object({
     sourceLang: z.string(),
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
     locales: z.array(routeLocaleSchema),
+    crawlCaptureMode: crawlCaptureModeSchema.optional(),
   })
   .nullable();
 
@@ -322,6 +329,7 @@ const dashboardBootstrapResponseSchema = z
 export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
+export type CrawlCaptureMode = z.infer<typeof crawlCaptureModeSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
@@ -640,6 +648,7 @@ export type CreateSitePayload = {
   siteProfile?: Record<string, unknown> | null;
   maxLocales: number | null;
   servingMode: "strict" | "tolerant";
+  crawlCaptureMode?: CrawlCaptureMode;
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {
