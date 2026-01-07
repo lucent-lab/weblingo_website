@@ -21,11 +21,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type { CrawlCaptureMode, SupportedLanguage } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = { ok: false, message: "" };
-const REQUIRED_FIELDS_MESSAGE =
-  "Please fill every required field and pick at least one target language.";
 
 type SiteAdminFormProps = {
   siteId: string;
@@ -37,6 +36,10 @@ type SiteAdminFormProps = {
   maxLocales: number | null;
   servingMode: "strict" | "tolerant";
   crawlCaptureMode: CrawlCaptureMode;
+  canEditBasics: boolean;
+  canEditLocales: boolean;
+  canEditServingMode: boolean;
+  canEditCrawlCaptureMode: boolean;
   crawlCaptureCopy: {
     title: string;
     description: string;
@@ -48,6 +51,16 @@ type SiteAdminFormProps = {
       hydratedOnly: string;
     };
   };
+  clientRuntimeEnabled: boolean;
+  canEditClientRuntime: boolean;
+  canEditProfile: boolean;
+  clientRuntimeCopy: {
+    title: string;
+    description: string;
+    label: string;
+    help: string;
+  };
+  lockedHelp: string;
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
   initialBrandVoice?: string;
@@ -64,7 +77,16 @@ export function SiteAdminForm({
   maxLocales,
   servingMode: initialServingMode,
   crawlCaptureMode: initialCrawlCaptureMode,
+  canEditBasics,
+  canEditLocales,
+  canEditServingMode,
+  canEditCrawlCaptureMode,
   crawlCaptureCopy,
+  clientRuntimeEnabled: initialClientRuntimeEnabled,
+  canEditClientRuntime,
+  canEditProfile,
+  clientRuntimeCopy,
+  lockedHelp,
   supportedLanguages,
   displayLocale,
   initialBrandVoice = "",
@@ -88,6 +110,9 @@ export function SiteAdminForm({
   const [crawlCaptureMode, setCrawlCaptureMode] = useState<CrawlCaptureMode>(
     initialCrawlCaptureMode,
   );
+  const [clientRuntimeEnabled, setClientRuntimeEnabled] = useState<boolean>(
+    initialClientRuntimeEnabled,
+  );
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const initialParsedUrl = useMemo(() => parseSourceUrl(initialSourceUrl), [initialSourceUrl]);
@@ -107,7 +132,7 @@ export function SiteAdminForm({
     Boolean(normalizedSourceUrl) &&
     Boolean(normalizedInitialUrl) &&
     normalizedSourceUrl !== normalizedInitialUrl;
-  const requiresResetConfirm = sourceUrlChanged && sourceUrlValid;
+  const requiresResetConfirm = canEditBasics && sourceUrlChanged && sourceUrlValid;
 
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
@@ -117,7 +142,8 @@ export function SiteAdminForm({
   }, [normalizedSubdomainToken, scheme, trimmedHost]);
   const patternIsValid =
     sourceUrlValid && subdomainPattern.includes("{lang}") && Boolean(trimmedHost);
-  const showPatternError = sourceUrlValid && sourceUrl.trim().length > 0 && !patternIsValid;
+  const showPatternError =
+    canEditBasics && sourceUrlValid && sourceUrl.trim().length > 0 && !patternIsValid;
   const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
   const localeAliases = useMemo(
     () => buildLocaleAliases(targetLangs, aliasesByLang),
@@ -152,16 +178,32 @@ export function SiteAdminForm({
     [profilePayload],
   );
   const showRequiredErrors = state.message === REQUIRED_FIELDS_MESSAGE;
-  const sourceUrlRequiredError = showRequiredErrors && !sourceUrl.trim();
-  const targetsRequiredError = showRequiredErrors && targets.length === 0;
+  const sourceUrlRequiredError = showRequiredErrors && canEditBasics && !sourceUrl.trim();
+  const targetsRequiredError = showRequiredErrors && canEditLocales && targets.length === 0;
   const hasInvalidAlias = hasInvalidAliases(aliasesByLang);
   const resetConfirmationError = requiresResetConfirm && !confirmReset;
+  const hasEditableSection =
+    canEditBasics ||
+    canEditLocales ||
+    canEditServingMode ||
+    canEditCrawlCaptureMode ||
+    canEditClientRuntime ||
+    canEditProfile;
+  const basicsInvalid =
+    canEditBasics && (!patternIsValid || !sourceUrlValid || resetConfirmationError);
+  const localesInvalid = canEditLocales && (targets.length === 0 || hasInvalidAlias);
   const submitDisabled =
-    targets.length === 0 ||
-    !patternIsValid ||
-    !sourceUrlValid ||
-    hasInvalidAlias ||
-    resetConfirmationError;
+    !hasEditableSection || basicsInvalid || localesInvalid;
+  const localeHelpText = canEditLocales ? undefined : lockedHelp;
+  const servingHelpText = canEditServingMode
+    ? "Strict waits for every page. Tolerant can complete when some pages fail and keeps previous content for those pages."
+    : `Strict waits for every page. Tolerant can complete when some pages fail and keeps previous content for those pages. ${lockedHelp}`;
+  const crawlCaptureHelpText = canEditCrawlCaptureMode
+    ? crawlCaptureCopy.help
+    : `${crawlCaptureCopy.help} ${lockedHelp}`;
+  const clientRuntimeHelpText = canEditClientRuntime
+    ? clientRuntimeCopy.help
+    : `${clientRuntimeCopy.help} ${lockedHelp}`;
 
   return (
     <Card>
@@ -182,9 +224,15 @@ export function SiteAdminForm({
       <CardContent>
         <form action={formAction} className="space-y-8">
           <input name="siteId" type="hidden" value={siteId} />
-          <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
-          <input name="siteProfile" type="hidden" value={profileJson} />
-          <input name="localeAliases" type="hidden" value={localeAliasesJson} />
+          {canEditBasics ? (
+            <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
+          ) : null}
+          {canEditProfile ? (
+            <input name="siteProfile" type="hidden" value={profileJson} />
+          ) : null}
+          {canEditLocales ? (
+            <input name="localeAliases" type="hidden" value={localeAliasesJson} />
+          ) : null}
 
           <section className="space-y-5">
             <div className="border-b border-border/60 pb-3">
@@ -227,6 +275,7 @@ export function SiteAdminForm({
                     }
                   }}
                   aria-invalid={sourceUrlRequiredError || showSourceUrlError}
+                  disabled={!canEditBasics}
                   className={
                     sourceUrlRequiredError
                       ? "border-destructive focus-visible:ring-destructive"
@@ -277,7 +326,7 @@ export function SiteAdminForm({
               </Field>
             ) : null}
             <div className="space-y-4">
-              <Field label="Target languages">
+              <Field label="Target languages" description={localeHelpText}>
                 <TargetLanguagePicker
                   targets={targets}
                   aliases={aliasesByLang}
@@ -288,6 +337,7 @@ export function SiteAdminForm({
                   maxLocales={maxLocales}
                   error={targetsRequiredError ? "Pick at least one target language." : undefined}
                   showAliasHelp={patternEditing}
+                  disabled={!canEditLocales}
                 />
               </Field>
               <Field
@@ -298,7 +348,10 @@ export function SiteAdminForm({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => setPatternEditing((current) => !current)}
+                    onClick={() =>
+                      canEditBasics ? setPatternEditing((current) => !current) : null
+                    }
+                    disabled={!canEditBasics}
                   >
                     {patternEditing ? "Preview" : "Edit"}
                   </Button>
@@ -330,6 +383,7 @@ export function SiteAdminForm({
                       pattern=".*\\{lang\\}.*"
                       title="Pattern must include {lang}"
                       required
+                      disabled={!canEditBasics}
                     />
                     <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                       .{displayHost}
@@ -368,7 +422,7 @@ export function SiteAdminForm({
             <Field
               label="Completion behavior"
               htmlFor="servingMode"
-              description="Strict waits for every page. Tolerant can complete when some pages fail and keeps previous content for those pages."
+              description={servingHelpText}
             >
               <select
                 id="servingMode"
@@ -378,6 +432,7 @@ export function SiteAdminForm({
                 onChange={(event) =>
                   setServingMode(event.target.value === "tolerant" ? "tolerant" : "strict")
                 }
+                disabled={!canEditServingMode}
               >
                 <option value="strict">Strict (require all pages)</option>
                 <option value="tolerant">Tolerant (serve with failures)</option>
@@ -408,13 +463,14 @@ export function SiteAdminForm({
             <Field
               label={crawlCaptureCopy.label}
               htmlFor="crawlCaptureMode"
-              description={crawlCaptureCopy.help}
+              description={crawlCaptureHelpText}
             >
               <select
                 id="crawlCaptureMode"
                 name="crawlCaptureMode"
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
                 value={crawlCaptureMode}
+                disabled={!canEditCrawlCaptureMode}
                 onChange={(event) =>
                   setCrawlCaptureMode(event.target.value as CrawlCaptureMode)
                 }
@@ -425,6 +481,39 @@ export function SiteAdminForm({
                 <option value="template_only">{crawlCaptureCopy.options.templateOnly}</option>
                 <option value="hydrated_only">{crawlCaptureCopy.options.hydratedOnly}</option>
               </select>
+            </Field>
+          </section>
+
+          <section className="space-y-5 border-t border-border/60 pt-6">
+            <div className="border-b border-border/60 pb-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">
+                    {clientRuntimeCopy.title}
+                  </CardTitle>
+                  <CardDescription>{clientRuntimeCopy.description}</CardDescription>
+                </div>
+              </div>
+            </div>
+            <Field
+              label={clientRuntimeCopy.label}
+              htmlFor="clientRuntimeEnabled"
+              description={clientRuntimeHelpText}
+            >
+              {!canEditClientRuntime ? null : (
+                <input type="hidden" name="clientRuntimeEnabled" value="false" />
+              )}
+              <input
+                id="clientRuntimeEnabled"
+                name="clientRuntimeEnabled"
+                type="checkbox"
+                value="true"
+                checked={clientRuntimeEnabled}
+                onChange={(event) => setClientRuntimeEnabled(event.target.checked)}
+                disabled={!canEditClientRuntime}
+                className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </Field>
           </section>
 
@@ -459,6 +548,7 @@ export function SiteAdminForm({
                     value={brandVoice}
                     onChange={(event) => setBrandVoice(event.target.value)}
                     placeholder="Concise, confident, friendly"
+                    disabled={!canEditProfile}
                   />
                 </Field>
                 <Field
@@ -472,6 +562,7 @@ export function SiteAdminForm({
                     value={siteProfileNotes}
                     onChange={(event) => setSiteProfileNotes(event.target.value)}
                     placeholder="Examples: B2B SaaS for finance teams. Prefer formal tone. Keep product names untranslated."
+                    disabled={!canEditProfile}
                   />
                 </Field>
               </div>

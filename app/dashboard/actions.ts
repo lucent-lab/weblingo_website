@@ -11,6 +11,7 @@ import {
   cancelTranslationRun,
   provisionDomain,
   refreshDomain,
+  resumeTranslationRun,
   setLocaleServing,
   translateSite,
   triggerCrawl,
@@ -20,11 +21,17 @@ import {
   updateSlug,
   verifyDomain,
   WebhooksApiError,
-  type CrawlCaptureMode,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
 import { invalidateSitesCache } from "@internal/dashboard/data";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
+import {
+  buildSiteSettingsUpdatePayload,
+  deriveSiteSettingsAccess,
+  parseJsonObject,
+  parseLocaleAliases,
+  validateSourceUrl,
+} from "@internal/dashboard/site-settings";
 
 import { withWebhooksAuth } from "./_lib/webhooks-token";
 
@@ -45,12 +52,6 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   message,
   meta,
 });
-
-const CRAWL_CAPTURE_MODES: CrawlCaptureMode[] = [
-  "template_plus_hydrated",
-  "template_only",
-  "hydrated_only",
-];
 
 function siteRedirect(
   siteId: string,
@@ -209,87 +210,6 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
     return `This customer account is ${status}. Update billing to ${actionLabel}.`;
   }
   return `Your plan is ${status}. Update billing to ${actionLabel}.`;
-}
-
-function parseJsonObject(input: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(input);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return null;
-    }
-    if (Object.keys(parsed).length === 0) {
-      return null;
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeLocaleAliasValue(value: unknown): string | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (typeof value !== "string") {
-    throw new Error("Aliases must be strings.");
-  }
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed.length > 63) {
-    throw new Error("Aliases must be 63 characters or fewer.");
-  }
-  if (trimmed.startsWith("-") || trimmed.endsWith("-")) {
-    throw new Error("Aliases cannot start or end with a hyphen.");
-  }
-  if (!/^[a-z0-9-]+$/.test(trimmed)) {
-    throw new Error("Aliases must use lowercase letters, numbers, or hyphens.");
-  }
-  return trimmed;
-}
-
-function parseLocaleAliases(
-  raw: string,
-  targetLangs: string[],
-): Record<string, string | null> | string | null {
-  if (!raw) {
-    return null;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return "Locale aliases must be valid JSON.";
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return "Locale aliases must be an object.";
-  }
-  const targetSet = new Set(targetLangs);
-  const aliases: Record<string, string | null> = {};
-  for (const [lang, value] of Object.entries(parsed)) {
-    if (!targetSet.has(lang)) {
-      return `Alias provided for unknown language "${lang}".`;
-    }
-    try {
-      aliases[lang] = normalizeLocaleAliasValue(value);
-    } catch (error) {
-      return error instanceof Error ? error.message : "Invalid alias value.";
-    }
-  }
-  return aliases;
-}
-
-function validateSourceUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return "Source URL must start with http:// or https://.";
-    }
-    return null;
-  } catch {
-    return "Source URL must be a valid URL.";
-  }
 }
 
 function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
@@ -454,46 +374,8 @@ export async function updateSiteSettingsAction(
   formData: FormData,
 ): Promise<ActionResponse> {
   const siteId = formData.get("siteId")?.toString().trim();
-  const sourceUrl = formData.get("sourceUrl")?.toString().trim() ?? "";
-  const targetLangs = formData
-    .getAll("targetLangs")
-    .map((lang) => lang.toString().trim())
-    .filter(Boolean);
-  const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
-  const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
-  const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
-  const servingMode = formData.get("servingMode")?.toString().trim() ?? "";
-  const crawlCaptureModeRaw = formData.get("crawlCaptureMode")?.toString().trim() ?? "";
-
-  const uniqueTargets = Array.from(new Set(targetLangs));
-
-  if (!siteId || !sourceUrl || uniqueTargets.length === 0 || !subdomainPattern) {
-    return failed("Please fill every required field and pick at least one target language.");
-  }
-  if (servingMode !== "strict" && servingMode !== "tolerant") {
-    return failed("Serving mode must be set to strict or tolerant.");
-  }
-  const crawlCaptureMode =
-    crawlCaptureModeRaw.length > 0
-      ? (crawlCaptureModeRaw as CrawlCaptureMode)
-      : undefined;
-  if (crawlCaptureMode && !CRAWL_CAPTURE_MODES.includes(crawlCaptureMode)) {
-    return failed("Crawl capture mode must be set to a supported option.");
-  }
-
-  const sourceUrlError = validateSourceUrl(sourceUrl);
-  if (sourceUrlError) {
-    return failed(sourceUrlError);
-  }
-
-  const siteProfile = siteProfileRaw ? parseJsonObject(siteProfileRaw) : null;
-  if (siteProfileRaw && !siteProfile) {
-    return failed("Site profile must be a non-empty JSON object.");
-  }
-
-  const localeAliases = parseLocaleAliases(localeAliasesRaw, uniqueTargets);
-  if (typeof localeAliases === "string") {
-    return failed(localeAliases);
+  if (!siteId) {
+    return failed("Site ID is required.");
   }
 
   try {
@@ -504,19 +386,16 @@ export async function updateSiteSettingsAction(
     if (!auth.mutationsAllowed) {
       return failed(formatBillingBlockMessage(auth, "edit site settings"));
     }
-    if (!auth.has({ allFeatures: ["edit", "locale_update"] })) {
-      return failed("Site updates are disabled for this account.");
+    const access = deriveSiteSettingsAccess({
+      has: auth.has,
+      mutationsAllowed: auth.mutationsAllowed,
+    });
+    const update = buildSiteSettingsUpdatePayload(formData, access);
+    if (!update.ok) {
+      return failed(update.error);
     }
 
-    await updateSite(auth.webhooksAuth, siteId, {
-      sourceUrl,
-      targetLangs: uniqueTargets,
-      subdomainPattern,
-      localeAliases: localeAliases ?? undefined,
-      siteProfile,
-      servingMode,
-      crawlCaptureMode,
-    });
+    await updateSite(auth.webhooksAuth, siteId, update.payload);
 
     await invalidateSitesCache(auth.webhooksAuth);
     revalidatePath("/dashboard");
@@ -653,6 +532,96 @@ export async function cancelTranslationRunAction(formData: FormData): Promise<vo
       siteId,
       {
         error: toFriendlyDashboardActionError(error, "Unable to cancel the translation run."),
+      },
+      returnTo,
+    );
+  }
+
+  redirect(nextRedirect);
+}
+
+function buildResumeToast(
+  mode: "resume" | "retry",
+  result: { enqueued?: number; enqueuedTranslate?: number; enqueuedRender?: number },
+): string {
+  const enqueuedTranslate = result.enqueuedTranslate ?? 0;
+  const enqueuedRender = result.enqueuedRender ?? 0;
+  const total = result.enqueued ?? enqueuedTranslate + enqueuedRender;
+  if (total <= 0) {
+    return mode === "resume" ? "Translation resumed." : "Retrying failed pages.";
+  }
+  if (enqueuedRender > 0 && enqueuedTranslate === 0) {
+    const prefix = mode === "resume" ? "Rendering resumed." : "Retrying rendering.";
+    return `${prefix} ${total} page${total === 1 ? "" : "s"} re-queued.`;
+  }
+  if (enqueuedTranslate > 0 && enqueuedRender === 0) {
+    const prefix = mode === "resume" ? "Translation resumed." : "Retrying translation.";
+    return `${prefix} ${total} page${total === 1 ? "" : "s"} re-queued.`;
+  }
+  const prefix = mode === "resume" ? "Pipeline resumed." : "Retrying pipeline.";
+  return `${prefix} ${total} page${total === 1 ? "" : "s"} re-queued (${enqueuedTranslate} translate / ${enqueuedRender} render).`;
+}
+
+export async function resumeTranslationRunAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const runId = formData.get("runId")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
+
+  if (!siteId || !runId) {
+    return;
+  }
+
+  let nextRedirect: string;
+
+  try {
+    const result = await withWebhooksAuth((auth) => resumeTranslationRun(auth, siteId, runId));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    const message = buildResumeToast("resume", result);
+    nextRedirect = siteRedirect(siteId, { toast: message }, returnTo);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] resumeTranslationRunAction failed:", error);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to resume the translation run."),
+      },
+      returnTo,
+    );
+  }
+
+  redirect(nextRedirect);
+}
+
+export async function retryFailedTranslationRunAction(formData: FormData): Promise<void> {
+  const siteId = formData.get("siteId")?.toString();
+  const runId = formData.get("runId")?.toString();
+  const returnTo = formData.get("returnTo")?.toString();
+
+  if (!siteId || !runId) {
+    return;
+  }
+
+  let nextRedirect: string;
+
+  try {
+    const result = await withWebhooksAuth((auth) => resumeTranslationRun(auth, siteId, runId));
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    const message = buildResumeToast("retry", result);
+    nextRedirect = siteRedirect(siteId, { toast: message }, returnTo);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] retryFailedTranslationRunAction failed:", error);
+    nextRedirect = siteRedirect(
+      siteId,
+      {
+        error: toFriendlyDashboardActionError(error, "Unable to retry failed pages right now."),
       },
       returnTo,
     );

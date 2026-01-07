@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
+import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import {
   fetchDeployments,
   fetchSite,
@@ -48,13 +49,17 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
-  const billingBlocked = !auth.mutationsAllowed;
-  const canEdit = auth.has({ allFeatures: ["edit", "locale_update"] }) && !billingBlocked;
+  const settingsAccess = deriveSiteSettingsAccess({
+    has: auth.has,
+    mutationsAllowed: auth.mutationsAllowed,
+  });
+  const billingBlocked = settingsAccess.billingBlocked;
   const canDeactivate = auth.has({ feature: "edit" }) && !billingBlocked;
   const canDelete = auth.has({ feature: "edit" });
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
-  const canToggleServing = canEdit;
+  const canToggleServing =
+    auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const returnTo = `/dashboard/sites/${id}/admin`;
   const { t } = await resolveLocaleTranslator(
@@ -78,7 +83,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
     const [deploymentsResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
       fetchDeployments(auth.webhooksAuth!, id),
       listSitesCached(auth.webhooksAuth!),
-      canEdit ? listSupportedLanguagesCached() : Promise.resolve([]),
+      settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
     ]);
 
     if (deploymentsResult.status === "fulfilled") {
@@ -187,6 +192,11 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const crawlCaptureOptionHydratedOnly = t(
     "dashboard.site.settings.crawlCapture.option.hydrated_only",
   );
+  const clientRuntimeTitle = t("dashboard.site.settings.clientRuntime.title");
+  const clientRuntimeDescription = t("dashboard.site.settings.clientRuntime.description");
+  const clientRuntimeLabel = t("dashboard.site.settings.clientRuntime.label");
+  const clientRuntimeHelp = t("dashboard.site.settings.clientRuntime.help");
+  const lockedHelp = t("dashboard.site.settings.lockedHelp");
   const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const siteCrawlsUsed = auth.account?.dailyCrawlUsage?.siteCrawls ?? 0;
   const siteCrawlsRemaining =
@@ -200,6 +210,13 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const hasAvailableSlot =
     maxSites === null || activeSiteCount === null || activeSiteCount < maxSites;
   const activationDisabled = !hasAvailableSlot || !canActivate;
+  const hasLockedSections =
+    !settingsAccess.canEditBasics ||
+    !settingsAccess.canEditLocales ||
+    !settingsAccess.canEditServingMode ||
+    !settingsAccess.canEditCrawlCaptureMode ||
+    !settingsAccess.canEditClientRuntime ||
+    !settingsAccess.canEditProfile;
   const deploymentsByLang = new Map(
     deployments.map((deployment) => [deployment.targetLang, deployment]),
   );
@@ -236,16 +253,16 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
         </Button>
       </div>
 
-      {!canEdit ? (
-        <Card>
+      {billingBlocked || hasLockedSections ? (
+        <Card className="border-border/60 bg-muted/30">
           <CardHeader>
             <CardTitle>
-              {billingBlocked ? "Billing action required" : "Site settings locked"}
+              {billingBlocked ? "Billing action required" : "Some settings are locked"}
             </CardTitle>
             <CardDescription>
               {billingBlocked
                 ? "Update billing to resume editing this site."
-                : "Upgrade your plan to edit site languages and routing."}
+                : "Upgrade your plan to edit locked sections."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
@@ -257,34 +274,47 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <SiteAdminForm
-          siteId={site.id}
-          sourceUrl={site.sourceUrl}
-          sourceLang={site.locales[0]?.sourceLang ?? ""}
-          targets={targetLangs}
-          aliases={localeAliases}
-          pattern={site.routeConfig?.pattern ?? null}
-          maxLocales={site.maxLocales ?? null}
-          servingMode={site.servingMode}
-          crawlCaptureMode={site.routeConfig?.crawlCaptureMode ?? "template_plus_hydrated"}
-          crawlCaptureCopy={{
-            title: crawlCaptureTitle,
-            description: crawlCaptureDescription,
-            label: crawlCaptureLabel,
-            help: crawlCaptureHelp,
-            options: {
-              templatePlusHydrated: crawlCaptureOptionTemplatePlusHydrated,
-              templateOnly: crawlCaptureOptionTemplateOnly,
-              hydratedOnly: crawlCaptureOptionHydratedOnly,
-            },
-          }}
-          supportedLanguages={supportedLanguages}
-          displayLocale={displayLocale}
-          initialBrandVoice={brandVoice}
-          initialSiteProfileNotes={siteProfileNotes}
-        />
-      )}
+      ) : null}
+      <SiteAdminForm
+        siteId={site.id}
+        sourceUrl={site.sourceUrl}
+        sourceLang={site.locales[0]?.sourceLang ?? ""}
+        targets={targetLangs}
+        aliases={localeAliases}
+        pattern={site.routeConfig?.pattern ?? null}
+        maxLocales={site.maxLocales ?? null}
+        servingMode={site.servingMode}
+        crawlCaptureMode={site.routeConfig?.crawlCaptureMode ?? "template_plus_hydrated"}
+        crawlCaptureCopy={{
+          title: crawlCaptureTitle,
+          description: crawlCaptureDescription,
+          label: crawlCaptureLabel,
+          help: crawlCaptureHelp,
+          options: {
+            templatePlusHydrated: crawlCaptureOptionTemplatePlusHydrated,
+            templateOnly: crawlCaptureOptionTemplateOnly,
+            hydratedOnly: crawlCaptureOptionHydratedOnly,
+          },
+        }}
+        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? false}
+        clientRuntimeCopy={{
+          title: clientRuntimeTitle,
+          description: clientRuntimeDescription,
+          label: clientRuntimeLabel,
+          help: clientRuntimeHelp,
+        }}
+        lockedHelp={lockedHelp}
+        canEditBasics={settingsAccess.canEditBasics}
+        canEditLocales={settingsAccess.canEditLocales}
+        canEditServingMode={settingsAccess.canEditServingMode}
+        canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
+        canEditClientRuntime={settingsAccess.canEditClientRuntime}
+        canEditProfile={settingsAccess.canEditProfile}
+        supportedLanguages={supportedLanguages}
+        displayLocale={displayLocale}
+        initialBrandVoice={brandVoice}
+        initialSiteProfileNotes={siteProfileNotes}
+      />
 
       <Card className="border-border/60 bg-muted/20">
         <CardHeader>

@@ -180,7 +180,7 @@ export function TargetLanguagePicker({
                     {aliasError ? <span className="text-destructive">{aliasError}</span> : null}
                   </div>
                 ) : null}
-                <input type="hidden" name="targetLangs" value={tag} />
+                {!disabled ? <input type="hidden" name="targetLangs" value={tag} /> : null}
               </div>
             );
           })}
