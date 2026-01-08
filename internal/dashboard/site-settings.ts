@@ -3,7 +3,8 @@ export type SiteSettingsFeature =
   | "locale_update"
   | "serve"
   | "crawl_capture_mode"
-  | "client_runtime_toggle";
+  | "client_runtime_toggle"
+  | "translatable_attributes";
 
 export type HasCheck =
   | { feature: SiteSettingsFeature }
@@ -27,6 +28,7 @@ export type SiteSettingsAccess = {
   canEditServingMode: boolean;
   canEditCrawlCaptureMode: boolean;
   canEditClientRuntime: boolean;
+  canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
 };
 
@@ -39,6 +41,7 @@ export type SiteSettingsUpdatePayload = Partial<{
   servingMode: "strict" | "tolerant";
   crawlCaptureMode: CrawlCaptureMode;
   clientRuntimeEnabled: boolean;
+  translatableAttributes: string[] | null;
 }>;
 
 export type SiteSettingsUpdateResult =
@@ -57,6 +60,8 @@ export function deriveSiteSettingsAccess(options: {
     options.has({ allFeatures: ["edit", "crawl_capture_mode"] }) && !billingBlocked;
   const canEditClientRuntime =
     options.has({ allFeatures: ["edit", "client_runtime_toggle"] }) && !billingBlocked;
+  const canEditTranslatableAttributes =
+    options.has({ allFeatures: ["edit", "translatable_attributes"] }) && !billingBlocked;
   const canEditProfile = options.has({ feature: "edit" }) && !billingBlocked;
   return {
     billingBlocked,
@@ -65,6 +70,7 @@ export function deriveSiteSettingsAccess(options: {
     canEditServingMode,
     canEditCrawlCaptureMode,
     canEditClientRuntime,
+    canEditTranslatableAttributes,
     canEditProfile,
   };
 }
@@ -84,6 +90,7 @@ export function buildSiteSettingsUpdatePayload(
   const hasServingMode = formData.has("servingMode");
   const hasCrawlCaptureMode = formData.has("crawlCaptureMode");
   const hasClientRuntime = formData.has("clientRuntimeEnabled");
+  const hasTranslatableAttributes = formData.has("translatableAttributes");
   const hasProfile = formData.has("siteProfile");
 
   if (hasBasics && !access.canEditBasics) {
@@ -100,6 +107,9 @@ export function buildSiteSettingsUpdatePayload(
   }
   if (hasClientRuntime && !access.canEditClientRuntime) {
     return { ok: false, error: "Client runtime settings are locked for this account." };
+  }
+  if (hasTranslatableAttributes && !access.canEditTranslatableAttributes) {
+    return { ok: false, error: "Attribute translation settings are locked for this account." };
   }
   if (hasProfile && !access.canEditProfile) {
     return { ok: false, error: "Site profile updates are locked for this account." };
@@ -169,6 +179,12 @@ export function buildSiteSettingsUpdatePayload(
     }
   }
 
+  if (hasTranslatableAttributes) {
+    const raw = formData.get("translatableAttributes")?.toString() ?? "";
+    const attrs = parseAttributeList(raw);
+    payload.translatableAttributes = attrs.length ? attrs : null;
+  }
+
   if (hasProfile) {
     const siteProfileRaw = formData.get("siteProfile")?.toString().trim() ?? "";
     const siteProfile = siteProfileRaw ? parseJsonObject(siteProfileRaw) : null;
@@ -198,6 +214,14 @@ export function parseJsonObject(input: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function parseAttributeList(input: string): string[] {
+  return input
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => value.toLowerCase());
 }
 
 export function parseLocaleAliases(

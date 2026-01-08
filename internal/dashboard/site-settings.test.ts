@@ -29,6 +29,7 @@ function makeAccess(overrides: Partial<SiteSettingsAccess> = {}): SiteSettingsAc
     canEditServingMode: false,
     canEditCrawlCaptureMode: false,
     canEditClientRuntime: false,
+    canEditTranslatableAttributes: false,
     canEditProfile: false,
     ...overrides,
   };
@@ -43,6 +44,7 @@ describe("deriveSiteSettingsAccess", () => {
         "serve",
         "crawl_capture_mode",
         "client_runtime_toggle",
+        "translatable_attributes",
       ]),
       mutationsAllowed: false,
     });
@@ -52,6 +54,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditServingMode).toBe(false);
     expect(access.canEditCrawlCaptureMode).toBe(false);
     expect(access.canEditClientRuntime).toBe(false);
+    expect(access.canEditTranslatableAttributes).toBe(false);
   });
 
   it("enables section access per feature when billing is ok", () => {
@@ -62,6 +65,7 @@ describe("deriveSiteSettingsAccess", () => {
         "serve",
         "crawl_capture_mode",
         "client_runtime_toggle",
+        "translatable_attributes",
       ]),
       mutationsAllowed: true,
     });
@@ -70,6 +74,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditServingMode).toBe(true);
     expect(access.canEditCrawlCaptureMode).toBe(true);
     expect(access.canEditClientRuntime).toBe(true);
+    expect(access.canEditTranslatableAttributes).toBe(true);
   });
 });
 
@@ -104,6 +109,19 @@ describe("buildSiteSettingsUpdatePayload", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.payload).toEqual({ clientRuntimeEnabled: false });
+    }
+  });
+
+  it("parses translatable attribute updates", () => {
+    const formData = new FormData();
+    formData.set("translatableAttributes", "data-tip, aria-label");
+    const result = buildSiteSettingsUpdatePayload(
+      formData,
+      makeAccess({ canEditTranslatableAttributes: true }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toEqual({ translatableAttributes: ["data-tip", "aria-label"] });
     }
   });
 });

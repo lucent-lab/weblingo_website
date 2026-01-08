@@ -24,6 +24,7 @@ export type WebLingoFeature =
   | "crawl_trigger"
   | "crawl_capture_mode"
   | "client_runtime_toggle"
+  | "translatable_attributes"
   | "render"
   | "agency_actions"
   | "internal_ops";
@@ -43,6 +44,7 @@ const FEATURE_FLAG_BY_FEATURE: Record<WebLingoFeature, keyof FeatureFlags> = {
   crawl_trigger: "crawlTriggerEnabled",
   crawl_capture_mode: "crawlCaptureModeEnabled",
   client_runtime_toggle: "clientRuntimeToggleEnabled",
+  translatable_attributes: "translatableAttributesEnabled",
   render: "renderEnabled",
   agency_actions: "agencyActionsEnabled",
   internal_ops: "internalOpsEnabled",

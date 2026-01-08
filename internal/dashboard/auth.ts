@@ -67,6 +67,7 @@ const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
   crawlTriggerEnabled: false,
   crawlCaptureModeEnabled: false,
   clientRuntimeToggleEnabled: false,
+  translatableAttributesEnabled: false,
   renderEnabled: false,
   agencyActionsEnabled: false,
   internalOpsEnabled: false,

@@ -197,6 +197,15 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const clientRuntimeDescription = t("dashboard.site.settings.clientRuntime.description");
   const clientRuntimeLabel = t("dashboard.site.settings.clientRuntime.label");
   const clientRuntimeHelp = t("dashboard.site.settings.clientRuntime.help");
+  const translatableAttributesTitle = t("dashboard.site.settings.translatableAttributes.title");
+  const translatableAttributesDescription = t(
+    "dashboard.site.settings.translatableAttributes.description",
+  );
+  const translatableAttributesLabel = t("dashboard.site.settings.translatableAttributes.label");
+  const translatableAttributesHelp = t("dashboard.site.settings.translatableAttributes.help");
+  const translatableAttributesPlaceholder = t(
+    "dashboard.site.settings.translatableAttributes.placeholder",
+  );
   const lockedHelp = t("dashboard.site.settings.lockedHelp");
   const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
   const siteCrawlsUsed = auth.account?.dailyCrawlUsage?.siteCrawls ?? 0;
@@ -217,6 +226,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
     !settingsAccess.canEditServingMode ||
     !settingsAccess.canEditCrawlCaptureMode ||
     !settingsAccess.canEditClientRuntime ||
+    !settingsAccess.canEditTranslatableAttributes ||
     !settingsAccess.canEditProfile;
   const deploymentsByLang = new Map(
     deployments.map((deployment) => [deployment.targetLang, deployment]),
@@ -297,12 +307,20 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
             hydratedOnly: crawlCaptureOptionHydratedOnly,
           },
         }}
-        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? true}
+        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? false}
         clientRuntimeCopy={{
           title: clientRuntimeTitle,
           description: clientRuntimeDescription,
           label: clientRuntimeLabel,
           help: clientRuntimeHelp,
+        }}
+        translatableAttributes={site.routeConfig?.translatableAttributes ?? null}
+        translatableAttributesCopy={{
+          title: translatableAttributesTitle,
+          description: translatableAttributesDescription,
+          label: translatableAttributesLabel,
+          help: translatableAttributesHelp,
+          placeholder: translatableAttributesPlaceholder,
         }}
         lockedHelp={lockedHelp}
         canEditBasics={settingsAccess.canEditBasics}
@@ -310,6 +328,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
         canEditServingMode={settingsAccess.canEditServingMode}
         canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
         canEditClientRuntime={settingsAccess.canEditClientRuntime}
+        canEditTranslatableAttributes={settingsAccess.canEditTranslatableAttributes}
         canEditProfile={settingsAccess.canEditProfile}
         supportedLanguages={supportedLanguages}
         displayLocale={displayLocale}

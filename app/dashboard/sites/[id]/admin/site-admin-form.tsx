@@ -53,12 +53,21 @@ type SiteAdminFormProps = {
   };
   clientRuntimeEnabled: boolean;
   canEditClientRuntime: boolean;
+  translatableAttributes: string[] | null;
+  canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
   clientRuntimeCopy: {
     title: string;
     description: string;
     label: string;
     help: string;
+  };
+  translatableAttributesCopy: {
+    title: string;
+    description: string;
+    label: string;
+    help: string;
+    placeholder: string;
   };
   lockedHelp: string;
   supportedLanguages: SupportedLanguage[];
@@ -84,8 +93,11 @@ export function SiteAdminForm({
   crawlCaptureCopy,
   clientRuntimeEnabled: initialClientRuntimeEnabled,
   canEditClientRuntime,
+  translatableAttributes: initialTranslatableAttributes,
+  canEditTranslatableAttributes,
   canEditProfile,
   clientRuntimeCopy,
+  translatableAttributesCopy,
   lockedHelp,
   supportedLanguages,
   displayLocale,
@@ -112,6 +124,9 @@ export function SiteAdminForm({
     useState<CrawlCaptureMode>(initialCrawlCaptureMode);
   const [clientRuntimeEnabled, setClientRuntimeEnabled] = useState<boolean>(
     initialClientRuntimeEnabled,
+  );
+  const [translatableAttributes, setTranslatableAttributes] = useState<string>(() =>
+    (initialTranslatableAttributes ?? []).join(", "),
   );
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
@@ -198,6 +213,7 @@ export function SiteAdminForm({
     canEditServingMode ||
     canEditCrawlCaptureMode ||
     canEditClientRuntime ||
+    canEditTranslatableAttributes ||
     canEditProfile;
   const basicsInvalid =
     canEditBasics && (!patternIsValid || !sourceUrlValid || resetConfirmationError);
@@ -213,6 +229,9 @@ export function SiteAdminForm({
   const clientRuntimeHelpText = canEditClientRuntime
     ? clientRuntimeCopy.help
     : `${clientRuntimeCopy.help} ${lockedHelp}`;
+  const translatableAttributesHelpText = canEditTranslatableAttributes
+    ? translatableAttributesCopy.help
+    : `${translatableAttributesCopy.help} ${lockedHelp}`;
 
   return (
     <Card>
@@ -557,6 +576,42 @@ export function SiteAdminForm({
                 onChange={(event) => setClientRuntimeEnabled(event.target.checked)}
                 disabled={!canEditClientRuntime}
                 className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </Field>
+          </section>
+
+          <section className="space-y-5 border-t border-border/60 pt-6">
+            <div className="border-b border-border/60 pb-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">
+                    {translatableAttributesCopy.title}
+                  </CardTitle>
+                  <CardDescription>{translatableAttributesCopy.description}</CardDescription>
+                </div>
+              </div>
+            </div>
+            <Field
+              label={translatableAttributesCopy.label}
+              htmlFor="translatableAttributes"
+              description={
+                <>
+                  <span className="block">{translatableAttributesHelpText}</span>
+                  <span className="mt-1 block">
+                    Default: alt, title, aria-label, aria-description, aria-valuetext,
+                    aria-roledescription, data-i18n, placeholder.
+                  </span>
+                </>
+              }
+            >
+              <Input
+                id="translatableAttributes"
+                name="translatableAttributes"
+                value={translatableAttributes}
+                onChange={(event) => setTranslatableAttributes(event.target.value)}
+                placeholder={translatableAttributesCopy.placeholder}
+                disabled={!canEditTranslatableAttributes}
               />
             </Field>
           </section>

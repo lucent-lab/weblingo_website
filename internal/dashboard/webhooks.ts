@@ -88,8 +88,9 @@ const routeConfigSchema = z
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
     locales: z.array(routeLocaleSchema),
-    clientRuntimeEnabled: z.boolean().optional(),
-    crawlCaptureMode: crawlCaptureModeSchema.optional(),
+    clientRuntimeEnabled: z.boolean(),
+    crawlCaptureMode: crawlCaptureModeSchema,
+    translatableAttributes: z.array(z.string()).nullable().optional(),
   })
   .nullable();
 
@@ -241,6 +242,7 @@ const featureFlagsSchema = z
     crawlTriggerEnabled: z.boolean(),
     crawlCaptureModeEnabled: z.boolean(),
     clientRuntimeToggleEnabled: z.boolean(),
+    translatableAttributesEnabled: z.boolean(),
     renderEnabled: z.boolean(),
     agencyActionsEnabled: z.boolean(),
     internalOpsEnabled: z.boolean(),
@@ -654,6 +656,7 @@ export type CreateSitePayload = {
   servingMode: "strict" | "tolerant";
   crawlCaptureMode?: CrawlCaptureMode;
   clientRuntimeEnabled?: boolean;
+  translatableAttributes?: string[] | null;
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {
