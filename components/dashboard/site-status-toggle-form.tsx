@@ -1,13 +1,12 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { ActionForm } from "./action-form";
 
-import { usePathname } from "next/navigation";
-
+import type { ActionResponse } from "@/app/dashboard/actions";
 import { Button, type ButtonProps } from "@/components/ui/button";
 
 type SiteStatusToggleFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (prevState: ActionResponse | undefined, formData: FormData) => Promise<ActionResponse>;
   siteId: string;
   nextStatus: "active" | "inactive";
   label: string;
@@ -29,27 +28,28 @@ export function SiteStatusToggleForm({
   size,
   className,
 }: SiteStatusToggleFormProps) {
-  const pathname = usePathname();
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    if (confirmMessage && !window.confirm(confirmMessage)) {
-      event.preventDefault();
-    }
-  };
-
   return (
-    <form action={action} onSubmit={handleSubmit}>
-      <input name="siteId" type="hidden" value={siteId} />
-      <input name="status" type="hidden" value={nextStatus} />
-      {pathname ? <input name="returnTo" type="hidden" value={pathname} /> : null}
-      <Button
-        type="submit"
-        variant={variant ?? "outline"}
-        size={size}
-        className={className}
-        disabled={disabled}
-      >
-        {label}
-      </Button>
-    </form>
+    <ActionForm
+      action={action}
+      loading="Updating status..."
+      success="Status updated."
+      error="Unable to update status."
+      confirmMessage={confirmMessage}
+    >
+      <>
+        <input name="siteId" type="hidden" value={siteId} />
+        <input name="status" type="hidden" value={nextStatus} />
+        <Button
+          type="submit"
+          variant={variant ?? "outline"}
+          size={size}
+          className={className}
+          disabled={disabled}
+          title={label}
+        >
+          {label}
+        </Button>
+      </>
+    </ActionForm>
   );
 }

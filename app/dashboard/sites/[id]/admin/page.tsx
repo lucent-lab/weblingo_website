@@ -5,6 +5,8 @@ import { Info } from "lucide-react";
 
 import { SiteAdminForm } from "./site-admin-form";
 
+import { ActionForm } from "@/components/dashboard/action-form";
+
 import {
   activateSiteAction,
   cancelTranslationRunAction,
@@ -61,7 +63,6 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const canToggleServing =
     auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
-  const returnTo = `/dashboard/sites/${id}/admin`;
   const { t } = await resolveLocaleTranslator(
     Promise.resolve({ locale: i18nConfig.defaultLocale }),
   );
@@ -296,7 +297,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
             hydratedOnly: crawlCaptureOptionHydratedOnly,
           },
         }}
-        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? false}
+        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? true}
         clientRuntimeCopy={{
           title: clientRuntimeTitle,
           description: clientRuntimeDescription,
@@ -339,24 +340,38 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
             </p>
             {site.status === "active" ? (
               canDeactivate ? (
-                <form action={deactivateSiteAction}>
-                  <input name="siteId" type="hidden" value={site.id} />
-                  <Button type="submit" variant="destructive">
-                    Pause localization
-                  </Button>
-                </form>
+                <ActionForm
+                  action={deactivateSiteAction}
+                  loading="Pausing localization..."
+                  success="Localization paused."
+                  error="Unable to pause localization."
+                >
+                  <>
+                    <input name="siteId" type="hidden" value={site.id} />
+                    <Button type="submit" variant="destructive">
+                      Pause localization
+                    </Button>
+                  </>
+                </ActionForm>
               ) : (
                 <Button variant="outline" disabled>
                   Pause localization
                 </Button>
               )
             ) : canActivate ? (
-              <form action={activateSiteAction}>
-                <input name="siteId" type="hidden" value={site.id} />
-                <Button type="submit" variant="outline" disabled={activationDisabled}>
-                  Enable localization
-                </Button>
-              </form>
+              <ActionForm
+                action={activateSiteAction}
+                loading="Enabling localization..."
+                success="Localization enabled."
+                error="Unable to enable localization."
+              >
+                <>
+                  <input name="siteId" type="hidden" value={site.id} />
+                  <Button type="submit" variant="outline" disabled={activationDisabled}>
+                    Enable localization
+                  </Button>
+                </>
+              </ActionForm>
             ) : (
               <Button variant="outline" disabled>
                 Enable localization
@@ -410,33 +425,46 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
             </p>
             {servingLive && firstServingDomain ? (
               <Button asChild variant="outline">
-                <Link href={`https://${firstServingDomain}`} target="_blank" rel="noreferrer">
+                <Link
+                  href={`https://${firstServingDomain}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={servingActionView}
+                >
                   View live site
                 </Link>
               </Button>
             ) : site.status !== "active" ? (
-              <Button variant="outline" disabled>
+              <Button variant="outline" disabled title="Enable localization first">
                 Enable localization first
               </Button>
             ) : !hasVerifiedDomain ? (
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${site.id}#domains`}>Verify a domain</Link>
+                <Link href={`/dashboard/sites/${site.id}#domains`} title={servingActionVerify}>
+                  Verify a domain
+                </Link>
               </Button>
             ) : canCrawl ? (
-              <form action={triggerCrawlAction}>
-                <input name="siteId" type="hidden" value={site.id} />
-                <input name="returnTo" type="hidden" value={returnTo} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={siteCrawlLimitReached}
-                  title={siteCrawlLimitReached ? "Daily site crawl limit reached." : undefined}
-                >
-                  Start serving
-                </Button>
-              </form>
+              <ActionForm
+                action={triggerCrawlAction}
+                loading="Starting crawl..."
+                success="Crawl enqueued."
+                error="Unable to start crawl."
+              >
+                <>
+                  <input name="siteId" type="hidden" value={site.id} />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={siteCrawlLimitReached}
+                    title={siteCrawlLimitReached ? "Daily site crawl limit reached." : "Start serving"}
+                  >
+                    Start serving
+                  </Button>
+                </>
+              </ActionForm>
             ) : (
-              <Button variant="outline" disabled>
+              <Button variant="outline" disabled title="Start serving">
                 Start serving
               </Button>
             )}
@@ -509,39 +537,46 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                                     href={`https://${deployment.domain}`}
                                     target="_blank"
                                     rel="noreferrer"
+                                    title={servingActionView}
                                   >
                                     {servingActionView}
                                   </Link>
                                 </Button>
                               ) : deployment.servingStatus === "ready" ? (
                                 <div className="flex flex-col items-end gap-2">
-                                  <form action={translateAndServeAction}>
-                                    <input name="siteId" type="hidden" value={site.id} />
-                                    <input name="siteStatus" type="hidden" value={site.status} />
-                                    <input
-                                      name="targetLang"
-                                      type="hidden"
-                                      value={deployment.targetLang}
-                                    />
-                                    <input name="returnTo" type="hidden" value={returnTo} />
-                                    <Button
-                                      type="submit"
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={
-                                        !canStartServing || Boolean(deployment.translationRun)
-                                      }
-                                      title={
-                                        deployment.translationRun
-                                          ? "Translation already running."
-                                          : canStartServing
-                                            ? undefined
-                                            : "Daily site crawl limit reached."
-                                      }
-                                    >
-                                      {servingActionTranslate}
-                                    </Button>
-                                  </form>
+                                  <ActionForm
+                                    action={translateAndServeAction}
+                                    loading="Starting translation..."
+                                    success="Translation started."
+                                    error="Unable to start translation."
+                                  >
+                                    <>
+                                      <input name="siteId" type="hidden" value={site.id} />
+                                      <input name="siteStatus" type="hidden" value={site.status} />
+                                      <input
+                                        name="targetLang"
+                                        type="hidden"
+                                        value={deployment.targetLang}
+                                      />
+                                      <Button
+                                        type="submit"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={
+                                          !canStartServing || Boolean(deployment.translationRun)
+                                        }
+                                        title={
+                                          deployment.translationRun
+                                            ? "Translation already running."
+                                            : canStartServing
+                                              ? servingActionTranslate
+                                              : "Daily site crawl limit reached."
+                                        }
+                                      >
+                                        {servingActionTranslate}
+                                      </Button>
+                                    </>
+                                  </ActionForm>
                                   {deployment.translationRun ? (
                                     <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
                                       <span>
@@ -553,51 +588,72 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                                           ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
                                           : ""}
                                       </span>
-                                      <form action={cancelTranslationRunAction}>
-                                        <input name="siteId" type="hidden" value={site.id} />
-                                        <input
-                                          name="runId"
-                                          type="hidden"
-                                          value={deployment.translationRun.id}
-                                        />
-                                        <input name="returnTo" type="hidden" value={returnTo} />
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          type="submit"
-                                          disabled={!canManageTranslations}
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </form>
+                                      <ActionForm
+                                        action={cancelTranslationRunAction}
+                                        loading="Cancelling run..."
+                                        success="Translation run cancelled."
+                                        error="Unable to cancel run."
+                                      >
+                                        <>
+                                          <input name="siteId" type="hidden" value={site.id} />
+                                          <input
+                                            name="runId"
+                                            type="hidden"
+                                            value={deployment.translationRun.id}
+                                          />
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            type="submit"
+                                            disabled={!canManageTranslations}
+                                            title="Cancel"
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </>
+                                      </ActionForm>
                                     </div>
                                   ) : null}
                                 </div>
                               ) : deployment.servingStatus === "needs_domain" ? (
                                 <Button asChild size="sm" variant="outline">
-                                  <Link href={`/dashboard/sites/${site.id}#domains`}>
+                                  <Link
+                                    href={`/dashboard/sites/${site.id}#domains`}
+                                    title={servingActionVerify}
+                                  >
                                     {servingActionVerify}
                                   </Link>
                                 </Button>
                               ) : deployment.servingStatus === "disabled" ? null : (
-                                <Button size="sm" variant="outline" disabled>
+                                <Button size="sm" variant="outline" disabled title={servingActionEnable}>
                                   {servingActionEnable}
                                 </Button>
                               )}
                               {showToggle ? (
-                                <form action={setLocaleServingAction}>
-                                  <input name="siteId" type="hidden" value={site.id} />
-                                  <input
-                                    name="targetLang"
-                                    type="hidden"
-                                    value={deployment.targetLang}
-                                  />
-                                  <input name="enabled" type="hidden" value={toggleValue} />
-                                  <input name="returnTo" type="hidden" value={returnTo} />
-                                  <Button size="sm" variant="outline" disabled={!canToggleServing}>
-                                    {toggleLabel}
-                                  </Button>
-                                </form>
+                                <ActionForm
+                                  action={setLocaleServingAction}
+                                  loading="Updating serving..."
+                                  success="Serving updated."
+                                  error="Unable to update serving."
+                                >
+                                  <>
+                                    <input name="siteId" type="hidden" value={site.id} />
+                                    <input
+                                      name="targetLang"
+                                      type="hidden"
+                                      value={deployment.targetLang}
+                                    />
+                                    <input name="enabled" type="hidden" value={toggleValue} />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={!canToggleServing}
+                                      title={toggleLabel}
+                                    >
+                                      {toggleLabel}
+                                    </Button>
+                                  </>
+                                </ActionForm>
                               ) : null}
                             </div>
                           </td>
@@ -703,24 +759,31 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
               </p>
             </div>
             {canCrawl ? (
-              <form action={triggerCrawlAction}>
-                <input name="siteId" type="hidden" value={site.id} />
-                <input name="returnTo" type="hidden" value={returnTo} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={!crawlReady || siteCrawlLimitReached}
-                  title={
-                    !crawlReady
-                      ? "Enable localization to crawl."
-                      : siteCrawlLimitReached
-                        ? "Daily site crawl limit reached."
-                        : "Enqueue a full-site crawl."
-                  }
-                >
-                  Force full website crawl
-                </Button>
-              </form>
+              <ActionForm
+                action={triggerCrawlAction}
+                loading="Starting crawl..."
+                success="Crawl enqueued."
+                error="Unable to enqueue crawl."
+              >
+                <>
+                  <input name="siteId" type="hidden" value={site.id} />
+                  <input name="force" type="hidden" value="true" />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={!crawlReady || siteCrawlLimitReached}
+                    title={
+                      !crawlReady
+                        ? "Enable localization to crawl."
+                        : siteCrawlLimitReached
+                          ? "Daily site crawl limit reached."
+                          : "Enqueue a full-site crawl."
+                    }
+                  >
+                    Force full website crawl
+                  </Button>
+                </>
+              </ActionForm>
             ) : (
               <Button variant="outline" disabled>
                 Force full website crawl
@@ -749,30 +812,38 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
           <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             This action permanently deletes all data for this site.
           </div>
-          <form action={deleteSiteAction} className="space-y-3">
-            <input name="siteId" type="hidden" value={site.id} />
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Type DELETE to confirm
-              </label>
-              <Input
-                name="confirmation"
-                placeholder="DELETE"
-                required
-                pattern="DELETE"
-                autoComplete="off"
-                disabled={!canDelete}
-              />
-            </div>
-            <Button type="submit" variant="destructive" disabled={!canDelete}>
-              Delete site
-            </Button>
-            {!canDelete ? (
-              <p className="text-xs text-muted-foreground">
-                You do not have permission to delete this site.
-              </p>
-            ) : null}
-          </form>
+          <ActionForm
+            action={deleteSiteAction}
+            className="space-y-3"
+            loading="Deleting site..."
+            success="Site deleted."
+            error="Unable to delete site."
+          >
+            <>
+              <input name="siteId" type="hidden" value={site.id} />
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Type DELETE to confirm
+                </label>
+                <Input
+                  name="confirmation"
+                  placeholder="DELETE"
+                  required
+                  pattern="DELETE"
+                  autoComplete="off"
+                  disabled={!canDelete}
+                />
+              </div>
+              <Button type="submit" variant="destructive" disabled={!canDelete} title="Delete site">
+                Delete site
+              </Button>
+              {!canDelete ? (
+                <p className="text-xs text-muted-foreground">
+                  You do not have permission to delete this site.
+                </p>
+              ) : null}
+            </>
+          </ActionForm>
         </CardContent>
       </Card>
     </div>

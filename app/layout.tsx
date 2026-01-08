@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import type { Metadata } from "next";
 
 import { cn } from "@/lib/utils";
+import { Sonner } from "@/components/ui/sonner";
 import { env } from "@internal/core";
 
 const appUrl = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans text-foreground antialiased")}>
         <div className="flex min-h-screen flex-col">{children}</div>
+        <Sonner />
       </body>
     </html>
   );

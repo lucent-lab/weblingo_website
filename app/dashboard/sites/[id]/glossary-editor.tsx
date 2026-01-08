@@ -6,6 +6,7 @@ import { updateGlossaryAction, type ActionResponse } from "../../actions";
 import { GlossaryTable } from "../glossary-table";
 
 import { Button } from "@/components/ui/button";
+import { useActionToast } from "@internal/dashboard/use-action-toast";
 import type { GlossaryEntry } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = { ok: false, message: "" };
@@ -20,13 +21,21 @@ export function GlossaryEditor({
   targetLangs: string[];
 }) {
   const [entries, setEntries] = useState<GlossaryEntry[]>(() => initialEntries);
-  const [state, formAction] = useActionState(updateGlossaryAction, initialState);
+  const [state, formAction, pending] = useActionState(updateGlossaryAction, initialState);
 
   const serialized = useMemo(() => JSON.stringify(entries), [entries]);
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Saving glossary...",
+    success: "Glossary saved.",
+    error: "Unable to save glossary.",
+  });
 
   return (
     <div className="space-y-4">
-      <form action={formAction} className="space-y-3">
+      <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
         <input name="siteId" type="hidden" value={siteId} />
         <input name="entries" type="hidden" value={serialized} />
 
@@ -41,17 +50,16 @@ export function GlossaryEditor({
           Retranslate after glossary updates
         </label>
 
-        {state.message ? (
-          <div
-            className={state.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}
-            role="status"
-          >
+        {state.message && !state.ok ? (
+          <div className="text-sm text-destructive" role="status">
             {state.message}
           </div>
         ) : null}
 
         <div className="flex justify-end">
-          <Button type="submit">Save glossary</Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Saving..." : "Save glossary"}
+          </Button>
         </div>
       </form>
     </div>

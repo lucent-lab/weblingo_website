@@ -8,12 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
 export function OverrideForm({ siteId }: { siteId: string }) {
-  const [state, formAction] = useActionState(createOverrideAction, initialState);
+  const [state, formAction, pending] = useActionState(createOverrideAction, initialState);
   const messageId = "override-status";
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Saving override...",
+    success: "Override saved.",
+    error: "Unable to save override.",
+  });
 
   return (
     <Card>
@@ -22,7 +31,7 @@ export function OverrideForm({ siteId }: { siteId: string }) {
         <CardDescription>Submit a precise translation for a segment.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-3">
+        <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
           <input name="siteId" type="hidden" value={siteId} />
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground" htmlFor="segmentId">
@@ -72,17 +81,15 @@ export function OverrideForm({ siteId }: { siteId: string }) {
               placeholder="Use only when advised for ambiguous segments"
             />
           </div>
-          {state.message ? (
-            <p
-              className={state.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}
-              id={messageId}
-              role="alert"
-            >
+          {state.message && !state.ok ? (
+            <p className="text-sm text-destructive" id={messageId} role="alert">
               {state.message}
             </p>
           ) : null}
           <div className="flex justify-end">
-            <Button type="submit">Save override</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Save override"}
+            </Button>
           </div>
         </form>
       </CardContent>
@@ -91,8 +98,16 @@ export function OverrideForm({ siteId }: { siteId: string }) {
 }
 
 export function SlugForm({ siteId }: { siteId: string }) {
-  const [state, formAction] = useActionState(updateSlugAction, initialState);
+  const [state, formAction, pending] = useActionState(updateSlugAction, initialState);
   const messageId = "slug-status";
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Saving slug...",
+    success: "Slug saved.",
+    error: "Unable to save slug.",
+  });
 
   return (
     <Card>
@@ -101,7 +116,7 @@ export function SlugForm({ siteId }: { siteId: string }) {
         <CardDescription>Normalize and publish a path for a translated page.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-3">
+        <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
           <input name="siteId" type="hidden" value={siteId} />
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
@@ -141,17 +156,15 @@ export function SlugForm({ siteId }: { siteId: string }) {
               />
             </div>
           </div>
-          {state.message ? (
-            <p
-              className={state.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}
-              id={messageId}
-              role="alert"
-            >
+          {state.message && !state.ok ? (
+            <p className="text-sm text-destructive" id={messageId} role="alert">
               {state.message}
             </p>
           ) : null}
           <div className="flex justify-end">
-            <Button type="submit">Save slug</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving..." : "Save slug"}
+            </Button>
           </div>
         </form>
       </CardContent>

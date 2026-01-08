@@ -5,13 +5,22 @@ import { useActionState } from "react";
 import { createAgencyCustomerAction, type ActionResponse } from "./actions";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
 export function CustomerInviteForm() {
-  const [state, formAction] = useActionState(createAgencyCustomerAction, initialState);
+  const [state, formAction, pending] = useActionState(createAgencyCustomerAction, initialState);
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Sending invite...",
+    success: "Invite sent.",
+    error: "Unable to send invite.",
+  });
 
   return (
     <Card>
@@ -22,17 +31,25 @@ export function CustomerInviteForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <form action={formAction} className="grid gap-3 md:grid-cols-[2fr_1fr_auto]">
-          <Input name="email" placeholder="customer@company.com" type="email" required />
-          <select
-            name="customerPlan"
-            className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
-            defaultValue="starter"
+        <form action={submitWithToast} className="space-y-3">
+          <fieldset
+            className="grid gap-3 md:grid-cols-[2fr_1fr_auto]"
+            disabled={pending}
+            aria-busy={pending}
           >
-            <option value="starter">Starter</option>
-            <option value="pro">Pro</option>
-          </select>
-          <Button type="submit">Send invite</Button>
+            <Input name="email" placeholder="customer@company.com" type="email" required />
+            <select
+              name="customerPlan"
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+              defaultValue="starter"
+            >
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+            </select>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Sending..." : "Send invite"}
+            </Button>
+          </fieldset>
         </form>
 
         {state.message ? (

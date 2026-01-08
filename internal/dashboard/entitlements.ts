@@ -22,8 +22,11 @@ export type WebLingoFeature =
   | "locale_update"
   | "domain_verify"
   | "crawl_trigger"
+  | "crawl_capture_mode"
+  | "client_runtime_toggle"
   | "render"
-  | "agency_actions";
+  | "agency_actions"
+  | "internal_ops";
 
 const FEATURE_FLAG_BY_FEATURE: Record<WebLingoFeature, keyof FeatureFlags> = {
   edit: "editEnabled",
@@ -38,8 +41,11 @@ const FEATURE_FLAG_BY_FEATURE: Record<WebLingoFeature, keyof FeatureFlags> = {
   locale_update: "localeUpdateEnabled",
   domain_verify: "domainVerifyEnabled",
   crawl_trigger: "crawlTriggerEnabled",
+  crawl_capture_mode: "crawlCaptureModeEnabled",
+  client_runtime_toggle: "clientRuntimeToggleEnabled",
   render: "renderEnabled",
   agency_actions: "agencyActionsEnabled",
+  internal_ops: "internalOpsEnabled",
 };
 
 export type WebLingoQuota =

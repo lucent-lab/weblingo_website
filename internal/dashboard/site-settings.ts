@@ -1,14 +1,24 @@
-import type { HasCheck } from "./entitlements";
-import type { CrawlCaptureMode } from "./webhooks";
+export type SiteSettingsFeature =
+  | "edit"
+  | "locale_update"
+  | "serve"
+  | "crawl_capture_mode"
+  | "client_runtime_toggle";
+
+export type HasCheck =
+  | { feature: SiteSettingsFeature }
+  | { allFeatures: readonly SiteSettingsFeature[] };
 
 export const REQUIRED_FIELDS_MESSAGE =
   "Please fill every required field and pick at least one target language.";
 
-export const CRAWL_CAPTURE_MODES: CrawlCaptureMode[] = [
+export const CRAWL_CAPTURE_MODES = [
   "template_plus_hydrated",
   "template_only",
   "hydrated_only",
-];
+] as const;
+
+export type CrawlCaptureMode = (typeof CRAWL_CAPTURE_MODES)[number];
 
 export type SiteSettingsAccess = {
   billingBlocked: boolean;

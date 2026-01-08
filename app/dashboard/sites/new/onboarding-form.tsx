@@ -24,6 +24,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useActionToast } from "@internal/dashboard/use-action-toast";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = {
@@ -38,7 +39,7 @@ export function OnboardingForm(props: {
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
 }) {
-  const [state, formAction] = useActionState(createSiteAction, initialState);
+  const [state, formAction, pending] = useActionState(createSiteAction, initialState);
   const router = useRouter();
   const [targets, setTargets] = useState<string[]>([]);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>({});
@@ -106,6 +107,14 @@ export function OnboardingForm(props: {
     !sourceUrlValid ||
     !sourceLang.trim() ||
     hasInvalidAlias;
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Creating site...",
+    success: "Site created.",
+    error: "Unable to create site.",
+  });
 
   return (
     <Card>
@@ -113,7 +122,7 @@ export function OnboardingForm(props: {
         <CardTitle className="text-xl">Site setup</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="relative">
+        <form action={submitWithToast} className="relative">
           <PendingOverlay />
           <PendingFieldset>
             <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
@@ -244,13 +253,11 @@ export function OnboardingForm(props: {
                 </Field>
               </div>
             </section>
-            {state.message ? (
+            {state.message && !state.ok ? (
               <div
                 className={cn(
                   "rounded-md border px-3 py-2 text-sm",
-                  state.ok
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-destructive/40 bg-destructive/10 text-destructive",
+                  "border-destructive/40 bg-destructive/10 text-destructive",
                 )}
               >
                 {state.message}

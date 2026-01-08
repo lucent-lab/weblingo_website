@@ -28,7 +28,9 @@ export function SitesList({ sites }: { sites: Site[] }) {
                 {site.domains.length}
               </Badge>
               <Button asChild size="sm" variant="outline">
-                <Link href={`/dashboard/sites/${site.id}`}>Manage</Link>
+                <Link href={`/dashboard/sites/${site.id}`} title="Manage">
+                  Manage
+                </Link>
               </Button>
             </div>
           </CardHeader>

@@ -80,11 +80,7 @@ const routeLocaleSchema = z.object({
   routePrefix: z.string().nullable().optional(),
 });
 
-const crawlCaptureModeSchema = z.enum([
-  "template_plus_hydrated",
-  "template_only",
-  "hydrated_only",
-]);
+const crawlCaptureModeSchema = z.enum(["template_plus_hydrated", "template_only", "hydrated_only"]);
 
 const routeConfigSchema = z
   .object({
@@ -92,6 +88,7 @@ const routeConfigSchema = z
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
     locales: z.array(routeLocaleSchema),
+    clientRuntimeEnabled: z.boolean().optional(),
     crawlCaptureMode: crawlCaptureModeSchema.optional(),
   })
   .nullable();
@@ -123,6 +120,9 @@ const siteSchema = z.object({
       status: z.enum(["in_progress", "completed", "failed"]),
       pagesDiscovered: z.number().int().nonnegative(),
       pagesEnqueued: z.number().int().nonnegative(),
+      selectedCount: z.number().int().nonnegative(),
+      skippedDueToLimitCount: z.number().int().nonnegative(),
+      crawlCaptureMode: crawlCaptureModeSchema.nullable().optional(),
       error: z.string().nullable().optional(),
       startedAt: z.string().nullable().optional(),
       finishedAt: z.string().nullable().optional(),
@@ -139,6 +139,7 @@ const sitePageSummarySchema = z.object({
   lastSeenAt: z.string().nullable().optional(),
   lastCrawledAt: z.string().nullable().optional(),
   lastSnapshotAt: z.string().nullable().optional(),
+  nextCrawlAt: z.string().nullable().optional(),
   lastVersionAt: z.string().nullable().optional(),
 });
 
@@ -238,8 +239,11 @@ const featureFlagsSchema = z
     localeUpdateEnabled: z.boolean(),
     domainVerifyEnabled: z.boolean(),
     crawlTriggerEnabled: z.boolean(),
+    crawlCaptureModeEnabled: z.boolean(),
+    clientRuntimeToggleEnabled: z.boolean(),
     renderEnabled: z.boolean(),
     agencyActionsEnabled: z.boolean(),
+    internalOpsEnabled: z.boolean(),
     demoMode: z.boolean(),
     maxSites: z.number().int().nonnegative().nullable(),
     maxLocales: z.number().int().nonnegative().nullable(),
@@ -649,6 +653,7 @@ export type CreateSitePayload = {
   maxLocales: number | null;
   servingMode: "strict" | "tolerant";
   crawlCaptureMode?: CrawlCaptureMode;
+  clientRuntimeEnabled?: boolean;
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {
@@ -695,7 +700,7 @@ export async function deleteSite(auth: AuthInput, siteId: string) {
 export async function triggerCrawl(
   auth: AuthInput,
   siteId: string,
-  options?: { intent?: "translate_and_serve" },
+  options?: { intent?: "translate_and_serve"; force?: boolean },
 ) {
   const searchParams = new URLSearchParams();
   if (options?.intent) {
@@ -705,6 +710,7 @@ export async function triggerCrawl(
     path: `/sites/${siteId}/crawl${searchParams.toString() ? `?${searchParams}` : ""}`,
     method: "POST",
     auth,
+    body: options?.force ? { force: true } : undefined,
     schema: crawlStatusSchema,
   });
 }
@@ -756,6 +762,23 @@ export async function cancelTranslationRun(auth: AuthInput, siteId: string, runI
     schema: z.object({ run: translationRunSchema }).strict(),
   });
   return data.run;
+}
+
+export async function resumeTranslationRun(auth: AuthInput, siteId: string, runId: string) {
+  const data = await request({
+    path: `/sites/${siteId}/translation-runs/${runId}/resume`,
+    method: "POST",
+    auth,
+    schema: z
+      .object({
+        run: translationRunSchema,
+        enqueued: z.number().int().nonnegative(),
+        enqueuedTranslate: z.number().int().nonnegative(),
+        enqueuedRender: z.number().int().nonnegative(),
+      })
+      .strict(),
+  });
+  return data;
 }
 
 export async function triggerPageCrawl(auth: AuthInput, siteId: string, pageId: string) {

@@ -216,11 +216,11 @@ export function TargetLanguagePicker({
             You have used all {maxLocales} {languageSlotLabel}. Remove one to add another.
           </p>
         ) : null
-      ) : (
+      ) : !disabled ? (
         <p className="text-xs text-muted-foreground">
           Language suggestions are unavailable right now. Please try again in a moment.
         </p>
-      )}
+      ) : null}
 
       {showAliasHelp && hasAliases ? (
         <p className="text-xs text-muted-foreground">

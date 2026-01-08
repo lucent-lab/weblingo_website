@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
 import { TargetLanguagePicker } from "../../target-language-picker";
@@ -21,6 +20,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type { CrawlCaptureMode, SupportedLanguage } from "@internal/dashboard/webhooks";
 
@@ -92,7 +92,7 @@ export function SiteAdminForm({
   initialBrandVoice = "",
   initialSiteProfileNotes = "",
 }: SiteAdminFormProps) {
-  const [state, formAction] = useActionState(updateSiteSettingsAction, initialState);
+  const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
   const [targets, setTargets] = useState<string[]>(() => initialTargets);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {
     const entries = Object.entries(aliases).filter(
@@ -104,12 +104,12 @@ export function SiteAdminForm({
   const [brandVoice, setBrandVoice] = useState(initialBrandVoice);
   const [siteProfileNotes, setSiteProfileNotes] = useState(initialSiteProfileNotes);
   const [patternEditing, setPatternEditing] = useState(false);
+  const [sourceUrlEditing, setSourceUrlEditing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [servingMode, setServingMode] = useState<"strict" | "tolerant">(initialServingMode);
-  const [crawlCaptureMode, setCrawlCaptureMode] = useState<CrawlCaptureMode>(
-    initialCrawlCaptureMode,
-  );
+  const [crawlCaptureMode, setCrawlCaptureMode] =
+    useState<CrawlCaptureMode>(initialCrawlCaptureMode);
   const [clientRuntimeEnabled, setClientRuntimeEnabled] = useState<boolean>(
     initialClientRuntimeEnabled,
   );
@@ -161,6 +161,7 @@ export function SiteAdminForm({
       : subdomainPattern;
   }, [localeAliases, subdomainPattern, targets]);
   const subdomainLabelFor = patternEditing ? "subdomainToken" : undefined;
+  const sourceUrlLabelFor = sourceUrlEditing ? "sourceUrl" : undefined;
   const profilePayload = useMemo(() => {
     const payload: Record<string, unknown> = {};
     const trimmedVoice = brandVoice.trim();
@@ -182,6 +183,15 @@ export function SiteAdminForm({
   const targetsRequiredError = showRequiredErrors && canEditLocales && targets.length === 0;
   const hasInvalidAlias = hasInvalidAliases(aliasesByLang);
   const resetConfirmationError = requiresResetConfirm && !confirmReset;
+
+  const submitWithToast = useActionToast({
+    formAction,
+    state,
+    pending,
+    loading: "Saving site settings...",
+    success: "Site settings saved.",
+    error: "Unable to update site settings.",
+  });
   const hasEditableSection =
     canEditBasics ||
     canEditLocales ||
@@ -192,8 +202,7 @@ export function SiteAdminForm({
   const basicsInvalid =
     canEditBasics && (!patternIsValid || !sourceUrlValid || resetConfirmationError);
   const localesInvalid = canEditLocales && (targets.length === 0 || hasInvalidAlias);
-  const submitDisabled =
-    !hasEditableSection || basicsInvalid || localesInvalid;
+  const submitDisabled = !hasEditableSection || basicsInvalid || localesInvalid;
   const localeHelpText = canEditLocales ? undefined : lockedHelp;
   const servingHelpText = canEditServingMode
     ? "Strict waits for every page. Tolerant can complete when some pages fail and keeps previous content for those pages."
@@ -222,14 +231,12 @@ export function SiteAdminForm({
         </div>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-8">
+        <form action={submitWithToast} className="space-y-8" aria-busy={pending}>
           <input name="siteId" type="hidden" value={siteId} />
           {canEditBasics ? (
             <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           ) : null}
-          {canEditProfile ? (
-            <input name="siteProfile" type="hidden" value={profileJson} />
-          ) : null}
+          {canEditProfile ? <input name="siteProfile" type="hidden" value={profileJson} /> : null}
           {canEditLocales ? (
             <input name="localeAliases" type="hidden" value={localeAliasesJson} />
           ) : null}
@@ -251,7 +258,21 @@ export function SiteAdminForm({
             <div className="grid gap-4 md:grid-cols-2">
               <Field
                 label="Source URL"
-                htmlFor="sourceUrl"
+                htmlFor={sourceUrlLabelFor}
+                labelAction={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      canEditBasics ? setSourceUrlEditing((current) => !current) : null
+                    }
+                    disabled={!canEditBasics}
+                    title={sourceUrlEditing ? "Preview" : "Edit"}
+                  >
+                    {sourceUrlEditing ? "Preview" : "Edit"}
+                  </Button>
+                }
                 description="The canonical origin we should crawl for translations."
                 error={
                   sourceUrlRequiredError
@@ -261,27 +282,47 @@ export function SiteAdminForm({
                       : undefined
                 }
               >
-                <Input
-                  id="sourceUrl"
-                  name="sourceUrl"
-                  placeholder="https://www.example.com"
-                  type="url"
-                  required
-                  value={sourceUrl}
-                  onChange={(event) => {
-                    setSourceUrl(event.target.value);
-                    if (confirmReset) {
-                      setConfirmReset(false);
+                {sourceUrlEditing ? (
+                  <Input
+                    id="sourceUrl"
+                    name="sourceUrl"
+                    placeholder="https://www.example.com"
+                    type="url"
+                    required
+                    value={sourceUrl}
+                    onChange={(event) => {
+                      setSourceUrl(event.target.value);
+                      if (confirmReset) {
+                        setConfirmReset(false);
+                      }
+                    }}
+                    aria-invalid={sourceUrlRequiredError || showSourceUrlError}
+                    disabled={!canEditBasics}
+                    className={
+                      sourceUrlRequiredError
+                        ? "border-destructive focus-visible:ring-destructive"
+                        : ""
                     }
-                  }}
-                  aria-invalid={sourceUrlRequiredError || showSourceUrlError}
-                  disabled={!canEditBasics}
-                  className={
-                    sourceUrlRequiredError
-                      ? "border-destructive focus-visible:ring-destructive"
-                      : ""
-                  }
-                />
+                  />
+                ) : (
+                  <>
+                    {canEditBasics ? (
+                      <input name="sourceUrl" type="hidden" value={sourceUrl} />
+                    ) : null}
+                    <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm">
+                      {sourceUrl ? (
+                        <div className="space-y-1">
+                          <span className="text-xs font-medium text-muted-foreground">Current</span>
+                          <div className="font-mono text-sm text-foreground">{sourceUrl}</div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Enter a source URL to continue.
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </Field>
               <Field
                 label="Source language"
@@ -352,6 +393,7 @@ export function SiteAdminForm({
                       canEditBasics ? setPatternEditing((current) => !current) : null
                     }
                     disabled={!canEditBasics}
+                    title={patternEditing ? "Preview" : "Edit"}
                   >
                     {patternEditing ? "Preview" : "Edit"}
                   </Button>
@@ -419,11 +461,7 @@ export function SiteAdminForm({
                 </div>
               </div>
             </div>
-            <Field
-              label="Completion behavior"
-              htmlFor="servingMode"
-              description={servingHelpText}
-            >
+            <Field label="Completion behavior" htmlFor="servingMode" description={servingHelpText}>
               <select
                 id="servingMode"
                 name="servingMode"
@@ -454,16 +492,19 @@ export function SiteAdminForm({
                   <CardTitle className="text-base font-semibold">
                     {crawlCaptureCopy.title}
                   </CardTitle>
-                  <CardDescription>
-                    {crawlCaptureCopy.description}
-                  </CardDescription>
+                  <CardDescription>{crawlCaptureCopy.description}</CardDescription>
                 </div>
               </div>
             </div>
             <Field
               label={crawlCaptureCopy.label}
               htmlFor="crawlCaptureMode"
-              description={crawlCaptureHelpText}
+              description={
+                <>
+                  <span className="block">{crawlCaptureHelpText}</span>
+                  <span className="mt-1 block">Default: template_plus_hydrated.</span>
+                </>
+              }
             >
               <select
                 id="crawlCaptureMode"
@@ -471,9 +512,7 @@ export function SiteAdminForm({
                 className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
                 value={crawlCaptureMode}
                 disabled={!canEditCrawlCaptureMode}
-                onChange={(event) =>
-                  setCrawlCaptureMode(event.target.value as CrawlCaptureMode)
-                }
+                onChange={(event) => setCrawlCaptureMode(event.target.value as CrawlCaptureMode)}
               >
                 <option value="template_plus_hydrated">
                   {crawlCaptureCopy.options.templatePlusHydrated}
@@ -499,7 +538,12 @@ export function SiteAdminForm({
             <Field
               label={clientRuntimeCopy.label}
               htmlFor="clientRuntimeEnabled"
-              description={clientRuntimeHelpText}
+              description={
+                <>
+                  <span className="block">{clientRuntimeHelpText}</span>
+                  <span className="mt-1 block">Default: On.</span>
+                </>
+              }
             >
               {!canEditClientRuntime ? null : (
                 <input type="hidden" name="clientRuntimeEnabled" value="false" />
@@ -531,6 +575,7 @@ export function SiteAdminForm({
                 variant="ghost"
                 size="sm"
                 onClick={() => setAdvancedOpen((current) => !current)}
+                title={advancedOpen ? "Hide" : "Show"}
               >
                 {advancedOpen ? "Hide" : "Show"}
               </Button>
@@ -587,7 +632,7 @@ export function SiteAdminForm({
               Updates do not trigger a crawl automatically. Use Force full website crawl when you
               are ready to refresh translations.
             </p>
-            <SubmitButton disabled={submitDisabled} />
+            <SubmitButton disabled={submitDisabled} pending={pending} />
           </div>
         </form>
       </CardContent>
@@ -595,10 +640,13 @@ export function SiteAdminForm({
   );
 }
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
-  const { pending } = useFormStatus();
+function SubmitButton({ disabled, pending }: { disabled: boolean; pending: boolean }) {
   return (
-    <Button disabled={disabled || pending} type="submit">
+    <Button
+      disabled={disabled || pending}
+      type="submit"
+      title={pending ? "Saving..." : "Save changes"}
+    >
       {pending ? "Saving..." : "Save changes"}
     </Button>
   );

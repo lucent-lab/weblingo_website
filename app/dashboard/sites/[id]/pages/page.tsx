@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { triggerPageCrawlAction } from "../../../actions";
+
+import { ActionForm } from "@/components/dashboard/action-form";
 import { SiteHeader } from "../site-header";
 
 import { Badge } from "@/components/ui/badge";
@@ -64,11 +66,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const crawlSummaryEmpty = t("dashboard.crawl.summary.empty");
   const crawlStatusLabel = t("dashboard.crawl.summary.status");
   const crawlTriggerLabel = t("dashboard.crawl.summary.trigger");
+  const crawlCaptureModeLabel = t("dashboard.crawl.summary.captureMode");
   const crawlStartedLabel = t("dashboard.crawl.summary.startedAt");
   const crawlFinishedLabel = t("dashboard.crawl.summary.finishedAt");
   const crawlDiscoveredLabel = t("dashboard.crawl.summary.discovered");
   const crawlEnqueuedLabel = t("dashboard.crawl.summary.enqueued");
+  const crawlSelectedLabel = t("dashboard.crawl.summary.selected");
+  const crawlSkippedLabel = t("dashboard.crawl.summary.skippedDueToLimit");
   const crawlErrorLabel = t("dashboard.crawl.summary.error");
+  const pageNextCrawlLabel = t("dashboard.pages.columns.nextCrawl");
+  const eligibleNowLabel = t("dashboard.pages.eligibleNow");
   const servingStatusLabels = {
     inactive: t("dashboard.serving.status.inactive"),
     disabled: t("dashboard.serving.status.disabled"),
@@ -236,6 +243,14 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                 </span>
               </div>
               <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">
+                  {crawlCaptureModeLabel}
+                </div>
+                <span className="font-mono text-foreground">
+                  {latestCrawlRun.crawlCaptureMode ?? "—"}
+                </span>
+              </div>
+              <div className="space-y-1">
                 <div className="text-xs uppercase text-muted-foreground">{crawlStartedLabel}</div>
                 <span className="text-muted-foreground">
                   {formatTimestamp(latestCrawlRun.startedAt)}
@@ -256,6 +271,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
               <div className="space-y-1">
                 <div className="text-xs uppercase text-muted-foreground">{crawlEnqueuedLabel}</div>
                 <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued}</span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlSelectedLabel}</div>
+                <span className="font-mono text-foreground">{latestCrawlRun.selectedCount}</span>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs uppercase text-muted-foreground">{crawlSkippedLabel}</div>
+                <span className="font-mono text-foreground">
+                  {latestCrawlRun.skippedDueToLimitCount}
+                </span>
               </div>
               <div className="space-y-1 md:col-span-2">
                 <div className="text-xs uppercase text-muted-foreground">{crawlErrorLabel}</div>
@@ -358,6 +383,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                     <th className="px-3 py-2 text-left">Page</th>
                     <th className="px-3 py-2 text-left">Last crawl</th>
                     <th className="px-3 py-2 text-left">Last change</th>
+                    <th className="px-3 py-2 text-left">{pageNextCrawlLabel}</th>
                     {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
                   </tr>
                 </thead>
@@ -375,28 +401,37 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                       <td className="px-3 py-3 align-top text-muted-foreground">
                         {formatTimestamp(page.lastSnapshotAt)}
                       </td>
+                      <td className="px-3 py-3 align-top text-muted-foreground">
+                        {formatNextCrawlAt(page.nextCrawlAt, eligibleNowLabel)}
+                      </td>
                       {canCrawl ? (
                         <td className="px-3 py-3 text-right align-top">
-                          <form action={triggerPageCrawlAction}>
-                            <input name="siteId" type="hidden" value={site.id} />
-                            <input name="pageId" type="hidden" value={page.id} />
-                            <input name="returnTo" type="hidden" value={returnTo} />
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="outline"
-                              disabled={!crawlReady || pageCrawlLimitReached}
-                              title={
-                                pageCrawlLimitReached
-                                  ? "Daily page crawl limit reached."
-                                  : crawlReady
-                                    ? "Enqueue a crawl for this page."
-                                    : "Enable localization to crawl."
-                              }
-                            >
-                              Force crawl
-                            </Button>
-                          </form>
+                          <ActionForm
+                            action={triggerPageCrawlAction}
+                            loading="Starting page crawl..."
+                            success="Page crawl enqueued."
+                            error="Unable to enqueue page crawl."
+                          >
+                            <>
+                              <input name="siteId" type="hidden" value={site.id} />
+                              <input name="pageId" type="hidden" value={page.id} />
+                              <Button
+                                type="submit"
+                                size="sm"
+                                variant="outline"
+                                disabled={!crawlReady || pageCrawlLimitReached}
+                                title={
+                                  pageCrawlLimitReached
+                                    ? "Daily page crawl limit reached."
+                                    : crawlReady
+                                      ? "Enqueue a crawl for this page."
+                                      : "Enable localization to crawl."
+                                }
+                              >
+                                Force crawl
+                              </Button>
+                            </>
+                          </ActionForm>
                         </td>
                       ) : null}
                     </tr>
@@ -436,6 +471,20 @@ function formatTimestamp(value?: string | null): string {
     return value;
   }
   return date.toLocaleString();
+}
+
+function formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: string): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    return value;
+  }
+  if (date.getTime() <= Date.now()) {
+    return eligibleNowLabel;
+  }
+  return formatTimestamp(value);
 }
 
 function resolveServingStatusVariant(status: Deployment["servingStatus"]) {

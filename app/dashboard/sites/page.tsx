@@ -40,22 +40,32 @@ export default async function SitesPage() {
         </div>
         {canCreateSite ? (
           <Button asChild>
-            <Link href="/dashboard/sites/new">Add a site</Link>
+            <Link href="/dashboard/sites/new" title="Add a site">
+              Add a site
+            </Link>
           </Button>
         ) : billingBlocked ? (
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Update billing</Link>
+            <Link href={pricingPath} title="Update billing">
+              Update billing
+            </Link>
           </Button>
         ) : atSiteLimit ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button disabled>Add a site</Button>
+            <Button disabled title="Site limit reached">
+              Add a site
+            </Button>
             <Button asChild variant="secondary">
-              <Link href={pricingPath}>Upgrade for more sites</Link>
+              <Link href={pricingPath} title="Upgrade for more sites">
+                Upgrade for more sites
+              </Link>
             </Button>
           </div>
         ) : (
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Upgrade to add a site</Link>
+            <Link href={pricingPath} title="Upgrade to add a site">
+              Upgrade to add a site
+            </Link>
           </Button>
         )}
       </div>
@@ -78,7 +88,9 @@ export default async function SitesPage() {
           <CardContent>
             {canCreateSite ? (
               <Button asChild>
-                <Link href="/dashboard/sites/new">Start onboarding</Link>
+                <Link href="/dashboard/sites/new" title="Start onboarding">
+                  Start onboarding
+                </Link>
               </Button>
             ) : null}
           </CardContent>

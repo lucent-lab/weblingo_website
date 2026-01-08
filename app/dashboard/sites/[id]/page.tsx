@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import {
   cancelTranslationRunAction,
   refreshDomainAction,
+  resumeTranslationRunAction,
+  retryFailedTranslationRunAction,
   translateAndServeAction,
   verifyDomainAction,
 } from "../../actions";
@@ -12,6 +14,7 @@ import { LockedFeatureCard } from "./locked-feature-card";
 
 import { Info } from "lucide-react";
 
+import { ActionForm } from "@/components/dashboard/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +23,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   fetchDeployments,
   fetchSite,
+  fetchSitePages,
   WebhooksApiError,
   type Deployment,
   type Site,
+  type SitePageSummary,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
@@ -35,6 +40,8 @@ type SitePageProps = {
     details?: string | string[];
   }>;
 };
+
+const STALLED_RUN_THRESHOLD_MS = 15 * 60 * 1000;
 
 export default async function SitePage({ params, searchParams }: SitePageProps) {
   const { id } = await params;
@@ -62,6 +69,8 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   const cloudflareStatusUnknown = t("dashboard.domains.cloudflare.unknown");
   const cloudflareLastSyncedLabel = t("dashboard.domains.cloudflare.lastSyncedLabel");
   const cloudflareErrorsLabel = t("dashboard.domains.cloudflare.errorsLabel");
+  const nextEligibleCrawlLabel = t("dashboard.crawl.summary.nextEligible");
+  const eligibleNowLabel = t("dashboard.crawl.summary.eligibleNow");
   const errorDetailsLabel = t("dashboard.error.showDetails");
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
   const canDomains = auth.has({ allFeatures: ["edit", "domain_verify"] }) && mutationsAllowed;
@@ -70,11 +79,13 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
 
   let site: Site | null = null;
   let deployments: Deployment[] = [];
+  let pages: SitePageSummary[] = [];
   let error: string | null = null;
 
-  const [siteResult, deploymentsResult] = await Promise.allSettled([
+  const [siteResult, deploymentsResult, pagesResult] = await Promise.allSettled([
     fetchSite(authToken, id),
     fetchDeployments(authToken, id),
+    fetchSitePages(authToken, id),
   ]);
 
   if (siteResult.status === "fulfilled") {
@@ -106,6 +117,29 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
   }
 
+  if (pagesResult.status === "fulfilled") {
+    pages = pagesResult.value;
+  } else {
+    const err = pagesResult.reason;
+    if (err instanceof WebhooksApiError) {
+      console.warn("[dashboard] fetchSitePages failed", {
+        siteId: id,
+        status: err.status,
+        message: err.message,
+        details: err.details ?? null,
+        subjectAccountId: auth.subjectAccountId,
+        actorAccountId: auth.actorAccountId,
+        actingAsCustomer: auth.actingAsCustomer,
+      });
+    } else {
+      const message = err instanceof Error ? err.message : "Unable to load site pages.";
+      console.warn("[dashboard] fetchSitePages failed (unknown error)", {
+        siteId: id,
+        message,
+      });
+    }
+  }
+
   if (!site) {
     if (error) {
       return (
@@ -130,9 +164,11 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     acc[deployment.targetLang] = deployment;
     return acc;
   }, {});
-  const nextCrawlAt = formatNextDailyCrawlUtc(new Date());
-  const nextCrawlValue =
-    site.status === "active" ? nextCrawlAt : `${nextCrawlAt} (activate to run)`;
+  const nextCrawlValue = resolveNextEligibleCrawlValue({
+    pages,
+    siteStatus: site.status,
+    eligibleNowLabel,
+  });
 
   return (
     <div className="space-y-8">
@@ -193,7 +229,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
               site.domains.length
             } verified`}
           />
-          <InfoBlock label="Next crawl (UTC)" value={nextCrawlValue} />
+          <InfoBlock label={nextEligibleCrawlLabel} value={nextCrawlValue} />
           <InfoBlock label="Profile" value={site.siteProfile ? "Provided" : "Not set"} />
         </CardContent>
       </Card>
@@ -264,24 +300,48 @@ function formatTimestamp(value?: string | null): string {
   return date.toLocaleString();
 }
 
-const NEXT_DAILY_CRAWL_UTC_HOUR = 4;
-
-function formatNextDailyCrawlUtc(now: Date): string {
-  const next = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      NEXT_DAILY_CRAWL_UTC_HOUR,
-      0,
-      0,
-      0,
-    ),
-  );
-  if (next <= now) {
-    next.setUTCDate(next.getUTCDate() + 1);
+function resolveNextEligibleCrawlValue({
+  pages,
+  siteStatus,
+  eligibleNowLabel,
+}: {
+  pages: SitePageSummary[];
+  siteStatus: Site["status"];
+  eligibleNowLabel: string;
+}): string {
+  const nextCrawlAt = findEarliestNextCrawl(pages);
+  if (!nextCrawlAt) {
+    return siteStatus === "active" ? "—" : "— (activate to run)";
   }
-  return `${next.toISOString().replace("T", " ").slice(0, 16)} UTC`;
+  const nextDate = new Date(nextCrawlAt);
+  if (Number.isNaN(nextDate.valueOf())) {
+    return siteStatus === "active" ? nextCrawlAt : `${nextCrawlAt} (activate to run)`;
+  }
+  const eligibleNow = nextDate.getTime() <= Date.now();
+  const value = eligibleNow ? eligibleNowLabel : formatTimestamp(nextCrawlAt);
+  return siteStatus === "active" ? value : `${value} (activate to run)`;
+}
+
+function findEarliestNextCrawl(pages: SitePageSummary[]): string | null {
+  let earliest: string | null = null;
+  let earliestTs: number | null = null;
+  for (const page of pages) {
+    if (!page.nextCrawlAt) {
+      continue;
+    }
+    const ts = Date.parse(page.nextCrawlAt);
+    if (!Number.isFinite(ts)) {
+      if (!earliest) {
+        earliest = page.nextCrawlAt;
+      }
+      continue;
+    }
+    if (earliestTs === null || ts < earliestTs) {
+      earliestTs = ts;
+      earliest = page.nextCrawlAt;
+    }
+  }
+  return earliest;
 }
 
 function buildDomainLocaleLookup(routeConfig: Site["routeConfig"]): Record<string, string> {
@@ -369,6 +429,24 @@ function DomainSection({
             const translationRun = deployment?.translationRun ?? null;
             const runActive =
               translationRun?.status === "queued" || translationRun?.status === "in_progress";
+            const runFailed = translationRun?.status === "failed";
+            const lastActivity =
+              translationRun?.updatedAt ??
+              translationRun?.startedAt ??
+              translationRun?.createdAt ??
+              null;
+            const lastActivityMs = lastActivity ? Date.parse(lastActivity) : NaN;
+            const runStalled =
+              runActive &&
+              Number.isFinite(lastActivityMs) &&
+              Date.now() - lastActivityMs > STALLED_RUN_THRESHOLD_MS;
+            const stalledSince = runStalled ? formatTimestamp(lastActivity) : null;
+            const runStatusLabel = runFailed
+              ? "failed"
+              : translationRun?.status === "queued"
+                ? "queued"
+                : "in progress";
+            const showRunStatus = Boolean(translationRun && (runActive || runFailed));
             const translateDisabled = !canTranslate || !domainLocale || runActive;
             const translateTitle = translateDisabled
               ? !canTranslate
@@ -477,69 +555,162 @@ function DomainSection({
                 <div className="flex flex-col gap-2 md:items-end">
                   {isVerified ? (
                     <div className="flex w-full flex-col gap-2 md:items-end">
-                      <form action={translateAndServeAction} className="w-full md:w-auto">
-                        <input name="siteId" type="hidden" value={siteId} />
-                        <input name="siteStatus" type="hidden" value={siteStatus} />
-                        <input name="targetLang" type="hidden" value={domainLocale ?? ""} />
-                        <Button
-                          type="submit"
-                          className="w-full md:w-auto"
-                          disabled={translateDisabled}
-                          title={translateTitle}
-                        >
-                          Translate & serve
-                        </Button>
-                      </form>
-                      {runActive ? (
+                      <ActionForm
+                        action={translateAndServeAction}
+                        className="w-full md:w-auto"
+                        loading="Starting translation..."
+                        success="Translation started."
+                        error="Unable to start translation."
+                      >
+                        <>
+                          <input name="siteId" type="hidden" value={siteId} />
+                          <input name="siteStatus" type="hidden" value={siteStatus} />
+                          <input name="targetLang" type="hidden" value={domainLocale ?? ""} />
+                          <Button
+                            type="submit"
+                            className="w-full md:w-auto"
+                            disabled={translateDisabled}
+                            title={translateTitle ?? "Translate & serve"}
+                          >
+                            Translate & serve
+                          </Button>
+                        </>
+                      </ActionForm>
+                      {showRunStatus ? (
                         <div className="w-full rounded-md border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground md:text-right">
                           <div className="flex flex-wrap items-center justify-between gap-2 md:justify-end">
                             <span>
-                              Translation{" "}
-                              {translationRun?.status === "queued" ? "queued" : "in progress"}
+                              Translation {runStatusLabel}
                               {translationRun?.pagesTotal
                                 ? ` (${translationRun.pagesCompleted}/${translationRun.pagesTotal})`
                                 : ""}
+                              {runStalled ? " · Stalled" : ""}
                             </span>
-                            {translationRun?.id && canTranslate ? (
-                              <form action={cancelTranslationRunAction}>
-                                <input name="siteId" type="hidden" value={siteId} />
-                                <input name="runId" type="hidden" value={translationRun.id} />
-                                <Button size="sm" variant="outline" type="submit">
-                                  Cancel
-                                </Button>
-                              </form>
-                            ) : null}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {runStalled && translationRun?.id && canTranslate ? (
+                                <ActionForm
+                                  action={resumeTranslationRunAction}
+                                  loading="Resuming run..."
+                                  success="Translation resumed."
+                                  error="Unable to resume run."
+                                >
+                                  <>
+                                    <input name="siteId" type="hidden" value={siteId} />
+                                    <input name="runId" type="hidden" value={translationRun.id} />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      type="submit"
+                                      title="Resume"
+                                    >
+                                      Resume
+                                    </Button>
+                                  </>
+                                </ActionForm>
+                              ) : null}
+                              {runFailed && translationRun?.id && canTranslate ? (
+                                <ActionForm
+                                  action={retryFailedTranslationRunAction}
+                                  loading="Retrying failed pages..."
+                                  success="Retrying failed pages."
+                                  error="Unable to retry failed pages."
+                                >
+                                  <>
+                                    <input name="siteId" type="hidden" value={siteId} />
+                                    <input name="runId" type="hidden" value={translationRun.id} />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      type="submit"
+                                      title="Retry failed pages"
+                                    >
+                                      Retry failed pages
+                                    </Button>
+                                  </>
+                                </ActionForm>
+                              ) : null}
+                              {runActive && translationRun?.id && canTranslate ? (
+                                <ActionForm
+                                  action={cancelTranslationRunAction}
+                                  loading="Cancelling run..."
+                                  success="Translation run cancelled."
+                                  error="Unable to cancel run."
+                                >
+                                  <>
+                                    <input name="siteId" type="hidden" value={siteId} />
+                                    <input name="runId" type="hidden" value={translationRun.id} />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      type="submit"
+                                      title="Cancel"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </>
+                                </ActionForm>
+                              ) : null}
+                            </div>
                           </div>
+                          {runStalled && stalledSince ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              No progress since {stalledSince}. You can resume to retry pending
+                              pages.
+                            </p>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
                   ) : domain.dnsInstructions ? (
-                    <form action={refreshDomainAction} className="w-full md:w-auto">
-                      <input name="siteId" type="hidden" value={siteId} />
-                      <input name="siteStatus" type="hidden" value={siteStatus} />
-                      <input name="domain" type="hidden" value={domain.domain} />
-                      <Button type="submit" variant="outline" className="w-full md:w-auto">
-                        Check DNS
-                      </Button>
-                    </form>
+                    <ActionForm
+                      action={refreshDomainAction}
+                      className="w-full md:w-auto"
+                      loading="Checking DNS..."
+                      success="DNS check requested."
+                      error="Unable to refresh domain."
+                    >
+                      <>
+                        <input name="siteId" type="hidden" value={siteId} />
+                        <input name="siteStatus" type="hidden" value={siteStatus} />
+                        <input name="domain" type="hidden" value={domain.domain} />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          className="w-full md:w-auto"
+                          title="Check DNS"
+                        >
+                          Check DNS
+                        </Button>
+                      </>
+                    </ActionForm>
                   ) : (
-                    <form
+                    <ActionForm
                       action={verifyDomainAction}
                       className="flex w-full flex-col gap-2 md:items-end"
+                      loading="Checking domain..."
+                      success="Domain check requested."
+                      error="Unable to verify domain."
                     >
-                      <input name="siteId" type="hidden" value={siteId} />
-                      <input name="siteStatus" type="hidden" value={siteStatus} />
-                      <input name="domain" type="hidden" value={domain.domain} />
-                      <Input
-                        aria-label="Test token (optional)"
-                        className="w-full"
-                        name="token"
-                        placeholder="Test token (optional)"
-                      />
-                      <Button type="submit" variant="outline" className="w-full md:w-auto">
-                        Check now
-                      </Button>
-                    </form>
+                      <>
+                        <input name="siteId" type="hidden" value={siteId} />
+                        <input name="siteStatus" type="hidden" value={siteStatus} />
+                        <input name="domain" type="hidden" value={domain.domain} />
+                        <Input
+                          aria-label="Test token (optional)"
+                          className="w-full"
+                          name="token"
+                          placeholder="Test token (optional)"
+                        />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          className="w-full md:w-auto"
+                          title="Check now"
+                        >
+                          Check now
+                        </Button>
+                      </>
+                    </ActionForm>
                   )}
                 </div>
               </div>

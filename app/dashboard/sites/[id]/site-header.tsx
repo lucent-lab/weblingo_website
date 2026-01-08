@@ -99,10 +99,14 @@ export function SiteHeader({
           ) : null
         ) : null}
         <Button asChild variant="outline">
-          <Link href={`/dashboard/sites/${site.id}/admin`}>Settings</Link>
+          <Link href={`/dashboard/sites/${site.id}/admin`} title="Settings">
+            Settings
+          </Link>
         </Button>
         <Button asChild variant="link">
-          <Link href="/dashboard/sites">Back to list</Link>
+          <Link href="/dashboard/sites" title="Back to list">
+            Back to list
+          </Link>
         </Button>
       </div>
     </div>
