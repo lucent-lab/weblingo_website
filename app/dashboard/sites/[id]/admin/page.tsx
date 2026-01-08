@@ -41,15 +41,10 @@ export const metadata = {
 
 type SiteAdminPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{
-    toast?: string | string[];
-    error?: string | string[];
-  }>;
 };
 
-export default async function SiteAdminPage({ params, searchParams }: SiteAdminPageProps) {
+export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   const settingsAccess = deriveSiteSettingsAccess({
     has: auth.has,
@@ -66,8 +61,6 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
   const { t } = await resolveLocaleTranslator(
     Promise.resolve({ locale: i18nConfig.defaultLocale }),
   );
-  const toastMessage = decodeSearchParam(resolvedSearchParams?.toast);
-  const actionErrorMessage = decodeSearchParam(resolvedSearchParams?.error);
   let site: Site | null = null;
   let deployments: Deployment[] = [];
   let activeSiteCount: number | null = null;
@@ -237,21 +230,6 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
 
   return (
     <div className="space-y-6">
-      {actionErrorMessage ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {actionErrorMessage}{" "}
-          <Link className="font-medium underline" href={`/dashboard/sites/${site.id}/admin`}>
-            Dismiss
-          </Link>
-        </div>
-      ) : toastMessage ? (
-        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-          {toastMessage}{" "}
-          <Link className="font-medium underline" href={`/dashboard/sites/${site.id}/admin`}>
-            Dismiss
-          </Link>
-        </div>
-      ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold">Site settings</h2>
@@ -469,6 +447,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                 loading="Starting crawl..."
                 success="Crawl enqueued."
                 error="Unable to start crawl."
+                refreshOnSuccess={false}
               >
                 <>
                   <input name="siteId" type="hidden" value={site.id} />
@@ -568,6 +547,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                                     loading="Starting translation..."
                                     success="Translation started."
                                     error="Unable to start translation."
+                                    refreshOnSuccess={false}
                                   >
                                     <>
                                       <input name="siteId" type="hidden" value={site.id} />
@@ -783,6 +763,7 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
                 loading="Starting crawl..."
                 success="Crawl enqueued."
                 error="Unable to enqueue crawl."
+                refreshOnSuccess={false}
               >
                 <>
                   <input name="siteId" type="hidden" value={site.id} />
@@ -867,22 +848,6 @@ export default async function SiteAdminPage({ params, searchParams }: SiteAdminP
       </Card>
     </div>
   );
-}
-
-function decodeSearchParam(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== "string") {
-    return null;
-  }
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(trimmed);
-  } catch {
-    return trimmed;
-  }
 }
 
 function pickPreferredLocale(acceptLanguageHeader: string): string {

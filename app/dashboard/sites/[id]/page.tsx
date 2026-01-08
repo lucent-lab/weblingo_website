@@ -34,21 +34,12 @@ import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
 type SitePageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{
-    toast?: string | string[];
-    error?: string | string[];
-    details?: string | string[];
-  }>;
 };
 
 const STALLED_RUN_THRESHOLD_MS = 15 * 60 * 1000;
 
-export default async function SitePage({ params, searchParams }: SitePageProps) {
+export default async function SitePage({ params }: SitePageProps) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
-  const toastMessage = decodeSearchParam(resolvedSearchParams?.toast);
-  const actionErrorMessage = decodeSearchParam(resolvedSearchParams?.error);
-  const actionErrorDetails = decodeSearchParam(resolvedSearchParams?.details);
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
@@ -71,7 +62,6 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   const cloudflareErrorsLabel = t("dashboard.domains.cloudflare.errorsLabel");
   const nextEligibleCrawlLabel = t("dashboard.crawl.summary.nextEligible");
   const eligibleNowLabel = t("dashboard.crawl.summary.eligibleNow");
-  const errorDetailsLabel = t("dashboard.error.showDetails");
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
   const canDomains = auth.has({ allFeatures: ["edit", "domain_verify"] }) && mutationsAllowed;
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
@@ -172,29 +162,6 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
 
   return (
     <div className="space-y-8">
-      {actionErrorMessage ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <div className="flex flex-wrap items-center gap-2">
-            <span>{actionErrorMessage}</span>
-            <Link className="font-medium underline" href={`/dashboard/sites/${id}`}>
-              Dismiss
-            </Link>
-          </div>
-          {actionErrorDetails ? (
-            <details className="mt-2 text-xs text-destructive/80">
-              <summary className="cursor-pointer">{errorDetailsLabel}</summary>
-              <p className="mt-1 whitespace-pre-line">{actionErrorDetails}</p>
-            </details>
-          ) : null}
-        </div>
-      ) : toastMessage ? (
-        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-          {toastMessage}{" "}
-          <Link className="font-medium underline" href={`/dashboard/sites/${id}`}>
-            Dismiss
-          </Link>
-        </div>
-      ) : null}
       <SiteHeader
         site={site}
         canEdit={canEdit}
@@ -254,22 +221,6 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
       />
     </div>
   );
-}
-
-function decodeSearchParam(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== "string") {
-    return null;
-  }
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(trimmed);
-  } catch {
-    return trimmed;
-  }
 }
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
@@ -561,6 +512,7 @@ function DomainSection({
                         loading="Starting translation..."
                         success="Translation started."
                         error="Unable to start translation."
+                        refreshOnSuccess={false}
                       >
                         <>
                           <input name="siteId" type="hidden" value={siteId} />

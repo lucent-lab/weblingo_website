@@ -15,6 +15,7 @@ type ActionFormProps = {
   confirmMessage?: string;
   className?: string;
   onSuccess?: (state: ActionResponse) => void;
+  refreshOnSuccess?: boolean;
   children: ReactNode;
 };
 
@@ -28,6 +29,7 @@ export function ActionForm({
   confirmMessage,
   className,
   onSuccess,
+  refreshOnSuccess,
   children,
 }: ActionFormProps) {
   const router = useRouter();
@@ -44,17 +46,28 @@ export function ActionForm({
 
   useEffect(() => {
     if (wasPending.current && !pending && state.ok) {
+      onSuccess?.(state);
+
       const redirectTo =
-        typeof state.meta?.redirectTo === "string" ? state.meta.redirectTo : null;
+        typeof state.meta?.redirectTo === "string" ? (state.meta.redirectTo as string) : null;
+
       if (redirectTo) {
         router.push(redirectTo);
-      } else {
+        wasPending.current = pending;
+        return;
+      }
+
+      const metaRefresh =
+        typeof state.meta?.refresh === "boolean" ? (state.meta.refresh as boolean) : undefined;
+
+      const shouldRefresh = refreshOnSuccess ?? metaRefresh ?? true;
+
+      if (shouldRefresh) {
         router.refresh();
       }
-      onSuccess?.(state);
     }
     wasPending.current = pending;
-  }, [pending, state, router, onSuccess]);
+  }, [pending, state, router, onSuccess, refreshOnSuccess]);
 
   return (
     <form

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import { updateGlossaryAction, type ActionResponse } from "../../actions";
 import { GlossaryTable } from "../glossary-table";
@@ -22,8 +22,8 @@ export function GlossaryEditor({
 }) {
   const [entries, setEntries] = useState<GlossaryEntry[]>(() => initialEntries);
   const [state, formAction, pending] = useActionState(updateGlossaryAction, initialState);
+  const hiddenRef = useRef<HTMLInputElement | null>(null);
 
-  const serialized = useMemo(() => JSON.stringify(entries), [entries]);
   const submitWithToast = useActionToast({
     formAction,
     state,
@@ -35,9 +35,18 @@ export function GlossaryEditor({
 
   return (
     <div className="space-y-4">
-      <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
+      <form
+        action={submitWithToast}
+        className="space-y-3"
+        aria-busy={pending}
+        onSubmit={() => {
+          if (hiddenRef.current) {
+            hiddenRef.current.value = JSON.stringify(entries);
+          }
+        }}
+      >
         <input name="siteId" type="hidden" value={siteId} />
-        <input name="entries" type="hidden" value={serialized} />
+        <input ref={hiddenRef} name="entries" type="hidden" defaultValue="" />
 
         <GlossaryTable
           targetLangs={targetLangs}

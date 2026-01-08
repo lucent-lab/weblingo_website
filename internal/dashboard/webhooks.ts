@@ -836,9 +836,23 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
   return data.deployments;
 }
 
-export async function fetchSitePages(auth: AuthInput, siteId: string): Promise<SitePageSummary[]> {
+export async function fetchSitePages(
+  auth: AuthInput,
+  siteId: string,
+  options?: { limit?: number; offset?: number },
+): Promise<SitePageSummary[]> {
+  const qs = new URLSearchParams();
+
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+
+  const path = qs.size ? `/sites/${siteId}/pages?${qs.toString()}` : `/sites/${siteId}/pages`;
   const data = await request({
-    path: `/sites/${siteId}/pages`,
+    path,
     auth,
     schema: listSitePagesResponseSchema,
   });

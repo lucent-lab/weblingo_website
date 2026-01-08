@@ -53,14 +53,9 @@ export function OnboardingForm(props: {
     const siteId = typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
     const hasValidSiteId = siteId.length > 0 && siteId !== "undefined" && siteId !== "null";
     if (state.ok && hasValidSiteId) {
-      const toast = state.meta?.toast;
-      const nextUrl =
-        typeof toast === "string" && toast.length > 0
-          ? `/dashboard/sites/${siteId}?toast=${encodeURIComponent(toast)}`
-          : `/dashboard/sites/${siteId}`;
-      router.push(nextUrl);
+      router.push(`/dashboard/sites/${siteId}`);
     }
-  }, [router, state.meta?.siteId, state.meta?.toast, state.ok]);
+  }, [router, state.meta?.siteId, state.ok]);
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const sourceUrlValid = parsedSourceUrl !== null;

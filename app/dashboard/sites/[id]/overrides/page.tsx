@@ -24,17 +24,10 @@ export const metadata = {
 
 type SiteOverridesPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{
-    toast?: string | string[];
-    error?: string | string[];
-  }>;
 };
 
-export default async function SiteOverridesPage({ params, searchParams }: SiteOverridesPageProps) {
+export default async function SiteOverridesPage({ params }: SiteOverridesPageProps) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
-  const toastMessage = decodeSearchParam(resolvedSearchParams?.toast);
-  const actionErrorMessage = decodeSearchParam(resolvedSearchParams?.error);
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
@@ -131,26 +124,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   }
 
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
-  const returnTo = `/dashboard/sites/${site.id}/overrides`;
 
   return (
     <div className="space-y-8">
-      {actionErrorMessage ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {actionErrorMessage}{" "}
-          <Link className="font-medium underline" href={returnTo}>
-            Dismiss
-          </Link>
-        </div>
-      ) : toastMessage ? (
-        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-          {toastMessage}{" "}
-          <Link className="font-medium underline" href={returnTo}>
-            Dismiss
-          </Link>
-        </div>
-      ) : null}
-
       <SiteHeader
         site={site}
         canEdit={canEdit}
@@ -223,20 +199,4 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       </div>
     </div>
   );
-}
-
-function decodeSearchParam(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== "string") {
-    return null;
-  }
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(trimmed);
-  } catch {
-    return trimmed;
-  }
 }

@@ -5,6 +5,7 @@ import { triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { SiteHeader } from "../site-header";
+import { CrawlSummaryClient } from "./crawl-summary.client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,17 +29,10 @@ export const metadata = {
 
 type SitePagesPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{
-    toast?: string | string[];
-    error?: string | string[];
-  }>;
 };
 
-export default async function SitePagesPage({ params, searchParams }: SitePagesPageProps) {
+export default async function SitePagesPage({ params }: SitePagesPageProps) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
-  const toastMessage = decodeSearchParam(resolvedSearchParams?.toast);
-  const actionErrorMessage = decodeSearchParam(resolvedSearchParams?.error);
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
@@ -180,34 +174,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const pageCrawlLimitReached =
     maxDailyPageCrawls !== null && (dailyUsage?.pageCrawls ?? 0) >= maxDailyPageCrawls;
   const crawlReady = site.status === "active";
-  const returnTo = `/dashboard/sites/${site.id}/pages`;
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const deploymentsByLang = new Map(
     deployments.map((deployment) => [deployment.targetLang, deployment]),
   );
-  const latestCrawlRun = site.latestCrawlRun ?? null;
   const servingRows = targetLangs
     .map((lang) => deploymentsByLang.get(lang))
     .filter((deployment): deployment is Deployment => Boolean(deployment));
 
   return (
     <div className="space-y-8">
-      {actionErrorMessage ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {actionErrorMessage}{" "}
-          <Link className="font-medium underline" href={returnTo}>
-            Dismiss
-          </Link>
-        </div>
-      ) : toastMessage ? (
-        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground">
-          {toastMessage}{" "}
-          <Link className="font-medium underline" href={returnTo}>
-            Dismiss
-          </Link>
-        </div>
-      ) : null}
-
       <SiteHeader
         site={site}
         canEdit={canEdit}
@@ -226,72 +202,23 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           <CardDescription>{crawlSummaryDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          {!latestCrawlRun ? (
-            <p className="text-sm text-muted-foreground">{crawlSummaryEmpty}</p>
-          ) : (
-            <div className="grid gap-4 text-sm md:grid-cols-2">
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlStatusLabel}</div>
-                <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.status)}>
-                  {crawlStatusLabels[latestCrawlRun.status] ?? latestCrawlRun.status}
-                </Badge>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlTriggerLabel}</div>
-                <span className="font-mono text-foreground">
-                  {crawlTriggerLabels[latestCrawlRun.trigger] ?? latestCrawlRun.trigger}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">
-                  {crawlCaptureModeLabel}
-                </div>
-                <span className="font-mono text-foreground">
-                  {latestCrawlRun.crawlCaptureMode ?? "—"}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlStartedLabel}</div>
-                <span className="text-muted-foreground">
-                  {formatTimestamp(latestCrawlRun.startedAt)}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlFinishedLabel}</div>
-                <span className="text-muted-foreground">
-                  {formatTimestamp(latestCrawlRun.finishedAt)}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">
-                  {crawlDiscoveredLabel}
-                </div>
-                <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered}</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlEnqueuedLabel}</div>
-                <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued}</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlSelectedLabel}</div>
-                <span className="font-mono text-foreground">{latestCrawlRun.selectedCount}</span>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs uppercase text-muted-foreground">{crawlSkippedLabel}</div>
-                <span className="font-mono text-foreground">
-                  {latestCrawlRun.skippedDueToLimitCount}
-                </span>
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <div className="text-xs uppercase text-muted-foreground">{crawlErrorLabel}</div>
-                <span
-                  className={latestCrawlRun.error ? "text-destructive" : "text-muted-foreground"}
-                >
-                  {latestCrawlRun.error ?? "—"}
-                </span>
-              </div>
-            </div>
-          )}
+          <CrawlSummaryClient
+            siteId={site.id}
+            initialSite={site}
+            emptyLabel={crawlSummaryEmpty}
+            statusLabel={crawlStatusLabel}
+            triggerLabel={crawlTriggerLabel}
+            captureModeLabel={crawlCaptureModeLabel}
+            startedLabel={crawlStartedLabel}
+            finishedLabel={crawlFinishedLabel}
+            discoveredLabel={crawlDiscoveredLabel}
+            enqueuedLabel={crawlEnqueuedLabel}
+            selectedLabel={crawlSelectedLabel}
+            skippedLabel={crawlSkippedLabel}
+            errorLabel={crawlErrorLabel}
+            statusLabels={crawlStatusLabels}
+            triggerLabels={crawlTriggerLabels}
+          />
         </CardContent>
       </Card>
 
@@ -411,6 +338,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                             loading="Starting page crawl..."
                             success="Page crawl enqueued."
                             error="Unable to enqueue page crawl."
+                            refreshOnSuccess={false}
                           >
                             <>
                               <input name="siteId" type="hidden" value={site.id} />
@@ -444,22 +372,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
       </Card>
     </div>
   );
-}
-
-function decodeSearchParam(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== "string") {
-    return null;
-  }
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(trimmed);
-  } catch {
-    return trimmed;
-  }
 }
 
 function formatTimestamp(value?: string | null): string {
@@ -496,18 +408,6 @@ function resolveServingStatusVariant(status: Deployment["servingStatus"]) {
     case "disabled":
     case "needs_domain":
     case "inactive":
-    default:
-      return "outline";
-  }
-}
-
-function resolveCrawlStatusVariant(status: "in_progress" | "completed" | "failed") {
-  switch (status) {
-    case "completed":
-      return "secondary";
-    case "failed":
-      return "destructive";
-    case "in_progress":
     default:
       return "outline";
   }

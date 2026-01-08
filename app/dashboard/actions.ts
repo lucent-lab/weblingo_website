@@ -606,9 +606,11 @@ export async function verifyDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth((auth) =>
-      verifyDomain(auth, siteId, domain, overrideToken),
-    );
+    const { domain: updated } = await withWebhooksAuth(async (auth) => {
+      const result = await verifyDomain(auth, siteId, domain, overrideToken);
+      await invalidateSitesCache(auth);
+      return result;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -648,9 +650,11 @@ export async function provisionDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth((auth) =>
-      provisionDomain(auth, siteId, domain),
-    );
+    const { domain: updated } = await withWebhooksAuth(async (auth) => {
+      const result = await provisionDomain(auth, siteId, domain);
+      await invalidateSitesCache(auth);
+      return result;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -690,9 +694,11 @@ export async function refreshDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth((auth) =>
-      refreshDomain(auth, siteId, domain),
-    );
+    const { domain: updated } = await withWebhooksAuth(async (auth) => {
+      const result = await refreshDomain(auth, siteId, domain);
+      await invalidateSitesCache(auth);
+      return result;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -880,7 +886,10 @@ export async function setLocaleServingAction(
   const enabled = enabledRaw === "true";
 
   try {
-    await withWebhooksAuth((auth) => setLocaleServing(auth, siteId, targetLang, enabled));
+    await withWebhooksAuth(async (auth) => {
+      await setLocaleServing(auth, siteId, targetLang, enabled);
+      await invalidateSitesCache(auth);
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
