@@ -285,7 +285,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
             hydratedOnly: crawlCaptureOptionHydratedOnly,
           },
         }}
-        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? false}
+        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? true}
         clientRuntimeCopy={{
           title: clientRuntimeTitle,
           description: clientRuntimeDescription,

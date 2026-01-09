@@ -23,11 +23,6 @@ export function usePoll<T>(options: {
       setIsPolling(false);
       return;
     }
-    if (isTerminal(initial)) {
-      setIsPolling(false);
-      return;
-    }
-
     let active = true;
     let intervalId: ReturnType<typeof setInterval> | null = null;
     setIsPolling(true);
@@ -59,6 +54,7 @@ export function usePoll<T>(options: {
     };
 
     intervalId = setInterval(tick, intervalMs);
+    void tick();
 
     return () => {
       active = false;

@@ -181,8 +181,14 @@ export function buildSiteSettingsUpdatePayload(
 
   if (hasTranslatableAttributes) {
     const raw = formData.get("translatableAttributes")?.toString() ?? "";
-    const attrs = parseAttributeList(raw);
-    payload.translatableAttributes = attrs.length ? attrs : null;
+    const parsed = parseAttributeList(raw);
+    if (parsed.invalid.length > 0) {
+      return {
+        ok: false,
+        error: "Only data-* and aria-* attributes are allowed.",
+      };
+    }
+    payload.translatableAttributes = parsed.values.length ? parsed.values : null;
   }
 
   if (hasProfile) {
@@ -216,12 +222,18 @@ export function parseJsonObject(input: string): Record<string, unknown> | null {
   }
 }
 
-function parseAttributeList(input: string): string[] {
-  return input
+function parseAttributeList(input: string): { values: string[]; invalid: string[] } {
+  const values = input
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean)
     .map((value) => value.toLowerCase());
+  const invalid = values.filter((value) => !isAllowedAttribute(value));
+  return { values, invalid };
+}
+
+function isAllowedAttribute(value: string): boolean {
+  return value.startsWith("data-") || value.startsWith("aria-");
 }
 
 export function parseLocaleAliases(

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
-import { SitesNav } from "./_components/sites-nav";
+import { SitesNav, type SiteNavEntry } from "./_components/sites-nav";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,6 @@ import {
 import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
-import { type Site } from "@internal/dashboard/webhooks";
 import { i18nConfig } from "@internal/i18n";
 
 export const metadata: Metadata = {
@@ -100,6 +99,19 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const rawStatusLabel = auth.account?.planStatus ?? "unknown";
   const statusLabel = rawStatusLabel.replace("_", " ");
   const statusTone = resolveStatusTone(rawStatusLabel);
+  let siteNavItems: SiteNavEntry[] = [];
+  try {
+    if (auth.webhooksAuth) {
+      const sites = await listSitesCached(auth.webhooksAuth);
+      siteNavItems = sites.map((site) => ({
+        id: site.id,
+        label: formatSiteLabel(site.sourceUrl),
+        status: site.status,
+      }));
+    }
+  } catch (error) {
+    console.warn("[dashboard] listSites failed:", error);
+  }
 
   const billingBanner = resolveBillingBanner(auth);
   const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
@@ -148,9 +160,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <SidebarGroup>
             <SidebarGroupLabel>Sites</SidebarGroupLabel>
             <SidebarGroupContent>
-              <Suspense fallback={<SitesNavFallback />}>
-                <SitesNavSection auth={auth} />
-              </Suspense>
+              <SitesNav sites={siteNavItems} />
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -240,26 +250,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       </SidebarInset>
     </SidebarProvider>
   );
-}
-
-async function SitesNavSection({ auth }: { auth: DashboardAuth }) {
-  let sites: Site[] = [];
-  try {
-    sites = await listSitesCached(auth.webhooksAuth!);
-  } catch (error) {
-    console.warn("[dashboard] listSites failed:", error);
-  }
-  const siteNavItems = sites.map((site) => ({
-    id: site.id,
-    label: formatSiteLabel(site.sourceUrl),
-    status: site.status,
-  }));
-
-  return <SitesNav sites={siteNavItems} />;
-}
-
-function SitesNavFallback() {
-  return <div className="px-2 py-2 text-xs text-sidebar-foreground/70">Loading sites...</div>;
 }
 
 async function SitesUsageSummary({

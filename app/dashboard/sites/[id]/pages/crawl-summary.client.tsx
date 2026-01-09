@@ -15,6 +15,7 @@ type CrawlSummaryClientProps = {
   captureModeLabel: string;
   startedLabel: string;
   finishedLabel: string;
+  lastSuccessfulLabel: string;
   discoveredLabel: string;
   enqueuedLabel: string;
   selectedLabel: string;
@@ -33,6 +34,7 @@ export function CrawlSummaryClient({
   captureModeLabel,
   startedLabel,
   finishedLabel,
+  lastSuccessfulLabel,
   discoveredLabel,
   enqueuedLabel,
   selectedLabel,
@@ -74,6 +76,11 @@ export function CrawlSummaryClient({
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   }
 
+  const lastSuccessfulAt = resolveLastSuccessfulAt(latestCrawlRun);
+  const showError = latestCrawlRun.status === "failed";
+  const errorText = showError ? latestCrawlRun.error ?? "—" : "—";
+  const errorTone = showError && latestCrawlRun.error ? "text-destructive" : "text-muted-foreground";
+
   return (
     <div className="grid gap-4 text-sm md:grid-cols-2">
       <div className="space-y-1">
@@ -103,6 +110,10 @@ export function CrawlSummaryClient({
         <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.finishedAt)}</span>
       </div>
       <div className="space-y-1">
+        <div className="text-xs uppercase text-muted-foreground">{lastSuccessfulLabel}</div>
+        <span className="text-muted-foreground">{formatTimestamp(lastSuccessfulAt)}</span>
+      </div>
+      <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{discoveredLabel}</div>
         <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered}</span>
       </div>
@@ -120,9 +131,7 @@ export function CrawlSummaryClient({
       </div>
       <div className="space-y-1 md:col-span-2">
         <div className="text-xs uppercase text-muted-foreground">{errorLabel}</div>
-        <span className={latestCrawlRun.error ? "text-destructive" : "text-muted-foreground"}>
-          {latestCrawlRun.error ?? "—"}
-        </span>
+        <span className={errorTone}>{errorText}</span>
       </div>
     </div>
   );
@@ -137,6 +146,15 @@ function formatTimestamp(value?: string | null): string {
     return value;
   }
   return date.toLocaleString();
+}
+
+function resolveLastSuccessfulAt(
+  latestCrawlRun: NonNullable<Site["latestCrawlRun"]>,
+): string | null {
+  if (latestCrawlRun.status !== "completed") {
+    return null;
+  }
+  return latestCrawlRun.finishedAt ?? latestCrawlRun.updatedAt ?? latestCrawlRun.startedAt ?? null;
 }
 
 function resolveCrawlStatusVariant(status: "in_progress" | "completed" | "failed") {

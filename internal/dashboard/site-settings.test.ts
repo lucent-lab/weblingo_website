@@ -124,4 +124,17 @@ describe("buildSiteSettingsUpdatePayload", () => {
       expect(result.payload).toEqual({ translatableAttributes: ["data-tip", "aria-label"] });
     }
   });
+
+  it("rejects translatable attributes that are not data- or aria-", () => {
+    const formData = new FormData();
+    formData.set("translatableAttributes", "data-tip, title");
+    const result = buildSiteSettingsUpdatePayload(
+      formData,
+      makeAccess({ canEditTranslatableAttributes: true }),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/data-\* and aria-\*/i);
+    }
+  });
 });

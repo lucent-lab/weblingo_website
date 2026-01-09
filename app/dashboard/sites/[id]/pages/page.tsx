@@ -63,6 +63,7 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
   const crawlCaptureModeLabel = t("dashboard.crawl.summary.captureMode");
   const crawlStartedLabel = t("dashboard.crawl.summary.startedAt");
   const crawlFinishedLabel = t("dashboard.crawl.summary.finishedAt");
+  const crawlLastSuccessfulLabel = t("dashboard.crawl.summary.lastSuccessful");
   const crawlDiscoveredLabel = t("dashboard.crawl.summary.discovered");
   const crawlEnqueuedLabel = t("dashboard.crawl.summary.enqueued");
   const crawlSelectedLabel = t("dashboard.crawl.summary.selected");
@@ -211,6 +212,7 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
             captureModeLabel={crawlCaptureModeLabel}
             startedLabel={crawlStartedLabel}
             finishedLabel={crawlFinishedLabel}
+            lastSuccessfulLabel={crawlLastSuccessfulLabel}
             discoveredLabel={crawlDiscoveredLabel}
             enqueuedLabel={crawlEnqueuedLabel}
             selectedLabel={crawlSelectedLabel}

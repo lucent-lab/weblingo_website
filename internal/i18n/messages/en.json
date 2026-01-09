@@ -156,6 +156,7 @@
   "dashboard.crawl.summary.eligibleNow": "Eligible now",
   "dashboard.crawl.summary.startedAt": "Started",
   "dashboard.crawl.summary.finishedAt": "Finished",
+  "dashboard.crawl.summary.lastSuccessful": "Last successful crawl",
   "dashboard.crawl.summary.discovered": "Pages discovered",
   "dashboard.crawl.summary.enqueued": "Pages enqueued",
   "dashboard.crawl.summary.selected": "Pages eligible",

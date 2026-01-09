@@ -599,8 +599,8 @@ export function SiteAdminForm({
                 <>
                   <span className="block">{translatableAttributesHelpText}</span>
                   <span className="mt-1 block">
-                    Default: alt, title, aria-label, aria-description, aria-valuetext,
-                    aria-roledescription, data-i18n, placeholder.
+                    Default: aria-label, aria-description, aria-valuetext, aria-roledescription,
+                    data-i18n.
                   </span>
                 </>
               }

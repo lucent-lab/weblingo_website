@@ -196,6 +196,8 @@ Perform the following edits **per file**:
 > { "pages": [ ... ] }
 > ```
 
+**Phase 1 note:** The backend pagination work (M2.1) lives in the webhooks worker repo. Until that ships, M2.3 UI pagination should remain deferred to avoid broken paging.
+
 #### M2.1 Backend: support optional `limit` + `offset` on `GET /sites/:siteId/pages`
 
 **Repo/file (per reports):** `workers/webhooks-worker/src/handlers/sites.ts` → handler `listPages` (or equivalent)
@@ -617,4 +619,3 @@ git commit -am "Dashboard 16.1.1 UX/perf: explicit refresh, remove URL toasts, p
 - Do **not** introduce SWR or React Query in this release.
 - Do **not** add extra keys to strict Zod responses without updating schemas.
 - Do **not** attempt a full rewrite of server components; keep changes incremental.
-

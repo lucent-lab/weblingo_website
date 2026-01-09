@@ -4,19 +4,20 @@ import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { fetchDeployments, fetchSite, WebhooksApiError } from "@internal/dashboard/webhooks";
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     siteId: string;
-  };
+  }>;
 };
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const auth = await requireDashboardAuth();
   const token = auth.webhooksAuth!;
+  const { siteId } = await params;
 
   try {
     const [site, deployments] = await Promise.all([
-      fetchSite(token, params.siteId),
-      fetchDeployments(token, params.siteId),
+      fetchSite(token, siteId),
+      fetchDeployments(token, siteId),
     ]);
     return NextResponse.json({ site, deployments });
   } catch (error) {
