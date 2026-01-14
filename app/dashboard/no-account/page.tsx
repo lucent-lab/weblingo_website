@@ -65,7 +65,7 @@ export default async function NoAccountPage({ searchParams }: NoAccountPageProps
               </Button>
             </form>
             <Button asChild variant="ghost">
-              <a href="mailto:support@weblingo.com">Contact support</a>
+              <a href="mailto:contact@webligno.app">Contact support</a>
             </Button>
           </div>
         </CardContent>

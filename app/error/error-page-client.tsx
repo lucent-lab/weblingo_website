@@ -67,7 +67,7 @@ export default function ErrorPageClient() {
               <Link href="/auth/login">Sign in</Link>
             </Button>
             <Button asChild size="sm" variant="link">
-              <a href="mailto:support@weblingo.com">Contact support</a>
+              <a href="mailto:contact@webligno.app">Contact support</a>
             </Button>
           </div>
 

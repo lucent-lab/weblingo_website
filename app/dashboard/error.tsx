@@ -76,7 +76,7 @@ export default function DashboardError({
               </Button>
             </form>
             <Button asChild size="sm" variant="link">
-              <a href="mailto:support@weblingo.com">Contact support</a>
+              <a href="mailto:contact@webligno.app">Contact support</a>
             </Button>
           </div>
 

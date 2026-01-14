@@ -37,7 +37,7 @@ type DashboardLayoutProps = {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const auth = await requireDashboardAuth();
-  const email = auth.user?.email ?? "demo@weblingo.com";
+  const email = auth.user?.email ?? "demo@webligno.app";
   const isAgency = auth.actorAccount?.planType === "agency";
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const navItems = [
@@ -167,9 +167,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         <SidebarFooter>
           <div className="rounded-md border border-sidebar-border bg-sidebar-accent/60 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
             <p className="text-sm font-semibold text-sidebar-foreground">Need help?</p>
-            <p>Check DNS instructions on each domain or email support@weblingo.com.</p>
+            <p>Check DNS instructions on each domain or email contact@webligno.app.</p>
             <Button asChild variant="outline" size="sm" className="mt-3 w-full bg-transparent">
-              <Link href="mailto:support@weblingo.com">Get support</Link>
+              <Link href="mailto:contact@webligno.app">Get support</Link>
             </Button>
           </div>
         </SidebarFooter>

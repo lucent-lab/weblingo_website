@@ -113,7 +113,7 @@ export function AuthLoginForm() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Need help?{" "}
-        <a href="mailto:support@weblingo.com" className="font-medium text-primary">
+        <a href="mailto:contact@webligno.app" className="font-medium text-primary">
           Contact support
         </a>
       </p>
