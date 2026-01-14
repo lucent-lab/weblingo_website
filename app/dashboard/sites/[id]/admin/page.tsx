@@ -55,8 +55,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const canDelete = auth.has({ feature: "edit" });
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
-  const canToggleServing =
-    auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
+  const canToggleServing = auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const { t } = await resolveLocaleTranslator(
     Promise.resolve({ locale: i18nConfig.defaultLocale }),
@@ -190,6 +189,23 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const clientRuntimeDescription = t("dashboard.site.settings.clientRuntime.description");
   const clientRuntimeLabel = t("dashboard.site.settings.clientRuntime.label");
   const clientRuntimeHelp = t("dashboard.site.settings.clientRuntime.help");
+  const spaRefreshTitle = t("dashboard.site.settings.spaRefresh.title");
+  const spaRefreshDescription = t("dashboard.site.settings.spaRefresh.description");
+  const spaRefreshLabel = t("dashboard.site.settings.spaRefresh.label");
+  const spaRefreshHelp = t("dashboard.site.settings.spaRefresh.help");
+  const spaRefreshNote = t("dashboard.site.settings.spaRefresh.note");
+  const spaRefreshMissingFallbackLabel = t(
+    "dashboard.site.settings.spaRefresh.missingFallback.label",
+  );
+  const spaRefreshMissingFallbackHelp = t(
+    "dashboard.site.settings.spaRefresh.missingFallback.help",
+  );
+  const spaRefreshErrorFallbackLabel = t("dashboard.site.settings.spaRefresh.errorFallback.label");
+  const spaRefreshErrorFallbackHelp = t("dashboard.site.settings.spaRefresh.errorFallback.help");
+  const spaRefreshSectionScopeLabel = t("dashboard.site.settings.spaRefresh.sectionScope.label");
+  const spaRefreshSectionScopeHelp = t("dashboard.site.settings.spaRefresh.sectionScope.help");
+  const spaRefreshOptionGlobalOnly = t("dashboard.site.settings.spaRefresh.option.globalOnly");
+  const spaRefreshOptionBaseline = t("dashboard.site.settings.spaRefresh.option.baseline");
   const translatableAttributesTitle = t("dashboard.site.settings.translatableAttributes.title");
   const translatableAttributesDescription = t(
     "dashboard.site.settings.translatableAttributes.description",
@@ -219,6 +235,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     !settingsAccess.canEditServingMode ||
     !settingsAccess.canEditCrawlCaptureMode ||
     !settingsAccess.canEditClientRuntime ||
+    !settingsAccess.canEditSpaRefresh ||
     !settingsAccess.canEditTranslatableAttributes ||
     !settingsAccess.canEditProfile;
   const deploymentsByLang = new Map(
@@ -292,6 +309,22 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
           label: clientRuntimeLabel,
           help: clientRuntimeHelp,
         }}
+        spaRefresh={site.routeConfig?.spaRefresh ?? null}
+        spaRefreshCopy={{
+          title: spaRefreshTitle,
+          description: spaRefreshDescription,
+          label: spaRefreshLabel,
+          help: spaRefreshHelp,
+          note: spaRefreshNote,
+          missingFallbackLabel: spaRefreshMissingFallbackLabel,
+          missingFallbackHelp: spaRefreshMissingFallbackHelp,
+          errorFallbackLabel: spaRefreshErrorFallbackLabel,
+          errorFallbackHelp: spaRefreshErrorFallbackHelp,
+          sectionScopeLabel: spaRefreshSectionScopeLabel,
+          sectionScopeHelp: spaRefreshSectionScopeHelp,
+          optionGlobalOnly: spaRefreshOptionGlobalOnly,
+          optionBaseline: spaRefreshOptionBaseline,
+        }}
         translatableAttributes={site.routeConfig?.translatableAttributes ?? null}
         translatableAttributesCopy={{
           title: translatableAttributesTitle,
@@ -306,6 +339,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
         canEditServingMode={settingsAccess.canEditServingMode}
         canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
         canEditClientRuntime={settingsAccess.canEditClientRuntime}
+        canEditSpaRefresh={settingsAccess.canEditSpaRefresh}
         canEditTranslatableAttributes={settingsAccess.canEditTranslatableAttributes}
         canEditProfile={settingsAccess.canEditProfile}
         supportedLanguages={supportedLanguages}
@@ -455,7 +489,9 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                     type="submit"
                     variant="outline"
                     disabled={siteCrawlLimitReached}
-                    title={siteCrawlLimitReached ? "Daily site crawl limit reached." : "Start serving"}
+                    title={
+                      siteCrawlLimitReached ? "Daily site crawl limit reached." : "Start serving"
+                    }
                   >
                     Start serving
                   </Button>
@@ -624,7 +660,12 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                                   </Link>
                                 </Button>
                               ) : deployment.servingStatus === "disabled" ? null : (
-                                <Button size="sm" variant="outline" disabled title={servingActionEnable}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  title={servingActionEnable}
+                                >
                                   {servingActionEnable}
                                 </Button>
                               )}

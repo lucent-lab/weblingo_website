@@ -9,12 +9,6 @@ type ActionResult = {
   message?: string;
 };
 
-type ActionToastOptions = {
-  loading: string;
-  success: string;
-  error: string;
-};
-
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;

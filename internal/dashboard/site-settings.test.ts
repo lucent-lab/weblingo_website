@@ -29,6 +29,7 @@ function makeAccess(overrides: Partial<SiteSettingsAccess> = {}): SiteSettingsAc
     canEditServingMode: false,
     canEditCrawlCaptureMode: false,
     canEditClientRuntime: false,
+    canEditSpaRefresh: false,
     canEditTranslatableAttributes: false,
     canEditProfile: false,
     ...overrides,
@@ -54,6 +55,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditServingMode).toBe(false);
     expect(access.canEditCrawlCaptureMode).toBe(false);
     expect(access.canEditClientRuntime).toBe(false);
+    expect(access.canEditSpaRefresh).toBe(false);
     expect(access.canEditTranslatableAttributes).toBe(false);
   });
 
@@ -74,6 +76,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditServingMode).toBe(true);
     expect(access.canEditCrawlCaptureMode).toBe(true);
     expect(access.canEditClientRuntime).toBe(true);
+    expect(access.canEditSpaRefresh).toBe(true);
     expect(access.canEditTranslatableAttributes).toBe(true);
   });
 });
@@ -104,11 +107,34 @@ describe("buildSiteSettingsUpdatePayload", () => {
     formData.append("clientRuntimeEnabled", "false");
     const result = buildSiteSettingsUpdatePayload(
       formData,
-      makeAccess({ canEditClientRuntime: true }),
+      makeAccess({ canEditClientRuntime: true, canEditSpaRefresh: true }),
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.payload).toEqual({ clientRuntimeEnabled: false });
+    }
+  });
+
+  it("parses spa refresh toggle updates", () => {
+    const formData = new FormData();
+    formData.append("spaRefreshEnabled", "true");
+    formData.set("spaRefreshMissingFallback", "globalOnly");
+    formData.set("spaRefreshErrorFallback", "globalOnly");
+    formData.set("spaRefreshEnableSectionScope", "false");
+    const result = buildSiteSettingsUpdatePayload(
+      formData,
+      makeAccess({ canEditSpaRefresh: true }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toEqual({
+        spaRefresh: {
+          enabled: true,
+          missingFallback: "globalOnly",
+          errorFallback: "globalOnly",
+          enableSectionScope: false,
+        },
+      });
     }
   });
 

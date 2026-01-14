@@ -22,7 +22,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
-import type { CrawlCaptureMode, SupportedLanguage } from "@internal/dashboard/webhooks";
+import type {
+  CrawlCaptureMode,
+  SpaRefreshFallback,
+  SpaRefreshSettings,
+  SupportedLanguage,
+} from "@internal/dashboard/webhooks";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
@@ -53,6 +58,8 @@ type SiteAdminFormProps = {
   };
   clientRuntimeEnabled: boolean;
   canEditClientRuntime: boolean;
+  spaRefresh: SpaRefreshSettings | null;
+  canEditSpaRefresh: boolean;
   translatableAttributes: string[] | null;
   canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
@@ -61,6 +68,21 @@ type SiteAdminFormProps = {
     description: string;
     label: string;
     help: string;
+  };
+  spaRefreshCopy: {
+    title: string;
+    description: string;
+    label: string;
+    help: string;
+    note: string;
+    missingFallbackLabel: string;
+    missingFallbackHelp: string;
+    errorFallbackLabel: string;
+    errorFallbackHelp: string;
+    sectionScopeLabel: string;
+    sectionScopeHelp: string;
+    optionGlobalOnly: string;
+    optionBaseline: string;
   };
   translatableAttributesCopy: {
     title: string;
@@ -93,10 +115,13 @@ export function SiteAdminForm({
   crawlCaptureCopy,
   clientRuntimeEnabled: initialClientRuntimeEnabled,
   canEditClientRuntime,
+  spaRefresh: initialSpaRefresh,
+  canEditSpaRefresh,
   translatableAttributes: initialTranslatableAttributes,
   canEditTranslatableAttributes,
   canEditProfile,
   clientRuntimeCopy,
+  spaRefreshCopy,
   translatableAttributesCopy,
   lockedHelp,
   supportedLanguages,
@@ -124,6 +149,18 @@ export function SiteAdminForm({
     useState<CrawlCaptureMode>(initialCrawlCaptureMode);
   const [clientRuntimeEnabled, setClientRuntimeEnabled] = useState<boolean>(
     initialClientRuntimeEnabled,
+  );
+  const [spaRefreshEnabled, setSpaRefreshEnabled] = useState<boolean>(
+    initialSpaRefresh?.enabled ?? false,
+  );
+  const [spaRefreshMissingFallback, setSpaRefreshMissingFallback] = useState<SpaRefreshFallback>(
+    initialSpaRefresh?.missingFallback ?? "globalOnly",
+  );
+  const [spaRefreshErrorFallback, setSpaRefreshErrorFallback] = useState<SpaRefreshFallback>(
+    initialSpaRefresh?.errorFallback ?? "globalOnly",
+  );
+  const [spaRefreshEnableSectionScope, setSpaRefreshEnableSectionScope] = useState<boolean>(
+    initialSpaRefresh?.enableSectionScope ?? false,
   );
   const [translatableAttributes, setTranslatableAttributes] = useState<string>(() =>
     (initialTranslatableAttributes ?? []).join(", "),
@@ -213,6 +250,7 @@ export function SiteAdminForm({
     canEditServingMode ||
     canEditCrawlCaptureMode ||
     canEditClientRuntime ||
+    canEditSpaRefresh ||
     canEditTranslatableAttributes ||
     canEditProfile;
   const basicsInvalid =
@@ -229,6 +267,9 @@ export function SiteAdminForm({
   const clientRuntimeHelpText = canEditClientRuntime
     ? clientRuntimeCopy.help
     : `${clientRuntimeCopy.help} ${lockedHelp}`;
+  const spaRefreshHelpText = canEditSpaRefresh
+    ? spaRefreshCopy.help
+    : `${spaRefreshCopy.help} ${lockedHelp}`;
   const translatableAttributesHelpText = canEditTranslatableAttributes
     ? translatableAttributesCopy.help
     : `${translatableAttributesCopy.help} ${lockedHelp}`;
@@ -573,11 +614,128 @@ export function SiteAdminForm({
                 type="checkbox"
                 value="true"
                 checked={clientRuntimeEnabled}
-                onChange={(event) => setClientRuntimeEnabled(event.target.checked)}
+                onChange={(event) => {
+                  const nextValue = event.target.checked;
+                  setClientRuntimeEnabled(nextValue);
+                  if (!nextValue) {
+                    setSpaRefreshEnabled(false);
+                  }
+                }}
                 disabled={!canEditClientRuntime}
                 className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </Field>
+          </section>
+
+          <section className="space-y-5 border-t border-border/60 pt-6">
+            <div className="border-b border-border/60 pb-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-5 w-1 rounded-full bg-primary/50" aria-hidden="true" />
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">{spaRefreshCopy.title}</CardTitle>
+                  <CardDescription>{spaRefreshCopy.description}</CardDescription>
+                </div>
+              </div>
+            </div>
+            <Field
+              label={spaRefreshCopy.label}
+              htmlFor="spaRefreshEnabled"
+              description={
+                <>
+                  <span className="block">{spaRefreshHelpText}</span>
+                  <span className="mt-1 block">{spaRefreshCopy.note}</span>
+                  {!clientRuntimeEnabled ? (
+                    <span className="mt-1 block">Requires client runtime to be enabled.</span>
+                  ) : null}
+                  <span className="mt-1 block">Default: Off.</span>
+                </>
+              }
+            >
+              {!canEditSpaRefresh ? null : (
+                <>
+                  <input type="hidden" name="spaRefreshEnabled" value="false" />
+                  <input
+                    type="hidden"
+                    name="spaRefreshMissingFallback"
+                    value={spaRefreshMissingFallback}
+                  />
+                  <input
+                    type="hidden"
+                    name="spaRefreshErrorFallback"
+                    value={spaRefreshErrorFallback}
+                  />
+                  <input
+                    type="hidden"
+                    name="spaRefreshEnableSectionScope"
+                    value={spaRefreshEnableSectionScope ? "true" : "false"}
+                  />
+                </>
+              )}
+              <input
+                id="spaRefreshEnabled"
+                name="spaRefreshEnabled"
+                type="checkbox"
+                value="true"
+                checked={spaRefreshEnabled}
+                onChange={(event) => setSpaRefreshEnabled(event.target.checked)}
+                disabled={!canEditSpaRefresh || !clientRuntimeEnabled}
+                className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </Field>
+            {spaRefreshEnabled ? (
+              <div className="space-y-4 rounded-md border border-border/60 bg-muted/20 px-4 py-3">
+                <Field
+                  label={spaRefreshCopy.missingFallbackLabel}
+                  htmlFor="spaRefreshMissingFallback"
+                  description={spaRefreshCopy.missingFallbackHelp}
+                >
+                  <select
+                    id="spaRefreshMissingFallback"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                    value={spaRefreshMissingFallback}
+                    onChange={(event) =>
+                      setSpaRefreshMissingFallback(event.target.value as SpaRefreshFallback)
+                    }
+                    disabled={!canEditSpaRefresh}
+                  >
+                    <option value="globalOnly">{spaRefreshCopy.optionGlobalOnly}</option>
+                    <option value="baseline">{spaRefreshCopy.optionBaseline}</option>
+                  </select>
+                </Field>
+                <Field
+                  label={spaRefreshCopy.errorFallbackLabel}
+                  htmlFor="spaRefreshErrorFallback"
+                  description={spaRefreshCopy.errorFallbackHelp}
+                >
+                  <select
+                    id="spaRefreshErrorFallback"
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                    value={spaRefreshErrorFallback}
+                    onChange={(event) =>
+                      setSpaRefreshErrorFallback(event.target.value as SpaRefreshFallback)
+                    }
+                    disabled={!canEditSpaRefresh}
+                  >
+                    <option value="globalOnly">{spaRefreshCopy.optionGlobalOnly}</option>
+                    <option value="baseline">{spaRefreshCopy.optionBaseline}</option>
+                  </select>
+                </Field>
+                <Field
+                  label={spaRefreshCopy.sectionScopeLabel}
+                  htmlFor="spaRefreshEnableSectionScope"
+                  description={spaRefreshCopy.sectionScopeHelp}
+                >
+                  <input
+                    id="spaRefreshEnableSectionScope"
+                    type="checkbox"
+                    checked={spaRefreshEnableSectionScope}
+                    onChange={(event) => setSpaRefreshEnableSectionScope(event.target.checked)}
+                    disabled={!canEditSpaRefresh}
+                    className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </Field>
+              </div>
+            ) : null}
           </section>
 
           <section className="space-y-5 border-t border-border/60 pt-6">

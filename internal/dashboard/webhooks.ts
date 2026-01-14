@@ -81,6 +81,15 @@ const routeLocaleSchema = z.object({
 });
 
 const crawlCaptureModeSchema = z.enum(["template_plus_hydrated", "template_only", "hydrated_only"]);
+const spaRefreshFallbackSchema = z.enum(["globalOnly", "baseline"]);
+const spaRefreshSchema = z
+  .object({
+    enabled: z.boolean(),
+    missingFallback: spaRefreshFallbackSchema.optional(),
+    errorFallback: spaRefreshFallbackSchema.optional(),
+    enableSectionScope: z.boolean().optional(),
+  })
+  .strict();
 
 const routeConfigSchema = z
   .object({
@@ -91,6 +100,7 @@ const routeConfigSchema = z
     clientRuntimeEnabled: z.boolean(),
     crawlCaptureMode: crawlCaptureModeSchema,
     translatableAttributes: z.array(z.string()).nullable().optional(),
+    spaRefresh: spaRefreshSchema.nullable().optional(),
   })
   .nullable();
 
@@ -336,6 +346,8 @@ export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlCaptureMode = z.infer<typeof crawlCaptureModeSchema>;
+export type SpaRefreshSettings = z.infer<typeof spaRefreshSchema>;
+export type SpaRefreshFallback = z.infer<typeof spaRefreshFallbackSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
@@ -657,6 +669,7 @@ export type CreateSitePayload = {
   crawlCaptureMode?: CrawlCaptureMode;
   clientRuntimeEnabled?: boolean;
   translatableAttributes?: string[] | null;
+  spaRefresh?: SpaRefreshSettings | null;
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {

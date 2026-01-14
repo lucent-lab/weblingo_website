@@ -387,10 +387,12 @@ function DomainSection({
               translationRun?.createdAt ??
               null;
             const lastActivityMs = lastActivity ? Date.parse(lastActivity) : NaN;
+            // eslint-disable-next-line react-hooks/purity
+            const nowMs = Date.now();
             const runStalled =
               runActive &&
               Number.isFinite(lastActivityMs) &&
-              Date.now() - lastActivityMs > STALLED_RUN_THRESHOLD_MS;
+              nowMs - lastActivityMs > STALLED_RUN_THRESHOLD_MS;
             const stalledSince = runStalled ? formatTimestamp(lastActivity) : null;
             const runStatusLabel = runFailed
               ? "failed"

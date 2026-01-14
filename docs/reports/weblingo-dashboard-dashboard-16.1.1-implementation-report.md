@@ -103,9 +103,9 @@ Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger na
 
 **File:** `components/dashboard/action-form.tsx`
 
-- [ ] Add an optional prop to `ActionFormProps`:
-  - [ ] `refreshOnSuccess?: boolean;`
-- [ ] Replace the existing `useEffect` success handler with the exact logic below (copy/paste and adjust imports/types only if TypeScript requires it):
+- [x] Add an optional prop to `ActionFormProps`:
+  - [x] `refreshOnSuccess?: boolean;`
+- [x] Replace the existing `useEffect` success handler with the exact logic below (copy/paste and adjust imports/types only if TypeScript requires it):
 
 ```tsx
 useEffect(() => {
@@ -137,8 +137,8 @@ useEffect(() => {
 }, [pending, state, router, onSuccess, refreshOnSuccess]);
 ```
 
-- [ ] Ensure `refreshOnSuccess` is included in the effect dependency list.
-- [ ] Do **not** change the initial state shape (`{ ok: false, message: "" }`).
+- [x] Ensure `refreshOnSuccess` is included in the effect dependency list.
+- [x] Do **not** change the initial state shape (`{ ok: false, message: "" }`).
 
 **Acceptance for M1.1:**
 - Existing call sites continue to refresh on success (no behavior regression).
@@ -151,8 +151,8 @@ useEffect(() => {
 
 **File:** `app/dashboard/sites/[id]/pages/page.tsx`
 
-- [ ] Find the `<ActionForm ... action={triggerPageCrawlAction} ...>` used inside the table row loop.
-- [ ] Add the prop `refreshOnSuccess={false}` to that `ActionForm`.
+- [x] Find the `<ActionForm ... action={triggerPageCrawlAction} ...>` used inside the table row loop.
+- [x] Add the prop `refreshOnSuccess={false}` to that `ActionForm`.
 
 **Acceptance for M1.2:**
 - Clicking “Force crawl” shows the toast but **does not** reset scroll position and does **not** trigger a full route refresh.
@@ -164,9 +164,9 @@ useEffect(() => {
 **Goal:** eliminate `?toast=` / `?error=` handling from dashboard pages and rely on `sonner` toasts only.
 
 **Search (repo-wide):**
-- [ ] Run `rg "searchParams\?: Promise<\{\s*toast\?:" app/dashboard -g'*.tsx'`
-- [ ] Run `rg "decodeSearchParam\(" app/dashboard -g'*.tsx'`
-- [ ] Run `rg "\?toast=|\?error=|&toast=|&error=" app/dashboard internal components -g'*.ts*'`
+- [x] Run `rg "searchParams\?: Promise<\{\s*toast\?:" app/dashboard -g'*.tsx'`
+- [x] Run `rg "decodeSearchParam\(" app/dashboard -g'*.tsx'`
+- [x] Run `rg "\?toast=|\?error=|&toast=|&error=" app/dashboard internal components -g'*.ts*'`
 
 **For each page that implements URL banners (minimum list from reports):**
 - `app/dashboard/sites/[id]/page.tsx`
@@ -176,11 +176,11 @@ useEffect(() => {
 
 Perform the following edits **per file**:
 
-- [ ] Delete the `searchParams` usage that parses `toast` / `error` / `details`.
-- [ ] Delete the banner JSX block that conditionally renders based on `toastMessage` / `actionErrorMessage`.
-- [ ] Delete the local helper `decodeSearchParam()` if it becomes unused after the removal.
-- [ ] Update the page props type so it no longer expects `toast`/`error` search params.
-- [ ] Ensure the page still renders and compiles with TypeScript.
+- [x] Delete the `searchParams` usage that parses `toast` / `error` / `details`.
+- [x] Delete the banner JSX block that conditionally renders based on `toastMessage` / `actionErrorMessage`.
+- [x] Delete the local helper `decodeSearchParam()` if it becomes unused after the removal.
+- [x] Update the page props type so it no longer expects `toast`/`error` search params.
+- [x] Ensure the page still renders and compiles with TypeScript.
 
 **Acceptance for M1.3:**
 - No dashboard page renders a “Dismiss” `<Link>` whose purpose is only to clear toast/error URL params.
@@ -227,7 +227,7 @@ Perform the following edits **per file**:
 
 **File:** `internal/dashboard/webhooks.ts`
 
-- [ ] Update the function signature to:
+- [x] Update the function signature to:
 
 ```ts
 export async function fetchSitePages(
@@ -237,9 +237,9 @@ export async function fetchSitePages(
 ): Promise<SitePageSummary[]>
 ```
 
-- [ ] Build query params using `URLSearchParams` and append them only if provided.
-- [ ] Keep the strict schema decode unchanged.
-- [ ] Return `data.pages` (do not change return type to the full object).
+- [x] Build query params using `URLSearchParams` and append them only if provided.
+- [x] Keep the strict schema decode unchanged.
+- [x] Return `data.pages` (do not change return type to the full object).
 
 Reference implementation (copy/paste and adjust variable names to match existing code):
 
@@ -311,14 +311,14 @@ export async function fetchSitePages(
 
 **Create file:** `app/api/dashboard/sites/[siteId]/status/route.ts`
 
-- [ ] Implement `GET` handler that:
-  - [ ] Calls `requireDashboardAuth()`
-  - [ ] Uses `auth.webhooksAuth!` token
-  - [ ] Fetches current `site` via `fetchSite(token, siteId)`
-  - [ ] Fetches current `deployments` via `fetchDeployments(token, siteId)`
-  - [ ] Returns `NextResponse.json({ site, deployments })`
-  - [ ] On `WebhooksApiError` with status 404 → return 404 JSON `{ error: "Not found" }`
-  - [ ] On other errors → return 500 JSON `{ error: "Unable to load status" }`
+- [x] Implement `GET` handler that:
+  - [x] Calls `requireDashboardAuth()`
+  - [x] Uses `auth.webhooksAuth!` token
+  - [x] Fetches current `site` via `fetchSite(token, siteId)`
+  - [x] Fetches current `deployments` via `fetchDeployments(token, siteId)`
+  - [x] Returns `NextResponse.json({ site, deployments })`
+  - [x] On `WebhooksApiError` with status 404 → return 404 JSON `{ error: "Not found" }`
+  - [x] On other errors → return 500 JSON `{ error: "Unable to load status" }`
 
 **Acceptance for M3.1:**
 - Hitting the route while authenticated returns `{ site, deployments }`.
@@ -330,7 +330,7 @@ export async function fetchSitePages(
 
 **Create file:** `internal/dashboard/use-poll.ts`
 
-- [ ] Export a hook:
+- [x] Export a hook:
 
 ```ts
 export function usePoll<T>(options: {
@@ -342,15 +342,15 @@ export function usePoll<T>(options: {
 }): { value: T; error: Error | null; isPolling: boolean }
 ```
 
-- [ ] Behavior requirements:
-  - [ ] Initialize `value` with `options.initial`
-  - [ ] If `enabled` is false → do not start interval
-  - [ ] If `enabled` is true:
-    - [ ] Start an interval every `intervalMs`
-    - [ ] On each tick: call `fetcher()`, set `value`
-    - [ ] If `isTerminal(value)` becomes true → stop polling
-  - [ ] Stop interval on unmount
-  - [ ] Store the most recent error in `error` but keep previous `value`
+- [x] Behavior requirements:
+  - [x] Initialize `value` with `options.initial`
+  - [x] If `enabled` is false → do not start interval
+  - [x] If `enabled` is true:
+    - [x] Start an interval every `intervalMs`
+    - [x] On each tick: call `fetcher()`, set `value`
+    - [x] If `isTerminal(value)` becomes true → stop polling
+  - [x] Stop interval on unmount
+  - [x] Store the most recent error in `error` but keep previous `value`
 
 **Acceptance for M3.2:**
 - Hook compiles and can be used by client components.
@@ -364,21 +364,21 @@ export function usePoll<T>(options: {
 
 **Create file:** `app/dashboard/sites/[id]/pages/crawl-summary.client.tsx` (or `/components/dashboard/...`), with `"use client";` at top.
 
-- [ ] Props MUST include:
-  - [ ] `siteId: string`
-  - [ ] `initialSite: Site` (import type from `@internal/dashboard/webhooks`)
-  - [ ] The i18n labels used by the existing crawl summary card (pass through from the server page; do not re-resolve i18n client-side in 16.1.1)
-- [ ] In the client component:
-  - [ ] Use `usePoll` to poll `/api/dashboard/sites/${siteId}/status` every `3000ms`
-  - [ ] Define terminal states for crawl as:
-    - [ ] `latestCrawlRun.status` is `"completed"` or `"failed"`, or `latestCrawlRun` is null
-  - [ ] Render the existing Crawl Summary markup using the *polled* `site.latestCrawlRun` data
+- [x] Props MUST include:
+  - [x] `siteId: string`
+  - [x] `initialSite: Site` (import type from `@internal/dashboard/webhooks`)
+  - [x] The i18n labels used by the existing crawl summary card (pass through from the server page; do not re-resolve i18n client-side in 16.1.1)
+- [x] In the client component:
+  - [x] Use `usePoll` to poll `/api/dashboard/sites/${siteId}/status` every `3000ms`
+  - [x] Define terminal states for crawl as:
+    - [x] `latestCrawlRun.status` is `"completed"` or `"failed"`, or `latestCrawlRun` is null
+  - [x] Render the existing Crawl Summary markup using the *polled* `site.latestCrawlRun` data
 
 **Server integration:**
-- [ ] In `app/dashboard/sites/[id]/pages/page.tsx`, replace the current Crawl Summary card body with the new client component, passing:
-  - [ ] `siteId={site.id}`
-  - [ ] `initialSite={site}`
-  - [ ] all labels currently used in the card
+- [x] In `app/dashboard/sites/[id]/pages/page.tsx`, replace the current Crawl Summary card body with the new client component, passing:
+  - [x] `siteId={site.id}`
+  - [x] `initialSite={site}`
+  - [x] all labels currently used in the card
 
 **Acceptance for M3.3:**
 - Triggering a crawl updates the crawl status badge from `in_progress` → `completed`/`failed` without a full page refresh.
@@ -389,11 +389,11 @@ export function usePoll<T>(options: {
 #### M3.4 Disable refresh for crawl/translate trigger actions once polling is in place
 
 **Search:**
-- [ ] `rg "action=\{triggerCrawlAction\}" app/dashboard -g'*.tsx'`
-- [ ] `rg "action=\{translateAndServeAction\}" app/dashboard -g'*.tsx'`
+- [x] `rg "action=\{triggerCrawlAction\}" app/dashboard -g'*.tsx'`
+- [x] `rg "action=\{translateAndServeAction\}" app/dashboard -g'*.tsx'`
 
 For each matching `<ActionForm>`:
-- [ ] Add `refreshOnSuccess={false}`.
+- [x] Add `refreshOnSuccess={false}`.
 
 **Acceptance for M3.4:**
 - Triggering crawl/translate shows toast and does not cause full refresh.
@@ -407,9 +407,9 @@ For each matching `<ActionForm>`:
 
 **File:** `app/dashboard/actions.ts` (or the split actions files if refactor is already done)
 
-- [ ] Run `rg "revalidatePath\("/dashboard"\)" app/dashboard/actions.ts`
-- [ ] For each action that mutates site-visible state (site create/delete, activate/deactivate, domain verify/provision/refresh, serving status changes):
-  - [ ] Ensure it calls `await invalidateSitesCache(auth.webhooksAuth);` exactly once before any `revalidatePath(...)` calls.
+- [x] Run `rg "revalidatePath\("/dashboard"\)" app/dashboard/actions.ts`
+- [x] For each action that mutates site-visible state (site create/delete, activate/deactivate, domain verify/provision/refresh, serving status changes):
+  - [x] Ensure it calls `await invalidateSitesCache(auth.webhooksAuth);` exactly once before any `revalidatePath(...)` calls.
 
 **Acceptance for M4.1:**
 - After domain verification/provisioning, the sidebar and sites list reflect updated status within the same session (no 10-minute stale cache).
@@ -424,13 +424,13 @@ For each matching `<ActionForm>`:
 - `app/dashboard/sites/glossary-table.tsx`
 - `app/dashboard/sites/[id]/glossary-editor.tsx`
 
-- [ ] Identify the hidden `<input>` that currently sets `value={JSON.stringify(entries)}` (or equivalent).
-- [ ] Change it to an uncontrolled input:
-  - [ ] `<input ref={hiddenRef} name="<same-name-as-before>" type="hidden" defaultValue="" />`
-- [ ] On form submit (or just before calling the server action):
-  - [ ] Set `hiddenRef.current.value = JSON.stringify(entries)`
-- [ ] Ensure that:
-  - [ ] JSON serialization happens **only** on submit, not on every render.
+- [x] Identify the hidden `<input>` that currently sets `value={JSON.stringify(entries)}` (or equivalent).
+- [x] Change it to an uncontrolled input:
+  - [x] `<input ref={hiddenRef} name="<same-name-as-before>" type="hidden" defaultValue="" />`
+- [x] On form submit (or just before calling the server action):
+  - [x] Set `hiddenRef.current.value = JSON.stringify(entries)`
+- [x] Ensure that:
+  - [x] JSON serialization happens **only** on submit, not on every render.
 
 **Acceptance for M5.1:**
 - Typing in glossary inputs no longer causes noticeable input lag on large glossaries.

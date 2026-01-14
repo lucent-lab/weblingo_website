@@ -21,6 +21,9 @@ export const CRAWL_CAPTURE_MODES = [
 
 export type CrawlCaptureMode = (typeof CRAWL_CAPTURE_MODES)[number];
 
+const SPA_REFRESH_FALLBACKS = ["globalOnly", "baseline"] as const;
+export type SpaRefreshFallback = (typeof SPA_REFRESH_FALLBACKS)[number];
+
 export type SiteSettingsAccess = {
   billingBlocked: boolean;
   canEditBasics: boolean;
@@ -28,6 +31,7 @@ export type SiteSettingsAccess = {
   canEditServingMode: boolean;
   canEditCrawlCaptureMode: boolean;
   canEditClientRuntime: boolean;
+  canEditSpaRefresh: boolean;
   canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
 };
@@ -42,6 +46,12 @@ export type SiteSettingsUpdatePayload = Partial<{
   crawlCaptureMode: CrawlCaptureMode;
   clientRuntimeEnabled: boolean;
   translatableAttributes: string[] | null;
+  spaRefresh: {
+    enabled: boolean;
+    missingFallback?: SpaRefreshFallback;
+    errorFallback?: SpaRefreshFallback;
+    enableSectionScope?: boolean;
+  };
 }>;
 
 export type SiteSettingsUpdateResult =
@@ -60,6 +70,7 @@ export function deriveSiteSettingsAccess(options: {
     options.has({ allFeatures: ["edit", "crawl_capture_mode"] }) && !billingBlocked;
   const canEditClientRuntime =
     options.has({ allFeatures: ["edit", "client_runtime_toggle"] }) && !billingBlocked;
+  const canEditSpaRefresh = canEditClientRuntime;
   const canEditTranslatableAttributes =
     options.has({ allFeatures: ["edit", "translatable_attributes"] }) && !billingBlocked;
   const canEditProfile = options.has({ feature: "edit" }) && !billingBlocked;
@@ -70,6 +81,7 @@ export function deriveSiteSettingsAccess(options: {
     canEditServingMode,
     canEditCrawlCaptureMode,
     canEditClientRuntime,
+    canEditSpaRefresh,
     canEditTranslatableAttributes,
     canEditProfile,
   };
@@ -90,6 +102,7 @@ export function buildSiteSettingsUpdatePayload(
   const hasServingMode = formData.has("servingMode");
   const hasCrawlCaptureMode = formData.has("crawlCaptureMode");
   const hasClientRuntime = formData.has("clientRuntimeEnabled");
+  const hasSpaRefresh = formData.has("spaRefreshEnabled");
   const hasTranslatableAttributes = formData.has("translatableAttributes");
   const hasProfile = formData.has("siteProfile");
 
@@ -107,6 +120,9 @@ export function buildSiteSettingsUpdatePayload(
   }
   if (hasClientRuntime && !access.canEditClientRuntime) {
     return { ok: false, error: "Client runtime settings are locked for this account." };
+  }
+  if (hasSpaRefresh && !access.canEditSpaRefresh) {
+    return { ok: false, error: "Client navigation settings are locked for this account." };
   }
   if (hasTranslatableAttributes && !access.canEditTranslatableAttributes) {
     return { ok: false, error: "Attribute translation settings are locked for this account." };
@@ -179,6 +195,42 @@ export function buildSiteSettingsUpdatePayload(
     }
   }
 
+  if (hasSpaRefresh) {
+    const spaRefreshValues = formData
+      .getAll("spaRefreshEnabled")
+      .map((value) => value.toString().trim())
+      .filter(Boolean);
+    if (!spaRefreshValues.length) {
+      return { ok: false, error: "Client navigation support must be enabled or disabled." };
+    }
+    let enabled: boolean | null = null;
+    if (spaRefreshValues.includes("true")) {
+      enabled = true;
+    } else if (spaRefreshValues.includes("false")) {
+      enabled = false;
+    }
+    if (enabled === null) {
+      return { ok: false, error: "Client navigation support must be enabled or disabled." };
+    }
+    const missingFallback = parseSpaRefreshFallback(
+      formData.get("spaRefreshMissingFallback"),
+      "missingFallback",
+    );
+    const errorFallback = parseSpaRefreshFallback(
+      formData.get("spaRefreshErrorFallback"),
+      "errorFallback",
+    );
+    const enableSectionScope = parseSpaRefreshBoolean(
+      formData.get("spaRefreshEnableSectionScope"),
+    );
+    payload.spaRefresh = {
+      enabled,
+      missingFallback,
+      errorFallback,
+      enableSectionScope,
+    };
+  }
+
   if (hasTranslatableAttributes) {
     const raw = formData.get("translatableAttributes")?.toString() ?? "";
     const parsed = parseAttributeList(raw);
@@ -234,6 +286,30 @@ function parseAttributeList(input: string): { values: string[]; invalid: string[
 
 function isAllowedAttribute(value: string): boolean {
   return value.startsWith("data-") || value.startsWith("aria-");
+}
+
+function parseSpaRefreshFallback(
+  value: FormDataEntryValue | null,
+  context: string,
+): SpaRefreshFallback {
+  if (!value) {
+    return "globalOnly";
+  }
+  const normalized = value.toString().trim();
+  if (SPA_REFRESH_FALLBACKS.includes(normalized as SpaRefreshFallback)) {
+    return normalized as SpaRefreshFallback;
+  }
+  throw new Error(`spaRefresh ${context} must be globalOnly or baseline.`);
+}
+
+function parseSpaRefreshBoolean(value: FormDataEntryValue | null): boolean {
+  if (!value) {
+    return false;
+  }
+  const normalized = value.toString().trim();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  throw new Error("spaRefresh enableSectionScope must be true or false.");
 }
 
 export function parseLocaleAliases(
