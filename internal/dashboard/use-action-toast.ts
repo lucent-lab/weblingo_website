@@ -45,11 +45,13 @@ export function useActionToast<T extends ActionResult>(options: {
     if (pending && !deferredRef.current) {
       const deferred = createDeferred<T>();
       deferredRef.current = deferred;
-      toastIdRef.current = toast.promise(deferred.promise, {
+      const toastPromise = toast.promise(deferred.promise, {
         loading,
         success: (result) => result.message || success,
         error: (err) => (err instanceof Error ? err.message : error),
       });
+      toastIdRef.current =
+        typeof toastPromise === "string" || typeof toastPromise === "number" ? toastPromise : null;
       return;
     }
     if (!pending && deferredRef.current) {
