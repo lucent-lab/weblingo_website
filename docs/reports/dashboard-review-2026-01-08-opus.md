@@ -47,12 +47,11 @@ The `ActionForm` component unconditionally calls `router.refresh()` after every 
 // components/dashboard/action-form.tsx:45-57
 useEffect(() => {
   if (wasPending.current && !pending && state.ok) {
-    const redirectTo =
-      typeof state.meta?.redirectTo === "string" ? state.meta.redirectTo : null;
+    const redirectTo = typeof state.meta?.redirectTo === "string" ? state.meta.redirectTo : null;
     if (redirectTo) {
       router.push(redirectTo);
     } else {
-      router.refresh();  // ← ALWAYS TRIGGERS FULL PAGE REFRESH
+      router.refresh(); // ← ALWAYS TRIGGERS FULL PAGE REFRESH
     }
     onSuccess?.(state);
   }
@@ -85,6 +84,7 @@ useEffect(() => {
 ### Root Cause
 
 The architecture assumes server-side rendering must re-run to reflect state changes. There's no:
+
 - Optimistic UI updates
 - Client-side state management
 - Selective revalidation
@@ -105,6 +105,7 @@ The architecture assumes server-side rendering must re-run to reflect state chan
 The same data is fetched multiple times per page load:
 
 **Layout fetches sites:**
+
 ```typescript
 // app/dashboard/layout.tsx:246-258
 async function SitesNavSection({ auth }: { auth: DashboardAuth }) {
@@ -117,6 +118,7 @@ async function SitesNavSection({ auth }: { auth: DashboardAuth }) {
 ```
 
 **And again in SitesUsageSummary:**
+
 ```typescript
 // app/dashboard/layout.tsx:265-287
 async function SitesUsageSummary({ auth, isAgency }: {...}) {
@@ -127,17 +129,19 @@ async function SitesUsageSummary({ auth, isAgency }: {...}) {
 ```
 
 **And again in page.tsx:**
+
 ```typescript
 // app/dashboard/page.tsx:21-23
 const auth = await requireDashboardAuth();
-sites = await listSitesCached(auth.webhooksAuth!);  // ← DUPLICATE
+sites = await listSitesCached(auth.webhooksAuth!); // ← DUPLICATE
 ```
 
 **And again in sites/page.tsx:**
+
 ```typescript
 // app/dashboard/sites/page.tsx:19-21
 const auth = await requireDashboardAuth();
-sites = await listSitesCached(auth.webhooksAuth!);  // ← DUPLICATE
+sites = await listSitesCached(auth.webhooksAuth!); // ← DUPLICATE
 ```
 
 ### Impact
@@ -165,20 +169,20 @@ No shared data context between layout and pages. Each component independently fe
 
 Individual page components are massive, mixing data fetching, business logic, and UI rendering:
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `sites/[id]/page.tsx` | 724 lines | Site configuration page |
-| `sites/[id]/admin/page.tsx` | 970 lines | Site admin/settings page |
-| `sites/[id]/pages/page.tsx` | 527 lines | Pages list |
-| `dashboard/layout.tsx` | 385 lines | Main layout |
-| `sites/[id]/admin/site-admin-form.tsx` | 654 lines | Single form component |
+| File                                   | Lines     | Description              |
+| -------------------------------------- | --------- | ------------------------ |
+| `sites/[id]/page.tsx`                  | 724 lines | Site configuration page  |
+| `sites/[id]/admin/page.tsx`            | 970 lines | Site admin/settings page |
+| `sites/[id]/pages/page.tsx`            | 527 lines | Pages list               |
+| `dashboard/layout.tsx`                 | 385 lines | Main layout              |
+| `sites/[id]/admin/site-admin-form.tsx` | 654 lines | Single form component    |
 
 ### Example: `sites/[id]/page.tsx`
 
 ```typescript
 // This single file contains:
 // 1. Route params handling
-// 2. Search params parsing  
+// 2. Search params parsing
 // 3. Auth verification
 // 4. 3 parallel API calls
 // 5. Error handling for each
@@ -556,18 +560,18 @@ Pages like `sites/[id]/page.tsx` have no loading states — the entire page is b
 
 ## Recommendations Summary
 
-| Priority | Issue | Effort | Impact |
-|----------|-------|--------|--------|
-| P0 | Replace `router.refresh()` with optimistic updates | High | Very High |
-| P0 | Consolidate data fetching to avoid duplicates | Medium | High |
-| P1 | Split monolithic components | Medium | Medium |
-| P1 | Organize actions by domain | Low | Medium |
-| P1 | Remove URL-based toasts | Low | Medium |
-| P2 | Extract duplicated utilities | Low | Low |
-| P2 | Optimize cache invalidation | Medium | Medium |
-| P2 | Add skeleton loading states | Medium | Medium |
-| P3 | Reduce prop drilling for i18n | Medium | Low |
-| P3 | Audit client/server boundaries | Low | Low |
+| Priority | Issue                                              | Effort | Impact    |
+| -------- | -------------------------------------------------- | ------ | --------- |
+| P0       | Replace `router.refresh()` with optimistic updates | High   | Very High |
+| P0       | Consolidate data fetching to avoid duplicates      | Medium | High      |
+| P1       | Split monolithic components                        | Medium | Medium    |
+| P1       | Organize actions by domain                         | Low    | Medium    |
+| P1       | Remove URL-based toasts                            | Low    | Medium    |
+| P2       | Extract duplicated utilities                       | Low    | Low       |
+| P2       | Optimize cache invalidation                        | Medium | Medium    |
+| P2       | Add skeleton loading states                        | Medium | Medium    |
+| P3       | Reduce prop drilling for i18n                      | Medium | Low       |
+| P3       | Audit client/server boundaries                     | Low    | Low       |
 
 ---
 
@@ -628,16 +632,16 @@ Pages like `sites/[id]/page.tsx` have no loading states — the entire page is b
 
 ## Appendix: File Sizes and Complexity
 
-| File | Lines | Functions | Concerns |
-|------|-------|-----------|----------|
-| `actions.ts` | 992 | 30 | 5+ |
-| `sites/[id]/admin/page.tsx` | 970 | 15 | 6+ |
-| `sites/[id]/page.tsx` | 724 | 12 | 5+ |
-| `sites/[id]/admin/site-admin-form.tsx` | 654 | 3 | 4+ |
-| `sites/[id]/pages/page.tsx` | 527 | 10 | 4+ |
-| `internal/dashboard/webhooks.ts` | 916 | 25 | 2 |
-| `dashboard/layout.tsx` | 385 | 10 | 4+ |
-| `internal/dashboard/auth.ts` | 373 | 8 | 2 |
+| File                                   | Lines | Functions | Concerns |
+| -------------------------------------- | ----- | --------- | -------- |
+| `actions.ts`                           | 992   | 30        | 5+       |
+| `sites/[id]/admin/page.tsx`            | 970   | 15        | 6+       |
+| `sites/[id]/page.tsx`                  | 724   | 12        | 5+       |
+| `sites/[id]/admin/site-admin-form.tsx` | 654   | 3         | 4+       |
+| `sites/[id]/pages/page.tsx`            | 527   | 10        | 4+       |
+| `internal/dashboard/webhooks.ts`       | 916   | 25        | 2        |
+| `dashboard/layout.tsx`                 | 385   | 10        | 4+       |
+| `internal/dashboard/auth.ts`           | 373   | 8         | 2        |
 
 Files over 300 lines should be reviewed for extraction opportunities.
 
@@ -645,17 +649,17 @@ Files over 300 lines should be reviewed for extraction opportunities.
 
 ## Appendix A: Cross-Report Coherence Notes
 
-*Based on analyst consolidation of this report with GPT and Gemini reports.*
+_Based on analyst consolidation of this report with GPT and Gemini reports._
 
 ### Confirmed Coherent Across All Reports (✅)
 
-| Item | Status |
-|------|--------|
-| `ActionForm` source code | Identical across reports |
-| `ActionResponse` type | Consistent: `{ ok, message, meta? }` |
-| Per-row `ActionForm` pattern | Confirmed with real file reference |
-| `fetchSitePages` contract | Confirmed: unpaginated, strict schema |
-| Dependency status | No SWR/React Query; `sonner` present |
+| Item                         | Status                                |
+| ---------------------------- | ------------------------------------- |
+| `ActionForm` source code     | Identical across reports              |
+| `ActionResponse` type        | Consistent: `{ ok, message, meta? }`  |
+| Per-row `ActionForm` pattern | Confirmed with real file reference    |
+| `fetchSitePages` contract    | Confirmed: unpaginated, strict schema |
+| Dependency status            | No SWR/React Query; `sonner` present  |
 
 ### Incoherent / Uncertain Items (⚠️)
 
@@ -685,7 +689,7 @@ Files over 300 lines should be reviewed for extraction opportunities.
 
 ## Appendix B: Artifacts for Implementation Validation
 
-*This section provides the exact source code and data contracts requested by the implementation analyst to enable unambiguous Codex implementation.*
+_This section provides the exact source code and data contracts requested by the implementation analyst to enable unambiguous Codex implementation._
 
 ---
 
@@ -878,8 +882,9 @@ return failed(formatBillingBlockMessage(auth, "create new sites"));
 ```
 
 **Key observation:** Each row renders its own `<ActionForm>` component instance, meaning:
+
 - N rows = N `useActionState` hooks
-- N rows = N `useActionToast` hooks  
+- N rows = N `useActionToast` hooks
 - N rows = N `useRouter` instances
 - All hydrated on page load
 
@@ -902,6 +907,7 @@ export async function fetchSitePages(auth: AuthInput, siteId: string): Promise<S
 ```
 
 **Request:**
+
 - Method: `GET`
 - Path: `/sites/{siteId}/pages`
 - Auth: Bearer token in Authorization header
@@ -942,6 +948,7 @@ export type SitePageSummary = {
 ```
 
 **Current behavior:**
+
 - Returns ALL pages for a site in a single response
 - No `limit`, `cursor`, or `offset` parameters
 - No server-side filtering/search
@@ -952,13 +959,13 @@ export type SitePageSummary = {
 
 **Note:** These are estimates based on code inspection and typical SaaS usage patterns. Actual p95 values should be verified from production logs/metrics.
 
-| Metric | Typical | p95 Estimate | Maximum Observed |
-|--------|---------|--------------|------------------|
-| Pages per site | 10-50 | ~200 | 1,000+ possible |
-| Domains per site | 2-5 | ~10 | Bounded by target languages |
-| Target languages per site | 1-3 | ~5 | `maxLocales` plan limit (varies) |
-| Glossary entries per site | 0-20 | ~100 | Plan-limited (`maxGlossarySources`) |
-| Sites per account | 1-3 | ~10 | `maxSites` plan limit (varies) |
+| Metric                    | Typical | p95 Estimate | Maximum Observed                    |
+| ------------------------- | ------- | ------------ | ----------------------------------- |
+| Pages per site            | 10-50   | ~200         | 1,000+ possible                     |
+| Domains per site          | 2-5     | ~10          | Bounded by target languages         |
+| Target languages per site | 1-3     | ~5           | `maxLocales` plan limit (varies)    |
+| Glossary entries per site | 0-20    | ~100         | Plan-limited (`maxGlossarySources`) |
+| Sites per account         | 1-3     | ~10          | `maxSites` plan limit (varies)      |
 
 **Evidence from code:**
 
@@ -1001,6 +1008,7 @@ Verified from `package.json`:
 ```
 
 **Implication for implementation:**
+
 - Adding SWR or React Query requires a new dependency
 - Alternative: use React 19's `use()` hook + manual cache, or `useOptimistic` for immediate feedback
 - Polling can be implemented with `useEffect` + `setInterval` without additional dependencies
@@ -1029,6 +1037,7 @@ export function useActionToast<T extends ActionResult>(options: {
 ```
 
 **Key behavior:**
+
 - Creates a `toast.promise()` when `pending` becomes true
 - Resolves/rejects the promise when `pending` becomes false based on `state.ok`
 - Already handles success/error feedback without URL params
@@ -1038,7 +1047,7 @@ export function useActionToast<T extends ActionResult>(options: {
 
 ## Appendix C: Codex-Ready Implementation Spec
 
-*Consolidated from analyst review of this report + GPT + Gemini reports. Written to avoid interpretation.*
+_Consolidated from analyst review of this report + GPT + Gemini reports. Written to avoid interpretation._
 
 ---
 
@@ -1085,6 +1094,7 @@ useEffect(() => {
 ```
 
 **Acceptance criteria:**
+
 - Existing call sites behave the same (still refresh by default)
 - Call sites can opt out via `refreshOnSuccess={false}`
 - Actions can opt out via `meta: { refresh: false }`
@@ -1108,6 +1118,7 @@ useEffect(() => {
 ```
 
 **Acceptance criteria:**
+
 - "Force crawl" shows toast, does NOT re-render entire route
 - No URL change, no scroll reset
 
@@ -1116,12 +1127,14 @@ useEffect(() => {
 #### P0.3 Remove URL-Based Toast/Error Banners
 
 **Files to modify:**
+
 - `app/dashboard/sites/[id]/page.tsx`
 - `app/dashboard/sites/[id]/admin/page.tsx`
 - `app/dashboard/sites/[id]/pages/page.tsx`
 - `app/dashboard/sites/[id]/overrides/page.tsx`
 
 **Delete in each file:**
+
 1. The toast/error banner JSX block:
    ```tsx
    {actionErrorMessage ? ( ... Dismiss Link ... ) : toastMessage ? ( ... Dismiss Link ... ) : null}
@@ -1131,6 +1144,7 @@ useEffect(() => {
 4. Update page props type to remove `toast`/`error` if no longer used
 
 **Acceptance criteria:**
+
 - Success/error feedback exclusively via `sonner` toasts
 - Dismissing notifications never triggers navigation
 
@@ -1143,10 +1157,12 @@ useEffect(() => {
 **Endpoint:** `GET /sites/{siteId}/pages`
 
 **New query params:**
+
 - `limit` (integer, default 50, clamp to [1, 200])
 - `offset` (integer, default 0)
 
 **Response shape MUST remain:**
+
 ```json
 { "pages": [ ... ] }
 ```
@@ -1171,9 +1187,7 @@ export async function fetchSitePages(
   if (typeof options?.limit === "number") qs.set("limit", String(options.limit));
   if (typeof options?.offset === "number") qs.set("offset", String(options.offset));
 
-  const path = qs.size
-    ? `/sites/${siteId}/pages?${qs.toString()}`
-    : `/sites/${siteId}/pages`;
+  const path = qs.size ? `/sites/${siteId}/pages?${qs.toString()}` : `/sites/${siteId}/pages`;
 
   const data = await request({
     path,
@@ -1201,7 +1215,7 @@ const pageParam = Array.isArray(resolvedSearchParams?.page)
 const pageNumber = Math.max(1, Number(pageParam ?? "1") || 1);
 const pageSize = 50;
 const offset = (pageNumber - 1) * pageSize;
-const requestedLimit = pageSize + 1;  // Request one extra to detect hasNextPage
+const requestedLimit = pageSize + 1; // Request one extra to detect hasNextPage
 
 // Fetch
 const allPages = await fetchSitePages(authToken, id, { limit: requestedLimit, offset });
@@ -1212,6 +1226,7 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 ```
 
 **Render pager controls:**
+
 - Previous link if `pageNumber > 1`
 - Next link if `hasNextPage`
 - Links set `?page=N` only
@@ -1246,6 +1261,7 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 ### Phase P3 — Cache Invalidation Correctness
 
 **Ensure `invalidateSitesCache(auth.webhooksAuth)` is called for:**
+
 - Site status changes (active/inactive)
 - Domain verification/provisioning
 - Serving status changes
@@ -1258,10 +1274,12 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 #### P4.1 Extract Duplicated Utilities
 
 **Create `internal/dashboard/format.ts`:**
+
 - `formatTimestamp(value?: string | null): string`
 - `formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: string): string`
 
 **Create `internal/dashboard/status.ts`:**
+
 - `resolveServingStatusVariant()`
 - `resolveCrawlStatusVariant()`
 - `resolveDomainStatusVariant()`
@@ -1269,6 +1287,7 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 #### P4.2 Split `actions.ts` by Domain
 
 **Target structure:**
+
 - `app/dashboard/actions/index.ts` (re-export)
 - `app/dashboard/actions/sites.ts`
 - `app/dashboard/actions/domains.ts`
@@ -1283,7 +1302,7 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 
 ## Appendix D: Implementation Checklist with Milestones
 
-*Atomic tasks with checkboxes for tracking progress. Tasks are explicit and not subject to interpretation.*
+_Atomic tasks with checkboxes for tracking progress. Tasks are explicit and not subject to interpretation._
 
 ---
 
@@ -1545,22 +1564,22 @@ const visiblePages = hasNextPage ? allPages.slice(0, pageSize) : allPages;
 
 ### Implementation Order Summary
 
-| Order | Milestone | Risk | Impact |
-|-------|-----------|------|--------|
-| 1 | P0.1 | Low | High |
-| 2 | P0.2 | Low | Medium |
-| 3 | P0.3 | Medium | High |
-| 4 | P1.1 | Medium | High |
-| 5 | P1.2 | Low | High |
-| 6 | P1.3 | Medium | High |
-| 7 | P2.1 | Medium | Medium |
-| 8 | P2.2 | Low | Medium |
-| 9 | P2.3 | Medium | Medium |
-| 10 | P3.1 | Low | Medium |
-| 11 | P4.1 | Low | Low |
-| 12 | P4.2 | Low | Low |
-| 13 | P4.3 | Medium | Low |
-| 14 | P4.4 | Low | Low |
+| Order | Milestone | Risk   | Impact |
+| ----- | --------- | ------ | ------ |
+| 1     | P0.1      | Low    | High   |
+| 2     | P0.2      | Low    | Medium |
+| 3     | P0.3      | Medium | High   |
+| 4     | P1.1      | Medium | High   |
+| 5     | P1.2      | Low    | High   |
+| 6     | P1.3      | Medium | High   |
+| 7     | P2.1      | Medium | Medium |
+| 8     | P2.2      | Low    | Medium |
+| 9     | P2.3      | Medium | Medium |
+| 10    | P3.1      | Low    | Medium |
+| 11    | P4.1      | Low    | Low    |
+| 12    | P4.2      | Low    | Low    |
+| 13    | P4.3      | Medium | Low    |
+| 14    | P4.4      | Low    | Low    |
 
 ---
 
@@ -1573,4 +1592,3 @@ The dashboard is architecturally functional but has accumulated technical debt t
 Secondary priorities focus on code organization (splitting large files) and eliminating duplication. These improve maintainability but have less user-visible impact.
 
 The recommended approach is incremental: fix the worst UX issue first (page reloads), then systematically address structural issues without a large rewrite.
-

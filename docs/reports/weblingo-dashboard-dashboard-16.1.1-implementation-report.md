@@ -4,6 +4,7 @@ Date: 2026-01-08
 Author: Senior Software Architect / Computer Scientist (consolidated spec for Codex execution)
 
 ## Inputs reviewed (non-authoritative)
+
 This plan is a consolidation of three independent LLM code-review reports. They are **not** treated as ground truth; only items backed by concrete code artifacts in those reports are considered “verified”.
 
 - `dashboard-review-2026-01-08-opus.md` (Claude Opus 4.5)
@@ -15,24 +16,30 @@ This plan is a consolidation of three independent LLM code-review reports. They 
 ## 1. Verified facts (use as source-of-truth for this plan)
 
 ### 1.1 Runtime / framework versions
+
 - Next.js: **16.1.1** (from `package.json`, per reports)
 - React: **19.2.3**
 - Toasts: `sonner` is installed and already used in `useActionToast`
 - Data fetching library: **No SWR and no React Query installed**
 
 ### 1.2 Confirmed code artifacts causing major UX/perf problems
+
 #### A) `ActionForm` forces a full route refresh on every success
+
 `components/dashboard/action-form.tsx` calls `router.refresh()` for any successful action without `meta.redirectTo`.
 
 Impact: full RSC re-render, duplicated data fetching, scroll/focus reset, “page reload” feel after almost every action.
 
 #### B) Per-row client ActionForms in big tables
+
 Example: `app/dashboard/sites/[id]/pages/page.tsx` renders **one `<ActionForm>` per row** for “Force crawl”, multiplying hydration and hook instances.
 
 #### C) URL-based toast/error banners exist on several pages
+
 Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger navigation, causing full re-renders.
 
 #### D) Pages list endpoint has strict schema `{ pages: [...] }`
+
 `listSitePagesResponseSchema` is `.strict()`. **You must not add response keys** (e.g., `total`, `nextCursor`) without updating the schema.
 
 ---
@@ -40,6 +47,7 @@ Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger na
 ## 2. Cross-report coherence check
 
 ### 2.1 Items all reports agree on (high confidence)
+
 - The single biggest UX/perf issue is the implicit `router.refresh()` in `ActionForm`.
 - URL-query “toast/error” banners should be removed in favor of `sonner` toasts.
 - Pages list needs pagination (or at least server-side limiting) to avoid huge payloads + hydration explosion.
@@ -47,6 +55,7 @@ Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger na
 - `listSitesCached` is called redundantly in layout and pages.
 
 ### 2.2 Items that are inconsistent or uncertain (treat cautiously)
+
 - Next.js version: one report mentions Next.js 15; others and the confirmed `package.json` say **16.1.1**.
 - p95 scale estimates (pages/glossary size) differ. **Decision:** implement pagination + reduce refresh regardless of exact p95.
 
@@ -55,12 +64,14 @@ Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger na
 ## 3. Release goals for 16.1.1 (what “done” means)
 
 ### 3.1 UX outcomes
+
 1. **No full page refresh** after “row-level” actions like “Force crawl”.
 2. **No URL-polluted banners** (`?toast=` / `?error=`) and no “Dismiss” links that navigate.
 3. “Pages” view works efficiently for large sites via **pagination** (server-side limiting + UI pager).
 4. Long-running operations (crawl/translate) have **live status updates** (polling) so users don’t need manual refresh.
 
 ### 3.2 Engineering outcomes
+
 - Backward-compatible change to `ActionForm` so call sites opt out of refresh deliberately.
 - No schema breaks: do not violate strict Zod response schemas.
 - Minimal dependency changes (no SWR/React Query added for 16.1.1).
@@ -70,6 +81,7 @@ Pages parse `?toast=...` and `?error=...` and show dismiss links that trigger na
 ## 4. Implementation plan (milestones + atomic tasks)
 
 > Conventions:
+>
 > - Each task is written so Codex can implement it **without interpretation**.
 > - “Search” tasks include exact ripgrep patterns.
 > - Every milestone includes explicit acceptance checks.
@@ -141,6 +153,7 @@ useEffect(() => {
 - [x] Do **not** change the initial state shape (`{ ok: false, message: "" }`).
 
 **Acceptance for M1.1:**
+
 - Existing call sites continue to refresh on success (no behavior regression).
 - A call site that sets `refreshOnSuccess={false}` does **not** refresh.
 - An action returning `{ meta: { refresh: false } }` does **not** refresh.
@@ -155,6 +168,7 @@ useEffect(() => {
 - [x] Add the prop `refreshOnSuccess={false}` to that `ActionForm`.
 
 **Acceptance for M1.2:**
+
 - Clicking “Force crawl” shows the toast but **does not** reset scroll position and does **not** trigger a full route refresh.
 
 ---
@@ -164,11 +178,13 @@ useEffect(() => {
 **Goal:** eliminate `?toast=` / `?error=` handling from dashboard pages and rely on `sonner` toasts only.
 
 **Search (repo-wide):**
+
 - [x] Run `rg "searchParams\?: Promise<\{\s*toast\?:" app/dashboard -g'*.tsx'`
 - [x] Run `rg "decodeSearchParam\(" app/dashboard -g'*.tsx'`
 - [x] Run `rg "\?toast=|\?error=|&toast=|&error=" app/dashboard internal components -g'*.ts*'`
 
 **For each page that implements URL banners (minimum list from reports):**
+
 - `app/dashboard/sites/[id]/page.tsx`
 - `app/dashboard/sites/[id]/admin/page.tsx`
 - `app/dashboard/sites/[id]/pages/page.tsx`
@@ -183,6 +199,7 @@ Perform the following edits **per file**:
 - [x] Ensure the page still renders and compiles with TypeScript.
 
 **Acceptance for M1.3:**
+
 - No dashboard page renders a “Dismiss” `<Link>` whose purpose is only to clear toast/error URL params.
 - URLs no longer contain `toast`, `error`, or `details` from dashboard actions.
 
@@ -217,6 +234,7 @@ Perform the following edits **per file**:
 - [ ] Ensure the JSON response is still `{ pages: [...] }` with no extra keys.
 
 **Acceptance for M2.1:**
+
 - `GET /sites/:id/pages` without query params returns the same data as before.
 - `GET /sites/:id/pages?limit=50&offset=0` returns at most 50 pages.
 - `GET /sites/:id/pages?limit=50&offset=50` returns the next slice.
@@ -234,7 +252,7 @@ export async function fetchSitePages(
   auth: AuthInput,
   siteId: string,
   options?: { limit?: number; offset?: number },
-): Promise<SitePageSummary[]>
+): Promise<SitePageSummary[]>;
 ```
 
 - [x] Build query params using `URLSearchParams` and append them only if provided.
@@ -267,6 +285,7 @@ export async function fetchSitePages(
 ```
 
 **Acceptance for M2.2:**
+
 - TypeScript compiles.
 - Existing call sites still work (options is optional).
 - Calling with options produces expected query string.
@@ -297,6 +316,7 @@ export async function fetchSitePages(
   - [ ] Keep the route stable (do not add additional query params).
 
 **Acceptance for M2.3:**
+
 - A site with > 50 pages shows exactly 50 rows and a “Next” link.
 - Clicking “Next” shows the next page of rows and a “Previous” link.
 - “Force crawl” still works on paginated rows and does not refresh (from M1.2).
@@ -321,6 +341,7 @@ export async function fetchSitePages(
   - [x] On other errors → return 500 JSON `{ error: "Unable to load status" }`
 
 **Acceptance for M3.1:**
+
 - Hitting the route while authenticated returns `{ site, deployments }`.
 - Unauthenticated requests are rejected by existing auth behavior.
 
@@ -339,7 +360,7 @@ export function usePoll<T>(options: {
   fetcher: () => Promise<T>;
   isTerminal: (value: T) => boolean;
   initial: T;
-}): { value: T; error: Error | null; isPolling: boolean }
+}): { value: T; error: Error | null; isPolling: boolean };
 ```
 
 - [x] Behavior requirements:
@@ -353,6 +374,7 @@ export function usePoll<T>(options: {
   - [x] Store the most recent error in `error` but keep previous `value`
 
 **Acceptance for M3.2:**
+
 - Hook compiles and can be used by client components.
 - Polling stops when `isTerminal` returns true.
 
@@ -372,15 +394,17 @@ export function usePoll<T>(options: {
   - [x] Use `usePoll` to poll `/api/dashboard/sites/${siteId}/status` every `3000ms`
   - [x] Define terminal states for crawl as:
     - [x] `latestCrawlRun.status` is `"completed"` or `"failed"`, or `latestCrawlRun` is null
-  - [x] Render the existing Crawl Summary markup using the *polled* `site.latestCrawlRun` data
+  - [x] Render the existing Crawl Summary markup using the _polled_ `site.latestCrawlRun` data
 
 **Server integration:**
+
 - [x] In `app/dashboard/sites/[id]/pages/page.tsx`, replace the current Crawl Summary card body with the new client component, passing:
   - [x] `siteId={site.id}`
   - [x] `initialSite={site}`
   - [x] all labels currently used in the card
 
 **Acceptance for M3.3:**
+
 - Triggering a crawl updates the crawl status badge from `in_progress` → `completed`/`failed` without a full page refresh.
 - The poll stops once a terminal state is reached.
 
@@ -389,13 +413,16 @@ export function usePoll<T>(options: {
 #### M3.4 Disable refresh for crawl/translate trigger actions once polling is in place
 
 **Search:**
+
 - [x] `rg "action=\{triggerCrawlAction\}" app/dashboard -g'*.tsx'`
 - [x] `rg "action=\{translateAndServeAction\}" app/dashboard -g'*.tsx'`
 
 For each matching `<ActionForm>`:
+
 - [x] Add `refreshOnSuccess={false}`.
 
 **Acceptance for M3.4:**
+
 - Triggering crawl/translate shows toast and does not cause full refresh.
 - Status updates are visible via polling (where implemented).
 
@@ -412,6 +439,7 @@ For each matching `<ActionForm>`:
   - [x] Ensure it calls `await invalidateSitesCache(auth.webhooksAuth);` exactly once before any `revalidatePath(...)` calls.
 
 **Acceptance for M4.1:**
+
 - After domain verification/provisioning, the sidebar and sites list reflect updated status within the same session (no 10-minute stale cache).
 
 ---
@@ -421,6 +449,7 @@ For each matching `<ActionForm>`:
 #### M5.1 Stop serializing entire glossary JSON on every keystroke
 
 **Files (from reports):**
+
 - `app/dashboard/sites/glossary-table.tsx`
 - `app/dashboard/sites/[id]/glossary-editor.tsx`
 
@@ -433,6 +462,7 @@ For each matching `<ActionForm>`:
   - [x] JSON serialization happens **only** on submit, not on every render.
 
 **Acceptance for M5.1:**
+
 - Typing in glossary inputs no longer causes noticeable input lag on large glossaries.
 - Saving still sends the full glossary payload correctly.
 
@@ -443,6 +473,7 @@ For each matching `<ActionForm>`:
 > These are safe refactors but not required to hit the primary UX outcomes.
 
 #### M6.1 Extract duplicated helpers into shared modules
+
 - [ ] Create `internal/dashboard/format.ts` exporting:
   - [ ] `formatTimestamp(value?: string | null): string`
   - [ ] `formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: string): string`
@@ -454,6 +485,7 @@ For each matching `<ActionForm>`:
 - [ ] Replace duplicate inline implementations across pages with imports.
 
 #### M6.2 Split `app/dashboard/actions.ts` by domain (reduce merge conflicts)
+
 - [ ] Create directory: `app/dashboard/actions/`
 - [ ] Move actions into:
   - [ ] `actions/sites.ts`
@@ -616,6 +648,7 @@ git commit -am "Dashboard 16.1.1 UX/perf: explicit refresh, remove URL toasts, p
 ---
 
 ## 7. Notes / explicit non-goals for 16.1.1
+
 - Do **not** introduce SWR or React Query in this release.
 - Do **not** add extra keys to strict Zod responses without updating schemas.
 - Do **not** attempt a full rewrite of server components; keep changes incremental.

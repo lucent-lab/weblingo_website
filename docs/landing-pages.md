@@ -5,8 +5,8 @@ They reuse a shared layout and only swap copy + iconography.
 
 ## Segment tracker
 
-| slug | path | focus | status |
-| --- | --- | --- | --- |
+| slug      | path                          | focus                           | status  |
+| --------- | ----------------------------- | ------------------------------- | ------- |
 | expansion | `/{locale}/landing/expansion` | Global expansion demand capture | noindex |
 
 ## Add a new landing segment

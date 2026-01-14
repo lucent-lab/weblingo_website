@@ -36,33 +36,33 @@ You MUST follow this logging policy whenever you add or modify code.
 
 ## REQUIRED FIELDS FOR EVERY WIDE EVENT
 
-1) Identity and correlation
+1. Identity and correlation
    - timestamp (ISO-8601)
    - event_name (low-cardinality, e.g. "http_request", "job_run", "workflow_step")
    - request_id (or job_id / message_id) [high-cardinality]
    - trace_id (if available) [high-cardinality]
    - parent_id / span_id (if available)
 
-2) Execution context
+2. Execution context
    - service (logical service/component name)
    - environment (prod/staging/dev)
    - version (app version/build)
    - deployment_id (or equivalent rollout identifier)
    - region/zone (if relevant)
 
-3) Operation summary
+3. Operation summary
    - operation (low-cardinality name, e.g. route name, handler name, job name)
    - outcome ("success" | "error" | "rejected" | "cancelled")
    - status_code (for HTTP-like operations; include semantic status if not HTTP)
    - duration_ms (end-to-end time)
 
-4) Actor + business context (choose what applies; include high-signal dimensions)
+4. Actor + business context (choose what applies; include high-signal dimensions)
    - user_id (if exists), account_id/org_id (if exists)
    - user_tier/subscription_plan (if exists)
    - feature_flags / experiment_variants impacting behavior
    - domain entity IDs relevant to the unit of work (e.g. document_id, page_id, translation_id, order_id)
 
-5) Dependency and performance summary (aggregated, not spammy)
+5. Dependency and performance summary (aggregated, not spammy)
    - counts: db_queries, cache_hits/misses, external_calls
    - key latencies: external_call_latency_ms (by dependency), db_time_ms, etc. (aggregated)
    - notable fallbacks/retries (as fields), not as many separate lines
@@ -88,7 +88,7 @@ You MUST follow this logging policy whenever you add or modify code.
   - state transitions that matter (e.g., circuit breaker opened, queue paused)
   - security/audit-relevant actions (e.g., permission denied, admin action)
   - data integrity anomalies (e.g., invariant broken but recovered)
-  These additional events must still be structured and must include correlation IDs.
+    These additional events must still be structured and must include correlation IDs.
 
 ## WHAT NOT TO LOG
 
@@ -102,10 +102,10 @@ You MUST follow this logging policy whenever you add or modify code.
 
 - Implement tail-style sampling: decide whether to keep/store AFTER the unit finishes.
 - Rules:
-  1) Keep 100% of errors/failures.
-  2) Keep 100% of slow units (above your "too slow" threshold).
-  3) Keep 100% of VIP/flagged users/sessions (if such a concept exists).
-  4) Sample the remaining successful fast events at a low rate (e.g., 1-5%).
+  1. Keep 100% of errors/failures.
+  2. Keep 100% of slow units (above your "too slow" threshold).
+  3. Keep 100% of VIP/flagged users/sessions (if such a concept exists).
+  4. Sample the remaining successful fast events at a low rate (e.g., 1-5%).
 - Sampling must never remove the ability to debug incidents.
 
 ## QUALITY BAR / SELF-CHECKLIST (THE LLM MUST DO THIS BEFORE FINISHING)

@@ -8,6 +8,7 @@ This report is written so an external reviewer can suggest improvements without 
 
 WebLingo is a SaaS product that crawls customer sites, translates pages, and serves localized variants.
 The dashboard lets customers:
+
 - Onboard sites and configure languages/routing.
 - Verify domains and trigger crawls/translations.
 - Monitor deployments and translation runs.
@@ -113,8 +114,7 @@ export function ActionForm({
 
   useEffect(() => {
     if (wasPending.current && !pending && state.ok) {
-      const redirectTo =
-        typeof state.meta?.redirectTo === "string" ? state.meta.redirectTo : null;
+      const redirectTo = typeof state.meta?.redirectTo === "string" ? state.meta.redirectTo : null;
       if (redirectTo) {
         router.push(redirectTo);
       } else {
@@ -704,6 +704,7 @@ function resolveDomainStatusVariant(status: Deployment["domainStatus"] | null) {
 Client call site (dashboard): `internal/dashboard/webhooks.ts`.
 
 Request:
+
 - Method: `GET`
 - Path: `/sites/{siteId}/pages`
 - Query params: none
@@ -731,11 +732,13 @@ const listSitePagesResponseSchema = z
 Server handler (webhooks worker in main repo): `workers/webhooks-worker/src/handlers/sites.ts:listPages`.
 
 Notes from handler:
+
 - Supabase query uses `order=last_seen_at.desc`.
 - No `limit` or `offset` is set.
 - All pages for the site are returned.
 
 Max size:
+
 - No max size or p95 value is defined in code or config.
 
 ### 5) Typical scale numbers (p95)
@@ -781,7 +784,7 @@ nor `@tanstack/react-query` in `dependencies` or `devDependencies`.
 ### What is now coherent (✅ strongly consistent across reports)
 
 **A) `ActionForm` source code is identical in GPT + Gemini**
-Both provide the same `components/dashboard/action-form.tsx` implementation, including the **implicit** `router.refresh()` for any successful action without `meta.redirectTo`.  
+Both provide the same `components/dashboard/action-form.tsx` implementation, including the **implicit** `router.refresh()` for any successful action without `meta.redirectTo`.
 
 **B) `ActionResponse` is consistent**
 All describe the same type:
@@ -794,20 +797,20 @@ export type ActionResponse = {
 };
 ```
 
-This is important because it means we can safely add **additional meta keys** (e.g. `meta.refresh`) without breaking type compatibility.  
+This is important because it means we can safely add **additional meta keys** (e.g. `meta.refresh`) without breaking type compatibility.
 
 **C) The “per-row `ActionForm` in a big table” pattern is confirmed with a real file**
-The `app/dashboard/sites/[id]/pages/page.tsx` example shows **N rows ⇒ N ActionForm instances**, each with `useActionState`, `useEffect`, `useRouter`, and toast wiring.  
+The `app/dashboard/sites/[id]/pages/page.tsx` example shows **N rows ⇒ N ActionForm instances**, each with `useActionState`, `useEffect`, `useRouter`, and toast wiring.
 
 **D) `fetchSitePages` contract is confirmed and is currently unpaginated**
 Dashboard wrapper:
 
-* `GET /sites/{siteId}/pages`
-* response: `{ pages: SitePageSummary[] }` (strict schema)
-  No limit/offset/cursor currently exposed by the wrapper.  
+- `GET /sites/{siteId}/pages`
+- response: `{ pages: SitePageSummary[] }` (strict schema)
+  No limit/offset/cursor currently exposed by the wrapper.
 
 **E) Dependencies are coherent for implementation constraints**
-All agree: **no SWR / no React Query installed**, and **`sonner` is present** for toasts. That heavily influences “how” we should implement granular updates and polling.  
+All agree: **no SWR / no React Query installed**, and **`sonner` is present** for toasts. That heavily influences “how” we should implement granular updates and polling.
 
 ---
 
@@ -815,8 +818,8 @@ All agree: **no SWR / no React Query installed**, and **`sonner` is present** fo
 
 **1) Next.js major version**
 
-* One report claims Next.js 15 (likely assumption). 
-* Another report shows a concrete `package.json` snippet with `next: "16.1.1"`. 
+- One report claims Next.js 15 (likely assumption).
+- Another report shows a concrete `package.json` snippet with `next: "16.1.1"`.
 
 **Action for Codex:** treat the `package.json` value as source-of-truth during implementation (Codex can read the repo), and do not rely on the “Next 15” statement.
 
@@ -840,14 +843,14 @@ This is the **complete, codex-ready plan** based on the now-confirmed code artif
 
 Current `ActionForm` always calls `router.refresh()` on success (unless `meta.redirectTo`), causing:
 
-* full RSC re-execution
-* re-fetch of `fetchSitePages` (potentially huge)
-* scroll/focus reset and jank
-  Confirmed in `components/dashboard/action-form.tsx`. 
+- full RSC re-execution
+- re-fetch of `fetchSitePages` (potentially huge)
+- scroll/focus reset and jank
+  Confirmed in `components/dashboard/action-form.tsx`.
 
 ### Exact change
 
-**File:** `components/dashboard/action-form.tsx` 
+**File:** `components/dashboard/action-form.tsx`
 
 1. **Add a new optional prop** to `ActionFormProps`:
 
@@ -859,12 +862,11 @@ refreshOnSuccess?: boolean;
 
 **Rules (MUST implement exactly):**
 
-* If `state.meta.redirectTo` is a string ⇒ `router.push(redirectTo)` and **do not refresh**
-* Else determine `shouldRefresh`:
-
-  * If prop `refreshOnSuccess` is provided ⇒ use it
-  * Else if `state.meta.refresh` is boolean ⇒ use it
-  * Else default ⇒ `true` (to keep current behavior until call sites are migrated)
+- If `state.meta.redirectTo` is a string ⇒ `router.push(redirectTo)` and **do not refresh**
+- Else determine `shouldRefresh`:
+  - If prop `refreshOnSuccess` is provided ⇒ use it
+  - Else if `state.meta.refresh` is boolean ⇒ use it
+  - Else default ⇒ `true` (to keep current behavior until call sites are migrated)
 
 3. **Call `onSuccess` before navigation** (so it still runs even if push causes unmount).
 
@@ -906,9 +908,9 @@ export function ActionForm({ ..., refreshOnSuccess, ... }: ActionFormProps) { ..
 
 ### Acceptance criteria
 
-* Existing call sites behave the same **without changes** (still refreshes).
-* Any call site can opt out via `refreshOnSuccess={false}`.
-* Any action can opt out via returning `meta: { refresh: false }`.
+- Existing call sites behave the same **without changes** (still refreshes).
+- Any call site can opt out via `refreshOnSuccess={false}`.
+- Any action can opt out via returning `meta: { refresh: false }`.
 
 ---
 
@@ -916,11 +918,11 @@ export function ActionForm({ ..., refreshOnSuccess, ... }: ActionFormProps) { ..
 
 ### Why
 
-`app/dashboard/sites/[id]/pages/page.tsx` currently renders an `ActionForm` per row and every success triggers `router.refresh()` ⇒ re-fetches the entire table payload and re-renders the whole page. 
+`app/dashboard/sites/[id]/pages/page.tsx` currently renders an `ActionForm` per row and every success triggers `router.refresh()` ⇒ re-fetches the entire table payload and re-renders the whole page.
 
 ### Exact change
 
-**File:** `app/dashboard/sites/[id]/pages/page.tsx` 
+**File:** `app/dashboard/sites/[id]/pages/page.tsx`
 
 Find the row action:
 
@@ -947,9 +949,9 @@ Change it to:
 
 ### Acceptance criteria
 
-* Clicking “Force crawl” shows the toast (from `useActionToast`) and **does not** re-render the entire route.
-* No URL change.
-* No scroll reset.
+- Clicking “Force crawl” shows the toast (from `useActionToast`) and **does not** re-render the entire route.
+- No URL change.
+- No scroll reset.
 
 ---
 
@@ -957,11 +959,11 @@ Change it to:
 
 ### Why
 
-The Pages screen parses `searchParams.toast` / `searchParams.error` and renders a banner with a **Dismiss Link** that navigates (reloads the page). This is explicitly shown in the provided file. 
+The Pages screen parses `searchParams.toast` / `searchParams.error` and renders a banner with a **Dismiss Link** that navigates (reloads the page). This is explicitly shown in the provided file.
 
 ### Exact change (minimum)
 
-**File:** `app/dashboard/sites/[id]/pages/page.tsx` 
+**File:** `app/dashboard/sites/[id]/pages/page.tsx`
 
 1. Delete this whole block in the returned JSX:
 
@@ -971,10 +973,10 @@ The Pages screen parses `searchParams.toast` / `searchParams.error` and renders 
 
 2. Remove the related variables:
 
-* `resolvedSearchParams`
-* `toastMessage`
-* `actionErrorMessage`
-* `returnTo`
+- `resolvedSearchParams`
+- `toastMessage`
+- `actionErrorMessage`
+- `returnTo`
 
 3. Remove the `decodeSearchParam` function at bottom (if it becomes unused in this file).
 
@@ -984,19 +986,19 @@ The Pages screen parses `searchParams.toast` / `searchParams.error` and renders 
 
 Search and delete this pattern everywhere:
 
-* `decodeSearchParam(resolvedSearchParams?.toast)`
-* `decodeSearchParam(resolvedSearchParams?.error)`
-* `?toast=`
-* `?error=`
-* “Dismiss” `<Link ... href={returnTo}>Dismiss</Link>`
+- `decodeSearchParam(resolvedSearchParams?.toast)`
+- `decodeSearchParam(resolvedSearchParams?.error)`
+- `?toast=`
+- `?error=`
+- “Dismiss” `<Link ... href={returnTo}>Dismiss</Link>`
 
 The reports list multiple pages with duplication:
-`sites/[id]/page.tsx`, `sites/[id]/admin/page.tsx`, `sites/[id]/overrides/page.tsx`, `sites/[id]/pages/page.tsx`.  
+`sites/[id]/page.tsx`, `sites/[id]/admin/page.tsx`, `sites/[id]/overrides/page.tsx`, `sites/[id]/pages/page.tsx`.
 
 ### Acceptance criteria
 
-* Success/error feedback is exclusively shown by `sonner` toasts from `useActionToast`.
-* Dismissing notifications never triggers navigation.
+- Success/error feedback is exclusively shown by `sonner` toasts from `useActionToast`.
+- Dismissing notifications never triggers navigation.
 
 ---
 
@@ -1009,7 +1011,7 @@ The reports list multiple pages with duplication:
 Dashboard schema currently validates the response **strictly** as:
 
 ```ts
-z.object({ pages: z.array(sitePageSummarySchema) }).strict()
+z.object({ pages: z.array(sitePageSummarySchema) }).strict();
 ```
 
 So **the backend MUST continue returning exactly `{ pages: [...] }`**.
@@ -1019,14 +1021,14 @@ So **the backend MUST continue returning exactly `{ pages: [...] }`**.
 
 **Webhooks worker handler** (as referenced by the reports): implement query params:
 
-* `limit` (integer)
-* `offset` (integer)
+- `limit` (integer)
+- `offset` (integer)
 
 Behavior:
 
-* Default `limit = 50`, default `offset = 0`
-* Clamp `limit` to `[1, 200]`
-* Use Supabase `.range(offset, offset + limit - 1)`
+- Default `limit = 50`, default `offset = 0`
+- Clamp `limit` to `[1, 200]`
+- Use Supabase `.range(offset, offset + limit - 1)`
   Ordering stays `last_seen_at.desc` (and also add a stable secondary order on `id.desc` if available).
 
 Result shape remains:
@@ -1035,13 +1037,13 @@ Result shape remains:
 { "pages": [ ... ] }
 ```
 
-This satisfies current strict schema. 
+This satisfies current strict schema.
 
 ---
 
 ## P1.2 Update dashboard `fetchSitePages` wrapper to accept pagination
 
-**File:** `internal/dashboard/webhooks.ts` 
+**File:** `internal/dashboard/webhooks.ts`
 
 Change function signature from:
 
@@ -1071,9 +1073,7 @@ export async function fetchSitePages(
   if (typeof options?.limit === "number") qs.set("limit", String(options.limit));
   if (typeof options?.offset === "number") qs.set("offset", String(options.offset));
 
-  const path = qs.size
-    ? `/sites/${siteId}/pages?${qs.toString()}`
-    : `/sites/${siteId}/pages`;
+  const path = qs.size ? `/sites/${siteId}/pages?${qs.toString()}` : `/sites/${siteId}/pages`;
 
   const data = await request({
     path,
@@ -1089,17 +1089,16 @@ export async function fetchSitePages(
 
 ## P1.3 Update `SitePagesPage` UI to paginate via search params (shareable state)
 
-**File:** `app/dashboard/sites/[id]/pages/page.tsx` 
+**File:** `app/dashboard/sites/[id]/pages/page.tsx`
 
 ### Required UI behavior
 
-* Default: show **50** rows per page.
-* Use query param `page` (1-indexed).
-* Determine `hasNextPage` without changing backend response shape:
-
-  * request `limit + 1`
-  * if response length > limit ⇒ hasNextPage = true
-  * display only first `limit` rows
+- Default: show **50** rows per page.
+- Use query param `page` (1-indexed).
+- Determine `hasNextPage` without changing backend response shape:
+  - request `limit + 1`
+  - if response length > limit ⇒ hasNextPage = true
+  - display only first `limit` rows
 
 ### Codex-ready logic (server component)
 
@@ -1123,7 +1122,7 @@ const requestedLimit = pageSize + 1;
 When fetch pages:
 
 ```ts
-fetchSitePages(authToken, id, { limit: requestedLimit, offset })
+fetchSitePages(authToken, id, { limit: requestedLimit, offset });
 ```
 
 After fetch:
@@ -1137,16 +1136,16 @@ Render table using `visiblePages`.
 
 Render pager controls at bottom:
 
-* Previous link if pageNumber > 1
-* Next link if hasNextPage
+- Previous link if pageNumber > 1
+- Next link if hasNextPage
 
 Links MUST preserve the base route and set `?page=N` only.
 
 ### Acceptance criteria
 
-* A site with 1000 pages does not render 1000 rows.
-* Initial payload size stays bounded.
-* Navigation between pages does not rely on `router.refresh()`.
+- A site with 1000 pages does not render 1000 rows.
+- Initial payload size stays bounded.
+- Navigation between pages does not rely on `router.refresh()`.
 
 ---
 
@@ -1156,10 +1155,10 @@ Links MUST preserve the base route and set `?page=N` only.
 
 Because the dashboard is server-rendered and webhooks auth is server-only, the clean approach is:
 
-* Client polls a dashboard API route
-* API route uses `requireDashboardAuth()` and calls the Webhooks API
+- Client polls a dashboard API route
+- API route uses `requireDashboardAuth()` and calls the Webhooks API
 
-This is aligned with the reports’ “polling mechanism” recommendation.  
+This is aligned with the reports’ “polling mechanism” recommendation.
 
 ### Minimal viable endpoint
 
@@ -1169,9 +1168,9 @@ Create:
 
 Response includes only what UI needs for “live status”, e.g.:
 
-* latest crawl run status fields
-* latest translate run status fields (if available)
-* deployments summary (optional)
+- latest crawl run status fields
+- latest translate run status fields (if available)
+- deployments summary (optional)
 
 ### Client hook
 
@@ -1179,15 +1178,15 @@ Create a client hook:
 
 `internal/dashboard/use-poll.ts` (or similar)
 
-* Poll every 3 seconds while status is “in_progress/running”
-* Stop polling on terminal states
+- Poll every 3 seconds while status is “in_progress/running”
+- Stop polling on terminal states
 
 ### UI integration
 
 Convert only the “status summary” cards (crawl/translate) into client components that:
 
-* receive initial server data as props
-* poll and update text/badges in place
+- receive initial server data as props
+- poll and update text/badges in place
 
 This lets you later disable refresh for actions like `triggerCrawlAction` and `translateAndServeAction` safely.
 
@@ -1197,17 +1196,17 @@ This lets you later disable refresh for actions like `triggerCrawlAction` and `t
 
 ## P3.1 Ensure `invalidateSitesCache` is called for any mutation that changes sidebar-visible site state
 
-Reports indicate mismatches where TTL-based Redis cache causes stale sidebar/overview until expiration.  
+Reports indicate mismatches where TTL-based Redis cache causes stale sidebar/overview until expiration.
 
 **Codex MUST:**
 
-* Identify actions that affect:
+- Identify actions that affect:
+  - site status (active/inactive)
+  - domain verification/provisioning status
+  - serving status
+  - site creation/deletion
 
-  * site status (active/inactive)
-  * domain verification/provisioning status
-  * serving status
-  * site creation/deletion
-* Ensure they call `invalidateSitesCache(auth.webhooksAuth)`.
+- Ensure they call `invalidateSitesCache(auth.webhooksAuth)`.
 
 ---
 
@@ -1217,22 +1216,21 @@ Reports indicate mismatches where TTL-based Redis cache causes stale sidebar/ove
 
 Reports identify duplicates of:
 
-* `decodeSearchParam`
-* `formatTimestamp`
-* status→variant functions
-  across multiple pages.  
+- `decodeSearchParam`
+- `formatTimestamp`
+- status→variant functions
+  across multiple pages.
 
 Create:
 
-* `internal/dashboard/format.ts`
+- `internal/dashboard/format.ts`
+  - `formatTimestamp(value?: string | null): string`
+  - `formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: string): string`
 
-  * `formatTimestamp(value?: string | null): string`
-  * `formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: string): string`
-* `internal/dashboard/status.ts`
-
-  * `resolveServingStatusVariant(...)`
-  * `resolveCrawlStatusVariant(...)`
-  * `resolveDomainStatusVariant(...)`
+- `internal/dashboard/status.ts`
+  - `resolveServingStatusVariant(...)`
+  - `resolveCrawlStatusVariant(...)`
+  - `resolveDomainStatusVariant(...)`
 
 Then replace inline duplicates with imports.
 
@@ -1240,17 +1238,17 @@ Then replace inline duplicates with imports.
 
 ## P4.2 Split `app/dashboard/actions.ts` by domain (optional but recommended)
 
-All three reports agree it is too large and repetitive.   
+All three reports agree it is too large and repetitive.
 
 Target structure:
 
-* `app/dashboard/actions/index.ts` (re-export for backwards compatibility)
-* `app/dashboard/actions/sites.ts`
-* `app/dashboard/actions/domains.ts`
-* `app/dashboard/actions/crawl.ts`
-* `app/dashboard/actions/translation.ts`
-* `app/dashboard/actions/glossary.ts`
-* `app/dashboard/actions/_utils.ts`
+- `app/dashboard/actions/index.ts` (re-export for backwards compatibility)
+- `app/dashboard/actions/sites.ts`
+- `app/dashboard/actions/domains.ts`
+- `app/dashboard/actions/crawl.ts`
+- `app/dashboard/actions/translation.ts`
+- `app/dashboard/actions/glossary.ts`
+- `app/dashboard/actions/_utils.ts`
 
 ---
 
@@ -1258,10 +1256,10 @@ Target structure:
 
 The updated reports removed the remaining ambiguity around:
 
-* the exact `ActionForm` behavior (`router.refresh()` is real and unconditional) 
-* the strict `ActionResponse` contract (`meta` is flexible and safe for new flags) 
-* the exact “big table + per-row ActionForm” implementation (`sites/[id]/pages/page.tsx`) 
-* the exact `fetchSitePages` schema and why backend response shape must not change casually (`.strict()`) 
+- the exact `ActionForm` behavior (`router.refresh()` is real and unconditional)
+- the strict `ActionResponse` contract (`meta` is flexible and safe for new flags)
+- the exact “big table + per-row ActionForm” implementation (`sites/[id]/pages/page.tsx`)
+- the exact `fetchSitePages` schema and why backend response shape must not change casually (`.strict()`)
 
 That let me write the pagination plan in a way that **does not break** your strict schema consumers.
 
@@ -1356,6 +1354,7 @@ Each task is a single, unambiguous edit and is tracked with a checkbox.
 ### Critical 1 - Full route refresh after every dashboard action
 
 Evidence:
+
 - `components/dashboard/action-form.tsx:45-53`
 
 Narrative:
@@ -1370,6 +1369,7 @@ Replace `router.refresh()` with targeted client state updates, or allow ActionFo
 ### High 2 - Client-heavy action forms inside large lists
 
 Evidence:
+
 - `app/dashboard/sites/[id]/page.tsx:558-713`
 - `app/dashboard/sites/[id]/pages/page.tsx:391-434`
 
@@ -1385,6 +1385,7 @@ Use a shared client handler for row actions (one `useActionState` per table), or
 ### High 3 - No pagination for page list and full dataset fetch
 
 Evidence:
+
 - `app/dashboard/sites/[id]/pages/page.tsx:379-440`
 - `internal/dashboard/webhooks.ts:836-843`
 
@@ -1400,6 +1401,7 @@ Introduce server-side pagination (limit/offset or cursor) and update the UI to p
 ### High 4 - Glossary editing recomputes and serializes the whole dataset on each change
 
 Evidence:
+
 - `app/dashboard/sites/glossary-table.tsx:33-47`
 - `app/dashboard/sites/[id]/glossary-editor.tsx:23-40`
 
@@ -1415,6 +1417,7 @@ Debounce heavy transforms, keep row-level state, and serialize only on submit. C
 ### Medium 5 - Cache invalidation mismatch leads to stale nav and overview data
 
 Evidence:
+
 - `internal/dashboard/data.ts:39-75`
 - `app/dashboard/actions.ts:595-719`
 - `app/dashboard/actions.ts:864-887`
@@ -1431,6 +1434,7 @@ Invalidate the sites cache in domain and serving related actions, or migrate to 
 ### Medium 6 - Admin page fetch waterfall adds extra latency
 
 Evidence:
+
 - `app/dashboard/sites/[id]/admin/page.tsx:77-88`
 
 Narrative:
@@ -1445,6 +1449,7 @@ Fetch site, deployments, and site list in parallel and handle the "site not foun
 ### Medium 7 - No-store for all webhooks API reads
 
 Evidence:
+
 - `internal/dashboard/webhooks.ts:450-459`
 - `app/dashboard/sites/[id]/page.tsx:85-89`
 
@@ -1460,6 +1465,7 @@ Introduce short-lived caching for read endpoints (server cache or tag-based reva
 ### Low 8 - URL-based toast/error state
 
 Evidence:
+
 - `app/dashboard/sites/[id]/page.tsx:35-51`
 - `app/dashboard/sites/[id]/pages/page.tsx:22-31`
 
@@ -1475,6 +1481,7 @@ Use client-side notification state or a centralized toast store; reserve URL par
 ### Low 9 - Hardcoded UI copy and i18n drift
 
 Evidence:
+
 - `app/dashboard/page.tsx:35-83`
 - `app/dashboard/sites/[id]/pages/page.tsx:364-370`
 
@@ -1490,6 +1497,7 @@ Move dashboard copy into `internal/i18n` and use `t(...)` consistently.
 ### Low 10 - No automated tests for dashboard logic
 
 Evidence:
+
 - `internal/dashboard/site-settings.ts:48-185`
 - `app/dashboard/actions.ts:331-990`
 
