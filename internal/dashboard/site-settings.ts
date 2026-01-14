@@ -220,9 +220,7 @@ export function buildSiteSettingsUpdatePayload(
       formData.get("spaRefreshErrorFallback"),
       "errorFallback",
     );
-    const enableSectionScope = parseSpaRefreshBoolean(
-      formData.get("spaRefreshEnableSectionScope"),
-    );
+    const enableSectionScope = parseSpaRefreshBoolean(formData.get("spaRefreshEnableSectionScope"));
     payload.spaRefresh = {
       enabled,
       missingFallback,

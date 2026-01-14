@@ -129,7 +129,10 @@ function getCacheEnvPrefix(): string {
   return process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown";
 }
 
-function getBootstrapCacheKey(supabaseAccessToken: string, subjectAccountId?: string | null): string {
+function getBootstrapCacheKey(
+  supabaseAccessToken: string,
+  subjectAccountId?: string | null,
+): string {
   const normalizedSubjectId = normalizeSubjectAccountId(subjectAccountId);
   const digest = createHash("sha256")
     .update(`${supabaseAccessToken}:${normalizedSubjectId}`)
@@ -220,10 +223,7 @@ async function getBootstrap({
           entitlements: tokenResponse.entitlements,
           actorAccountId: tokenResponse.actorAccountId,
           subjectAccountId: tokenResponse.subjectAccountId,
-          account: buildFallbackAccount(
-            tokenResponse.subjectAccountId,
-            tokenResponse.entitlements,
-          ),
+          account: buildFallbackAccount(tokenResponse.subjectAccountId, tokenResponse.entitlements),
           agencyCustomers: null,
         };
       } else {

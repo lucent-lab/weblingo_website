@@ -476,9 +476,7 @@ export async function cancelTranslationRunAction(
       throw error;
     }
     console.error("[dashboard] cancelTranslationRunAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to cancel the translation run."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to cancel the translation run."));
   }
 }
 
@@ -526,9 +524,7 @@ export async function resumeTranslationRunAction(
       throw error;
     }
     console.error("[dashboard] resumeTranslationRunAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to resume the translation run."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to resume the translation run."));
   }
 }
 
@@ -554,9 +550,7 @@ export async function retryFailedTranslationRunAction(
       throw error;
     }
     console.error("[dashboard] retryFailedTranslationRunAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to retry failed pages right now."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to retry failed pages right now."));
   }
 }
 
@@ -861,9 +855,7 @@ export async function updateSiteStatusAction(
       throw error;
     }
     console.error("[dashboard] updateSiteStatusAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to update site status right now."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to update site status right now."));
   }
 }
 
@@ -963,9 +955,7 @@ export async function deleteSiteAction(
       throw error;
     }
     console.error("[dashboard] deleteSiteAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to delete this site right now."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to delete this site right now."));
   }
 }
 
@@ -993,8 +983,6 @@ export async function activateSiteAction(
       throw error;
     }
     console.error("[dashboard] activateSiteAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to activate this site right now."),
-    );
+    return failed(toFriendlyDashboardActionError(error, "Unable to activate this site right now."));
   }
 }

@@ -60,10 +60,7 @@ export default async function OpsPage() {
                   : site.sourceUrl;
               const latest = site.latestCrawlRun;
               return (
-                <div
-                  key={site.id}
-                  className="rounded-lg border border-border/60 bg-muted/30 p-3"
-                >
+                <div key={site.id} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-foreground">{label}</p>
                     <Badge variant={site.status === "active" ? "secondary" : "outline"}>
@@ -82,9 +79,7 @@ export default async function OpsPage() {
                     <InfoRow
                       label="Latest crawl"
                       value={
-                        latest
-                          ? `${latest.status} · ${latest.pagesDiscovered} discovered`
-                          : "—"
+                        latest ? `${latest.status} · ${latest.pagesDiscovered} discovered` : "—"
                       }
                     />
                     <InfoRow
@@ -120,8 +115,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="font-semibold text-foreground">{label}:</span>{" "}
-      <span>{value}</span>
+      <span className="font-semibold text-foreground">{label}:</span> <span>{value}</span>
     </div>
   );
 }

@@ -5,12 +5,7 @@ import { cache } from "react";
 import { redis } from "@/internal/core/redis";
 
 import type { WebhooksAuthContext } from "./auth";
-import {
-  listSites,
-  listSupportedLanguages,
-  type Site,
-  type SupportedLanguage,
-} from "./webhooks";
+import { listSites, listSupportedLanguages, type Site, type SupportedLanguage } from "./webhooks";
 
 const SITES_CACHE_NAMESPACE = "dashboard:sites";
 const LANGUAGES_CACHE_KEY = "dashboard:supported-languages";

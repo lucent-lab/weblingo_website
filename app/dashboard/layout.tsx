@@ -252,13 +252,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   );
 }
 
-async function SitesUsageSummary({
-  auth,
-  isAgency,
-}: {
-  auth: DashboardAuth;
-  isAgency: boolean;
-}) {
+async function SitesUsageSummary({ auth, isAgency }: { auth: DashboardAuth; isAgency: boolean }) {
   let sitesUsage: { value: string; helper?: string } | null = null;
   try {
     if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {

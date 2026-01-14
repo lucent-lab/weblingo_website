@@ -78,8 +78,9 @@ export function CrawlSummaryClient({
 
   const lastSuccessfulAt = resolveLastSuccessfulAt(latestCrawlRun);
   const showError = latestCrawlRun.status === "failed";
-  const errorText = showError ? latestCrawlRun.error ?? "—" : "—";
-  const errorTone = showError && latestCrawlRun.error ? "text-destructive" : "text-muted-foreground";
+  const errorText = showError ? (latestCrawlRun.error ?? "—") : "—";
+  const errorTone =
+    showError && latestCrawlRun.error ? "text-destructive" : "text-muted-foreground";
 
   return (
     <div className="grid gap-4 text-sm md:grid-cols-2">
@@ -97,9 +98,7 @@ export function CrawlSummaryClient({
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{captureModeLabel}</div>
-        <span className="font-mono text-foreground">
-          {latestCrawlRun.crawlCaptureMode ?? "—"}
-        </span>
+        <span className="font-mono text-foreground">{latestCrawlRun.crawlCaptureMode ?? "—"}</span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{startedLabel}</div>

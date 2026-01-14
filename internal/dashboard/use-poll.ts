@@ -47,8 +47,7 @@ export function usePoll<T>(options: {
         if (!active) {
           return;
         }
-        const nextError =
-          err instanceof Error ? err : new Error("Unable to refresh status.");
+        const nextError = err instanceof Error ? err : new Error("Unable to refresh status.");
         setError(nextError);
       }
     };
