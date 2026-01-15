@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-export function usePoll<T>(options: {
+export type UsePollOptions<T> = {
   enabled: boolean;
   intervalMs: number;
   fetcher: () => Promise<T>;
   isTerminal: (value: T) => boolean;
   initial: T;
-}): { value: T; error: Error | null; isPolling: boolean } {
+};
+
+export type PollState<T> = {
+  value: T;
+  error: Error | null;
+  isPolling: boolean;
+};
+
+export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
   const { enabled, intervalMs, fetcher, isTerminal, initial } = options;
   const [value, setValue] = useState<T>(initial);
   const [error, setError] = useState<Error | null>(null);
