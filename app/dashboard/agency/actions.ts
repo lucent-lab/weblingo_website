@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { createAgencyCustomer } from "@internal/dashboard/webhooks";
@@ -23,9 +24,11 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   meta,
 });
 
+const emailSchema = z.email();
+
 function formatAgencyBillingMessage(auth: DashboardAuth): string {
   const status = auth.actorAccount?.planStatus ?? "inactive";
-  const label = status.replace("_", " ");
+  const label = status.replaceAll("_", " ");
   return `Agency billing is ${label}. Update billing to invite customers.`;
 }
 
@@ -36,7 +39,7 @@ export async function createAgencyCustomerAction(
   const email = formData.get("email")?.toString().trim() ?? "";
   const customerPlan = formData.get("customerPlan")?.toString().trim() ?? "";
 
-  if (!email || !email.includes("@")) {
+  if (!email || !emailSchema.safeParse(email).success) {
     return failed("Enter a valid customer email.");
   }
   if (customerPlan !== "starter" && customerPlan !== "pro") {
@@ -65,9 +68,7 @@ export async function createAgencyCustomerAction(
       customerAccountId: result.customer.customerAccountId,
     });
   } catch (error) {
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
+    console.error("[dashboard] createAgencyCustomerAction failed:", error);
     return failed("Unable to invite customer.");
   }
 }

@@ -37,8 +37,21 @@ export function CustomerInviteForm() {
             disabled={pending}
             aria-busy={pending}
           >
-            <Input name="email" placeholder="customer@company.com" type="email" required />
+            <label className="sr-only" htmlFor="customer-email">
+              Customer email
+            </label>
+            <Input
+              id="customer-email"
+              name="email"
+              placeholder="customer@company.com"
+              type="email"
+              required
+            />
+            <label className="sr-only" htmlFor="customer-plan">
+              Customer plan
+            </label>
             <select
+              id="customer-plan"
               name="customerPlan"
               className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
               defaultValue="starter"
