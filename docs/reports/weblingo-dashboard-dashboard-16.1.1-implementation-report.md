@@ -325,7 +325,7 @@ export async function fetchSitePages(
 
 ### Milestone M3 (P2) — Live status updates (polling) and reducing refresh dependence for async actions
 
-> No new dependencies for 16.1.1. Implement polling with `fetch` + `setInterval`.
+> No new dependencies for 16.1.1. Implement polling with `fetch` + chained `setTimeout`.
 
 #### M3.1 Add authenticated status proxy route (dashboard server)
 
@@ -367,10 +367,12 @@ export function usePoll<T>(options: {
   - [x] Initialize `value` with `options.initial`
   - [x] If `enabled` is false → do not start interval
   - [x] If `enabled` is true:
-    - [x] Start an interval every `intervalMs`
-    - [x] On each tick: call `fetcher()`, set `value`
+    - [x] Immediately call `fetcher()` once when enabled becomes true
+    - [x] After each fetch completes, wait `intervalMs` before the next fetch
+    - [x] On success: set `value`, clear `error`
+    - [x] On error: set `error`, keep previous `value`, log the error, and continue polling
     - [x] If `isTerminal(value)` becomes true → stop polling
-  - [x] Stop interval on unmount
+  - [x] Stop polling on unmount and ignore in-flight responses
   - [x] Store the most recent error in `error` but keep previous `value`
 
 **Acceptance for M3.2:**

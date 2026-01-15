@@ -24,41 +24,44 @@ export function usePoll<T>(options: {
       return;
     }
     let active = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let inFlightToken = 0;
     setIsPolling(true);
 
     const tick = async () => {
+      const token = (inFlightToken += 1);
       try {
         const nextValue = await fetcher();
-        if (!active) {
+        if (!active || token !== inFlightToken) {
           return;
         }
         setValue(nextValue);
         setError(null);
         if (isTerminal(nextValue)) {
-          active = false;
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
           setIsPolling(false);
+          return;
         }
       } catch (err) {
-        if (!active) {
+        if (!active || token !== inFlightToken) {
           return;
         }
         const nextError = err instanceof Error ? err : new Error("Unable to refresh status.");
         setError(nextError);
+        console.error("[dashboard] usePoll fetch failed:", err);
       }
+      if (!active) {
+        return;
+      }
+      timeoutId = setTimeout(tick, intervalMs);
     };
 
-    intervalId = setInterval(tick, intervalMs);
     void tick();
 
     return () => {
       active = false;
-      if (intervalId) {
-        clearInterval(intervalId);
+      inFlightToken += 1;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
       setIsPolling(false);
     };
