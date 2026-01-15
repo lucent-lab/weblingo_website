@@ -12,6 +12,7 @@ import {
   type ClientMessages,
 } from "@internal/i18n";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import { z } from "zod";
 
 type TryFormProps = {
   locale: string;
@@ -23,6 +24,8 @@ type TryFormProps = {
 
 type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
 
+const emailSchema = z.email();
+
 export function TryForm({
   locale,
   messages,
@@ -33,17 +36,54 @@ export function TryForm({
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sourceLang, setSourceLang] = useState<string>(i18nConfig.defaultLocale);
   const [targetLang, setTargetLang] = useState<string>(locale);
+  const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const isDisabled = disabled || status === "creating" || status === "processing";
+  const trimmedUrl = url.trim();
+  const trimmedEmail = email.trim();
+  const normalizedSourceLang = useMemo(
+    () => normalizeLangTag(sourceLang) ?? sourceLang.trim(),
+    [sourceLang],
+  );
+  const normalizedTargetLang = useMemo(
+    () => normalizeLangTag(targetLang) ?? targetLang.trim(),
+    [targetLang],
+  );
+  const isPreviewRunning = status === "creating" || status === "processing";
+  const currentRequestKey = useMemo(
+    () =>
+      buildRequestKey({
+        url: trimmedUrl,
+        sourceLang,
+        targetLang,
+        email: trimmedEmail,
+      }),
+    [trimmedUrl, sourceLang, targetLang, trimmedEmail],
+  );
+  const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
+  const showGeneratingState = isPreviewRunning && isSameRequest;
+  const isRequestLocked = isSameRequest && status !== "idle" && status !== "failed";
+  const isSameLanguage =
+    Boolean(normalizedSourceLang) &&
+    Boolean(normalizedTargetLang) &&
+    normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase();
+  const inputsDisabled = disabled;
+  const isGenerateDisabled =
+    inputsDisabled ||
+    !trimmedUrl ||
+    (showEmailField && !trimmedEmail) ||
+    isRequestLocked ||
+    isSameLanguage;
 
   useEffect(() => {
     return () => {
@@ -68,6 +108,47 @@ export function TryForm({
     } catch {
       return false;
     }
+  }
+
+  function isValidEmail(candidate: string) {
+    return emailSchema.safeParse(candidate.trim()).success;
+  }
+
+  function validateUrl(value: string): string | null {
+    if (!value.trim() || !isValidHttpUrl(value)) {
+      return t("try.form.invalidUrl");
+    }
+    return null;
+  }
+
+  function validateEmail(value: string): string | null {
+    if (!showEmailField) {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return t("try.form.emailRequired");
+    }
+    if (!isValidEmail(trimmed)) {
+      return t("try.form.emailInvalid");
+    }
+    return null;
+  }
+
+  function buildRequestKey(input: {
+    url: string;
+    sourceLang: string;
+    targetLang: string;
+    email: string;
+  }) {
+    const normalizedSource = normalizeLangTag(input.sourceLang) ?? input.sourceLang.trim();
+    const normalizedTarget = normalizeLangTag(input.targetLang) ?? input.targetLang.trim();
+    return [
+      input.url.trim(),
+      normalizedSource.toLowerCase(),
+      normalizedTarget.toLowerCase(),
+      input.email.trim().toLowerCase(),
+    ].join("|");
   }
 
   function closeEventSource() {
@@ -102,12 +183,14 @@ export function TryForm({
     }, 15_000);
 
     const handlePayload = (data: Record<string, unknown>) => {
+      if (typeof data.previewUrl === "string") {
+        setPreviewUrl(data.previewUrl);
+      }
       if (data.message || data.stage) {
         setProgress((data.message as string) ?? (data.stage as string));
       }
 
-      if (data.status === "ready" && typeof data.previewUrl === "string") {
-        setPreviewUrl(data.previewUrl);
+      if (data.status === "ready") {
         setStatus("ready");
         setProgress(null);
         closeEventSource();
@@ -165,15 +248,11 @@ export function TryForm({
 
     es.addEventListener("complete", (event) => {
       try {
-        const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        const preview = data.previewUrl ?? (id ? `/_preview/${id}` : null);
-        if (preview) {
-          setPreviewUrl(preview);
-          setStatus("ready");
-        } else {
-          setError("Preview completed without a URL.");
-          setStatus("failed");
+        const payload = JSON.parse((event as MessageEvent).data ?? "{}");
+        if (payload && typeof payload.previewUrl === "string") {
+          setPreviewUrl(payload.previewUrl);
         }
+        setStatus("ready");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to parse preview response.");
         setStatus("failed");
@@ -198,24 +277,49 @@ export function TryForm({
   }
 
   async function handleGenerate() {
-    if (!url || disabled) return;
-    setStatus("creating");
-    setError(null);
-    setPreviewUrl(null);
-    setProgress(null);
-    closeEventSource();
+    if (!trimmedUrl || disabled) return;
 
     try {
-      const trimmed = url.trim();
-      if (!isValidHttpUrl(trimmed)) {
-        throw new Error(t("try.form.invalidUrl"));
+      if (!isValidHttpUrl(trimmedUrl)) {
+        const message = t("try.form.invalidUrl");
+        setUrlError(message);
+        throw new Error(message);
+      }
+      if (showEmailField) {
+        if (!trimmedEmail) {
+          const message = t("try.form.emailRequired");
+          setEmailError(message);
+          throw new Error(message);
+        }
+        if (!isValidEmail(trimmedEmail)) {
+          const message = t("try.form.emailInvalid");
+          setEmailError(message);
+          throw new Error(message);
+        }
       }
 
-      const normalizedSourceLang = normalizeLangTag(sourceLang) ?? sourceLang.trim();
-      const normalizedTargetLang = normalizeLangTag(targetLang) ?? targetLang.trim();
       if (!normalizedSourceLang || !normalizedTargetLang) {
         throw new Error("Source and target languages are required.");
       }
+      if (normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase()) {
+        throw new Error(t("try.form.sameLanguage"));
+      }
+
+      setUrlError(null);
+      setEmailError(null);
+      const requestKey = buildRequestKey({
+        url: trimmedUrl,
+        sourceLang: normalizedSourceLang,
+        targetLang: normalizedTargetLang,
+        email: trimmedEmail,
+      });
+
+      setStatus("creating");
+      setError(null);
+      setProgress(null);
+      setPreviewUrl(null);
+      closeEventSource();
+      setLastRequestKey(requestKey);
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -227,9 +331,10 @@ export function TryForm({
           Accept: "text/event-stream",
         },
         body: JSON.stringify({
-          sourceUrl: trimmed,
+          sourceUrl: trimmedUrl,
           sourceLang: normalizedSourceLang,
           targetLang: normalizedTargetLang,
+          ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
         }),
         signal: controller.signal,
       });
@@ -281,11 +386,13 @@ export function TryForm({
     let buffer = "";
 
     const handlePayload = (data: Record<string, unknown>) => {
+      if (typeof data.previewUrl === "string") {
+        setPreviewUrl(data.previewUrl);
+      }
       if (data.message || data.stage) {
         setProgress((data.message as string) ?? (data.stage as string));
       }
-      if (data.status === "ready" && typeof data.previewUrl === "string") {
-        setPreviewUrl(data.previewUrl);
+      if (data.status === "ready") {
         setStatus("ready");
         setProgress(null);
         return true;
@@ -321,14 +428,13 @@ export function TryForm({
           }
 
           if (event.type === "complete") {
-            const data = safeParseJson(event.data) ?? {};
-            const preview = (data.previewUrl as string) ?? null;
-            if (preview) {
-              setPreviewUrl(preview);
-              setStatus("ready");
-              setProgress(null);
-              return;
+            const data = safeParseJson(event.data);
+            if (data && typeof data.previewUrl === "string") {
+              setPreviewUrl(data.previewUrl);
             }
+            setStatus("ready");
+            setProgress(null);
+            return;
           }
 
           if (event.type === "error") {
@@ -387,43 +493,87 @@ export function TryForm({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row">
-          <Input
-            value={url}
-            onChange={(event) => setUrl(event.currentTarget.value)}
-            placeholder={t("try.form.placeholder")}
-            type="url"
-            pattern="https?://.*"
-            required
-            disabled={isDisabled}
-          />
-          <Button onClick={handleGenerate} disabled={!url || isDisabled}>
-            {isDisabled ? `${t("try.form.button")}…` : t("try.form.button")}
+          <div className="flex flex-1 flex-col gap-2">
+            <Input
+              value={url}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setUrl(value);
+                if (urlError) {
+                  setUrlError(validateUrl(value));
+                }
+              }}
+              onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
+              placeholder={t("try.form.placeholder")}
+              type="url"
+              pattern="https?://.*"
+              required
+              disabled={inputsDisabled}
+              aria-invalid={urlError ? "true" : "false"}
+            />
+            {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
+          </div>
+          <Button onClick={handleGenerate} disabled={isGenerateDisabled}>
+            {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
           </Button>
         </div>
         {showEmailField ? (
-          <Input
-            value={email}
-            onChange={(event) => setEmail(event.currentTarget.value)}
-            placeholder={t("try.form.emailPlaceholder")}
-            aria-label={t("try.form.emailLabel")}
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            disabled={isDisabled}
-          />
+          <div className="flex flex-col gap-2">
+            <Input
+              value={email}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setEmail(value);
+                if (emailError) {
+                  setEmailError(validateEmail(value));
+                }
+              }}
+              onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
+              placeholder={t("try.form.emailPlaceholder")}
+              aria-label={t("try.form.emailLabel")}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              required
+              disabled={inputsDisabled}
+              aria-invalid={emailError ? "true" : "false"}
+            />
+            <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
+            {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
+          </div>
         ) : null}
       </div>
 
       {statusMessage && (
         <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span>{statusMessage}</span>
+          <div className="flex flex-col gap-1">
+            <span>{statusMessage}</span>
+            {isPreviewRunning ? (
+              <span className="text-xs text-primary/80">{t("try.status.processingHint")}</span>
+            ) : null}
+          </div>
         </div>
       )}
 
       {error && status === "failed" && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {status === "ready" && (
+        <div className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{t("try.status.ready")}</span>
+            {previewUrl ? (
+              <Button asChild size="sm" variant="secondary">
+                <a href={previewUrl} target="_blank" rel="noreferrer">
+                  {t("try.preview.open")}
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -435,7 +585,7 @@ export function TryForm({
             onValueChange={setSourceLang}
             supportedLanguages={supportedLanguages}
             displayLocale={locale}
-            disabled={isDisabled}
+            disabled={inputsDisabled}
             placeholder="en"
           />
         </label>
@@ -446,29 +596,13 @@ export function TryForm({
             onValueChange={setTargetLang}
             supportedLanguages={supportedLanguages}
             displayLocale={locale}
-            disabled={isDisabled}
+            disabled={inputsDisabled}
             placeholder={locale}
           />
         </label>
       </div>
-
-      {previewUrl && status === "ready" && (
-        <div className="rounded-2xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          <p className="text-xs uppercase tracking-[0.3em] text-primary">
-            {t("try.preview.ready")}
-          </p>
-          <p className="mt-2 break-all text-base text-foreground">{previewUrl}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button asChild variant="secondary">
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                {t("try.preview.open")}
-              </a>
-            </Button>
-            <Button asChild variant="outline">
-              <a href={`/${locale}/pricing`}>{t("try.preview.subscribe")}</a>
-            </Button>
-          </div>
-        </div>
+      {isSameLanguage && (
+        <div className="text-sm text-destructive">{t("try.form.sameLanguage")}</div>
       )}
     </div>
   );

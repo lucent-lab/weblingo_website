@@ -104,7 +104,7 @@ const routeConfigSchema = z
   })
   .nullable();
 
-const siteProfileSchema = z.record(z.unknown()).nullable();
+const siteProfileSchema = z.record(z.string(), z.unknown()).nullable();
 
 const siteSchema = z.object({
   id: z.string(),
