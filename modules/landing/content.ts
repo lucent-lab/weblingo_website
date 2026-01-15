@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock, Laptop, Plane, Search, ShoppingBag, TrendingDown } from "lucide-react";
+import { Briefcase, Clock, Laptop, Plane, Search, TrendingDown } from "lucide-react";
 
 type StatItem = {
   valueKey: string;
@@ -116,7 +116,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
         {
           titleKey: "landing.expansion.useCases.items.3.title",
           bodyKey: "landing.expansion.useCases.items.3.body",
-          icon: ShoppingBag,
+          icon: Briefcase,
         },
       ],
     },
