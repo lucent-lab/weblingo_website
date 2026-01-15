@@ -114,9 +114,7 @@ export function CrawlSummaryClient({
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{discoveredLabel}</div>
-        <span className="font-mono text-foreground">
-          {latestCrawlRun.pagesDiscovered ?? "—"}
-        </span>
+        <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered ?? "—"}</span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{enqueuedLabel}</div>

@@ -47,11 +47,12 @@ describe("preview api env", () => {
     process.env.TRY_NOW_TOKEN = "server-preview-token";
     process.env.NEXT_PUBLIC_TRY_NOW_TOKEN = "client-preview-token";
 
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     );
     (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
 

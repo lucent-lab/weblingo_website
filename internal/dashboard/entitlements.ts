@@ -133,10 +133,10 @@ export function check(
     });
     const failedFeature = ok
       ? null
-      : requirement.allFeatures.find((feature) => {
+      : (requirement.allFeatures.find((feature) => {
           const key = FEATURE_FLAG_BY_FEATURE[feature];
           return account.featureFlags[key] !== true;
-        }) ?? requirement.allFeatures[0];
+        }) ?? requirement.allFeatures[0]);
     return ok
       ? ({ ok: true } as const)
       : ({ ok: false, reason: { kind: "feature", feature: failedFeature } } as const);
@@ -170,9 +170,9 @@ export function check(
     );
     const failedPreview = ok
       ? null
-      : requirement.allPreviews.find(
+      : (requirement.allPreviews.find(
           (preview) => !account.featureFlags.featurePreview.includes(preview),
-        ) ?? requirement.allPreviews[0];
+        ) ?? requirement.allPreviews[0]);
     return ok
       ? ({ ok: true } as const)
       : ({ ok: false, reason: { kind: "preview", preview: failedPreview } } as const);

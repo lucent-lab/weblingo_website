@@ -231,8 +231,7 @@ export function buildSiteSettingsUpdatePayload(
         enableSectionScope,
       };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Invalid SPA refresh configuration.";
+      const message = error instanceof Error ? error.message : "Invalid SPA refresh configuration.";
       return { ok: false, error: message };
     }
   }

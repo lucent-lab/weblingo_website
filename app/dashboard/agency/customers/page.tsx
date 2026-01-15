@@ -64,7 +64,10 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
         <CardContent className="space-y-4">
           <form className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="query">
+              <label
+                className="text-xs font-semibold uppercase text-muted-foreground"
+                htmlFor="query"
+              >
                 Search
               </label>
               <Input
@@ -75,7 +78,10 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="plan">
+              <label
+                className="text-xs font-semibold uppercase text-muted-foreground"
+                htmlFor="plan"
+              >
                 Plan
               </label>
               <select
@@ -90,7 +96,10 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase text-muted-foreground" htmlFor="status">
+              <label
+                className="text-xs font-semibold uppercase text-muted-foreground"
+                htmlFor="status"
+              >
                 Status
               </label>
               <select

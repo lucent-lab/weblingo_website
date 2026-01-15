@@ -81,10 +81,7 @@ export default async function OpsPage() {
                         .map((locale) => locale.targetLang)
                         .join(", ")})`}
                     />
-                    <InfoRow
-                      label="Latest crawl"
-                      value={latestLabel}
-                    />
+                    <InfoRow label="Latest crawl" value={latestLabel} />
                     <InfoRow
                       label="Last crawl update"
                       value={latest?.updatedAt ? formatTimestamp(latest.updatedAt) : "—"}
