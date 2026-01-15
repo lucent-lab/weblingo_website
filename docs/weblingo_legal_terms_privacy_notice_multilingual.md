@@ -21,7 +21,7 @@ WebLingo is operated by:
 **Bredis SAS** — Société par Actions Simplifiée (SAS)  
 SIREN 822 881 553 — TVA FR06822881553  
 44 Rue Victor Hugo, 29200 Brest, France  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. Description of Service
 
@@ -72,7 +72,7 @@ Any dispute shall fall under the jurisdiction of French courts (Brest).
 #### 1. Data Controller
 
 **Bredis SAS**, 44 Rue Victor Hugo, 29200 Brest, France  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. Data We Collect
 
@@ -92,7 +92,7 @@ Translated pages and translation dictionaries are stored securely on Vercel and 
 
 #### 5. User Rights (GDPR)
 
-You may request access, correction, or deletion of your data at any time by emailing contact@webligno.app.
+You may request access, correction, or deletion of your data at any time by emailing contact@weblingo.app.
 
 #### 6. Legal Basis
 
@@ -115,7 +115,7 @@ The latest version is always available at [https://www.weblingo.app/legal](https
 **Forme juridique:** Société par Actions Simplifiée (SAS)  
 **SIREN:** 822 881 553 — **TVA:** FR06822881553  
 **Address:** 44 Rue Victor Hugo, 29200 Brest, France  
-**Email:** contact@webligno.app  
+**Email:** contact@weblingo.app  
 **Hosting:** Vercel Inc. (USA) and Cloudflare Inc. (Global)
 
 **Liability disclaimer:** WebLingo provides automated translation and hosting on a best-effort basis.  
@@ -140,7 +140,7 @@ L’utilisation du site WebLingo implique l’acceptation pleine et entière des
 **Bredis SAS** — Société par Actions Simplifiée  
 SIREN 822 881 553 — TVA FR06822881553  
 Siège social : 44 Rue Victor Hugo, 29200 Brest, France  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. Description du service
 
@@ -189,7 +189,7 @@ Tout litige relèvera de la juridiction des tribunaux de Brest.
 #### 1. Responsable du traitement
 
 **Bredis SAS**, 44 Rue Victor Hugo, 29200 Brest, France  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. Données collectées
 
@@ -205,7 +205,7 @@ Aucun cookie n’est actuellement utilisé. Les utilisateurs seront informés en
 
 #### 4. Droits des utilisateurs
 
-Conformément au RGPD, vous pouvez demander l’accès, la rectification ou la suppression de vos données à l’adresse contact@webligno.app.
+Conformément au RGPD, vous pouvez demander l’accès, la rectification ou la suppression de vos données à l’adresse contact@weblingo.app.
 
 #### 5. Conservation des données
 
@@ -217,7 +217,7 @@ Les données sont conservées pendant la durée d’utilisation du service ou co
 
 **Éditeur :** Bredis SAS  
 **Adresse :** 44 Rue Victor Hugo, 29200 Brest, France  
-**Email :** contact@webligno.app  
+**Email :** contact@weblingo.app  
 **Hébergement :** Vercel Inc. (États-Unis) et Cloudflare Inc. (Global)
 
 Bredis SAS ne peut être tenue responsable d’éventuelles erreurs de traduction ou d’interruptions du service.  
@@ -241,7 +241,7 @@ Les présentes mentions sont régies par le **droit français**.
 **Bredis SAS（株式会社）**  
 SIREN番号：822 881 553　/　VAT番号：FR06822881553  
 本社所在地：フランス共和国 ブレスト市 ヴィクトル・ユーゴー通り44番地  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. サービス概要
 
@@ -290,7 +290,7 @@ WebLingoは「現状のまま」提供され、Bredis SASは翻訳の誤り、�
 
 **Bredis SAS**  
 住所：フランス共和国 ブレスト市 ヴィクトル・ユーゴー通り44番地  
-📧 contact@webligno.app
+📧 contact@weblingo.app
 
 #### 2. 収集する情報
 
@@ -306,7 +306,7 @@ WebLingoは「現状のまま」提供され、Bredis SASは翻訳の誤り、�
 
 #### 4. ユーザーの権利
 
-利用者は、登録データの開示・訂正・削除を希望する場合、contact@webligno.app までご連絡ください。
+利用者は、登録データの開示・訂正・削除を希望する場合、contact@weblingo.app までご連絡ください。
 
 #### 5. データ保管
 
@@ -318,7 +318,7 @@ WebLingoは「現状のまま」提供され、Bredis SASは翻訳の誤り、�
 
 **運営会社：** Bredis SAS  
 **住所：** フランス共和国 ブレスト市 ヴィクトル・ユーゴー通り44番地  
-**メール：** contact@webligno.app  
+**メール：** contact@weblingo.app  
 **ホスティング：** Vercel Inc.（米国）および Cloudflare Inc.（世界各地）
 
 本サービスは最善の努力により提供されていますが、翻訳内容の正確性またはシステム稼働の継続性について保証するものではありません。  
