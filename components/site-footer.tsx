@@ -44,7 +44,7 @@ export function SiteFooter({ locale, t }: SiteFooterProps) {
               {t("footer.privacy")}
             </Link>
             <Link href={`/${locale}/legal/notice`} className="transition hover:text-foreground">
-              {t("nav.legal")}
+              {t("footer.notice")}
             </Link>
           </div>
         </div>
