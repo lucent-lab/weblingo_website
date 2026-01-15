@@ -334,6 +334,7 @@ export function TryForm({
           sourceUrl: trimmedUrl,
           sourceLang: normalizedSourceLang,
           targetLang: normalizedTargetLang,
+          locale,
           ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
         }),
         signal: controller.signal,
