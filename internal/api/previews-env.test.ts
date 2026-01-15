@@ -47,13 +47,13 @@ describe("preview api env", () => {
     process.env.TRY_NOW_TOKEN = "server-preview-token";
     process.env.NEXT_PUBLIC_TRY_NOW_TOKEN = "client-preview-token";
 
-    const fetchSpy = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-    );
+    const fetchSpy = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      void args;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
     (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
 
     const { POST } = await loadRoute();
@@ -61,7 +61,11 @@ describe("preview api env", () => {
 
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledOnce();
-    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    const call = fetchSpy.mock.calls.at(0);
+    if (!call) {
+      throw new Error("Expected preview fetch to be called.");
+    }
+    const [url, init] = call;
     expect(url).toBe("https://client.example.com/api/previews");
     const headers = (init as RequestInit | undefined)?.headers as Record<string, string>;
     expect(headers["x-preview-token"]).toBe("server-preview-token");
