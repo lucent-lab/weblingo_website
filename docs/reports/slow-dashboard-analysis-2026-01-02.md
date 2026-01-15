@@ -214,6 +214,17 @@ Use Vercel KV (Upstash) or Redis:
 
 **Vercel KV free tier:** 30,000 reads per month (approx 3,000/day). This can be exceeded with frequent dashboard usage; monitor read count.
 
+**Production guardrails (KV):**
+
+- Alert when KV reads exceed ~80% of the monthly free tier.
+- If reads approach limits, migrate to a paid Vercel KV tier or alternate Redis/Upstash:
+  - Update the KV endpoint credentials in the server-only bootstrap cache module.
+  - Validate cache hit/miss metrics after migration.
+- Graceful degradation when cache lookup fails or quota is exceeded:
+  - Fall back to live token re-bootstrap when `envPrefix + ":" + sha256(session.access_token + ":" + subjectAccountIdNormalized)` misses.
+  - Skip caching when TTL is too short (e.g., `min(300s, expiresAt - now - 60s)` < 30s).
+  - Use single-flight/stampede protection so concurrent misses do not re-issue tokens.
+
 ### Step 3: Use cached bootstrap in `requireDashboardAuth()`
 
 Replace direct calls to `/auth/token` and `/accounts/me` with the cache-backed `getBootstrap()` result, preserving current entitlement logic.

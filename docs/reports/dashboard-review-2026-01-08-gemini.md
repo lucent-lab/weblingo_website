@@ -80,6 +80,10 @@ _Goal: Stop unnecessary full-page refreshes and clean up URL-based feedback._
   - Reads `toast`, `error`, and `details` from `useSearchParams`.
   - Shows a `sonner` toast if present.
   - Calls `router.replace(pathname)` immediately after showing the toast to clean the URL.
+  - Tracks shown payloads in a persistent `useRef(new Set())` and skips duplicate renders:
+    - Derive a stable toast ID from `searchParams` (e.g., full param string or `toast|error|details`).
+    - Only show a toast + replace the URL if the ID has not been seen.
+    - Add the ID to the set before calling `router.replace(...)` to avoid races.
 - [ ] **Task 0.5**: Mount `<FlashToasts />` once in `app/dashboard/layout.tsx`.
 - [ ] **Task 0.6**: Delete existing search-param banner blocks and the `decodeSearchParam` helper from all dashboard page files (e.g., `sites/[id]/page.tsx`, `sites/[id]/pages/page.tsx`).
 
