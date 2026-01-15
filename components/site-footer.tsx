@@ -29,7 +29,7 @@ export function SiteFooter({ locale, t }: SiteFooterProps) {
             <Link href={`/${locale}/docs`} className="transition hover:text-foreground">
               {t("nav.docs")}
             </Link>
-            <Link href={`/${locale}/try`} className="transition hover:text-foreground">
+            <Link href={`/${locale}#try`} className="transition hover:text-foreground">
               {t("nav.try")}
             </Link>
           </div>

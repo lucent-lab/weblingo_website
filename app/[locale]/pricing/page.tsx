@@ -178,10 +178,10 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           </p>
           <div className="mt-8">
             <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-              <Link href={`/${locale}/contact`}>
+              <a href="mailto:contact@weblingo.app">
                 {t("pricing.header.contactCta")}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </a>
             </Button>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">{t("pricing.header.trust")}</p>
@@ -321,13 +321,13 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           <p className="mb-12 text-lg text-muted-foreground">{t("home.final.subtitle")}</p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-              <Link href={`/${locale}/try`}>
+              <Link href={`/${locale}#try`}>
                 {t("home.final.cta")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/contact`}>{t("pricing.header.contactCta")}</Link>
+              <a href="mailto:contact@weblingo.app">{t("pricing.header.contactCta")}</a>
             </Button>
           </div>
         </div>

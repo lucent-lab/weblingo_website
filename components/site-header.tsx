@@ -16,6 +16,8 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ locale, t }: SiteHeaderProps) {
+  const tryHref = `/${locale}#try`;
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -42,7 +44,7 @@ export function SiteHeader({ locale, t }: SiteHeaderProps) {
             <Link href={`/${locale}/login`}>{t("nav.login")}</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href={`/${locale}/try`}>{t("nav.try")}</Link>
+            <Link href={tryHref}>{t("nav.try")}</Link>
           </Button>
         </div>
       </div>
