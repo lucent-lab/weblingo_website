@@ -253,7 +253,7 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
                     return (
                       <tr
                         key={
-                          deployment.id ??
+                          deployment.deploymentId ??
                           `${deployment.targetLang}-${deployment.domain ?? "domain"}`
                         }
                         className="border-t border-border/50"
