@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,15 @@ export function GlossaryTable({
 }: GlossaryTableProps) {
   const [rows, setRows] = useState<GlossaryRow[]>(() => hydrateRows(initialEntries, targetLangs));
   const hasTargetLangs = targetLangs.length > 0;
+  const onEntriesChangeRef = useRef(onEntriesChange);
 
   useEffect(() => {
     setRows((current) => syncRowsWithTargets(current, targetLangs));
   }, [targetLangs]);
+
+  useEffect(() => {
+    onEntriesChangeRef.current = onEntriesChange;
+  }, [onEntriesChange]);
 
   const entries = useMemo(
     () => rows.flatMap((row) => buildRowEntries(row, targetLangs)),
@@ -43,8 +48,8 @@ export function GlossaryTable({
   );
 
   useEffect(() => {
-    onEntriesChange?.(entries);
-  }, [entries, onEntriesChange]);
+    onEntriesChangeRef.current?.(entries);
+  }, [entries]);
 
   return (
     <div className="space-y-3">

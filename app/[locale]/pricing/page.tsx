@@ -233,8 +233,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                       <p className="text-xs font-semibold uppercase text-muted-foreground">
                         {t("pricing.compare.column.feature")}
                       </p>
-                      {plan.features.map((feature) => (
-                        <div key={feature} className="flex gap-3 text-sm">
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className="flex gap-3 text-sm">
                           <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
                           <span className="text-foreground">{feature}</span>
                         </div>

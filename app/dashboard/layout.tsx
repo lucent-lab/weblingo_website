@@ -37,7 +37,7 @@ type DashboardLayoutProps = {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const auth = await requireDashboardAuth();
-  const email = auth.user?.email ?? "demo@webligno.app";
+  const email = auth.user?.email ?? "—";
   const isAgency = auth.actorAccount?.planType === "agency";
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const navItems = [
@@ -97,7 +97,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       : `${pageCrawlsUsed}/${maxDailyPageCrawls} used today`;
   const planLabel = auth.account?.planType ?? "unknown";
   const rawStatusLabel = auth.account?.planStatus ?? "unknown";
-  const statusLabel = rawStatusLabel.replace("_", " ");
+  const statusLabel = rawStatusLabel.replaceAll("_", " ");
   const statusTone = resolveStatusTone(rawStatusLabel);
   let siteNavItems: SiteNavEntry[] = [];
   try {
@@ -167,9 +167,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         <SidebarFooter>
           <div className="rounded-md border border-sidebar-border bg-sidebar-accent/60 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
             <p className="text-sm font-semibold text-sidebar-foreground">Need help?</p>
-            <p>Check DNS instructions on each domain or email contact@webligno.app.</p>
+            <p>Check DNS instructions on each domain or email contact@weblingo.app.</p>
             <Button asChild variant="outline" size="sm" className="mt-3 w-full bg-transparent">
-              <Link href="mailto:contact@webligno.app">Get support</Link>
+              <Link href="mailto:contact@weblingo.app">Get support</Link>
             </Button>
           </div>
         </SidebarFooter>
@@ -261,13 +261,15 @@ async function SitesUsageSummary({ auth, isAgency }: { auth: DashboardAuth; isAg
         value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
         helper: "Agency usage",
       };
-    } else {
-      const sites = await listSitesCached(auth.webhooksAuth!);
+    } else if (auth.webhooksAuth) {
+      const sites = await listSitesCached(auth.webhooksAuth);
       const activeSites = sites.filter((site) => site.status === "active").length;
       const maxSites = auth.account?.featureFlags.maxSites ?? null;
       sitesUsage = {
         value: `${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
       };
+    } else {
+      sitesUsage = { value: "—" };
     }
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
@@ -320,7 +322,7 @@ function resolveBillingBanner(auth: DashboardAuth): { message: string; ctaLabel:
   if (!issue) {
     return null;
   }
-  const status = issue.status.replace("_", " ");
+  const status = issue.status.replaceAll("_", " ");
   const isAgency = auth.actorAccount?.planType === "agency";
   if (issue.scope === "actor" && isAgency) {
     return {

@@ -158,7 +158,7 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
   if (!issue) {
     return `Your plan is not active. Update billing to ${actionLabel}.`;
   }
-  const status = issue.status.replace("_", " ");
+  const status = issue.status.replaceAll("_", " ");
   if (issue.scope === "actor" && auth.actorAccount?.planType === "agency") {
     return `Agency billing is ${status}. Update billing to ${actionLabel}.`;
   }
@@ -840,9 +840,9 @@ export async function updateSiteStatusAction(
 
   try {
     const updated = await withWebhooksAuth(async (auth) => {
-      const updated = await updateSite(auth, siteId, { status });
+      const updatedSite = await updateSite(auth, siteId, { status });
       await invalidateSitesCache(auth);
-      return updated;
+      return updatedSite;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");

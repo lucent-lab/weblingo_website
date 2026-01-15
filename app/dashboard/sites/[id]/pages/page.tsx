@@ -252,7 +252,9 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
                     const domainVariant = resolveDomainStatusVariant(domainStatus);
                     return (
                       <tr
-                        key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
+                        key={
+                          deployment.id ?? `${deployment.targetLang}-${deployment.domain ?? "domain"}`
+                        }
                         className="border-t border-border/50"
                       >
                         <td className="px-3 py-3 align-top font-semibold text-foreground">

@@ -59,6 +59,11 @@ export default async function OpsPage() {
                   ? (site.siteProfile.label as string)
                   : site.sourceUrl;
               const latest = site.latestCrawlRun;
+              const latestLabel = latest
+                ? latest.pagesDiscovered == null
+                  ? `${latest.status}`
+                  : `${latest.status} · ${latest.pagesDiscovered} discovered`
+                : "—";
               return (
                 <div key={site.id} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -78,9 +83,7 @@ export default async function OpsPage() {
                     />
                     <InfoRow
                       label="Latest crawl"
-                      value={
-                        latest ? `${latest.status} · ${latest.pagesDiscovered} discovered` : "—"
-                      }
+                      value={latestLabel}
                     />
                     <InfoRow
                       label="Last crawl update"

@@ -114,19 +114,23 @@ export function CrawlSummaryClient({
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{discoveredLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered}</span>
+        <span className="font-mono text-foreground">
+          {latestCrawlRun.pagesDiscovered ?? "—"}
+        </span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{enqueuedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued}</span>
+        <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued ?? "—"}</span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{selectedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.selectedCount}</span>
+        <span className="font-mono text-foreground">{latestCrawlRun.selectedCount ?? "—"}</span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{skippedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.skippedDueToLimitCount}</span>
+        <span className="font-mono text-foreground">
+          {latestCrawlRun.skippedDueToLimitCount ?? "—"}
+        </span>
       </div>
       <div className="space-y-1 md:col-span-2">
         <div className="text-xs uppercase text-muted-foreground">{errorLabel}</div>
