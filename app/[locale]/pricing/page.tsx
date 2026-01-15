@@ -226,8 +226,9 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                       size="lg"
                       className="mb-8 w-full"
                       variant={highlight ? "default" : "outline"}
+                      disabled
                     >
-                      {t("pricing.tiers.checkout")}
+                      {t("pricing.tiers.comingSoon")}
                     </Button>
                     <div className="space-y-4">
                       <p className="text-xs font-semibold uppercase text-muted-foreground">
