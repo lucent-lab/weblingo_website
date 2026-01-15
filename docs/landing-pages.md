@@ -2,6 +2,8 @@
 
 This marketing site supports segment-specific landing pages under `/{locale}/landing/{segment}`.
 They reuse a shared layout and only swap copy + iconography.
+The main home variant is controlled by `HOME_PAGE_VARIANT`; the classic home lives at
+`/{locale}/landing/classic` and stays `noindex`.
 
 ## Segment tracker
 
