@@ -19,7 +19,8 @@ export default function DashboardError({
   reset: () => void;
 }) {
   const router = useRouter();
-  const [showDetails, setShowDetails] = useState(process.env.NODE_ENV !== "production");
+  const isProd = process.env.NODE_ENV === "production";
+  const [showDetails, setShowDetails] = useState(!isProd);
 
   useEffect(() => {
     console.error(error);
@@ -76,24 +77,26 @@ export default function DashboardError({
               </Button>
             </form>
             <Button asChild size="sm" variant="link">
-              <a href="mailto:contact@webligno.app">Contact support</a>
+              <a href="mailto:contact@weblingo.app">Contact support</a>
             </Button>
           </div>
 
-          <div className="space-y-2">
-            <button
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-              onClick={() => setShowDetails((prev) => !prev)}
-              type="button"
-            >
-              {showDetails ? "Hide technical details" : "Show technical details"}
-            </button>
-            {showDetails ? (
-              <pre className="max-h-[320px] overflow-auto rounded-lg border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-                {error.stack ?? "No stack trace available."}
-              </pre>
-            ) : null}
-          </div>
+          {!isProd ? (
+            <div className="space-y-2">
+              <button
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                onClick={() => setShowDetails((prev) => !prev)}
+                type="button"
+              >
+                {showDetails ? "Hide technical details" : "Show technical details"}
+              </button>
+              {showDetails ? (
+                <pre className="max-h-[320px] overflow-auto rounded-lg border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
+                  {error.stack ?? "No stack trace available."}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

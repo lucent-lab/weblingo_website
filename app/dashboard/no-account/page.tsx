@@ -24,13 +24,19 @@ export default async function NoAccountPage({ searchParams }: NoAccountPageProps
 
   const resolvedSearchParams = await searchParams;
   const rawError = resolvedSearchParams?.error;
+  const errorMessages: Record<string, string> = {
+    claim_failed: "We could not create your account yet. Please try again.",
+    session_expired: "Your session expired. Please sign in again.",
+  };
   let error: string | null = null;
   if (typeof rawError === "string") {
+    let decoded = rawError;
     try {
-      error = decodeURIComponent(rawError);
+      decoded = decodeURIComponent(rawError);
     } catch {
-      error = rawError;
+      decoded = rawError;
     }
+    error = errorMessages[decoded] ?? "An unexpected error occurred.";
   }
 
   return (
@@ -65,7 +71,7 @@ export default async function NoAccountPage({ searchParams }: NoAccountPageProps
               </Button>
             </form>
             <Button asChild variant="ghost">
-              <a href="mailto:contact@webligno.app">Contact support</a>
+              <a href="mailto:contact@weblingo.app">Contact support</a>
             </Button>
           </div>
         </CardContent>

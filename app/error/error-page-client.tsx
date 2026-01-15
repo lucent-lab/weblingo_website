@@ -12,6 +12,7 @@ export default function ErrorPageClient() {
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
   const trace = searchParams.get("trace");
+  const isProd = process.env.NODE_ENV === "production";
 
   const title = useMemo(() => {
     if (message && /account not found/i.test(message)) {
@@ -19,6 +20,21 @@ export default function ErrorPageClient() {
     }
     return "Something went wrong";
   }, [message]);
+
+  const safeTrace = useMemo(() => {
+    if (!trace || isProd) {
+      return null;
+    }
+    const trimmed = trace.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const cleaned = trimmed.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "");
+    if (!cleaned) {
+      return null;
+    }
+    return cleaned.length > 2000 ? `${cleaned.slice(0, 2000)}...` : cleaned;
+  }, [trace, isProd]);
 
   useEffect(() => {
     const context = {
@@ -67,17 +83,17 @@ export default function ErrorPageClient() {
               <Link href="/auth/login">Sign in</Link>
             </Button>
             <Button asChild size="sm" variant="link">
-              <a href="mailto:contact@webligno.app">Contact support</a>
+              <a href="mailto:contact@weblingo.app">Contact support</a>
             </Button>
           </div>
 
-          {trace ? (
+          {safeTrace ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Technical details
+                User-provided debug info
               </p>
               <pre className="max-h-[320px] overflow-auto rounded-lg border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-                {trace}
+                {safeTrace}
               </pre>
             </div>
           ) : null}

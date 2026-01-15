@@ -12,15 +12,29 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return new Response("Preview service is not configured.", { status: 500 });
   }
 
-  const upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(id)}/stream`, {
-    method: "GET",
-    headers: {
-      Accept: "text/event-stream",
-      "x-preview-token": PREVIEW_TOKEN,
-    },
-    cache: "no-store",
-    signal: _request.signal,
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(id)}/stream`, {
+      method: "GET",
+      headers: {
+        Accept: "text/event-stream",
+        "x-preview-token": PREVIEW_TOKEN,
+      },
+      cache: "no-store",
+      signal: _request.signal,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to reach preview service.";
+    return new Response(message, { status: 502 });
+  }
+
+  if (!upstream.ok) {
+    const text = await upstream.text();
+    return new Response(text || "Preview stream unavailable.", {
+      status: upstream.status,
+      headers: { "Content-Type": upstream.headers.get("content-type") ?? "text/plain" },
+    });
+  }
 
   const headers = new Headers();
   const passthrough = ["content-type", "cache-control", "transfer-encoding"];

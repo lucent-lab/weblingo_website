@@ -84,7 +84,7 @@ export function AuthLoginForm() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={intent === "signup" ? "new-password" : "current-password"}
                 placeholder="••••••••"
                 required
               />
@@ -113,7 +113,7 @@ export function AuthLoginForm() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Need help?{" "}
-        <a href="mailto:contact@webligno.app" className="font-medium text-primary">
+        <a href="mailto:contact@weblingo.app" className="font-medium text-primary">
           Contact support
         </a>
       </p>

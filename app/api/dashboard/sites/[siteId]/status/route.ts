@@ -11,7 +11,10 @@ type RouteParams = {
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const auth = await requireDashboardAuth();
-  const token = auth.webhooksAuth!;
+  if (!auth.webhooksAuth) {
+    return NextResponse.json({ error: "Missing credentials." }, { status: 401 });
+  }
+  const token = auth.webhooksAuth;
   const { siteId } = await params;
 
   try {

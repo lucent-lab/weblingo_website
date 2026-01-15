@@ -50,9 +50,7 @@ function toFriendlySupabaseAuthError(error: unknown, action: AuthActionKind): st
     normalized.includes("already registered") ||
     normalized.includes("already exists")
   ) {
-    return action === "signup"
-      ? "Unable to create account. Try logging in instead."
-      : "Invalid email or password.";
+    return "If an account exists for this email, you will receive an email with next steps.";
   }
 
   if (normalized.includes("password") && normalized.includes("should be at least")) {
