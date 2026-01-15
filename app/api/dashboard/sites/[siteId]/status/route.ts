@@ -14,14 +14,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
   if (!auth.webhooksAuth) {
     return NextResponse.json({ error: "Missing credentials." }, { status: 401 });
   }
+  if (!auth.subjectAccountId) {
+    return NextResponse.json({ error: "Missing account context." }, { status: 401 });
+  }
   const token = auth.webhooksAuth;
   const { siteId } = await params;
 
   try {
-    const [site, deployments] = await Promise.all([
-      fetchSite(token, siteId),
-      fetchDeployments(token, siteId),
-    ]);
+    const site = await fetchSite(token, siteId);
+    if (site.accountId !== auth.subjectAccountId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const deployments = await fetchDeployments(token, siteId);
     return NextResponse.json({ site, deployments });
   } catch (error) {
     if (error instanceof WebhooksApiError && error.status === 404) {

@@ -108,6 +108,7 @@ const siteProfileSchema = z.record(z.string(), z.unknown()).nullable();
 
 const siteSchema = z.object({
   id: z.string(),
+  accountId: z.string(),
   sourceUrl: z.string(),
   status: z.enum(["active", "inactive"]),
   servingMode: z.enum(["strict", "tolerant"]),
