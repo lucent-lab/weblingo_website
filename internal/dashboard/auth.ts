@@ -40,6 +40,7 @@ export type DashboardAuth = {
   actorAccountId: string | null;
   subjectAccountId: string | null;
   actingAsCustomer: boolean;
+  subjectFallbackToActor: boolean;
   actorPlanActive: boolean;
   subjectPlanActive: boolean;
   mutationsAllowed: boolean;
@@ -275,6 +276,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       actorAccountId: null,
       subjectAccountId: null,
       actingAsCustomer: false,
+      subjectFallbackToActor: false,
       actorPlanActive: false,
       subjectPlanActive: false,
       mutationsAllowed: false,
@@ -306,6 +308,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   let subjectAuth = actorAuth;
   let subjectAccount = actorAccount;
   let actingAsCustomer = false;
+  let subjectFallbackToActor = false;
   if (
     requestedSubjectId &&
     requestedSubjectId !== actorBootstrap.subjectAccountId &&
@@ -320,6 +323,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       subjectAccount = subjectBootstrap.account;
       actingAsCustomer = true;
     } catch (error) {
+      subjectFallbackToActor = true;
       console.warn("[dashboard] subject account exchange failed:", error);
     }
   }
@@ -345,6 +349,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     actorAccountId: actorBootstrap.actorAccountId,
     subjectAccountId: subjectBootstrap.subjectAccountId,
     actingAsCustomer,
+    subjectFallbackToActor,
     actorPlanActive,
     subjectPlanActive,
     mutationsAllowed,

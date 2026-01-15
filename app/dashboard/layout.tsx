@@ -114,6 +114,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   const billingBanner = resolveBillingBanner(auth);
+  const subjectFallbackNotice = auth.subjectFallbackToActor
+    ? "We couldn't switch to the selected workspace. Showing your main account instead."
+    : null;
   const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
   const teamSwitcherDisabled = workspaceOptions.length <= 1;
 
@@ -242,6 +245,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               <Button asChild size="sm" variant="secondary">
                 <Link href={pricingPath}>{billingBanner.ctaLabel}</Link>
               </Button>
+            </div>
+          ) : null}
+          {subjectFallbackNotice ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {subjectFallbackNotice}
             </div>
           ) : null}
 
