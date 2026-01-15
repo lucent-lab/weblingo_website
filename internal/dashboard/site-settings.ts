@@ -212,21 +212,29 @@ export function buildSiteSettingsUpdatePayload(
     if (enabled === null) {
       return { ok: false, error: "Client navigation support must be enabled or disabled." };
     }
-    const missingFallback = parseSpaRefreshFallback(
-      formData.get("spaRefreshMissingFallback"),
-      "missingFallback",
-    );
-    const errorFallback = parseSpaRefreshFallback(
-      formData.get("spaRefreshErrorFallback"),
-      "errorFallback",
-    );
-    const enableSectionScope = parseSpaRefreshBoolean(formData.get("spaRefreshEnableSectionScope"));
-    payload.spaRefresh = {
-      enabled,
-      missingFallback,
-      errorFallback,
-      enableSectionScope,
-    };
+    try {
+      const missingFallback = parseSpaRefreshFallback(
+        formData.get("spaRefreshMissingFallback"),
+        "missingFallback",
+      );
+      const errorFallback = parseSpaRefreshFallback(
+        formData.get("spaRefreshErrorFallback"),
+        "errorFallback",
+      );
+      const enableSectionScope = parseSpaRefreshBoolean(
+        formData.get("spaRefreshEnableSectionScope"),
+      );
+      payload.spaRefresh = {
+        enabled,
+        missingFallback,
+        errorFallback,
+        enableSectionScope,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid SPA refresh configuration.";
+      return { ok: false, error: message };
+    }
   }
 
   if (hasTranslatableAttributes) {

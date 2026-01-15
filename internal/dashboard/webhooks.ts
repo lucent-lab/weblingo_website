@@ -497,6 +497,7 @@ async function request<T>({
           schema,
           headers,
           retry: true,
+          allowEmptyResponse,
         });
       } catch (refreshError) {
         console.warn("[webhooks] token refresh failed:", refreshError);
