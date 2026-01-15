@@ -22,7 +22,7 @@ This document guides contributors working inside the `web` marketing site for We
 Define these in `.env.local`:
 
 - `NEXT_PUBLIC_APP_URL`
-- `HOME_PAGE_VARIANT` (`classic` | `expansion`)
+- `HOME_PAGE_VARIANT` (`classic` | `expansion`, defaults to `expansion`)
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`

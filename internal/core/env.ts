@@ -11,7 +11,7 @@ const clientEnvSchema = z.object({
 });
 
 const serverEnvSchema = z.object({
-  HOME_PAGE_VARIANT: z.enum(["classic", "expansion"]),
+  HOME_PAGE_VARIANT: z.enum(["classic", "expansion"]).default("expansion"),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   STRIPE_PRICING_TABLE_ID: z.string().min(1).optional(),
