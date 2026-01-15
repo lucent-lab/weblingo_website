@@ -42,7 +42,7 @@ export default async function LandingSegmentPage({
   const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
-    Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
+    Boolean(process.env.TRY_NOW_TOKEN);
   const supportedLanguages = await listSupportedLanguagesCached();
 
   return (

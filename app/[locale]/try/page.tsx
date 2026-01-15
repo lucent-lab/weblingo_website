@@ -15,7 +15,7 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
 
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) &&
-    Boolean(process.env.NEXT_PUBLIC_TRY_NOW_TOKEN);
+    Boolean(process.env.TRY_NOW_TOKEN);
   const supportedLanguages = await listSupportedLanguagesCached();
 
   return (

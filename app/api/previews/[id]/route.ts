@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE?.replace(/\/$/, "");
-const PREVIEW_TOKEN = process.env.NEXT_PUBLIC_TRY_NOW_TOKEN;
+const PREVIEW_TOKEN = process.env.TRY_NOW_TOKEN;
 
 export const runtime = "nodejs";
 
