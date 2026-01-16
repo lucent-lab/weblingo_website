@@ -10,4 +10,4 @@ export {
 } from "./server";
 export { createClientTranslator, type ClientMessages } from "./client";
 export { createLanguageNameResolver, type LanguageNameResolver } from "./language-names";
-export { normalizeLangTag } from "./lang-tag";
+export { getBaseLangTag, normalizeLangTag } from "./lang-tag";

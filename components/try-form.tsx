@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   createClientTranslator,
-  i18nConfig,
+  getBaseLangTag,
   normalizeLangTag,
   type ClientMessages,
 } from "@internal/i18n";
@@ -42,8 +42,10 @@ export function TryForm({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [sourceLang, setSourceLang] = useState<string>(i18nConfig.defaultLocale);
-  const [targetLang, setTargetLang] = useState<string>(locale);
+  const baseLocale = getBaseLangTag(locale) ?? locale.trim().toLowerCase();
+  const defaultTargetLang = baseLocale === "en" ? "fr" : "en";
+  const [sourceLang, setSourceLang] = useState<string>(locale);
+  const [targetLang, setTargetLang] = useState<string>(defaultTargetLang);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);

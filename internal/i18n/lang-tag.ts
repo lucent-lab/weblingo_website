@@ -27,3 +27,12 @@ export function normalizeLangTag(input: string): string | null {
   });
   return formatted.join("-");
 }
+
+export function getBaseLangTag(input: string): string | null {
+  const normalized = normalizeLangTag(input);
+  if (!normalized) {
+    return null;
+  }
+  const base = normalized.split("-")[0];
+  return base ? base.toLowerCase() : null;
+}
