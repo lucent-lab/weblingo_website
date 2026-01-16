@@ -113,7 +113,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section id="features" className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
             {t(content.useCases.titleKey)}
@@ -138,7 +138,10 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section
+        id="how-it-works"
+        className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
+      >
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground sm:text-4xl">
             {t(content.how.titleKey)}
@@ -153,6 +156,59 @@ export async function LandingSegmentPage({
                   <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
                   <p className="mt-1 text-muted-foreground">{t(item.bodyKey)}</p>
                 </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-10 text-center text-sm text-muted-foreground">
+            {t("landing.expansion.how.risk")}
+          </p>
+        </div>
+      </section>
+
+      <section className="px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card/80 px-6 py-8">
+          <h3 className="text-lg font-semibold text-foreground">{t("landing.trust.title")}</h3>
+          <div className="mt-4 grid gap-4 text-sm text-muted-foreground md:grid-cols-3">
+            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
+              {t("landing.trust.items.1")}
+            </div>
+            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
+              {t("landing.trust.items.2")}
+            </div>
+            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
+              {t("landing.trust.items.3")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-10 text-center text-3xl font-bold text-foreground sm:text-4xl">
+            {t("landing.faq.title")}
+          </h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                questionKey: "landing.faq.items.1.q",
+                answerKey: "landing.faq.items.1.a",
+              },
+              {
+                questionKey: "landing.faq.items.2.q",
+                answerKey: "landing.faq.items.2.a",
+              },
+              {
+                questionKey: "landing.faq.items.3.q",
+                answerKey: "landing.faq.items.3.a",
+              },
+              {
+                questionKey: "landing.faq.items.4.q",
+                answerKey: "landing.faq.items.4.a",
+              },
+            ].map((item) => (
+              <div key={item.questionKey} className="rounded-2xl border border-border bg-card p-6">
+                <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{t(item.answerKey)}</p>
               </div>
             ))}
           </div>
