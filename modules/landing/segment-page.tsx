@@ -60,33 +60,21 @@ export async function LandingSegmentPage({
                 </summary>
                 <div className="mt-4 space-y-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    <p className="text-sm font-medium text-foreground/80">
                       {t("landing.fit.best.title")}
                     </p>
                     <ul className="mt-2 list-disc space-y-1 pl-4">
                       <li>{t("landing.fit.best.items.1")}</li>
                       <li>{t("landing.fit.best.items.2")}</li>
-                      <li>{t("landing.fit.best.items.3")}</li>
-                      <li>{t("landing.fit.best.items.4")}</li>
                     </ul>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    <p className="text-sm font-medium text-foreground/80">
                       {t("landing.fit.notFor.title")}
                     </p>
                     <ul className="mt-2 list-disc space-y-1 pl-4">
                       <li>{t("landing.fit.notFor.items.1")}</li>
                       <li>{t("landing.fit.notFor.items.2")}</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                      {t("landing.fit.control.title")}
-                    </p>
-                    <ul className="mt-2 list-disc space-y-1 pl-4">
-                      <li>{t("landing.fit.control.items.1")}</li>
-                      <li>{t("landing.fit.control.items.2")}</li>
-                      <li>{t("landing.fit.control.items.3")}</li>
                     </ul>
                   </div>
                 </div>
@@ -118,6 +106,9 @@ export async function LandingSegmentPage({
                   <li>{t("landing.widget.items.3")}</li>
                 </ul>
                 <p className="mt-3 text-xs text-muted-foreground">{t("landing.widget.note")}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("landing.widget.linkHint")}
+                </p>
               </div>
             </div>
           </div>
