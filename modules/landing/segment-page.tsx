@@ -37,11 +37,61 @@ export async function LandingSegmentPage({
               <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {t(content.hero.titleKey)}
               </h1>
-              <p className="mb-6 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
+              <p className="mb-5 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t(content.hero.subtitleKey)}
               </p>
-              <p className="text-sm font-medium text-foreground/80">{t("landing.hero.stat")}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground/80">
+                  {t("landing.fit.inline.bestLabel")}
+                </span>{" "}
+                {t("landing.fit.inline.bestValue")} ·{" "}
+                <span className="font-medium text-foreground/80">
+                  {t("landing.fit.inline.notLabel")}
+                </span>{" "}
+                {t("landing.fit.inline.notValue")} ·{" "}
+                <span className="font-medium text-foreground/80">
+                  {t("landing.fit.inline.controlLabel")}
+                </span>{" "}
+                {t("landing.fit.inline.controlValue")}
+              </p>
+              <details className="mt-3 text-sm text-muted-foreground">
+                <summary className="cursor-pointer text-primary/90 hover:text-primary">
+                  {t("landing.fit.inline.details")}
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {t("landing.fit.best.title")}
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-4">
+                      <li>{t("landing.fit.best.items.1")}</li>
+                      <li>{t("landing.fit.best.items.2")}</li>
+                      <li>{t("landing.fit.best.items.3")}</li>
+                      <li>{t("landing.fit.best.items.4")}</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {t("landing.fit.notFor.title")}
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-4">
+                      <li>{t("landing.fit.notFor.items.1")}</li>
+                      <li>{t("landing.fit.notFor.items.2")}</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {t("landing.fit.control.title")}
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-4">
+                      <li>{t("landing.fit.control.items.1")}</li>
+                      <li>{t("landing.fit.control.items.2")}</li>
+                      <li>{t("landing.fit.control.items.3")}</li>
+                    </ul>
+                  </div>
+                </div>
+              </details>
+              <p className="mt-4 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
@@ -71,38 +121,6 @@ export async function LandingSegmentPage({
               </div>
             </div>
           </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {t("landing.fit.best.title")}
-              </p>
-              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
-                <li>{t("landing.fit.best.items.1")}</li>
-                <li>{t("landing.fit.best.items.2")}</li>
-                <li>{t("landing.fit.best.items.3")}</li>
-                <li>{t("landing.fit.best.items.4")}</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {t("landing.fit.notFor.title")}
-              </p>
-              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
-                <li>{t("landing.fit.notFor.items.1")}</li>
-                <li>{t("landing.fit.notFor.items.2")}</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {t("landing.fit.control.title")}
-              </p>
-              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
-                <li>{t("landing.fit.control.items.1")}</li>
-                <li>{t("landing.fit.control.items.2")}</li>
-                <li>{t("landing.fit.control.items.3")}</li>
-              </ul>
-            </div>
-          </div>
           <div className="mt-12 grid gap-6 text-center sm:grid-cols-3">
             {content.stats.map((stat) => (
               <div
@@ -130,6 +148,7 @@ export async function LandingSegmentPage({
                   {t(content.pain.costTitleKey)}
                 </p>
                 <p className="mt-2 text-base text-primary">{t(content.pain.costBodyKey)}</p>
+                <p className="mt-3 text-xs text-primary/80">{t("landing.cost.stat")}</p>
               </div>
             </div>
             <div className="grid gap-6">
@@ -201,23 +220,6 @@ export async function LandingSegmentPage({
           <p className="mt-10 text-center text-sm text-muted-foreground">
             {t("landing.expansion.how.risk")}
           </p>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="mx-auto max-w-5xl rounded-2xl border border-border bg-card/80 px-6 py-8">
-          <h3 className="text-lg font-semibold text-foreground">{t("landing.trust.title")}</h3>
-          <div className="mt-4 grid gap-4 text-sm text-muted-foreground md:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
-              {t("landing.trust.items.1")}
-            </div>
-            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
-              {t("landing.trust.items.2")}
-            </div>
-            <div className="rounded-lg border border-border/70 bg-background/60 px-4 py-3">
-              {t("landing.trust.items.3")}
-            </div>
-          </div>
         </div>
       </section>
 
