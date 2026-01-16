@@ -37,10 +37,11 @@ export async function LandingSegmentPage({
               <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {t(content.hero.titleKey)}
               </h1>
-              <p className="mb-8 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
+              <p className="mb-6 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t(content.hero.subtitleKey)}
               </p>
-              <p className="text-sm text-muted-foreground">{t("home.hero.trust")}</p>
+              <p className="text-sm font-medium text-foreground/80">{t("landing.hero.stat")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
@@ -61,7 +62,45 @@ export async function LandingSegmentPage({
                   supportedLanguages={supportedLanguages}
                   showEmailField
                 />
+                <ul className="mt-6 list-disc space-y-2 pl-4 text-xs text-muted-foreground">
+                  <li>{t("landing.widget.items.1")}</li>
+                  <li>{t("landing.widget.items.2")}</li>
+                  <li>{t("landing.widget.items.3")}</li>
+                </ul>
+                <p className="mt-3 text-xs text-muted-foreground">{t("landing.widget.note")}</p>
               </div>
+            </div>
+          </div>
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("landing.fit.best.title")}
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
+                <li>{t("landing.fit.best.items.1")}</li>
+                <li>{t("landing.fit.best.items.2")}</li>
+                <li>{t("landing.fit.best.items.3")}</li>
+                <li>{t("landing.fit.best.items.4")}</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("landing.fit.notFor.title")}
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
+                <li>{t("landing.fit.notFor.items.1")}</li>
+                <li>{t("landing.fit.notFor.items.2")}</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-border bg-card/80 px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("landing.fit.control.title")}
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-4 text-sm text-muted-foreground">
+                <li>{t("landing.fit.control.items.1")}</li>
+                <li>{t("landing.fit.control.items.2")}</li>
+                <li>{t("landing.fit.control.items.3")}</li>
+              </ul>
             </div>
           </div>
           <div className="mt-12 grid gap-6 text-center sm:grid-cols-3">
@@ -231,6 +270,10 @@ export async function LandingSegmentPage({
             <Button asChild size="lg" variant="outline">
               <a href="mailto:contact@weblingo.app">{t(content.cta.secondaryKey)}</a>
             </Button>
+          </div>
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+            <p>{t("landing.cta.risk")}</p>
+            <p>{t("landing.cta.startSmall")}</p>
           </div>
         </div>
       </section>
