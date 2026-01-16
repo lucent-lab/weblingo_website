@@ -48,11 +48,7 @@ export async function LandingSegmentPage({
                 <span className="font-medium text-foreground/80">
                   {t("landing.fit.inline.notLabel")}
                 </span>{" "}
-                {t("landing.fit.inline.notValue")} ·{" "}
-                <span className="font-medium text-foreground/80">
-                  {t("landing.fit.inline.controlLabel")}
-                </span>{" "}
-                {t("landing.fit.inline.controlValue")}
+                {t("landing.fit.inline.notValue")}
               </p>
               <details className="mt-3 text-sm text-muted-foreground">
                 <summary className="cursor-pointer text-primary/90 hover:text-primary">
@@ -103,12 +99,8 @@ export async function LandingSegmentPage({
                 <ul className="mt-6 list-disc space-y-2 pl-4 text-xs text-muted-foreground">
                   <li>{t("landing.widget.items.1")}</li>
                   <li>{t("landing.widget.items.2")}</li>
-                  <li>{t("landing.widget.items.3")}</li>
                 </ul>
                 <p className="mt-3 text-xs text-muted-foreground">{t("landing.widget.note")}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {t("landing.widget.linkHint")}
-                </p>
               </div>
             </div>
           </div>

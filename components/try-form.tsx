@@ -568,6 +568,7 @@ export function TryForm({
               aria-invalid={emailError ? "true" : "false"}
             />
             <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
+            <div className="text-xs text-muted-foreground">{t("try.form.linkHint")}</div>
             {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
           </div>
         ) : null}
