@@ -42,6 +42,7 @@ export function TryForm({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [hasCopied, setHasCopied] = useState(false);
   const baseLocale = getBaseLangTag(locale) ?? locale.trim().toLowerCase();
   const defaultTargetLang = baseLocale === "en" ? "fr" : "en";
   const [sourceLang, setSourceLang] = useState<string>(locale);
@@ -50,6 +51,7 @@ export function TryForm({
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -98,8 +100,15 @@ export function TryForm({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    setHasCopied(false);
+  }, [previewUrl]);
 
   function isValidHttpUrl(candidate: string) {
     try {
@@ -481,6 +490,22 @@ export function TryForm({
     }
   }
 
+  async function handleCopyPreview() {
+    if (!previewUrl) return;
+    try {
+      await navigator.clipboard.writeText(previewUrl);
+      setHasCopied(true);
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = setTimeout(() => {
+        setHasCopied(false);
+      }, 2000);
+    } catch {
+      setHasCopied(false);
+    }
+  }
+
   const statusMessage = useMemo(() => {
     switch (status) {
       case "creating":
@@ -522,6 +547,7 @@ export function TryForm({
         </div>
         {showEmailField ? (
           <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-foreground">{t("try.form.emailLabel")}</span>
             <Input
               value={email}
               onChange={(event) => {
@@ -567,14 +593,39 @@ export function TryForm({
 
       {status === "ready" && (
         <div className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>{t("try.status.ready")}</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{t("try.status.ready")}</span>
+              {previewUrl ? (
+                <Button asChild size="sm" variant="secondary">
+                  <a href={previewUrl} target="_blank" rel="noreferrer">
+                    {t("try.preview.open")}
+                  </a>
+                </Button>
+              ) : null}
+            </div>
             {previewUrl ? (
-              <Button asChild size="sm" variant="secondary">
-                <a href={previewUrl} target="_blank" rel="noreferrer">
-                  {t("try.preview.open")}
-                </a>
-              </Button>
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-primary/80">
+                  {t("try.preview.linkLabel")}
+                </span>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    value={previewUrl}
+                    readOnly
+                    className="h-9 text-xs text-foreground"
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyPreview}
+                  >
+                    {hasCopied ? t("try.preview.copied") : t("try.preview.copy")}
+                  </Button>
+                </div>
+              </div>
             ) : null}
           </div>
         </div>
