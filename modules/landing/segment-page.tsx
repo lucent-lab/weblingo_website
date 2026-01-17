@@ -187,6 +187,14 @@ export async function LandingSegmentPage({
                 questionKey: "landing.faq.items.4.q",
                 answerKey: "landing.faq.items.4.a",
               },
+              {
+                questionKey: "landing.faq.items.5.q",
+                answerKey: "landing.faq.items.5.a",
+              },
+              {
+                questionKey: "landing.faq.items.6.q",
+                answerKey: "landing.faq.items.6.a",
+              },
             ].map((item) => (
               <div key={item.questionKey} className="rounded-2xl border border-border bg-card p-6">
                 <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
