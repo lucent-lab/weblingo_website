@@ -25,6 +25,7 @@ import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
 import { i18nConfig } from "@internal/i18n";
+import type { Site } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
   title: "Customer Dashboard",
@@ -99,19 +100,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const rawStatusLabel = auth.account?.planStatus ?? "unknown";
   const statusLabel = rawStatusLabel.replaceAll("_", " ");
   const statusTone = resolveStatusTone(rawStatusLabel);
-  let siteNavItems: SiteNavEntry[] = [];
-  try {
-    if (auth.webhooksAuth) {
-      const sites = await listSitesCached(auth.webhooksAuth);
-      siteNavItems = sites.map((site) => ({
-        id: site.id,
-        label: formatSiteLabel(site.sourceUrl),
-        status: site.status,
-      }));
-    }
-  } catch (error) {
-    console.warn("[dashboard] listSites failed:", error);
-  }
 
   const billingBanner = resolveBillingBanner(auth);
   const subjectFallbackNotice = auth.subjectFallbackToActor
@@ -163,7 +151,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <SidebarGroup>
             <SidebarGroupLabel>Sites</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SitesNav sites={siteNavItems} />
+              <Suspense fallback={<SitesNavSkeleton />}>
+                <SitesNavAsync auth={auth} />
+              </Suspense>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -207,7 +197,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                     </>
                   ) : null}
                   <Suspense fallback={<SitesUsageFallback />}>
-                    <SitesUsageSummary auth={auth} isAgency={isAgency} />
+                    <SitesUsageSummaryAsync auth={auth} isAgency={isAgency} />
                   </Suspense>
                 </nav>
                 {auth.actingAsCustomer ? (
@@ -260,37 +250,82 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   );
 }
 
-async function SitesUsageSummary({ auth, isAgency }: { auth: DashboardAuth; isAgency: boolean }) {
-  let sitesUsage: { value: string; helper?: string } | null = null;
+// Async component for sidebar sites navigation - streams in while layout shell renders
+async function SitesNavAsync({ auth }: { auth: DashboardAuth }) {
+  let sites: Site[] = [];
   try {
-    if (isAgency && auth.subjectAccountId === auth.actorAccountId && auth.agencyCustomers) {
-      const summary = auth.agencyCustomers.summary;
-      sitesUsage = {
-        value: `${summary.totalActiveSites} / ${summary.maxSites === null ? "Unlimited" : summary.maxSites}`,
-        helper: "Agency usage",
-      };
-    } else if (auth.webhooksAuth) {
-      const sites = await listSitesCached(auth.webhooksAuth);
-      const activeSites = sites.filter((site) => site.status === "active").length;
-      const maxSites = auth.account?.featureFlags.maxSites ?? null;
-      sitesUsage = {
-        value: `${activeSites} / ${maxSites === null ? "Unlimited" : maxSites}`,
-      };
-    } else {
-      sitesUsage = { value: "—" };
+    if (auth.webhooksAuth) {
+      sites = await listSitesCached(auth.webhooksAuth);
     }
   } catch (error) {
-    console.warn("[dashboard] usage badge fetch failed:", error);
+    console.warn("[dashboard] listSites failed:", error);
   }
 
+  const siteNavItems: SiteNavEntry[] = sites.map((site) => ({
+    id: site.id,
+    label: formatSiteLabel(site.sourceUrl),
+    status: site.status,
+  }));
+
+  return <SitesNav sites={siteNavItems} />;
+}
+
+// Skeleton fallback for sidebar sites while loading
+function SitesNavSkeleton() {
   return (
-    <span className="flex items-center gap-1" title={sitesUsage?.helper}>
-      <span className="text-muted-foreground">Sites</span>
-      <span className="text-foreground">{sitesUsage?.value ?? "—"}</span>
-    </span>
+    <div className="space-y-2 px-2">
+      <div className="h-8 w-full animate-pulse rounded-md bg-sidebar-accent/50" />
+      <div className="h-6 w-3/4 animate-pulse rounded-md bg-sidebar-accent/30" />
+      <div className="h-6 w-2/3 animate-pulse rounded-md bg-sidebar-accent/30" />
+    </div>
   );
 }
 
+// Async component for sites usage in header - shares cached fetch with sidebar
+async function SitesUsageSummaryAsync({
+  auth,
+  isAgency,
+}: {
+  auth: DashboardAuth;
+  isAgency: boolean;
+}) {
+  const isAgencyViewingSelf = isAgency && auth.subjectAccountId === auth.actorAccountId;
+
+  if (isAgency && isAgencyViewingSelf && auth.agencyCustomers) {
+    const summary = auth.agencyCustomers.summary;
+    return (
+      <span className="flex items-center gap-1" title="Agency usage">
+        <span className="text-muted-foreground">Sites</span>
+        <span className="text-foreground">
+          {summary.totalActiveSites} / {summary.maxSites === null ? "Unlimited" : summary.maxSites}
+        </span>
+      </span>
+    );
+  }
+
+  try {
+    if (!auth.webhooksAuth) {
+      return <SitesUsageFallback />;
+    }
+    const sites = await listSitesCached(auth.webhooksAuth);
+    const activeSiteCount = sites.filter((site) => site.status === "active").length;
+    const maxSites = auth.account?.featureFlags.maxSites ?? null;
+
+    return (
+      <span className="flex items-center gap-1">
+        <span className="text-muted-foreground">Sites</span>
+        <span className="text-foreground">
+          {activeSiteCount} / {maxSites === null ? "Unlimited" : maxSites}
+        </span>
+      </span>
+    );
+  } catch (error) {
+    console.warn("[dashboard] usage badge fetch failed:", error);
+    return <SitesUsageFallback />;
+  }
+}
+
+// Fallback for sites usage while loading
 function SitesUsageFallback() {
   return (
     <span className="flex items-center gap-1">

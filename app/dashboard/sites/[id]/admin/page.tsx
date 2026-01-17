@@ -66,34 +66,38 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   let error: string | null = null;
   let supportedLanguages: SupportedLanguage[] = [];
 
-  try {
-    site = await fetchSite(auth.webhooksAuth!, id);
-  } catch (err) {
-    error = err instanceof Error ? err.message : "Unable to load site settings.";
-  }
-
-  if (site) {
-    const [deploymentsResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
+  // Parallelize all API fetches - optimistic that site exists (the common case)
+  const [siteResult, deploymentsResult, sitesResult, supportedLanguagesResult] =
+    await Promise.allSettled([
+      fetchSite(auth.webhooksAuth!, id),
       fetchDeployments(auth.webhooksAuth!, id),
       listSitesCached(auth.webhooksAuth!),
       settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
     ]);
 
-    if (deploymentsResult.status === "fulfilled") {
-      deployments = deploymentsResult.value;
-    } else {
-      console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
-    }
+  if (siteResult.status === "fulfilled") {
+    site = siteResult.value;
+  } else {
+    error =
+      siteResult.reason instanceof Error
+        ? siteResult.reason.message
+        : "Unable to load site settings.";
+  }
 
-    if (sitesResult.status === "fulfilled") {
-      activeSiteCount = sitesResult.value.filter((entry) => entry.status === "active").length;
-    } else {
-      console.warn("[dashboard] listSites failed while checking slots:", sitesResult.reason);
-    }
+  if (deploymentsResult.status === "fulfilled") {
+    deployments = deploymentsResult.value;
+  } else {
+    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
+  }
 
-    if (supportedLanguagesResult.status === "fulfilled") {
-      supportedLanguages = supportedLanguagesResult.value;
-    }
+  if (sitesResult.status === "fulfilled") {
+    activeSiteCount = sitesResult.value.filter((entry) => entry.status === "active").length;
+  } else {
+    console.warn("[dashboard] listSites failed while checking slots:", sitesResult.reason);
+  }
+
+  if (supportedLanguagesResult.status === "fulfilled") {
+    supportedLanguages = supportedLanguagesResult.value;
   }
 
   if (!site) {
