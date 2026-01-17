@@ -156,7 +156,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
     metadata: {
       titleKey: "landing.expansion.title",
       descriptionKey: "landing.expansion.subtitle",
-      titleFallback: "Turn international traffic into revenue",
+      titleFallback: "Turn international traffic into conversions and revenue",
       descriptionFallback:
         "WebLingo helps you localize and host your site so global visitors convert. Launch a private preview in minutes.",
     },
