@@ -547,7 +547,7 @@ export function TryForm({
         </div>
         {showEmailField ? (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-foreground">{t("try.form.emailLabel")}</span>
+            <span className="text-sm font-medium text-foreground">{t("try.form.emailLabel")}</span>
             <Input
               value={email}
               onChange={(event) => {
@@ -568,7 +568,6 @@ export function TryForm({
               aria-invalid={emailError ? "true" : "false"}
             />
             <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
-            <div className="text-xs text-muted-foreground">{t("try.form.linkHint")}</div>
             {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
           </div>
         ) : null}
