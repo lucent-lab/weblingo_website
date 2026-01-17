@@ -31,51 +31,14 @@ export async function LandingSegmentPage({
         <div className="relative mx-auto max-w-6xl">
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
-              <div className="mb-6 inline-flex items-center rounded-full border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow-sm">
-                {t(content.hero.taglineKey)}
-              </div>
               <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {t(content.hero.titleKey)}
               </h1>
               <p className="mb-5 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t(content.hero.subtitleKey)}
               </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground/80">
-                  {t("landing.fit.inline.bestLabel")}
-                </span>{" "}
-                {t("landing.fit.inline.bestValue")} ·{" "}
-                <span className="font-medium text-foreground/80">
-                  {t("landing.fit.inline.notLabel")}
-                </span>{" "}
-                {t("landing.fit.inline.notValue")}
-              </p>
-              <details className="mt-3 text-sm text-muted-foreground">
-                <summary className="cursor-pointer text-primary/90 hover:text-primary">
-                  {t("landing.fit.inline.details")}
-                </summary>
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground/80">
-                      {t("landing.fit.best.title")}
-                    </p>
-                    <ul className="mt-2 list-disc space-y-1 pl-4">
-                      <li>{t("landing.fit.best.items.1")}</li>
-                      <li>{t("landing.fit.best.items.2")}</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground/80">
-                      {t("landing.fit.notFor.title")}
-                    </p>
-                    <ul className="mt-2 list-disc space-y-1 pl-4">
-                      <li>{t("landing.fit.notFor.items.1")}</li>
-                      <li>{t("landing.fit.notFor.items.2")}</li>
-                    </ul>
-                  </div>
-                </div>
-              </details>
-              <p className="mt-4 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
+              <p className="text-sm text-muted-foreground">{t("landing.hero.guardrail")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
@@ -96,11 +59,6 @@ export async function LandingSegmentPage({
                   supportedLanguages={supportedLanguages}
                   showEmailField
                 />
-                <ul className="mt-6 list-disc space-y-2 pl-4 text-xs text-muted-foreground">
-                  <li>{t("landing.widget.items.1")}</li>
-                  <li>{t("landing.widget.items.2")}</li>
-                </ul>
-                <p className="mt-3 text-xs text-muted-foreground">{t("landing.widget.note")}</p>
               </div>
             </div>
           </div>
