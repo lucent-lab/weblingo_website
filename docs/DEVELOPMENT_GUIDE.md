@@ -36,6 +36,8 @@ STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://webhooks.weblingo.workers.dev/api
 ```
 
+Set `PUBLIC_PORTAL_MODE=disabled` to hide login/signup UI, block auth actions, and disable checkout flows on deployed environments.
+
 Use descriptive Stripe price IDs that include the site identifier, e.g. `price_web_mirror_growth_monthly`.
 
 ## Internationalization

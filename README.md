@@ -57,6 +57,8 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ```
 
+`PUBLIC_PORTAL_MODE=disabled` hides the login CTA, disables signup/login actions, blocks checkout, and returns 404 for the login and dashboard onboarding screens. Set it to `enabled` to expose the portal.
+
 ## Running Locally
 
 1. Install dependencies: `pnpm install`
