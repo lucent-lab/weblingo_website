@@ -23,6 +23,7 @@ Define these in `.env.local`:
 
 - `NEXT_PUBLIC_APP_URL`
 - `HOME_PAGE_VARIANT` (`classic` | `expansion`, defaults to `expansion`)
+- `PUBLIC_PORTAL_MODE` (`enabled` | `disabled`)
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`

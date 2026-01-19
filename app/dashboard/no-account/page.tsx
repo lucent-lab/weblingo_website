@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { PricingTableEmbed } from "./pricing-table";
 
@@ -18,6 +19,9 @@ type NoAccountPageProps = {
 };
 
 export default async function NoAccountPage({ searchParams }: NoAccountPageProps) {
+  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+    notFound();
+  }
   const locale = i18nConfig.defaultLocale;
   const pricingTableId = getPricingTableId(locale);
   const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { env } from "@internal/core";
 import type { Translator } from "@internal/i18n";
 
 const navLinks = [
@@ -17,6 +18,7 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ locale, t }: SiteHeaderProps) {
   const tryHref = `/${locale}#try`;
+  const portalEnabled = env.PUBLIC_PORTAL_MODE === "enabled";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -40,9 +42,11 @@ export function SiteHeader({ locale, t }: SiteHeaderProps) {
           })}
         </nav>
         <div className="flex items-center gap-4">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/${locale}/login`}>{t("nav.login")}</Link>
-          </Button>
+          {portalEnabled ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${locale}/login`}>{t("nav.login")}</Link>
+            </Button>
+          ) : null}
           <Button asChild size="sm">
             <Link href={tryHref}>{t("nav.try")}</Link>
           </Button>

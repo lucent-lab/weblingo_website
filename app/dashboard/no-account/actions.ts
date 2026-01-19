@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@internal/core";
 
 export async function claimAccount() {
+  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+    redirect("/");
+  }
   const supabase = await createClient();
   const {
     data: { session },

@@ -12,6 +12,7 @@ const clientEnvSchema = z.object({
 
 const serverEnvSchema = z.object({
   HOME_PAGE_VARIANT: z.enum(["classic", "expansion"]).default("expansion"),
+  PUBLIC_PORTAL_MODE: z.enum(["enabled", "disabled"]),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   STRIPE_PRICING_TABLE_ID: z.string().min(1).optional(),
@@ -81,6 +82,7 @@ const readClientEnv = () => ({
 
 const readServerEnv = () => ({
   HOME_PAGE_VARIANT: process.env.HOME_PAGE_VARIANT,
+  PUBLIC_PORTAL_MODE: process.env.PUBLIC_PORTAL_MODE,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICING_TABLE_ID: process.env.STRIPE_PRICING_TABLE_ID,

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@internal/core";
 
 type AuthFormState = {
   error: string | null;
@@ -67,6 +68,9 @@ function toFriendlySupabaseAuthError(error: unknown, action: AuthActionKind): st
 }
 
 export async function login(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+    redirect("/");
+  }
   let supabase: Awaited<ReturnType<typeof createClient>>;
   try {
     supabase = await createClient();
@@ -104,6 +108,9 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
 }
 
 export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+    redirect("/");
+  }
   let supabase: Awaited<ReturnType<typeof createClient>>;
   try {
     supabase = await createClient();
