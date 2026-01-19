@@ -25,13 +25,7 @@ function splitBenefit(text: string) {
   return { title: text, description: "" };
 }
 
-export async function ClassicHomePage({
-  locale,
-  basePath,
-}: {
-  locale: string;
-  basePath?: string;
-}) {
+export async function ClassicHomePage({ locale, basePath }: { locale: string; basePath?: string }) {
   const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);

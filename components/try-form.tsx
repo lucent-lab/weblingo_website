@@ -616,12 +616,7 @@ export function TryForm({
                     className="h-9 text-xs text-foreground"
                     onFocus={(event) => event.currentTarget.select()}
                   />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopyPreview}
-                  >
+                  <Button type="button" size="sm" variant="outline" onClick={handleCopyPreview}>
                     {hasCopied ? t("try.preview.copied") : t("try.preview.copy")}
                   </Button>
                 </div>

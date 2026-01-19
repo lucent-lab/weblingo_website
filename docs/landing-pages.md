@@ -7,9 +7,9 @@ The main home variant is controlled by `HOME_PAGE_VARIANT`; the classic home liv
 
 ## Segment tracker
 
-| slug      | path                          | focus                                  | status  |
-| --------- | ----------------------------- | -------------------------------------- | ------- |
-| expansion | `/{locale}/landing/expansion` | Global expansion demand capture        | noindex |
+| slug      | path                          | focus                                   | status  |
+| --------- | ----------------------------- | --------------------------------------- | ------- |
+| expansion | `/{locale}/landing/expansion` | Global expansion demand capture         | noindex |
 | saas      | `/{locale}/landing/saas`      | Paid traffic & SaaS conversion          | noindex |
 | tourism   | `/{locale}/landing/tourism`   | Direct bookings & hospitality audiences | noindex |
 | agency    | `/{locale}/landing/agency`    | Agency delivery without maintenance     | noindex |
