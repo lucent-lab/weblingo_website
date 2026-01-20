@@ -75,6 +75,7 @@ Primary outcomes:
 - [ ] Add `sitePlan` + `maxLocales` inputs:
   - default/max based on `accounts/me` flags/quotas
   - prevent “free user sends maxLocales=null and bypasses limits” (UI must enforce)
+  - server-side enforcement: webhooks worker validates plan limits and rejects mismatches (UI gating is not sufficient)
 - [ ] Improve post-create UX:
   - redirect to the site page after creation
   - show “Next steps” banner: add CNAME(s) → provision → trigger crawl

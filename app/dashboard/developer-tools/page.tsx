@@ -13,9 +13,12 @@ export const metadata = {
 export default async function DeveloperToolsPage() {
   const auth = await requireDashboardAuth();
   const formattedSessionExpiry = formatEpoch(auth.session?.expires_at);
-  const token = auth.webhooksAuth?.token ?? "";
+  const token = auth.webhooksAuth?.token;
   const expiresAt = auth.webhooksAuth?.expiresAt ?? "—";
   const user = auth.user;
+  const authorizationHeader = token ? `Bearer ${token}` : "Not authenticated";
+  const expiryLabel = token ? `Expires at ${expiresAt}` : "No token";
+  const tokenBadgeVariant = token ? "outline" : "destructive";
 
   return (
     <div className="space-y-6">
@@ -52,13 +55,13 @@ export default async function DeveloperToolsPage() {
               and on 401 responses.
             </CardDescription>
           </div>
-          <Badge variant="outline">Expires at {expiresAt}</Badge>
+          <Badge variant={tokenBadgeVariant}>{expiryLabel}</Badge>
         </CardHeader>
         <CardContent className="space-y-2">
           <label className="text-xs font-semibold uppercase text-muted-foreground">
             Authorization header
           </label>
-          <Input readOnly value={`Bearer ${token}`} />
+          <Input readOnly value={authorizationHeader} />
           <p className="text-xs text-muted-foreground">
             Do not store this token in long-lived storage. Regenerate from the Supabase session
             before expiry or whenever the API returns 401.

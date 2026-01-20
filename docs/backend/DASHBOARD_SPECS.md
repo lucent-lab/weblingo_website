@@ -73,7 +73,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, localeAliases?, status? ("active"|"inactive"), siteProfile? (object|null), maxLocales? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
-  - If `sourceUrl` changes: wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling.
+  - **Warning:** changing `sourceUrl` is destructive. It wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling. UI should require explicit confirmation.
   - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
 - Response `200`: updated `Site`.
 
@@ -94,7 +94,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 `POST /api/sites/:id/domains/:domain/verify`
 
 - DNS-first: performs a DNS TXT lookup (Cloudflare DoH) for the stored `verificationToken`.
-- Test bypass: when the worker runs with `ENV=test` (or body includes `"env": "test"`), a matching `token` in the request body is accepted instead of DNS. Production must use DNS.
+- Test bypass: only when the worker runs with `ENV=test`. In that mode, a matching `token` in the request body (optionally with `"env": "test"`) is accepted instead of DNS. In non-test envs, DNS is required and the `env` body field is ignored.
 - Response `200`: `{ domain: { domain,status,verificationToken,verifiedAt,lastCheckedAt } }` or `400/404` on mismatch/missing domain.
 
 ### Deployment status

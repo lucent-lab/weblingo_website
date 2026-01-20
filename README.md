@@ -35,6 +35,7 @@ Create `.env.local` (or configure host env) with:
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 HOME_PAGE_VARIANT=expansion # optional: classic | expansion (default expansion)
 PUBLIC_PORTAL_MODE=enabled # required: enabled | disabled
+# Public endpoint consumed by the dashboard UI. Protect with auth, CORS, and rate limits.
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
 TRY_NOW_TOKEN=preview_token_value
 
