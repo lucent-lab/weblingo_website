@@ -52,10 +52,11 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
     },
     ...benefitCardIndexes.map((index, idx) => {
       const benefit = splitBenefit(t(`home.benefits.${index}`));
+      const benefitDescription = benefit.description.trim();
       const Icon = benefitIcons[idx] ?? Globe;
       return {
         title: benefit.title,
-        description: benefit.description || benefit.title,
+        description: benefitDescription ? benefitDescription : undefined,
         icon: Icon,
       };
     }),
@@ -132,7 +133,7 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
             {t("home.benefits.title", "Why WebLingo")}
           </h2>
           <p className="mx-auto mb-16 max-w-2xl text-center text-muted-foreground">
-            {t("home.languages.body")}
+            {t("home.features.subtitle")}
           </p>
           <div className="grid gap-6 md:grid-cols-3">
             {featureCards.map((feature, index) => (

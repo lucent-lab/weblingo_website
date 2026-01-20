@@ -28,6 +28,7 @@
   "home.features.sync.description": "WebLingo はメインサイトを監視し、変更を検知するとローカライズ済みページを自動で再公開します。",
   "home.features.seo.title": "SEO とパフォーマンスに最適化",
   "home.features.seo.description": "ローカライズされたメタデータや hreflang タグを生成し、エッジにデプロイされた高速ページを提供します。",
+  "home.features.subtitle": "AI翻訳からルーティング、SEO対応配信までを網羅するローカリゼーションスタック。",
   "home.features.supporting": "{feature} は既存のスタックと連携し、分析・レビュー・品質チェックを備えています。",
   "home.pricingTeaser.badge": "展開プランを選ぶ",
   "home.pricingTeaser.title": "ローカリゼーションチーム向けのプラン",

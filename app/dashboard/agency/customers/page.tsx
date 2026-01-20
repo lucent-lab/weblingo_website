@@ -132,8 +132,8 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <Badge variant="outline">Plan: {customer.customerPlan}</Badge>
-                    <Badge variant="outline">Status: {customer.planStatus}</Badge>
-                    <Badge variant="outline">Link: {customer.status}</Badge>
+                    <Badge variant="outline">Plan Status: {customer.planStatus}</Badge>
+                    <Badge variant="outline">Link Status: {customer.status}</Badge>
                     <Badge variant="outline">Sites: {customer.activeSiteCount}</Badge>
                   </div>
                 </div>

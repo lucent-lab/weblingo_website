@@ -28,6 +28,7 @@
   "home.features.sync.description": "WebLingo watches your primary domain, detects content changes, and republishes localized pages automatically.",
   "home.features.seo.title": "Native SEO & performance",
   "home.features.seo.description": "Generate localized metadata, hreflang tags, and optimized pages that deploy to the edge on every publish.",
+  "home.features.subtitle": "A full localization stack, from AI translation to routing and SEO-ready delivery.",
   "home.features.supporting": "{feature} plug into your existing stack, with analytics, review flows, and localization QA built in.",
   "home.pricingTeaser.badge": "Choose your rollout",
   "home.pricingTeaser.title": "Plans tuned for localization teams",

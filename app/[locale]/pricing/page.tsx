@@ -7,6 +7,21 @@ import { Button } from "@/components/ui/button";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const planIds = ["launch", "growth", "enterprise"] as const;
+const CHECK_MARKER = "✅";
+
+const renderComparisonValue = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith(CHECK_MARKER)) {
+    const suffix = trimmed.slice(CHECK_MARKER.length).trim();
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <Check className="h-5 w-5 text-primary" />
+        {suffix ? <span className="text-sm text-muted-foreground">{suffix}</span> : null}
+      </div>
+    );
+  }
+  return <span className="text-sm text-muted-foreground">{value}</span>;
+};
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -284,26 +299,10 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                   >
                     <td className="py-4 px-4 font-medium text-foreground">{row.label}</td>
                     <td className="py-4 px-4 text-center">
-                      {row.starter === "✅" ? (
-                        <Check className="mx-auto h-5 w-5 text-primary" />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{row.starter}</span>
-                      )}
+                      {renderComparisonValue(row.starter)}
                     </td>
-                    <td className="py-4 px-4 text-center">
-                      {row.pro === "✅" ? (
-                        <Check className="mx-auto h-5 w-5 text-primary" />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{row.pro}</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      {row.agency === "✅" ? (
-                        <Check className="mx-auto h-5 w-5 text-primary" />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">{row.agency}</span>
-                      )}
-                    </td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.pro)}</td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.agency)}</td>
                   </tr>
                 ))}
               </tbody>

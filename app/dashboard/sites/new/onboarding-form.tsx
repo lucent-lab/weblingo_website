@@ -63,7 +63,7 @@ export function OnboardingForm(props: {
   const sourceHost = parsedSourceUrl?.hostname ?? "";
   const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
   const displayHost = trimmedHost || "customer-url.com";
-  const scheme = "https://";
+  const scheme = parsedSourceUrl ? `${parsedSourceUrl.protocol}//` : "https://";
   const normalizedSubdomainToken = subdomainToken.trim().replace(/^\.+|\.+$/g, "");
   const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
   const localeAliases = useMemo(

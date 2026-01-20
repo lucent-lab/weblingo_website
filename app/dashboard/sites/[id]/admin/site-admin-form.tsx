@@ -173,7 +173,7 @@ export function SiteAdminForm({
   const sourceHost = parsedSourceUrl?.hostname ?? "";
   const trimmedHost = sourceHost ? stripWwwPrefix(sourceHost) : "";
   const displayHost = trimmedHost || "customer-url.com";
-  const scheme = "https://";
+  const scheme = parsedSourceUrl ? `${parsedSourceUrl.protocol}//` : "https://";
   const [subdomainToken, setSubdomainToken] = useState(() =>
     extractSubdomainToken(pattern, parsedSourceUrl),
   );
