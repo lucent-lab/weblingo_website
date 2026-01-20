@@ -69,6 +69,12 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
   const crawlSelectedLabel = t("dashboard.crawl.summary.selected");
   const crawlSkippedLabel = t("dashboard.crawl.summary.skippedDueToLimit");
   const crawlErrorLabel = t("dashboard.crawl.summary.error");
+  const pagesTitle = t("dashboard.pages.title");
+  const pagesDescription = t("dashboard.pages.description");
+  const pagesEmpty = t("dashboard.pages.empty");
+  const pageColumnLabel = t("dashboard.pages.columns.page");
+  const lastCrawlLabel = t("dashboard.pages.columns.lastCrawl");
+  const lastChangeLabel = t("dashboard.pages.columns.lastChange");
   const pageNextCrawlLabel = t("dashboard.pages.columns.nextCrawl");
   const eligibleNowLabel = t("dashboard.pages.eligibleNow");
   const servingStatusLabels = {
@@ -295,26 +301,20 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pages</CardTitle>
-          <CardDescription>
-            Discovered pages from sitemaps and crawls. Enable localization before triggering a new
-            crawl.
-          </CardDescription>
+          <CardTitle>{pagesTitle}</CardTitle>
+          <CardDescription>{pagesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {pages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No pages discovered yet. We will seed from sitemaps after onboarding, then refresh
-              once localization is enabled.
-            </p>
+            <p className="text-sm text-muted-foreground">{pagesEmpty}</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border/60">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Page</th>
-                    <th className="px-3 py-2 text-left">Last crawl</th>
-                    <th className="px-3 py-2 text-left">Last change</th>
+                    <th className="px-3 py-2 text-left">{pageColumnLabel}</th>
+                    <th className="px-3 py-2 text-left">{lastCrawlLabel}</th>
+                    <th className="px-3 py-2 text-left">{lastChangeLabel}</th>
                     <th className="px-3 py-2 text-left">{pageNextCrawlLabel}</th>
                     {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
                   </tr>

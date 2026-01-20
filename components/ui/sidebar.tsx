@@ -144,7 +144,19 @@ function Sidebar({
     return (
       <>
         {openMobile ? (
-          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setOpenMobile(false)} />
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setOpenMobile(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " " || event.key === "Escape") {
+                event.preventDefault();
+                setOpenMobile(false);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Close sidebar"
+          />
         ) : null}
         <aside
           data-slot="sidebar"

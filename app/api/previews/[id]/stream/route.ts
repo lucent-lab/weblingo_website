@@ -24,8 +24,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       signal: _request.signal,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to reach preview service.";
-    return new Response(message, { status: 502 });
+    console.warn("[preview] stream fetch failed", error);
+    return new Response("Unable to reach preview service.", { status: 502 });
   }
 
   if (!upstream.ok) {

@@ -38,7 +38,7 @@ export default async function SitesPage() {
             Review onboarding status, domains, and languages for every property.
           </p>
         </div>
-        {canCreateSite ? (
+        {error ? null : canCreateSite ? (
           <Button asChild>
             <Link href="/dashboard/sites/new" title="Add a site">
               Add a site

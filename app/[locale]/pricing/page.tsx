@@ -298,9 +298,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                     className="border-b border-border transition hover:bg-background/50"
                   >
                     <td className="py-4 px-4 font-medium text-foreground">{row.label}</td>
-                    <td className="py-4 px-4 text-center">
-                      {renderComparisonValue(row.starter)}
-                    </td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.starter)}</td>
                     <td className="py-4 px-4 text-center">{renderComparisonValue(row.pro)}</td>
                     <td className="py-4 px-4 text-center">{renderComparisonValue(row.agency)}</td>
                   </tr>

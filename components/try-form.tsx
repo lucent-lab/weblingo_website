@@ -25,6 +25,11 @@ type TryFormProps = {
 type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
 
 const emailSchema = z.email();
+const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "processing", "ready", "failed"];
+
+function isPreviewStatus(value: unknown): value is PreviewStatus {
+  return typeof value === "string" && PREVIEW_STATUSES.includes(value as PreviewStatus);
+}
 
 export function TryForm({
   locale,
@@ -187,7 +192,7 @@ export function TryForm({
 
     idleTimerRef.current = setInterval(() => {
       if (Date.now() - lastEventAt > 45_000) {
-        setError("Connection lost, please try again.");
+        setError(t("try.form.connectionLost"));
         setStatus("failed");
         closeEventSource();
       }
@@ -216,8 +221,8 @@ export function TryForm({
         return;
       }
 
-      if (typeof data.status === "string") {
-        setStatus(data.status as PreviewStatus);
+      if (isPreviewStatus(data.status)) {
+        setStatus(data.status);
       }
     };
 
@@ -333,53 +338,64 @@ export function TryForm({
       setLastRequestKey(requestKey);
 
       const controller = new AbortController();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       abortControllerRef.current = controller;
+      let streamed = false;
 
-      const response = await fetch("/api/previews", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        body: JSON.stringify({
-          sourceUrl: trimmedUrl,
-          sourceLang: normalizedSourceLang,
-          targetLang: normalizedTargetLang,
-          locale,
-          ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
-        }),
-        signal: controller.signal,
-      });
+      try {
+        const response = await fetch("/api/previews", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify({
+            sourceUrl: trimmedUrl,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
+            locale,
+            ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
+          }),
+          signal: controller.signal,
+        });
 
-      const contentType = response.headers.get("content-type") ?? "";
+        const contentType = response.headers.get("content-type") ?? "";
 
-      if (contentType.includes("text/event-stream")) {
-        await consumeEventStream(response);
-        return;
+        if (contentType.includes("text/event-stream")) {
+          streamed = true;
+          await consumeEventStream(response);
+          return;
+        }
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          const reason =
+            payload?.error || payload?.message || `Request failed with status ${response.status}`;
+          throw new Error(reason);
+        }
+
+        const payload = await response.json();
+        const id = payload?.previewId as string | undefined;
+        const immediatePreview = payload?.previewUrl as string | undefined;
+
+        if (immediatePreview) {
+          setPreviewUrl(immediatePreview);
+          setStatus("ready");
+          return;
+        }
+
+        if (!id) {
+          throw new Error("Preview was created but no ID was returned.");
+        }
+
+        connectSSE(id);
+      } finally {
+        if (!streamed && abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
       }
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        const reason =
-          payload?.error || payload?.message || `Request failed with status ${response.status}`;
-        throw new Error(reason);
-      }
-
-      const payload = await response.json();
-      const id = payload?.previewId as string | undefined;
-      const immediatePreview = payload?.previewUrl as string | undefined;
-
-      if (immediatePreview) {
-        setPreviewUrl(immediatePreview);
-        setStatus("ready");
-        return;
-      }
-
-      if (!id) {
-        throw new Error("Preview was created but no ID was returned.");
-      }
-
-      connectSSE(id);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate preview.";
       setError(message);
@@ -414,6 +430,9 @@ export function TryForm({
         setStatus("failed");
         setProgress(null);
         return true;
+      }
+      if (isPreviewStatus(data.status)) {
+        setStatus(data.status);
       }
       return false;
     };
