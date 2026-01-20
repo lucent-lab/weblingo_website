@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TryForm } from "@/components/try-form";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
-import { listSupportedLanguagesCached } from "@internal/dashboard/data";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -15,7 +15,7 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
 
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);
-  const supportedLanguages = await listSupportedLanguagesCached();
+  const supportedLanguages = SUPPORTED_LANGUAGES_STATIC;
 
   return (
     <div className="min-h-screen bg-background">

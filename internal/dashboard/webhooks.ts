@@ -414,6 +414,8 @@ const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
   { tag: "zh-TW", englishName: "Chinese Traditional (Taiwan)", direction: "ltr" },
 ] as const;
 
+export const SUPPORTED_LANGUAGES_STATIC: SupportedLanguage[] = [...FALLBACK_SUPPORTED_LANGUAGES];
+
 type RequestOptions<T> = {
   path: string;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
