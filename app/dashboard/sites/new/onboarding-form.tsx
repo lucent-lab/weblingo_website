@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 
 import { createSiteAction, type ActionResponse } from "../../actions";
@@ -17,7 +18,6 @@ import {
   stripWwwPrefix,
 } from "../site-form-utils";
 
-import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -26,6 +26,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+
+// Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
+const LanguageTagCombobox = dynamic(
+  () =>
+    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  { ssr: false },
+);
 
 const initialState: ActionResponse = {
   ok: false,

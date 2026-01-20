@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
 import { TargetLanguagePicker } from "../../target-language-picker";
@@ -13,7 +14,6 @@ import {
   stripWwwPrefix,
 } from "../../site-form-utils";
 
-import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -28,6 +28,13 @@ import type {
   SpaRefreshSettings,
   SupportedLanguage,
 } from "@internal/dashboard/webhooks";
+
+// Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
+const LanguageTagCombobox = dynamic(
+  () =>
+    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  { ssr: false },
+);
 
 const initialState: ActionResponse = { ok: false, message: "" };
 

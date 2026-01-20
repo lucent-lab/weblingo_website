@@ -1,14 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 
-import { LanguageTagCombobox } from "@/components/language-tag-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { createLanguageNameResolver, normalizeLangTag } from "@internal/i18n";
 import { suggestLocaleAlias, validateLocaleAlias } from "./site-form-utils";
+
+// Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
+const LanguageTagCombobox = dynamic(
+  () =>
+    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  { ssr: false },
+);
 
 type TargetLanguagePickerProps = {
   targets: string[];
