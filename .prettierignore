@@ -2,6 +2,7 @@
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+test-results/.last-run.json
 
 # Supabase generated types
 types/database.ts

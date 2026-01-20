@@ -3,6 +3,7 @@
 - Implementation Plan — `docs/next-multidomain-saas-plan.md`
 - Development Guide — `docs/DEVELOPMENT_GUIDE.md`
 - Architecture Overview — `docs/ARCHITECTURE.md`
+- Dashboard Flows & Use Cases — `docs/dashboard-flow-and-use-cases.md`
 - Recommended Structure Reference — `docs/recommended_structure.md`
 
 Reading order:

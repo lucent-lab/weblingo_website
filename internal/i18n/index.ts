@@ -9,3 +9,5 @@ export {
   createLocalizedMetadata,
 } from "./server";
 export { createClientTranslator, type ClientMessages } from "./client";
+export { createLanguageNameResolver, type LanguageNameResolver } from "./language-names";
+export { getBaseLangTag, normalizeLangTag } from "./lang-tag";

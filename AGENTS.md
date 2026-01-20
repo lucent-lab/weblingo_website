@@ -22,6 +22,8 @@ This document guides contributors working inside the `web` marketing site for We
 Define these in `.env.local`:
 
 - `NEXT_PUBLIC_APP_URL`
+- `HOME_PAGE_VARIANT` (`classic` | `expansion`, defaults to `expansion`)
+- `PUBLIC_PORTAL_MODE` (`enabled` | `disabled`)
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
@@ -38,6 +40,7 @@ Define these in `.env.local`:
 - Offensive programming with defensive boundaries: assert invariants internally and fail fast; validate inputs at boundaries and surface clear, friendly errors.
 - Cohesion & readability: small modules with clear responsibilities; prefer early returns.
 - Tests with code changes where practical; keep fixtures tiny.
+- Logging is part of the acceptance criteria: produce exactly one wide event per request/job with correlation IDs, business context, outcome, duration, and a structured error object on failure. Avoid step-by-step log spam. See `docs/LOGGING_POLICY.md`.
 
 ### Abstraction Policy (no premature abstractions)
 

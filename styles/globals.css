@@ -3,71 +3,123 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 47.4% 11.2%;
-
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 47.4% 11.2%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 47.4% 11.2%;
-
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-
-  --primary: 151 55% 41%;
-  --primary-foreground: 355.7 100% 97.3%;
-
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-
-  --ring: 151 55% 41%;
-
-  --radius: 0.75rem;
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-
-  color-scheme: light;
-  scroll-behavior: smooth;
+  --background: 0 0% 99.2157%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 99.2157%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 98.8235%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 257.7049 59.8039% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 17.2414% 94.3137%;
+  --secondary-foreground: 0 0% 3.1373%;
+  --muted: 0 0% 96.0784%;
+  --muted-foreground: 0 0% 32.1569%;
+  --accent: 222.3529 58.6207% 94.3137%;
+  --accent-foreground: 216.3158 45.6% 49.0196%;
+  --destructive: 358.6957 44.6602% 59.6078%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 12.1951% 91.9608%;
+  --input: 0 0% 92.1569%;
+  --ring: 0 0% 0%;
+  --chart-1: 148.4211 32.2034% 53.7255%;
+  --chart-2: 257.7049 59.8039% 60%;
+  --chart-3: 24.7619 58.8785% 58.0392%;
+  --chart-4: 217.3585 45.6897% 54.5098%;
+  --chart-5: 0 0% 45.4902%;
+  --sidebar: 210 28.5714% 97.2549%;
+  --sidebar-foreground: 0 0% 0%;
+  --sidebar-primary: 0 0% 0%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 92.1569%;
+  --sidebar-accent-foreground: 0 0% 0%;
+  --sidebar-border: 0 0% 92.1569%;
+  --sidebar-ring: 0 0% 0%;
+  --font-sans: Plus Jakarta Sans, sans-serif;
+  --font-serif: Lora, serif;
+  --font-mono: IBM Plex Mono, monospace;
+  --radius: 0.3rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.16;
+  --shadow-color: #1a1a1a;
+  --shadow-2xs: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.08);
+  --shadow-xs: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.08);
+  --shadow-sm:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 1px 2px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 1px 2px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-md:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 2px 4px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-lg:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 4px 6px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-xl:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 8px 10px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.4);
+  --tracking-normal: -0.025em;
+  --spacing: 0.27rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
+  --background: 240 3.5714% 10.9804%;
+  --foreground: 0 0% 94.1176%;
+  --card: 220 4.1096% 14.3137%;
+  --card-foreground: 0 0% 94.1176%;
+  --popover: 220 4.1096% 14.3137%;
+  --popover-foreground: 0 0% 94.1176%;
+  --primary: 257.3196 59.5092% 68.0392%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 228 5.3763% 18.2353%;
+  --secondary-foreground: 0 0% 94.1176%;
+  --muted: 228 5.3763% 18.2353%;
+  --muted-foreground: 0 0% 62.7451%;
+  --accent: 218.8235 19.1011% 17.451%;
+  --accent-foreground: 208.5 59.7015% 73.7255%;
+  --destructive: 0 54.3624% 70.7843%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 216 4.5872% 21.3725%;
+  --input: 216 4.5872% 21.3725%;
+  --ring: 257.3196 59.5092% 68.0392%;
+  --chart-1: 141.8182 41.1215% 58.0392%;
+  --chart-2: 257.3196 59.5092% 68.0392%;
+  --chart-3: 0 56.9892% 81.7647%;
+  --chart-4: 217.4194 52.5424% 65.2941%;
+  --chart-5: 0 0% 62.7451%;
+  --sidebar: 240 1.9608% 10%;
+  --sidebar-foreground: 0 0% 94.1176%;
+  --sidebar-primary: 257.3196 59.5092% 68.0392%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 228 5.3763% 18.2353%;
+  --sidebar-accent-foreground: 257.3196 59.5092% 68.0392%;
+  --sidebar-border: 216 4.5872% 21.3725%;
+  --sidebar-ring: 257.3196 59.5092% 68.0392%;
+  --font-sans: Plus Jakarta Sans, sans-serif;
+  --font-serif: Lora, serif;
+  --font-mono: IBM Plex Mono, monospace;
+  --radius: 0.3rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.16;
+  --shadow-color: #1a1a1a;
+  --shadow-2xs: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.08);
+  --shadow-xs: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.08);
+  --shadow-sm:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 1px 2px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 1px 2px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-md:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 2px 4px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-lg:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 4px 6px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-xl:
+    0px 2px 3px 0px hsl(0 0% 10.1961% / 0.16), 0px 8px 10px -1px hsl(0 0% 10.1961% / 0.16);
+  --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 10.1961% / 0.4);
+}
 
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-
-  --primary: 151 55% 41%;
-  --primary-foreground: 355.7 100% 97.3%;
-
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-
-  --ring: 151 55% 41%;
+body {
+  letter-spacing: var(--tracking-normal);
 }
 
 * {
@@ -79,4 +131,20 @@ body {
   font-feature-settings:
     "rlig" 1,
     "calt" 0;
+}
+
+.hero-pattern {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.hero-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(14, 165, 233, 0.08) 0%,
+    rgba(6, 182, 212, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }

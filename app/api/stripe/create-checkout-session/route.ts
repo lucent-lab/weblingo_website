@@ -13,6 +13,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+    return NextResponse.json({ error: "Checkout disabled" }, { status: 403 });
+  }
   let payload: unknown;
 
   try {

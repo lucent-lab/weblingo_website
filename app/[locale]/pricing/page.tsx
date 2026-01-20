@@ -1,11 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowRight, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PricingTeaser } from "@/components/pricing-teaser";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
+
+const planIds = ["launch", "growth", "enterprise"] as const;
+const CHECK_MARKER = "✅";
+
+const renderComparisonValue = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith(CHECK_MARKER)) {
+    const suffix = trimmed.slice(CHECK_MARKER.length).trim();
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <Check className="h-5 w-5 text-primary" />
+        {suffix ? <span className="text-sm text-muted-foreground">{suffix}</span> : null}
+      </div>
+    );
+  }
+  return <span className="text-sm text-muted-foreground">{value}</span>;
+};
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -102,101 +118,215 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     },
   ];
 
-  const faqItems = [
-    {
-      question: t("pricing.faq.items.languages.question"),
-      answer: t("pricing.faq.items.languages.answer"),
+  type PlanRow = {
+    name: string;
+    description: string;
+    features: string[];
+    note: string;
+    price: string;
+    websites: string;
+    languages: string;
+    extra?: string;
+  };
+
+  const planRows: Record<(typeof planIds)[number], PlanRow> = {
+    launch: {
+      name: t("pricing.tiers.launch.name"),
+      description: t("pricing.tiers.launch.description"),
+      features: [
+        t("pricing.tiers.launch.feature1"),
+        t("pricing.tiers.launch.feature2"),
+        t("pricing.tiers.launch.feature3"),
+        t("pricing.tiers.launch.feature4"),
+      ],
+      note: t("pricing.tiers.launch.note"),
+      price: t("pricing.compare.rows.pricing.starter"),
+      websites: t("pricing.compare.rows.websitesIncluded.starter"),
+      languages: t("pricing.compare.rows.languages.starter"),
     },
-    {
-      question: t("pricing.faq.items.traffic.question"),
-      answer: t("pricing.faq.items.traffic.answer"),
+    growth: {
+      name: t("pricing.tiers.growth.name"),
+      description: t("pricing.tiers.growth.description"),
+      features: [
+        t("pricing.tiers.growth.feature1"),
+        t("pricing.tiers.growth.feature2"),
+        t("pricing.tiers.growth.feature3"),
+        t("pricing.tiers.growth.feature4"),
+      ],
+      note: t("pricing.tiers.growth.note"),
+      price: t("pricing.compare.rows.pricing.pro"),
+      websites: t("pricing.compare.rows.websitesIncluded.pro"),
+      languages: t("pricing.compare.rows.languages.pro"),
     },
-    {
-      question: t("pricing.faq.items.agencies.question"),
-      answer: t("pricing.faq.items.agencies.answer"),
+    enterprise: {
+      name: t("pricing.tiers.enterprise.name"),
+      description: t("pricing.tiers.enterprise.description"),
+      features: [
+        t("pricing.tiers.enterprise.feature1"),
+        t("pricing.tiers.enterprise.feature2"),
+        t("pricing.tiers.enterprise.feature3"),
+        t("pricing.tiers.enterprise.feature4"),
+      ],
+      note: t("pricing.tiers.enterprise.note"),
+      extra: t("pricing.tiers.enterprise.additional"),
+      price: t("pricing.compare.rows.pricing.agency"),
+      websites: t("pricing.compare.rows.websitesIncluded.agency"),
+      languages: t("pricing.compare.rows.languages.agency"),
     },
-  ];
+  };
 
   return (
-    <div className="bg-background pb-24 pt-20">
-      <section className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 px-6 text-center">
-        <p className="text-sm uppercase tracking-[0.3em] text-primary">
-          {t("pricing.header.tagline")}
-        </p>
-        <h1 className="text-4xl font-semibold text-foreground sm:text-5xl">
-          {t("pricing.header.title")}
-        </h1>
-        <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
-          {t("pricing.header.description")}
-        </p>
-        <Button asChild size="lg">
-          <Link href={`/${locale}/contact`}>{t("pricing.header.contactCta")}</Link>
-        </Button>
+    <div className="min-h-screen bg-background">
+      <section className="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="mb-6 inline-block rounded-full border border-border bg-secondary px-4 py-2">
+            <span className="text-sm font-medium text-secondary-foreground">
+              {t("pricing.header.tagline")}
+            </span>
+          </div>
+          <h1 className="mb-6 text-5xl font-bold text-balance text-foreground sm:text-6xl">
+            {t("pricing.header.title")}
+          </h1>
+          <p className="mx-auto mb-4 max-w-2xl text-balance text-xl text-muted-foreground">
+            {t("pricing.header.description")}
+          </p>
+          <div className="mt-8">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+              <a href="mailto:contact@weblingo.app">
+                {t("pricing.header.contactCta")}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+          </div>
+          <p className="mt-6 text-sm text-muted-foreground">{t("pricing.header.trust")}</p>
+        </div>
       </section>
 
-      <PricingTeaser locale={locale} t={t} />
+      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-8 md:grid-cols-3">
+            {planIds.map((planId) => {
+              const plan = planRows[planId];
+              const highlight = planId === "growth";
+              return (
+                <div
+                  key={planId}
+                  className={`rounded-lg border transition-all ${
+                    highlight
+                      ? "border-primary bg-primary/5 shadow-lg md:scale-105"
+                      : "border-border bg-card hover:border-primary/50"
+                  }`}
+                >
+                  {highlight ? (
+                    <div className="rounded-t-lg bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground">
+                      {t("pricing.tiers.mostPopular")}
+                    </div>
+                  ) : null}
+                  <div className="p-8">
+                    <h3 className="mb-2 text-2xl font-bold text-foreground">{plan.name}</h3>
+                    <p className="mb-6 text-sm text-muted-foreground">{plan.description}</p>
+                    <div className="mb-6 border-b border-border pb-6">
+                      <p className="mb-1 text-sm text-muted-foreground">
+                        {t("pricing.compare.rows.pricing.label")}
+                      </p>
+                      <p className="text-3xl font-bold text-foreground">{plan.price}</p>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {t("pricing.compare.rows.websitesIncluded.label")} {plan.websites}
+                        <br />
+                        {t("pricing.compare.rows.languages.label")} {plan.languages}
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      className="mb-8 w-full"
+                      variant={highlight ? "default" : "outline"}
+                      disabled
+                    >
+                      {t("pricing.tiers.comingSoon")}
+                    </Button>
+                    <div className="space-y-4">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground">
+                        {t("pricing.compare.column.feature")}
+                      </p>
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className="flex gap-3 text-sm">
+                          <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                          <span className="text-foreground">{feature}</span>
+                        </div>
+                      ))}
+                      <p className="text-xs text-muted-foreground">{plan.note}</p>
+                      {plan.extra ? (
+                        <p className="text-xs text-muted-foreground">{plan.extra}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-      <section id="compare" className="mx-auto mt-16 w-full max-w-6xl px-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-semibold text-foreground">
-              {t("pricing.compare.title")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-sm text-muted-foreground">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                    <th className="py-2 pr-4 font-medium">{t("pricing.compare.column.feature")}</th>
-                    <th className="py-2 px-4 font-medium text-center">
-                      {t("pricing.tiers.launch.name")}
-                    </th>
-                    <th className="py-2 px-4 font-medium text-center">
-                      {t("pricing.tiers.growth.name")}
-                    </th>
-                    <th className="py-2 pl-4 font-medium text-center">
-                      {t("pricing.tiers.enterprise.name")}
-                    </th>
+      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="mb-12 text-3xl font-bold text-foreground sm:text-4xl">
+            {t("pricing.compare.title")}
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-4 px-4 text-left font-semibold text-foreground">
+                    {t("pricing.compare.column.feature")}
+                  </th>
+                  <th className="py-4 px-4 text-center font-semibold text-foreground">
+                    {t("pricing.tiers.launch.name")}
+                  </th>
+                  <th className="py-4 px-4 text-center font-semibold text-foreground">
+                    {t("pricing.tiers.growth.name")}
+                  </th>
+                  <th className="py-4 px-4 text-center font-semibold text-foreground">
+                    {t("pricing.tiers.enterprise.name")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr
+                    key={row.label}
+                    className="border-b border-border transition hover:bg-background/50"
+                  >
+                    <td className="py-4 px-4 font-medium text-foreground">{row.label}</td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.starter)}</td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.pro)}</td>
+                    <td className="py-4 px-4 text-center">{renderComparisonValue(row.agency)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {comparisonRows.map((row) => (
-                    <tr key={row.label}>
-                      <th className="py-3 pr-4 text-left font-medium text-foreground">
-                        {row.label}
-                      </th>
-                      <td className="py-3 px-4 text-center">{row.starter}</td>
-                      <td className="py-3 px-4 text-center">{row.pro}</td>
-                      <td className="py-3 pl-4 text-center">{row.agency}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">{t("pricing.compare.footnotes")}</p>
+        </div>
       </section>
-      <p className="mt-4 text-xs text-muted-foreground text-center px-6">
-        {t("pricing.compare.footnotes")}
-      </p>
 
-      <section id="faq" className="mx-auto mt-16 w-full max-w-4xl px-6">
-        <h2 className="text-2xl font-semibold text-foreground">{t("pricing.faq.title")}</h2>
-        <div className="mt-6 space-y-6">
-          {faqItems.map((item) => (
-            <Card key={item.question} className="border-border">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">
-                  {item.question}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{item.answer}</p>
-              </CardContent>
-            </Card>
-          ))}
-          <p className="text-sm text-muted-foreground">{t("pricing.faq.contact")}</p>
+      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="mb-6 text-4xl font-bold text-foreground sm:text-5xl">
+            {t("home.final.title")}
+          </h2>
+          <p className="mb-12 text-lg text-muted-foreground">{t("home.final.subtitle")}</p>
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+              <Link href={`/${locale}#try`}>
+                {t("home.final.cta")}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <a href="mailto:contact@weblingo.app">{t("pricing.header.contactCta")}</a>
+            </Button>
+          </div>
         </div>
       </section>
     </div>
@@ -218,6 +348,6 @@ export async function generateMetadata({
     descriptionKey: "pricing.header.description",
     titleFallback: "Pricing",
     descriptionFallback:
-      "Choose the plan that matches your rollout. Hosting, automation, and translations ready to publish are included in every tier.",
+      "Choose the plan that matches your rollout. Hosted on 330+ Cloudflare CDN locations.",
   });
 }

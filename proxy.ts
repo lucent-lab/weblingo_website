@@ -19,5 +19,8 @@ export const config = {
     {
       source: "/:locale/dashboard/:path*",
     },
+    {
+      source: "/dashboard/:path*",
+    },
   ],
 };
