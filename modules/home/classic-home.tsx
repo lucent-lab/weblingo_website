@@ -30,7 +30,9 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);
   const supportedLanguages = await listSupportedLanguagesCached();
-  const howItWorksHref = `${basePath ?? `/${locale}`}#how-it-works`;
+  const baseHref = basePath ?? `/${locale}`;
+  const howItWorksHref = `${baseHref}#how-it-works`;
+  const tryHref = `${baseHref}#try`;
 
   const featureCards = [
     {
@@ -195,7 +197,7 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
           </h2>
           <p className="mb-12 text-lg text-muted-foreground">{t("home.final.subtitle")}</p>
           <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-            <Link href={`/${locale}#try`}>
+            <Link href={tryHref}>
               {t("home.final.cta")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

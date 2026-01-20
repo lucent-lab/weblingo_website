@@ -283,8 +283,6 @@
   "landing.faq.items.5.a": "WebLingo works when pages can be rendered at crawl time, including SSR/SSG and hydrated JS. Logged-in, personalized, or real-time pages aren’t supported in the MVP.",
   "landing.faq.items.6.q": "Do you translate URL paths or slugs?",
   "landing.faq.items.6.a": "Yes. You can keep original paths or choose translated slugs per language. WebLingo serves per-locale subdomains and keeps hreflang + localized sitemaps in sync.",
-  "legal.notice.title": "Legal notice",
-  "legal.notice.description": "Detailed company and compliance details will be published here before launch.",
   "checkout.header.tagline": "Checkout",
   "checkout.header.title": "Confirm your WebLingo plan",
   "checkout.header.description": "Stripe will securely collect payment details. You can upgrade, downgrade, or cancel at any time inside the billing portal.",

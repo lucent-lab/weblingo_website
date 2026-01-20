@@ -44,7 +44,18 @@ export function AuthLoginForm() {
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16">
-      <form className="w-full max-w-md">
+      <form
+        className="w-full max-w-md"
+        onSubmit={(event) => {
+          const submitter = (event.nativeEvent as SubmitEvent).submitter;
+          if (submitter && "dataset" in submitter) {
+            const nextIntent = submitter.dataset.intent;
+            if (nextIntent === "login" || nextIntent === "signup") {
+              setIntent(nextIntent);
+            }
+          }
+        }}
+      >
         <Card>
           <CardHeader>
             <CardTitle>Sign in to WebLingo</CardTitle>
@@ -96,6 +107,7 @@ export function AuthLoginForm() {
               disabled={isSubmitting}
               formAction={loginAction}
               onClick={() => setIntent("login")}
+              data-intent="login"
             >
               {loginPending ? "Signing in..." : "Log in"}
             </Button>
@@ -105,6 +117,7 @@ export function AuthLoginForm() {
               variant="outline"
               formAction={signupAction}
               onClick={() => setIntent("signup")}
+              data-intent="signup"
             >
               {signupPending ? "Creating..." : "Create account"}
             </Button>

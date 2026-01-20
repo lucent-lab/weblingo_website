@@ -193,7 +193,10 @@ function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
 
     const targetLangs =
       record.targetLangs && Array.isArray(record.targetLangs)
-        ? record.targetLangs.map((lang) => lang.toString().trim()).filter(Boolean)
+        ? record.targetLangs
+            .filter((lang) => lang != null)
+            .map((lang) => lang.toString().trim())
+            .filter(Boolean)
         : undefined;
 
     normalized.push({
@@ -322,7 +325,7 @@ export async function createSiteAction(
       throw error;
     }
     if (error instanceof Error) {
-      return failed(error.message);
+      return failed(toFriendlyDashboardActionError(error, "Unable to create site right now."));
     }
     return failed("Unable to create site right now.");
   }
@@ -368,7 +371,7 @@ export async function updateSiteSettingsAction(
       throw error;
     }
     if (error instanceof Error) {
-      return failed(error.message);
+      return failed(toFriendlyDashboardActionError(error, "Unable to update site settings."));
     }
     return failed("Unable to update site settings.");
   }

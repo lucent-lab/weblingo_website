@@ -143,6 +143,8 @@ export function TargetLanguagePicker({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleAliasRemove(tag)}
+                        disabled={disabled}
+                        aria-disabled={disabled}
                       >
                         Remove alias
                       </Button>
@@ -152,6 +154,8 @@ export function TargetLanguagePicker({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleAliasToggle(tag)}
+                        disabled={disabled}
+                        aria-disabled={disabled}
                       >
                         Alias
                       </Button>
@@ -162,6 +166,8 @@ export function TargetLanguagePicker({
                       size="sm"
                       className="h-7 px-2"
                       onClick={() => handleRemoveTarget(tag)}
+                      disabled={disabled}
+                      aria-disabled={disabled}
                     >
                       Remove
                     </Button>
@@ -176,6 +182,8 @@ export function TargetLanguagePicker({
                       placeholder={aliasPlaceholder}
                       className={cn("h-8 w-32 text-sm", aliasError ? "border-destructive" : "")}
                       aria-invalid={aliasError ? true : undefined}
+                      disabled={disabled}
+                      aria-disabled={disabled}
                     />
                     {aliasError ? <span className="text-destructive">{aliasError}</span> : null}
                   </div>

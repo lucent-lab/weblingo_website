@@ -369,6 +369,7 @@ function SidebarMenuButton({
       data-slot="sidebar-menu-button"
       data-active={isActive}
       title={resolvedTitle}
+      type={asChild ? undefined : "button"}
       className={cn(
         sidebarMenuButtonVariants({ variant, size }),
         "group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-2",

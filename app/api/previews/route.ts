@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const text = await upstream.text();
-    return new NextResponse(text || undefined, {
+    return new NextResponse(text, {
       status: upstream.status,
       headers: { "Content-Type": contentType || "application/json" },
     });

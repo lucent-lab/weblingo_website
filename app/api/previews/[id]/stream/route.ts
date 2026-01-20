@@ -37,13 +37,12 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 
   const headers = new Headers();
-  const passthrough = ["content-type", "cache-control", "transfer-encoding"];
+  const passthrough = ["content-type"];
   upstream.headers.forEach((value, key) => {
     if (passthrough.includes(key.toLowerCase())) {
       headers.set(key, value);
     }
   });
-  headers.set("Connection", "keep-alive");
   headers.set("Cache-Control", "no-cache");
   headers.set("X-Accel-Buffering", "no");
 
