@@ -4,7 +4,7 @@ import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "luci
 
 import { TryForm } from "@/components/try-form";
 import { Button } from "@/components/ui/button";
-import { listSupportedLanguagesCached } from "@internal/dashboard/data";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];
@@ -29,7 +29,7 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
   const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);
-  const supportedLanguages = await listSupportedLanguagesCached();
+  const supportedLanguages = SUPPORTED_LANGUAGES_STATIC;
   const baseHref = basePath ?? `/${locale}`;
   const howItWorksHref = `${baseHref}#how-it-works`;
   const tryHref = `${baseHref}#try`;

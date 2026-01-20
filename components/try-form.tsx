@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
-import { LanguageTagCombobox } from "@/components/language-tag-combobox";
+// Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
+const LanguageTagCombobox = dynamic(
+  () =>
+    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  { ssr: false },
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
