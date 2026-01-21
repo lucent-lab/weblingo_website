@@ -559,5 +559,12 @@
   "try.form.sourceLabel": "Langue source",
   "try.form.targetLabel": "Langue cible",
   "try.form.sameLanguage": "Les langues source et cible doivent être différentes.",
-  "try.status.processingHint": "Cela peut prendre quelques minutes ; vous pouvez fermer cet onglet."
+  "try.status.processingHint": "Cela peut prendre quelques minutes ; vous pouvez fermer cet onglet.",
+  "try.error.checkStatusFailed": "Impossible de vérifier le statut. Réessayez.",
+  "try.status.pendingEmail": "Le traitement prend plus de temps que prévu. Nous vous enverrons un email à {email} lorsque votre aperçu sera prêt.",
+  "try.status.pendingEmailHint": "Vous pouvez fermer cet onglet.",
+  "try.status.timedOutNoEmail": "Le traitement prend plus de temps que prévu.",
+  "try.status.stillProcessing": "Traitement en cours...",
+  "try.action.checkStatus": "Vérifier le statut",
+  "try.action.checkingStatus": "Vérification..."
 }

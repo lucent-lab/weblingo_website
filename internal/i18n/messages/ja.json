@@ -559,5 +559,12 @@
   "try.form.sourceLabel": "ソース言語",
   "try.form.targetLabel": "ターゲット言語",
   "try.form.sameLanguage": "ソース言語とターゲット言語は異なる必要があります。",
-  "try.status.processingHint": "数分かかる場合があります。タブを閉じても構いません。"
+  "try.status.processingHint": "数分かかる場合があります。タブを閉じても構いません。",
+  "try.error.checkStatusFailed": "ステータスを確認できませんでした。再度お試しください。",
+  "try.status.pendingEmail": "処理に時間がかかっています。プレビューの準備ができ次第、{email}にメールでお知らせします。",
+  "try.status.pendingEmailHint": "このタブを閉じても大丈夫です。",
+  "try.status.timedOutNoEmail": "処理に時間がかかっています。",
+  "try.status.stillProcessing": "処理中...",
+  "try.action.checkStatus": "ステータスを確認",
+  "try.action.checkingStatus": "確認中..."
 }

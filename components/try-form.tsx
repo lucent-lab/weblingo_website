@@ -129,6 +129,10 @@ export function TryForm({
   const [sourceLang, setSourceLang] = useState<string>(locale);
   const [targetLang, setTargetLang] = useState<string>(defaultTargetLang);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const [timedOutWithEmail, setTimedOutWithEmail] = useState(false);
+  const [lastPreviewId, setLastPreviewId] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -406,16 +410,22 @@ export function TryForm({
       }
     });
 
-    es.addEventListener("timeout", (event) => {
-      try {
-        const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        applyErrorFromPayload(data, t("try.error.timeout"));
-      } catch {
-        applyErrorFromPayload({}, t("try.error.timeout"));
-      } finally {
-        setProgress(null);
-        setStatus("failed");
-        closeEventSource();
+    es.addEventListener("timeout", () => {
+      closeEventSource();
+      setProgress(null);
+
+      if (showEmailField && trimmedEmail) {
+        // Processing continues in background; user will get email notification
+        setTimedOut(true);
+        setTimedOutWithEmail(true);
+        setLastPreviewId(id);
+        // Keep status as "processing" - don't set to failed
+      } else {
+        // No email fallback - show timeout with check status option
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setLastPreviewId(id);
+        // Keep status as "processing" to allow check status
       }
     });
   }
@@ -464,6 +474,9 @@ export function TryForm({
       setErrorStage(null);
       setProgress(null);
       setPreviewUrl(null);
+      setTimedOut(false);
+      setTimedOutWithEmail(false);
+      setLastPreviewId(null);
       lastStageRef.current = null;
       closeEventSource();
       setLastRequestKey(requestKey);
@@ -513,7 +526,7 @@ export function TryForm({
           return;
         }
 
-        if (immediatePreview) {
+        if (payload?.status === "ready" && immediatePreview) {
           setPreviewUrl(immediatePreview);
           setStatus("ready");
           return;
@@ -536,7 +549,6 @@ export function TryForm({
     }
   }
 
-
   async function handleCopyPreview() {
     if (!previewUrl) return;
     try {
@@ -550,6 +562,37 @@ export function TryForm({
       }, 2000);
     } catch {
       setHasCopied(false);
+    }
+  }
+
+  async function handleCheckStatus() {
+    if (!lastPreviewId || checkingStatus) return;
+
+    setCheckingStatus(true);
+    try {
+      const response = await fetch(`/api/previews/${lastPreviewId}`);
+      const data = await response.json();
+
+      if (data.status === "ready") {
+        setPreviewUrl(data.previewUrl);
+        setStatus("ready");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+      } else if (data.status === "failed") {
+        applyErrorFromPayload(data, t("try.error.default"));
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+      } else {
+        // Still processing - update progress text
+        const stage = isPreviewStage(data.stage) ? data.stage : null;
+        const stageMessage = stage ? resolveStageMessage(stage) : null;
+        setProgress(stageMessage || t("try.status.stillProcessing"));
+      }
+    } catch {
+      setError(t("try.error.checkStatusFailed"));
+    } finally {
+      setCheckingStatus(false);
     }
   }
 
@@ -622,7 +665,7 @@ export function TryForm({
         ) : null}
       </div>
 
-      {statusMessage && (
+      {statusMessage && !timedOut && (
         <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <div className="flex flex-col gap-1">
@@ -631,6 +674,28 @@ export function TryForm({
               <span className="text-xs text-primary/80">{t("try.status.processingHint")}</span>
             ) : null}
           </div>
+        </div>
+      )}
+
+      {timedOut && timedOutWithEmail && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <p>{t("try.status.pendingEmail", undefined, { email: trimmedEmail })}</p>
+          <p className="mt-1 text-xs opacity-80">{t("try.status.pendingEmailHint")}</p>
+        </div>
+      )}
+
+      {timedOut && !timedOutWithEmail && (
+        <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <p>{t("try.status.timedOutNoEmail")}</p>
+          <Button
+            onClick={handleCheckStatus}
+            disabled={checkingStatus}
+            variant="outline"
+            size="sm"
+            className="w-fit"
+          >
+            {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
+          </Button>
         </div>
       )}
 
