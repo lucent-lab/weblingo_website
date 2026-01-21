@@ -28,12 +28,78 @@ type TryFormProps = {
 };
 
 type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
+type PreviewErrorCode =
+  | "invalid_url"
+  | "blocked_host"
+  | "dns_failed"
+  | "dns_timeout"
+  | "page_too_large"
+  | "render_failed"
+  | "translate_failed"
+  | "storage_failed"
+  | "config_error"
+  | "canceled"
+  | "unknown";
+type PreviewStage =
+  | "fetching_page"
+  | "analyzing_content"
+  | "translating"
+  | "generating_preview"
+  | "saving";
 
 const emailSchema = z.email();
 const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "processing", "ready", "failed"];
+const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
+  "invalid_url",
+  "blocked_host",
+  "dns_failed",
+  "dns_timeout",
+  "page_too_large",
+  "render_failed",
+  "translate_failed",
+  "storage_failed",
+  "config_error",
+  "canceled",
+  "unknown",
+];
+const PREVIEW_STAGES: PreviewStage[] = [
+  "fetching_page",
+  "analyzing_content",
+  "translating",
+  "generating_preview",
+  "saving",
+];
+const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
+  invalid_url: "try.error.invalid_url",
+  blocked_host: "try.error.blocked_host",
+  dns_failed: "try.error.dns_failed",
+  dns_timeout: "try.error.dns_timeout",
+  page_too_large: "try.error.page_too_large",
+  render_failed: "try.error.render_failed",
+  translate_failed: "try.error.translate_failed",
+  storage_failed: "try.error.storage_failed",
+  config_error: "try.error.config_error",
+  canceled: "try.error.canceled",
+  unknown: "try.error.unknown",
+};
+const PREVIEW_STAGE_MESSAGE_KEYS: Record<PreviewStage, string> = {
+  fetching_page: "try.stage.fetching_page",
+  analyzing_content: "try.stage.analyzing_content",
+  translating: "try.stage.translating",
+  generating_preview: "try.stage.generating_preview",
+  saving: "try.stage.saving",
+};
 
 function isPreviewStatus(value: unknown): value is PreviewStatus {
   return typeof value === "string" && PREVIEW_STATUSES.includes(value as PreviewStatus);
+}
+
+function isPreviewErrorCode(value: unknown): value is PreviewErrorCode {
+  return typeof value === "string" && PREVIEW_ERROR_CODES.includes(value as PreviewErrorCode);
+}
+
+function isPreviewStage(value: unknown): value is PreviewStage {
+  return typeof value === "string" && PREVIEW_STAGES.includes(value as PreviewStage);
 }
 
 export function TryForm({
@@ -48,6 +114,8 @@ export function TryForm({
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<PreviewErrorCode | null>(null);
+  const [errorStage, setErrorStage] = useState<PreviewStage | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -62,6 +130,7 @@ export function TryForm({
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStageRef = useRef<PreviewStage | null>(null);
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -172,6 +241,48 @@ export function TryForm({
     ].join("|");
   }
 
+  function resolveStageMessage(stage: PreviewStage | null) {
+    if (!stage) return null;
+    return t(PREVIEW_STAGE_MESSAGE_KEYS[stage]);
+  }
+
+  function resolveErrorMessage(code: PreviewErrorCode | null, fallback?: string | null) {
+    if (code) {
+      return t(PREVIEW_ERROR_MESSAGE_KEYS[code]);
+    }
+    if (fallback) {
+      return fallback;
+    }
+    return t("try.error.default");
+  }
+
+  function applyStageFromPayload(data: Record<string, unknown>) {
+    if (isPreviewStage(data.stage)) {
+      lastStageRef.current = data.stage;
+      setProgress(resolveStageMessage(data.stage));
+      return;
+    }
+    if (data.message || data.stage) {
+      setProgress(String(data.message ?? data.stage));
+    }
+  }
+
+  function applyErrorFromPayload(data: Record<string, unknown>, fallback?: string) {
+    const code = isPreviewErrorCode(data.errorCode) ? data.errorCode : null;
+    const stage = isPreviewStage(data.errorStage) ? data.errorStage : lastStageRef.current;
+    setErrorCode(code);
+    setErrorStage(stage ?? null);
+    setError(
+      resolveErrorMessage(
+        code,
+        (data.error as string | undefined) ??
+          (data.message as string | undefined) ??
+          fallback ??
+          null,
+      ),
+    );
+  }
+
   function closeEventSource() {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -183,11 +294,11 @@ export function TryForm({
     }
   }
 
-  function connectSSE(id: string) {
+  function connectSSE(id: string, streamUrl?: string | null) {
     closeEventSource();
     setStatus("processing");
 
-    const es = new EventSource(`/api/previews/${id}/stream`);
+    const es = new EventSource(streamUrl ?? `/api/previews/${id}/stream`);
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -197,7 +308,7 @@ export function TryForm({
 
     idleTimerRef.current = setInterval(() => {
       if (Date.now() - lastEventAt > 45_000) {
-        setError(t("try.form.connectionLost"));
+        applyErrorFromPayload({}, t("try.form.connectionLost"));
         setStatus("failed");
         closeEventSource();
       }
@@ -207,9 +318,7 @@ export function TryForm({
       if (typeof data.previewUrl === "string") {
         setPreviewUrl(data.previewUrl);
       }
-      if (data.message || data.stage) {
-        setProgress((data.message as string) ?? (data.stage as string));
-      }
+      applyStageFromPayload(data);
 
       if (data.status === "ready") {
         setStatus("ready");
@@ -219,7 +328,7 @@ export function TryForm({
       }
 
       if (data.status === "failed") {
-        setError((data.error as string) || "Preview failed.");
+        applyErrorFromPayload(data);
         setStatus("failed");
         setProgress(null);
         closeEventSource();
@@ -234,12 +343,10 @@ export function TryForm({
     es.addEventListener("progress", (event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        const message = data.message || data.stage || "Processing preview...";
-        setProgress(message);
         bump();
         handlePayload(data);
       } catch {
-        setProgress("Processing preview...");
+        setProgress(t("try.status.processing") || "Processing preview...");
       }
     });
 
@@ -286,9 +393,22 @@ export function TryForm({
     es.addEventListener("error", (event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        setError(data.error || data.message || "Preview failed.");
+        applyErrorFromPayload(data, t("try.error.default"));
       } catch {
-        setError("Preview failed.");
+        applyErrorFromPayload({}, t("try.form.connectionLost"));
+      } finally {
+        setProgress(null);
+        setStatus("failed");
+        closeEventSource();
+      }
+    });
+
+    es.addEventListener("timeout", (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data ?? "{}");
+        applyErrorFromPayload(data, t("try.error.timeout"));
+      } catch {
+        applyErrorFromPayload({}, t("try.error.timeout"));
       } finally {
         setProgress(null);
         setStatus("failed");
@@ -337,8 +457,11 @@ export function TryForm({
 
       setStatus("creating");
       setError(null);
+      setErrorCode(null);
+      setErrorStage(null);
       setProgress(null);
       setPreviewUrl(null);
+      lastStageRef.current = null;
       closeEventSource();
       setLastRequestKey(requestKey);
 
@@ -347,14 +470,12 @@ export function TryForm({
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = controller;
-      let streamed = false;
 
       try {
         const response = await fetch("/api/previews", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Accept: "text/event-stream",
           },
           body: JSON.stringify({
             sourceUrl: trimmedUrl,
@@ -366,24 +487,28 @@ export function TryForm({
           signal: controller.signal,
         });
 
-        const contentType = response.headers.get("content-type") ?? "";
-
-        if (contentType.includes("text/event-stream")) {
-          streamed = true;
-          await consumeEventStream(response);
-          return;
-        }
-
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
-          throw new Error(reason);
+          applyErrorFromPayload(payload ?? {}, reason);
+          setStatus("failed");
+          return;
         }
 
         const payload = await response.json();
         const id = payload?.previewId as string | undefined;
+        const streamUrl =
+          typeof payload?.streamUrl === "string" ? (payload.streamUrl as string) : null;
         const immediatePreview = payload?.previewUrl as string | undefined;
+
+        applyStageFromPayload(payload ?? {});
+
+        if (payload?.status === "failed") {
+          applyErrorFromPayload(payload);
+          setStatus("failed");
+          return;
+        }
 
         if (immediatePreview) {
           setPreviewUrl(immediatePreview);
@@ -395,9 +520,9 @@ export function TryForm({
           throw new Error("Preview was created but no ID was returned.");
         }
 
-        connectSSE(id);
+        connectSSE(id, streamUrl);
       } finally {
-        if (!streamed && abortControllerRef.current === controller) {
+        if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
       }
@@ -408,111 +533,6 @@ export function TryForm({
     }
   }
 
-  async function consumeEventStream(response: Response) {
-    if (!response.body) {
-      throw new Error("Stream response missing body");
-    }
-
-    setStatus("processing");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const handlePayload = (data: Record<string, unknown>) => {
-      if (typeof data.previewUrl === "string") {
-        setPreviewUrl(data.previewUrl);
-      }
-      if (data.message || data.stage) {
-        setProgress((data.message as string) ?? (data.stage as string));
-      }
-      if (data.status === "ready") {
-        setStatus("ready");
-        setProgress(null);
-        return true;
-      }
-      if (data.status === "failed") {
-        setError((data.error as string) || "Preview failed.");
-        setStatus("failed");
-        setProgress(null);
-        return true;
-      }
-      if (isPreviewStatus(data.status)) {
-        setStatus(data.status);
-      }
-      return false;
-    };
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let separatorIndex;
-        while ((separatorIndex = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, separatorIndex);
-          buffer = buffer.slice(separatorIndex + 2);
-          const event = parseSseEvent(rawEvent);
-          if (!event) continue;
-
-          if (event.type === "progress" || event.type === "status" || event.type === "message") {
-            const data = safeParseJson(event.data);
-            if (data) {
-              const doneHandled = handlePayload(data);
-              if (doneHandled) return;
-            }
-          }
-
-          if (event.type === "complete") {
-            const data = safeParseJson(event.data);
-            if (data && typeof data.previewUrl === "string") {
-              setPreviewUrl(data.previewUrl);
-            }
-            setStatus("ready");
-            setProgress(null);
-            return;
-          }
-
-          if (event.type === "error") {
-            const data = safeParseJson(event.data) ?? {};
-            setError((data.error as string) || "Preview failed.");
-            setStatus("failed");
-            setProgress(null);
-            return;
-          }
-        }
-      }
-    } finally {
-      abortControllerRef.current = null;
-    }
-
-    // If stream ends without terminal event
-    setError("Preview stream ended unexpectedly.");
-    setStatus("failed");
-  }
-
-  function parseSseEvent(raw: string): { type: string; data: string } | null {
-    const lines = raw.split("\n");
-    let type = "message";
-    const data: string[] = [];
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        type = line.slice(6).trim();
-      } else if (line.startsWith("data:")) {
-        data.push(line.slice(5).trim());
-      }
-    }
-    if (!data.length) return null;
-    return { type, data: data.join("\n") };
-  }
-
-  function safeParseJson(input: string): Record<string, unknown> | null {
-    try {
-      return JSON.parse(input);
-    } catch {
-      return null;
-    }
-  }
 
   async function handleCopyPreview() {
     if (!previewUrl) return;
@@ -540,6 +560,8 @@ export function TryForm({
         return null;
     }
   }, [status, progress, t]);
+  const resolvedError = errorCode ? t(PREVIEW_ERROR_MESSAGE_KEYS[errorCode]) : error;
+  const errorStageMessage = resolveStageMessage(errorStage);
 
   return (
     <div className="space-y-6">
@@ -609,9 +631,14 @@ export function TryForm({
         </div>
       )}
 
-      {error && status === "failed" && (
+      {resolvedError && status === "failed" && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+          <div>{resolvedError}</div>
+          {errorStageMessage ? (
+            <div className="text-xs text-destructive/80">
+              {t("try.error.stageLabel", undefined, { stage: errorStageMessage })}
+            </div>
+          ) : null}
         </div>
       )}
 
