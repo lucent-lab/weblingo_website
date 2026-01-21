@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { LaunchBanner } from "@components/launch-banner";
-import { SiteFooter } from "@components/site-footer";
-import { SiteHeader } from "@components/site-header";
 import { env } from "@internal/core";
-import { i18nConfig, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
+import { i18nConfig, normalizeLocale } from "@internal/i18n";
 
 export const dynamicParams = false;
 
@@ -49,29 +46,9 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const bannerCopy = {
-    badge: t("banner.badge"),
-    title: t("banner.title"),
-    subtitle: t("banner.subtitle"),
-    emailPlaceholder: t("banner.emailPlaceholder"),
-    sitePlaceholder: t("banner.sitePlaceholder"),
-    buttonIdle: t("banner.button.idle"),
-    buttonLoading: t("banner.button.loading"),
-    buttonSuccess: t("banner.button.success"),
-    successMessage: t("banner.message.success"),
-    defaultMessage: t("banner.message.default"),
-    dismissLabel: t("banner.dismiss"),
-  };
-
   return (
-    <>
-      <div className="flex min-h-screen flex-col" data-locale={locale}>
-        <SiteHeader locale={locale} t={t} />
-        <main className="flex-1">{children}</main>
-        <SiteFooter locale={locale} t={t} />
-      </div>
-      <LaunchBanner copy={bannerCopy} />
-    </>
+    <div className="min-h-screen" data-locale={locale}>
+      {children}
+    </div>
   );
 }

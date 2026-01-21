@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { docSections } from "@/content/docs";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -9,42 +13,52 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
   if (locale !== rawLocale) {
     notFound();
   }
+
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const languages = t("docs.languages.list")
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
 
   return (
-    <div className="bg-background pb-24 pt-20 text-foreground">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6">
-        <header className="space-y-3 text-center">
-          <h1 className="text-4xl font-semibold text-foreground">{t("docs.title")}</h1>
-          <p className="text-base text-muted-foreground">{t("docs.overview")}</p>
-        </header>
-        <ol className="list-decimal space-y-3 pl-6 text-sm text-muted-foreground">
-          <li>{t("docs.step.one")}</li>
-          <li>{t("docs.step.two")}</li>
-          <li>{t("docs.step.three")}</li>
-          <li>{t("docs.step.four")}</li>
-        </ol>
-        <section className="rounded-2xl border border-border bg-muted p-6">
-          <h2 className="text-lg font-semibold text-primary">{t("docs.cname.heading")}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{t("docs.cname.description")}</p>
-        </section>
-        <section id="languages" className="rounded-2xl border border-border bg-muted p-6 text-left">
-          <h2 className="text-lg font-semibold text-primary">{t("docs.languages.title")}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{t("docs.languages.description")}</p>
-          <p className="mt-4 text-sm font-medium text-foreground">{t("docs.languages.label")}</p>
-          <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 md:grid-cols-3">
-            {languages.map((language) => (
-              <li key={language} className="rounded-lg bg-background px-3 py-2 shadow-sm">
-                {language}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 text-sm text-muted-foreground">{t("docs.languages.contact")}</p>
-        </section>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+      <header className="space-y-3">
+        <h1 className="text-4xl font-semibold text-foreground">{t("docs.title")}</h1>
+        <p className="text-base text-muted-foreground">{t("docs.overview")}</p>
+      </header>
+
+      <div className="grid gap-10">
+        {docSections.map((section) => (
+          <section key={section.title} className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
+              <p className="text-sm text-muted-foreground">
+                {section.items.length === 1
+                  ? t("docs.section.single")
+                  : t("docs.section.multiple", undefined, {
+                      count: section.items.length.toString(),
+                    })}
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {section.items.map((doc) => {
+                const href = `/${locale}/docs/${doc.slug.join("/")}`;
+                return (
+                  <Link key={href} href={href} className="group">
+                    <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-md">
+                      <CardHeader>
+                        <CardTitle className="text-xl">{doc.title}</CardTitle>
+                        <CardDescription>{doc.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                          {t("docs.section.read")}
+                          <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
