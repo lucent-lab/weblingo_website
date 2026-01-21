@@ -38,6 +38,7 @@ type PreviewErrorCode =
   | "translate_failed"
   | "storage_failed"
   | "config_error"
+  | "processing_timeout"
   | "canceled"
   | "unknown";
 type PreviewStage =
@@ -59,6 +60,7 @@ const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
   "translate_failed",
   "storage_failed",
   "config_error",
+  "processing_timeout",
   "canceled",
   "unknown",
 ];
@@ -79,6 +81,7 @@ const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
   translate_failed: "try.error.translate_failed",
   storage_failed: "try.error.storage_failed",
   config_error: "try.error.config_error",
+  processing_timeout: "try.error.processing_timeout",
   canceled: "try.error.canceled",
   unknown: "try.error.unknown",
 };

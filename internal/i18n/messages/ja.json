@@ -113,6 +113,7 @@
   "try.error.translate_failed": "このページの翻訳に失敗しました。",
   "try.error.storage_failed": "プレビューを保存できませんでした。",
   "try.error.config_error": "プレビューサービスが一時的に利用できません。",
+  "try.error.processing_timeout": "プレビューの処理がタイムアウトしました。もう一度お試しください。",
   "try.error.canceled": "プレビューが中断されました。",
   "try.error.unknown": "プレビューを生成できませんでした。",
   "try.error.timeout": "プレビューがタイムアウトしました。再度お試しください。",
