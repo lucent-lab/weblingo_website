@@ -20,6 +20,7 @@ import {
   hasExplicitFailure,
   isPreviewErrorCode,
   isPreviewStage,
+  resolveStatusCheckFailure,
   type PreviewErrorCode,
   type PreviewStage,
 } from "@internal/previews/preview-sse";
@@ -632,10 +633,15 @@ export function TryForm({
         }
       }
       if (!response.ok) {
+        const decision = resolveStatusCheckFailure(response.status, payload);
+        if (decision === "processing") {
+          setProgress(t("try.status.stillProcessing"));
+          return false;
+        }
         const reason =
           (payload && typeof payload.error === "string" ? payload.error : "") ||
           (payload && typeof payload.message === "string" ? payload.message : "") ||
-          t("try.error.checkStatusFailed");
+          t("try.error.default");
         applyErrorFromPayload(payload ?? {}, reason);
         setStatus("failed");
         setTimedOut(false);
@@ -643,11 +649,8 @@ export function TryForm({
         return true;
       }
       if (!payload || typeof payload !== "object") {
-        applyErrorFromPayload({}, t("try.error.checkStatusFailed"));
-        setStatus("failed");
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
+        setProgress(t("try.status.stillProcessing"));
+        return false;
       }
       const data = payload as Record<string, unknown>;
 
@@ -671,11 +674,8 @@ export function TryForm({
         return false;
       }
     } catch {
-      applyErrorFromPayload({}, t("try.error.checkStatusFailed"));
-      setStatus("failed");
-      setTimedOut(false);
-      setTimedOutWithEmail(false);
-      return true;
+      setProgress(t("try.status.stillProcessing"));
+      return false;
     } finally {
       setCheckingStatus(false);
     }

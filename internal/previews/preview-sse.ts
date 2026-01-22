@@ -71,3 +71,18 @@ export function hasExplicitFailure(payload: Record<string, unknown>): boolean {
   }
   return false;
 }
+
+export type StatusCheckDecision = "terminal" | "processing";
+
+export function resolveStatusCheckFailure(
+  status: number,
+  payload: Record<string, unknown> | null,
+): StatusCheckDecision {
+  if (payload && hasExplicitFailure(payload)) {
+    return "terminal";
+  }
+  if (status >= 500 || status === 429) {
+    return "processing";
+  }
+  return "terminal";
+}
