@@ -16,6 +16,13 @@ import {
   normalizeLangTag,
   type ClientMessages,
 } from "@internal/i18n";
+import {
+  hasExplicitFailure,
+  isPreviewErrorCode,
+  isPreviewStage,
+  type PreviewErrorCode,
+  type PreviewStage,
+} from "@internal/previews/preview-sse";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { z } from "zod";
 
@@ -27,50 +34,10 @@ type TryFormProps = {
   showEmailField?: boolean;
 };
 
-type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
-type PreviewErrorCode =
-  | "invalid_url"
-  | "blocked_host"
-  | "dns_failed"
-  | "dns_timeout"
-  | "page_too_large"
-  | "render_failed"
-  | "translate_failed"
-  | "storage_failed"
-  | "config_error"
-  | "processing_timeout"
-  | "canceled"
-  | "unknown";
-type PreviewStage =
-  | "fetching_page"
-  | "analyzing_content"
-  | "translating"
-  | "generating_preview"
-  | "saving";
+type PreviewStatus = "idle" | "creating" | "pending" | "processing" | "ready" | "failed";
 
 const emailSchema = z.email();
-const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "processing", "ready", "failed"];
-const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
-  "invalid_url",
-  "blocked_host",
-  "dns_failed",
-  "dns_timeout",
-  "page_too_large",
-  "render_failed",
-  "translate_failed",
-  "storage_failed",
-  "config_error",
-  "processing_timeout",
-  "canceled",
-  "unknown",
-];
-const PREVIEW_STAGES: PreviewStage[] = [
-  "fetching_page",
-  "analyzing_content",
-  "translating",
-  "generating_preview",
-  "saving",
-];
+const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "pending", "processing", "ready", "failed"];
 const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
   invalid_url: "try.error.invalid_url",
   blocked_host: "try.error.blocked_host",
@@ -82,6 +49,9 @@ const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
   storage_failed: "try.error.storage_failed",
   config_error: "try.error.config_error",
   processing_timeout: "try.error.processing_timeout",
+  queue_enqueue_failed: "try.error.queue_enqueue_failed",
+  preview_not_found: "try.error.preview_not_found",
+  preview_expired: "try.error.preview_expired",
   canceled: "try.error.canceled",
   unknown: "try.error.unknown",
 };
@@ -95,14 +65,6 @@ const PREVIEW_STAGE_MESSAGE_KEYS: Record<PreviewStage, string> = {
 
 function isPreviewStatus(value: unknown): value is PreviewStatus {
   return typeof value === "string" && PREVIEW_STATUSES.includes(value as PreviewStatus);
-}
-
-function isPreviewErrorCode(value: unknown): value is PreviewErrorCode {
-  return typeof value === "string" && PREVIEW_ERROR_CODES.includes(value as PreviewErrorCode);
-}
-
-function isPreviewStage(value: unknown): value is PreviewStage {
-  return typeof value === "string" && PREVIEW_STAGES.includes(value as PreviewStage);
 }
 
 export function TryForm({
@@ -138,9 +100,12 @@ export function TryForm({
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastStageRef = useRef<PreviewStage | null>(null);
+  const timedOutRef = useRef(false);
+  const submittedEmailRef = useRef("");
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
+  const submittedEmail = submittedEmailRef.current || trimmedEmail;
   const normalizedSourceLang = useMemo(
     () => normalizeLangTag(sourceLang) ?? sourceLang.trim(),
     [sourceLang],
@@ -149,7 +114,7 @@ export function TryForm({
     () => normalizeLangTag(targetLang) ?? targetLang.trim(),
     [targetLang],
   );
-  const isPreviewRunning = status === "creating" || status === "processing";
+  const isPreviewRunning = status === "creating" || status === "pending" || status === "processing";
   const currentRequestKey = useMemo(
     () =>
       buildRequestKey({
@@ -275,8 +240,20 @@ export function TryForm({
   }
 
   function applyErrorFromPayload(data: Record<string, unknown>, fallback?: string) {
-    const code = isPreviewErrorCode(data.errorCode) ? data.errorCode : null;
-    const stage = isPreviewStage(data.errorStage) ? data.errorStage : lastStageRef.current;
+    const details =
+      data.details && typeof data.details === "object"
+        ? (data.details as Record<string, unknown>)
+        : null;
+    const code = isPreviewErrorCode(data.errorCode)
+      ? data.errorCode
+      : details && isPreviewErrorCode(details.errorCode)
+        ? details.errorCode
+        : null;
+    const stage = isPreviewStage(data.errorStage)
+      ? data.errorStage
+      : details && isPreviewStage(details.errorStage)
+        ? details.errorStage
+        : lastStageRef.current;
     setErrorCode(code);
     setErrorStage(stage ?? null);
     setError(
@@ -315,8 +292,30 @@ export function TryForm({
 
     idleTimerRef.current = setInterval(() => {
       if (Date.now() - lastEventAt > 45_000) {
-        applyErrorFromPayload({}, t("try.form.connectionLost"));
-        setStatus("failed");
+        // If we already timed out, don't double-process
+        if (timedOutRef.current) {
+          closeEventSource();
+          return;
+        }
+
+        // If email was provided, treat idle as timeout (processing continues)
+        if (showEmailField && submittedEmailRef.current) {
+          timedOutRef.current = true;
+          setTimedOut(true);
+          setTimedOutWithEmail(true);
+          setLastPreviewId(id);
+          setProgress(null);
+          closeEventSource();
+          return;
+        }
+
+        // No email - show "check status" option
+        // UI shows t("try.status.timedOutNoEmail") + check status button when timedOut && !timedOutWithEmail
+        timedOutRef.current = true;
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setLastPreviewId(id);
+        setProgress(null);
         closeEventSource();
       }
     }, 15_000);
@@ -398,23 +397,69 @@ export function TryForm({
     });
 
     es.addEventListener("error", (event) => {
-      try {
-        const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        applyErrorFromPayload(data, t("try.error.default"));
-      } catch {
-        applyErrorFromPayload({}, t("try.form.connectionLost"));
-      } finally {
-        setProgress(null);
-        setStatus("failed");
+      // If we already timed out, preserve that state - processing continues in queue
+      if (timedOutRef.current) {
         closeEventSource();
+        return;
       }
+
+      const rawData =
+        event && "data" in event ? (event as MessageEvent).data : undefined;
+      if (typeof rawData === "string" && rawData) {
+        try {
+          const payload = JSON.parse(rawData) as Record<string, unknown>;
+          if (hasExplicitFailure(payload)) {
+            applyErrorFromPayload(payload, t("try.error.default"));
+            setProgress(null);
+            setStatus("failed");
+            closeEventSource();
+            return;
+          }
+        } catch {
+          // fall through to connection loss handling
+        }
+      }
+
+      const handleDisconnect = async () => {
+        setLastPreviewId(id);
+        const terminal = await handleCheckStatus(id);
+        if (terminal === null) {
+          closeEventSource();
+          return;
+        }
+        if (terminal) {
+          closeEventSource();
+          return;
+        }
+
+        // If email was provided, treat connection loss as timeout (processing continues)
+        if (showEmailField && submittedEmailRef.current) {
+          timedOutRef.current = true;
+          setTimedOut(true);
+          setTimedOutWithEmail(true);
+          setProgress(null);
+          closeEventSource();
+          return;
+        }
+
+        // No email - show "check status" option (not hard failure)
+        // UI shows t("try.status.timedOutNoEmail") + check status button when timedOut && !timedOutWithEmail
+        timedOutRef.current = true;
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setProgress(null);
+        closeEventSource();
+      };
+
+      void handleDisconnect();
     });
 
     es.addEventListener("timeout", () => {
+      timedOutRef.current = true;
       closeEventSource();
       setProgress(null);
 
-      if (showEmailField && trimmedEmail) {
+      if (showEmailField && submittedEmailRef.current) {
         // Processing continues in background; user will get email notification
         setTimedOut(true);
         setTimedOutWithEmail(true);
@@ -475,6 +520,8 @@ export function TryForm({
       setProgress(null);
       setPreviewUrl(null);
       setTimedOut(false);
+      timedOutRef.current = false;
+      submittedEmailRef.current = trimmedEmail;
       setTimedOutWithEmail(false);
       setLastPreviewId(null);
       lastStageRef.current = null;
@@ -565,32 +612,70 @@ export function TryForm({
     }
   }
 
-  async function handleCheckStatus() {
-    if (!lastPreviewId || checkingStatus) return;
+  async function handleCheckStatus(previewId?: string): Promise<boolean | null> {
+    const id = previewId ?? lastPreviewId;
+    if (!id || checkingStatus) return null;
+    if (previewId) {
+      setLastPreviewId(previewId);
+    }
 
     setCheckingStatus(true);
     try {
-      const response = await fetch(`/api/previews/${lastPreviewId}`);
-      const data = await response.json();
+      const response = await fetch(`/api/previews/${id}`);
+      const bodyText = await response.text();
+      let payload: Record<string, unknown> | null = null;
+      if (bodyText) {
+        try {
+          payload = JSON.parse(bodyText) as Record<string, unknown>;
+        } catch {
+          payload = null;
+        }
+      }
+      if (!response.ok) {
+        const reason =
+          (payload && typeof payload.error === "string" ? payload.error : "") ||
+          (payload && typeof payload.message === "string" ? payload.message : "") ||
+          t("try.error.checkStatusFailed");
+        applyErrorFromPayload(payload ?? {}, reason);
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      }
+      if (!payload || typeof payload !== "object") {
+        applyErrorFromPayload({}, t("try.error.checkStatusFailed"));
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      }
+      const data = payload as Record<string, unknown>;
 
       if (data.status === "ready") {
         setPreviewUrl(data.previewUrl);
         setStatus("ready");
         setTimedOut(false);
         setTimedOutWithEmail(false);
+        return true;
       } else if (data.status === "failed") {
         applyErrorFromPayload(data, t("try.error.default"));
         setStatus("failed");
         setTimedOut(false);
         setTimedOutWithEmail(false);
+        return true;
       } else {
         // Still processing - update progress text
         const stage = isPreviewStage(data.stage) ? data.stage : null;
         const stageMessage = stage ? resolveStageMessage(stage) : null;
         setProgress(stageMessage || t("try.status.stillProcessing"));
+        return false;
       }
     } catch {
-      setError(t("try.error.checkStatusFailed"));
+      applyErrorFromPayload({}, t("try.error.checkStatusFailed"));
+      setStatus("failed");
+      setTimedOut(false);
+      setTimedOutWithEmail(false);
+      return true;
     } finally {
       setCheckingStatus(false);
     }
@@ -600,6 +685,8 @@ export function TryForm({
     switch (status) {
       case "creating":
         return t("try.status.creating") || "Creating preview...";
+      case "pending":
+        return t("try.status.pending") || "Queued... starting soon.";
       case "processing":
         return progress || t("try.status.processing") || "Translating your page...";
       default:
@@ -679,7 +766,7 @@ export function TryForm({
 
       {timedOut && timedOutWithEmail && (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <p>{t("try.status.pendingEmail", undefined, { email: trimmedEmail })}</p>
+          <p>{t("try.status.pendingEmail", undefined, { email: submittedEmail })}</p>
           <p className="mt-1 text-xs opacity-80">{t("try.status.pendingEmailHint")}</p>
         </div>
       )}
