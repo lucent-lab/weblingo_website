@@ -81,7 +81,7 @@ export function resolveStatusCheckFailure(
   if (payload && hasExplicitFailure(payload)) {
     return "terminal";
   }
-  if (status >= 500 || status === 429) {
+  if (status >= 500 || status === 429 || status === 408) {
     return "processing";
   }
   return "terminal";

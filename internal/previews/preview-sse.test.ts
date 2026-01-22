@@ -26,9 +26,10 @@ describe("resolveStatusCheckFailure", () => {
     expect(resolveStatusCheckFailure(503, { errorCode: "preview_expired" })).toBe("terminal");
   });
 
-  it("treats 5xx and 429 as processing when payload is not explicit", () => {
+  it("treats 5xx, 429, and 408 as processing when payload is not explicit", () => {
     expect(resolveStatusCheckFailure(503, { error: "upstream" })).toBe("processing");
     expect(resolveStatusCheckFailure(429, null)).toBe("processing");
+    expect(resolveStatusCheckFailure(408, null)).toBe("processing");
   });
 
   it("treats non-5xx non-429 without explicit failure as terminal", () => {
