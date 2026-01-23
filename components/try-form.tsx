@@ -655,7 +655,9 @@ export function TryForm({
       const data = payload as Record<string, unknown>;
 
       if (data.status === "ready") {
-        setPreviewUrl(data.previewUrl);
+        if (typeof data.previewUrl === "string") {
+          setPreviewUrl(data.previewUrl);
+        }
         setStatus("ready");
         setTimedOut(false);
         setTimedOutWithEmail(false);
@@ -775,7 +777,7 @@ export function TryForm({
         <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <p>{t("try.status.timedOutNoEmail")}</p>
           <Button
-            onClick={handleCheckStatus}
+            onClick={() => handleCheckStatus()}
             disabled={checkingStatus}
             variant="outline"
             size="sm"
