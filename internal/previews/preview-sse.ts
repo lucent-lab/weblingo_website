@@ -60,12 +60,12 @@ export function hasExplicitFailure(payload: Record<string, unknown>): boolean {
   if (payload.status === "failed") {
     return true;
   }
-  if (isPreviewErrorCode(payload.errorCode) || isPreviewStage(payload.errorStage)) {
+  if (isPreviewErrorCode(payload.errorCode) || payload.errorStage != null) {
     return true;
   }
   if (payload.details && typeof payload.details === "object") {
     const details = payload.details as Record<string, unknown>;
-    if (isPreviewErrorCode(details.errorCode) || isPreviewStage(details.errorStage)) {
+    if (isPreviewErrorCode(details.errorCode) || details.errorStage != null) {
       return true;
     }
   }

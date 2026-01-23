@@ -32,7 +32,7 @@ describe("resolveStatusCheckFailure", () => {
     expect(resolveStatusCheckFailure(408, null)).toBe("processing");
   });
 
-  it("treats non-5xx non-429 without explicit failure as terminal", () => {
+  it("treats non-5xx non-429 non-408 without explicit failure as terminal", () => {
     expect(resolveStatusCheckFailure(404, null)).toBe("terminal");
   });
 });
