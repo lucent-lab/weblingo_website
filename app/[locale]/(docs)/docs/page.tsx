@@ -79,6 +79,6 @@ export async function generateMetadata({
     descriptionKey: "docs.overview",
     titleFallback: "Docs",
     descriptionFallback:
-      "Deploy translated versions of your site with CNAME routing, CDN hosting, and automatic content refresh.",
+      "Guides, API references, tutorials, and translated documentation for building and running WebLingo.",
   });
 }
