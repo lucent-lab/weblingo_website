@@ -21,7 +21,7 @@ export default async function BlogLayout({
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
   return (
-    <div className="bg-muted/30">
+    <div className="bg-muted/30 flex min-h-screen flex-col">
       <header className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
           <Link href={`/${locale}`} className="flex items-center gap-2 text-sm font-semibold">
