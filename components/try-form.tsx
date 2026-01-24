@@ -38,7 +38,14 @@ type TryFormProps = {
 type PreviewStatus = "idle" | "creating" | "pending" | "processing" | "ready" | "failed";
 
 const emailSchema = z.email();
-const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "pending", "processing", "ready", "failed"];
+const PREVIEW_STATUSES: PreviewStatus[] = [
+  "idle",
+  "creating",
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+];
 const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
   invalid_url: "try.error.invalid_url",
   blocked_host: "try.error.blocked_host",
@@ -404,8 +411,7 @@ export function TryForm({
         return;
       }
 
-      const rawData =
-        event && "data" in event ? (event as MessageEvent).data : undefined;
+      const rawData = event && "data" in event ? (event as MessageEvent).data : undefined;
       if (typeof rawData === "string" && rawData) {
         try {
           const payload = JSON.parse(rawData) as Record<string, unknown>;

@@ -24,8 +24,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <p className={cn(paragraphBase, "mt-4", className)} {...props} />
     ),
     a: ({ className, href = "", ...props }: ComponentPropsWithoutRef<"a">) => {
-      const isInternal =
-        (href.startsWith("/") && !href.startsWith("//")) || href.startsWith("#");
+      const isInternal = (href.startsWith("/") && !href.startsWith("//")) || href.startsWith("#");
       const linkClass = cn(
         "font-medium text-primary underline-offset-4 hover:underline",
         className,
