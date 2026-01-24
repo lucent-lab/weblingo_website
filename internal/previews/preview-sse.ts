@@ -5,6 +5,8 @@ export type PreviewErrorCode =
   | "dns_timeout"
   | "page_too_large"
   | "render_failed"
+  | "template_decode_failed"
+  | "waf_blocked"
   | "translate_failed"
   | "storage_failed"
   | "config_error"
@@ -29,6 +31,8 @@ const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
   "dns_timeout",
   "page_too_large",
   "render_failed",
+  "template_decode_failed",
+  "waf_blocked",
   "translate_failed",
   "storage_failed",
   "config_error",

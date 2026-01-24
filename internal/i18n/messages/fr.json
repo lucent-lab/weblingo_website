@@ -110,6 +110,8 @@
   "try.error.dns_timeout": "La recherche du domaine a expiré. Veuillez réessayer.",
   "try.error.page_too_large": "Cette page est trop volumineuse pour être prévisualisée.",
   "try.error.render_failed": "Impossible d’afficher la page pour la prévisualisation.",
+  "try.error.template_decode_failed": "Le HTML de la prévisualisation n’a pas pu être décodé.",
+  "try.error.waf_blocked": "La prévisualisation a été bloquée par le pare-feu du site.",
   "try.error.translate_failed": "Impossible de traduire cette page.",
   "try.error.storage_failed": "Impossible d’enregistrer la prévisualisation.",
   "try.error.config_error": "Le service de prévisualisation est temporairement indisponible.",

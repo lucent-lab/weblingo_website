@@ -53,6 +53,8 @@ const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
   dns_timeout: "try.error.dns_timeout",
   page_too_large: "try.error.page_too_large",
   render_failed: "try.error.render_failed",
+  template_decode_failed: "try.error.template_decode_failed",
+  waf_blocked: "try.error.waf_blocked",
   translate_failed: "try.error.translate_failed",
   storage_failed: "try.error.storage_failed",
   config_error: "try.error.config_error",
