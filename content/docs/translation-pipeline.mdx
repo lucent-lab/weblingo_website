@@ -1,0 +1,28 @@
+export const metadata = {
+  title: "Translation Pipeline",
+  description: "Understand how crawls become localized deployments.",
+  section: "Pipeline",
+  order: 1,
+};
+
+# Translation Pipeline
+
+Every translation run follows the same deterministic flow so you can reproduce results:
+
+## 1. Crawl
+
+We fetch your source HTML, respect `robots.txt`, and capture snapshots for processing.
+
+## 2. Segment + translate
+
+HTML is segmented into stable chunks, then translated with precedence rules for overrides,
+glossaries, and translation memory.
+
+## 3. Render + publish
+
+Translated content is applied to the original snapshot and published to the edge with localized
+SEO metadata.
+
+## 4. Monitor
+
+When your source changes, WebLingo detects diffs and only re-translates what changed.

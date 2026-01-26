@@ -9,6 +9,8 @@ const navLinks = [
   { href: "#features", labelKey: "nav.features" },
   { href: "#how-it-works", labelKey: "nav.how" },
   { href: "/pricing", labelKey: "nav.pricing" },
+  { href: "/docs", labelKey: "nav.docs" },
+  { href: "/blog", labelKey: "nav.blog" },
 ];
 
 type SiteHeaderProps = {
