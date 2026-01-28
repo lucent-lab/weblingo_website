@@ -85,6 +85,8 @@ Three preview routes act as pure proxies to the Cloudflare webhooks-worker:
 - `app/api/previews/[id]/route.ts`
 - `app/api/previews/[id]/stream/route.ts`
 
+Note: these are Next.js proxy routes in the frontend repo, not webhooks-worker API endpoints.
+
 They currently run on Node.js runtime (`export const runtime = "nodejs"`), which has cold starts of 100-500ms. However, these routes only use Edge-compatible APIs:
 
 ```typescript

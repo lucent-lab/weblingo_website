@@ -183,7 +183,9 @@ curl -X POST http://127.0.0.1:8788/api/sites \
         "sourceUrl": "https://www.example.com",
         "sourceLang": "en",
         "targetLangs": ["fr","ja"],
-        "subdomainPattern": "{lang}.example.com"
+        "subdomainPattern": "{lang}.example.com",
+        "servingMode": "strict",
+        "maxLocales": null
       }'
 ```
 
@@ -280,7 +282,7 @@ Adjust per worker if you prefer to trim secrets (recommended for prod).
 ### Dashboard/frontend API base
 
 - Local dev: point the dashboard/frontend to the webhooks worker dev endpoint, e.g. `NEXT_PUBLIC_WEBHOOKS_API_BASE=http://127.0.0.1:8788/api` (adjust port if you run `dev:webhooks` on another port).
-- Stage/prod: use your deployed webhooks domain with `/api`, e.g. `https://webhooks.example.com/api`.
+- Stage/prod: use your deployed webhooks domain with `/api`, e.g. `https://api.weblingo.app/api`.
 - The dashboard only needs the webhooks worker; serve/pipeline workers remain backend-only.
 
 ### Route config anatomy (serve/render/publish)

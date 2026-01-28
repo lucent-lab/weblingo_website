@@ -21,8 +21,8 @@ Working plan to implement the customer-facing dashboard described in `docs/DASHB
 ## Feature Breakdown (Implementation Shape)
 
 - **Dashboard shell**: Left nav, top bar with account/email, status badges for active site(s), recent activity list driven by latest crawl/deployment events returned by the APIs.
-- **Onboarding wizard**: Steps → (1) Source URL + language selection, (2) Subdomain pattern preview, (3) Site profile/brand voice, (4) Review + create. Provide live preview of derived domains and route prefixes; on submit call `POST /api/sites` and show crawl enqueue state.
-- **Sites & locales**: Table + detail view to read/update sites via `GET/PATCH /api/sites/:id`; include target language add/remove, status toggle, route config preview, and a “Trigger crawl” action (`POST /api/sites/:id/crawl`).
+- **Onboarding wizard**: Steps → (1) Source URL + language selection, (2) Subdomain pattern preview, (3) Site profile/brand voice + serving mode + locale cap, (4) Review + create. Provide live preview of derived domains and route prefixes; on submit call `POST /api/sites` and show crawl enqueue state.
+- **Sites & locales**: Table + detail view to read/update sites via `GET/PATCH /api/sites/:id`; include target language add/remove, status toggle, route config preview, per-locale serve toggle (`POST /api/sites/:id/locales/:targetLang/serve`), and a “Trigger crawl” action (`POST /api/sites/:id/crawl`).
 - **Domains**: Per-site domain list showing verification tokens and status; include “Copy token” and “Check now” (`POST /api/sites/:id/domains/:domain/verify`). Show DNS guidance for non-technical users.
 - **Glossary**: List + inline edit/create rows for `GlossaryEntry`; bulk replace via `PUT /api/sites/:id/glossary` with optional `retranslate`. Add CSV/JSON import later if needed.
 - **Manual overrides & slugs**: Form to submit segment overrides (`POST /api/sites/:id/overrides`) with placeholder validation helper; slug editor (`POST /api/sites/:id/slugs`) that normalizes leading `/` and surfaces crawl enqueue result.
@@ -45,7 +45,7 @@ Working plan to implement the customer-facing dashboard described in `docs/DASHB
 12. **Error/empty/loading states** — Shared components for toasts/inline errors, skeletons, empty prompts with next steps; ensure accessible focus behavior.
 13. **Testing & QA** — Unit tests for validation helpers and API client, smoke tests for onboarding and site edit flows, and doc updates for new env vars/runbook.
 
-- **Plan/locale caps (new)** — Add sitePlan (starter/pro) selector and maxLocales field to create/edit flows; reflect `sitePlan`/`maxLocales` from GET responses; proactively block add-target UI when at cap; gate glossary/override/slug UI on starter with upgrade prompt; handle 400 cap errors and 403 starter feature gates with user-friendly copy.
+- **Plan/locale caps (new)** — Add `maxLocales` field and serving-mode selection to create/edit flows; reflect `maxLocales` from GET responses; proactively block add-target UI when at cap; gate glossary/override/slug UI using `/accounts/me` feature flags with an upgrade prompt; handle 400 cap errors and 403 feature gates with user-friendly copy.
 
 ## Non-Goals / Future Tracks
 
@@ -58,4 +58,4 @@ Working plan to implement the customer-facing dashboard described in `docs/DASHB
 - Verify worker endpoints from the new dashboard pages (list/create site, domain verify, glossary/override/slug) against a live worker deployment; adjust CORS if needed.
 - Exercise glossary and manual override flows end-to-end against production-like data to confirm placeholder validation and crawl enqueue behavior.
 - Seed a non-billing admin/test account in Supabase (e.g., role metadata) to access the dashboard without Stripe payment.
-- Confirm plan/locale-cap UX against the live worker: starter plan returns 403 for glossary/overrides/slugs; over-cap locales return 400; ensure UI shows plan and remaining locale slots.
+- Confirm plan/locale-cap UX against the live worker: gated features return 403; over-cap locales return 400; ensure UI shows plan info and remaining locale slots from `/accounts/me`.

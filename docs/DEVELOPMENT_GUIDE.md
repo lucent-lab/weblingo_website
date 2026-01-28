@@ -33,7 +33,7 @@ STRIPE_PRICING_TABLE_ID=prctbl_default
 STRIPE_PRICING_TABLE_ID_EN=prctbl_for_en
 STRIPE_PRICING_TABLE_ID_FR=prctbl_for_fr
 STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
-NEXT_PUBLIC_WEBHOOKS_API_BASE=https://webhooks.weblingo.workers.dev/api
+NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
 ```
 
 Set `PUBLIC_PORTAL_MODE=disabled` to hide login/signup UI, block auth actions, and disable checkout flows on deployed environments.
