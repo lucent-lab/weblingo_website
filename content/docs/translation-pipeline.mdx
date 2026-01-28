@@ -7,9 +7,10 @@ export const metadata = {
 
 # Translation Pipeline
 
-Every translation run follows the same deterministic flow so you can reproduce results:
+Every translation run follows a deterministic flow so you can reproduce results. Depending on the
+request, WebLingo can crawl first or translate existing snapshots without recrawling.
 
-## 1. Crawl
+## 1. Crawl (when needed)
 
 We fetch your source HTML, respect `robots.txt`, and capture snapshots for processing.
 
@@ -23,6 +24,18 @@ glossaries, and translation memory.
 Translated content is applied to the original snapshot and published to the edge with localized
 SEO metadata.
 
+## 3b. Translate without recrawl (optional)
+
+If you already have fresh snapshots, you can trigger translation without a new crawl. This keeps
+the pipeline deterministic while skipping the fetch step.
+
 ## 4. Monitor
 
-When your source changes, WebLingo detects diffs and only re-translates what changed.
+When your source changes, WebLingo detects diffs and only re-translates what changed. Translation
+runs expose status updates and can be cancelled or resumed when needed.
+
+## Related docs
+
+- [Getting Started](../getting-started)
+- [Domain + CNAME Setup](../site-setup)
+- [API Reference](../api-reference)

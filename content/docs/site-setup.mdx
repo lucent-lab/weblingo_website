@@ -17,6 +17,18 @@ WebLingo serves translated pages from the edge, but your source site stays exact
 
 ## Validation tips
 
-- Verify the CNAME before launching production traffic.
+- Verify the CNAME before launching production traffic. WebLingo can issue a verification token
+  and DNS instructions for TXT/CNAME checks.
 - Keep an eye on SSL propagation (typically a few minutes).
 - Start with a single locale before expanding to more markets.
+
+## Cloudflare for SaaS (optional)
+
+If your account uses Cloudflare for SaaS provisioning, you can request a managed hostname and
+refresh its validation state from the dashboard.
+
+## Related docs
+
+- [Getting Started](../getting-started)
+- [Translation Pipeline](../translation-pipeline)
+- [API Reference](../api-reference)

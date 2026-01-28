@@ -5,6 +5,7 @@ import SiteSetup, { metadata as siteSetupMeta } from "./site-setup.mdx";
 import TranslationPipeline, {
   metadata as translationPipelineMeta,
 } from "./translation-pipeline.mdx";
+import ApiReference, { metadata as apiReferenceMeta } from "./api-reference.mdx";
 
 export type DocEntry = {
   slug: string[];
@@ -39,6 +40,14 @@ const docEntries: DocEntry[] = [
     section: translationPipelineMeta.section ?? "Pipeline",
     order: translationPipelineMeta.order ?? 0,
     component: TranslationPipeline,
+  },
+  {
+    slug: ["api-reference"],
+    title: apiReferenceMeta.title,
+    description: apiReferenceMeta.description ?? "",
+    section: apiReferenceMeta.section ?? "Developer",
+    order: apiReferenceMeta.order ?? 0,
+    component: ApiReference,
   },
 ];
 
