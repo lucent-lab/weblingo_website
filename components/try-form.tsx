@@ -244,6 +244,15 @@ export function TryForm({
       setProgress(resolveStageMessage(data.stage));
       return;
     }
+    const status = typeof data.status === "string" ? data.status : null;
+    if (status === "pending") {
+      setProgress(t("try.status.pending"));
+      return;
+    }
+    if (status === "processing") {
+      setProgress(t("try.status.processing"));
+      return;
+    }
     if (data.message || data.stage) {
       setProgress(String(data.message ?? data.stage));
     }
