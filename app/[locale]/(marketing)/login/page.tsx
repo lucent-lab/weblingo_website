@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AuthLoginForm } from "@/components/auth-login-form";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { normalizeLocale } from "@internal/i18n";
 
 export default async function LocaleLoginPage({ params }: { params: Promise<{ locale: string }> }) {

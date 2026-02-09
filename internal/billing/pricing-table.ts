@@ -1,4 +1,4 @@
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { normalizeLocale, type Locale } from "@internal/i18n";
 
 const localePricingTableMap: Partial<Record<Locale, string | undefined>> = {

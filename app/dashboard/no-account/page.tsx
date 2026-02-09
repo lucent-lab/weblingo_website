@@ -8,7 +8,7 @@ import { logout } from "@/app/auth/logout/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { getPricingTableId } from "@internal/billing";
 import { i18nConfig } from "@internal/i18n";
 

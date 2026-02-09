@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createCheckoutSession } from "@internal/billing";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { i18nConfig, normalizeLocale } from "@internal/i18n";
 
 const bodySchema = z.object({

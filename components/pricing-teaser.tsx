@@ -1,7 +1,7 @@
 import Script from "next/script";
 
 import { getPricingTableId } from "@internal/billing";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import type { Translator } from "@internal/i18n";
 
 type PricingTeaserProps = {

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 
 export async function claimAccount() {
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {

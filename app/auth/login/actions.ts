@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 
 type AuthFormState = {
   error: string | null;

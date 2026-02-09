@@ -2,7 +2,7 @@ import "server-only";
 
 import Stripe from "stripe";
 
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { SITE_ID, pricingTiers } from "@modules/pricing";
 
 const stripe = new Stripe(envServer.STRIPE_SECRET_KEY);

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { normalizeLocale } from "@internal/i18n";
 import { ClassicHomePage, getClassicHomeMetadata } from "@modules/home/classic-home";
 import { LandingSegmentPage, getLandingSegmentMetadata } from "@modules/landing/segment-page";

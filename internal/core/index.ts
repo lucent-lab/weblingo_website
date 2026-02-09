@@ -1,4 +1,4 @@
 export { env, type ClientEnv } from "./env";
-export { envServer, type FullEnv, type ServerEnv } from "./env-server";
-// Note: redis is NOT exported from barrel to avoid client-side bundling.
-// Import directly from "@internal/core/redis" in server-only code.
+// Note: keep this barrel client-safe. Import server-only modules directly:
+// - `@internal/core/env-server`
+// - `@internal/core/redis`

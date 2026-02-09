@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient, type User } from "@supabase/supabase-js";
 
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import type { Database } from "@/types/database";
 
 let cachedAdminClient: ReturnType<typeof createClient<Database>> | null = null;

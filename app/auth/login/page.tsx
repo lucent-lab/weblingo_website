@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import { i18nConfig } from "@internal/i18n";
 
 export default function AuthLoginRedirect() {

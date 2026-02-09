@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { envServer } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 import type { Translator } from "@internal/i18n";
 
 const navLinks = [

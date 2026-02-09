@@ -61,6 +61,16 @@ function isClientComponentSource(source: string): boolean {
 }
 
 describe("server-only boundaries", () => {
+  it("keeps the @internal/core barrel client-safe", async () => {
+    const barrelPath = path.join(REPO_ROOT, "internal/core/index.ts");
+    const source = await fs.readFile(barrelPath, "utf8");
+
+    // This barrel is imported by client code (e.g. instrumentation), so it must not
+    // transitively import `server-only` modules.
+    expect(source).not.toContain(`from "./env-server"`);
+    expect(source).not.toContain(`from './env-server'`);
+  });
+
   it("prevents importing server-only modules into client components", async () => {
     const roots = ["app", "components", "internal", "lib", "modules"].map((dir) =>
       path.join(REPO_ROOT, dir),
