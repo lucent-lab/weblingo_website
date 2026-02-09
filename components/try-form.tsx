@@ -5,8 +5,7 @@ import dynamic from "next/dynamic";
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
 const LanguageTagCombobox = dynamic(
-  () =>
-    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  () => import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
   { ssr: false },
 );
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,14 @@ import {
   normalizeLangTag,
   type ClientMessages,
 } from "@internal/i18n";
+import {
+  hasExplicitFailure,
+  isPreviewErrorCode,
+  isPreviewStage,
+  resolveStatusCheckFailure,
+  type PreviewErrorCode,
+  type PreviewStage,
+} from "@internal/previews/preview-sse";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { z } from "zod";
 
@@ -28,10 +35,43 @@ type TryFormProps = {
   showEmailField?: boolean;
 };
 
-type PreviewStatus = "idle" | "creating" | "processing" | "ready" | "failed";
+type PreviewStatus = "idle" | "creating" | "pending" | "processing" | "ready" | "failed";
 
 const emailSchema = z.email();
-const PREVIEW_STATUSES: PreviewStatus[] = ["idle", "creating", "processing", "ready", "failed"];
+const PREVIEW_STATUSES: PreviewStatus[] = [
+  "idle",
+  "creating",
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+];
+const PREVIEW_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
+  invalid_url: "try.error.invalid_url",
+  blocked_host: "try.error.blocked_host",
+  dns_failed: "try.error.dns_failed",
+  dns_timeout: "try.error.dns_timeout",
+  page_too_large: "try.error.page_too_large",
+  render_failed: "try.error.render_failed",
+  template_decode_failed: "try.error.template_decode_failed",
+  waf_blocked: "try.error.waf_blocked",
+  translate_failed: "try.error.translate_failed",
+  storage_failed: "try.error.storage_failed",
+  config_error: "try.error.config_error",
+  processing_timeout: "try.error.processing_timeout",
+  queue_enqueue_failed: "try.error.queue_enqueue_failed",
+  preview_not_found: "try.error.preview_not_found",
+  preview_expired: "try.error.preview_expired",
+  canceled: "try.error.canceled",
+  unknown: "try.error.unknown",
+};
+const PREVIEW_STAGE_MESSAGE_KEYS: Record<PreviewStage, string> = {
+  fetching_page: "try.stage.fetching_page",
+  analyzing_content: "try.stage.analyzing_content",
+  translating: "try.stage.translating",
+  generating_preview: "try.stage.generating_preview",
+  saving: "try.stage.saving",
+};
 
 function isPreviewStatus(value: unknown): value is PreviewStatus {
   return typeof value === "string" && PREVIEW_STATUSES.includes(value as PreviewStatus);
@@ -49,6 +89,8 @@ export function TryForm({
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<PreviewErrorCode | null>(null);
+  const [errorStage, setErrorStage] = useState<PreviewStage | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -59,13 +101,21 @@ export function TryForm({
   const [sourceLang, setSourceLang] = useState<string>(locale);
   const [targetLang, setTargetLang] = useState<string>(defaultTargetLang);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const [timedOutWithEmail, setTimedOutWithEmail] = useState(false);
+  const [lastPreviewId, setLastPreviewId] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStageRef = useRef<PreviewStage | null>(null);
+  const timedOutRef = useRef(false);
+  const submittedEmailRef = useRef("");
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
+  const submittedEmail = submittedEmailRef.current || trimmedEmail;
   const normalizedSourceLang = useMemo(
     () => normalizeLangTag(sourceLang) ?? sourceLang.trim(),
     [sourceLang],
@@ -74,7 +124,7 @@ export function TryForm({
     () => normalizeLangTag(targetLang) ?? targetLang.trim(),
     [targetLang],
   );
-  const isPreviewRunning = status === "creating" || status === "processing";
+  const isPreviewRunning = status === "creating" || status === "pending" || status === "processing";
   const currentRequestKey = useMemo(
     () =>
       buildRequestKey({
@@ -173,6 +223,69 @@ export function TryForm({
     ].join("|");
   }
 
+  function resolveStageMessage(stage: PreviewStage | null) {
+    if (!stage) return null;
+    return t(PREVIEW_STAGE_MESSAGE_KEYS[stage]);
+  }
+
+  function resolveErrorMessage(code: PreviewErrorCode | null, fallback?: string | null) {
+    if (code) {
+      return t(PREVIEW_ERROR_MESSAGE_KEYS[code]);
+    }
+    if (fallback) {
+      return fallback;
+    }
+    return t("try.error.default");
+  }
+
+  function applyStageFromPayload(data: Record<string, unknown>) {
+    if (isPreviewStage(data.stage)) {
+      lastStageRef.current = data.stage;
+      setProgress(resolveStageMessage(data.stage));
+      return;
+    }
+    const status = typeof data.status === "string" ? data.status : null;
+    if (status === "pending") {
+      setProgress(t("try.status.pending"));
+      return;
+    }
+    if (status === "processing") {
+      setProgress(t("try.status.processing"));
+      return;
+    }
+    if (data.message || data.stage) {
+      setProgress(String(data.message ?? data.stage));
+    }
+  }
+
+  function applyErrorFromPayload(data: Record<string, unknown>, fallback?: string) {
+    const details =
+      data.details && typeof data.details === "object"
+        ? (data.details as Record<string, unknown>)
+        : null;
+    const code = isPreviewErrorCode(data.errorCode)
+      ? data.errorCode
+      : details && isPreviewErrorCode(details.errorCode)
+        ? details.errorCode
+        : null;
+    const stage = isPreviewStage(data.errorStage)
+      ? data.errorStage
+      : details && isPreviewStage(details.errorStage)
+        ? details.errorStage
+        : lastStageRef.current;
+    setErrorCode(code);
+    setErrorStage(stage ?? null);
+    setError(
+      resolveErrorMessage(
+        code,
+        (data.error as string | undefined) ??
+          (data.message as string | undefined) ??
+          fallback ??
+          null,
+      ),
+    );
+  }
+
   function closeEventSource() {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -184,11 +297,11 @@ export function TryForm({
     }
   }
 
-  function connectSSE(id: string) {
+  function connectSSE(id: string, streamUrl?: string | null) {
     closeEventSource();
     setStatus("processing");
 
-    const es = new EventSource(`/api/previews/${id}/stream`);
+    const es = new EventSource(streamUrl ?? `/api/previews/${id}/stream`);
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -198,8 +311,30 @@ export function TryForm({
 
     idleTimerRef.current = setInterval(() => {
       if (Date.now() - lastEventAt > 45_000) {
-        setError(t("try.form.connectionLost"));
-        setStatus("failed");
+        // If we already timed out, don't double-process
+        if (timedOutRef.current) {
+          closeEventSource();
+          return;
+        }
+
+        // If email was provided, treat idle as timeout (processing continues)
+        if (showEmailField && submittedEmailRef.current) {
+          timedOutRef.current = true;
+          setTimedOut(true);
+          setTimedOutWithEmail(true);
+          setLastPreviewId(id);
+          setProgress(null);
+          closeEventSource();
+          return;
+        }
+
+        // No email - show "check status" option
+        // UI shows t("try.status.timedOutNoEmail") + check status button when timedOut && !timedOutWithEmail
+        timedOutRef.current = true;
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setLastPreviewId(id);
+        setProgress(null);
         closeEventSource();
       }
     }, 15_000);
@@ -208,9 +343,7 @@ export function TryForm({
       if (typeof data.previewUrl === "string") {
         setPreviewUrl(data.previewUrl);
       }
-      if (data.message || data.stage) {
-        setProgress((data.message as string) ?? (data.stage as string));
-      }
+      applyStageFromPayload(data);
 
       if (data.status === "ready") {
         setStatus("ready");
@@ -220,7 +353,7 @@ export function TryForm({
       }
 
       if (data.status === "failed") {
-        setError((data.error as string) || "Preview failed.");
+        applyErrorFromPayload(data);
         setStatus("failed");
         setProgress(null);
         closeEventSource();
@@ -235,12 +368,10 @@ export function TryForm({
     es.addEventListener("progress", (event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        const message = data.message || data.stage || "Processing preview...";
-        setProgress(message);
         bump();
         handlePayload(data);
       } catch {
-        setProgress("Processing preview...");
+        setProgress(t("try.status.processing") || "Processing preview...");
       }
     });
 
@@ -285,15 +416,79 @@ export function TryForm({
     });
 
     es.addEventListener("error", (event) => {
-      try {
-        const data = JSON.parse((event as MessageEvent).data ?? "{}");
-        setError(data.error || data.message || "Preview failed.");
-      } catch {
-        setError("Preview failed.");
-      } finally {
-        setProgress(null);
-        setStatus("failed");
+      // If we already timed out, preserve that state - processing continues in queue
+      if (timedOutRef.current) {
         closeEventSource();
+        return;
+      }
+
+      const rawData = event && "data" in event ? (event as MessageEvent).data : undefined;
+      if (typeof rawData === "string" && rawData) {
+        try {
+          const payload = JSON.parse(rawData) as Record<string, unknown>;
+          if (hasExplicitFailure(payload)) {
+            applyErrorFromPayload(payload, t("try.error.default"));
+            setProgress(null);
+            setStatus("failed");
+            closeEventSource();
+            return;
+          }
+        } catch {
+          // fall through to connection loss handling
+        }
+      }
+
+      const handleDisconnect = async () => {
+        setLastPreviewId(id);
+        const terminal = await handleCheckStatus(id);
+        if (terminal === null) {
+          closeEventSource();
+          return;
+        }
+        if (terminal) {
+          closeEventSource();
+          return;
+        }
+
+        // If email was provided, treat connection loss as timeout (processing continues)
+        if (showEmailField && submittedEmailRef.current) {
+          timedOutRef.current = true;
+          setTimedOut(true);
+          setTimedOutWithEmail(true);
+          setProgress(null);
+          closeEventSource();
+          return;
+        }
+
+        // No email - show "check status" option (not hard failure)
+        // UI shows t("try.status.timedOutNoEmail") + check status button when timedOut && !timedOutWithEmail
+        timedOutRef.current = true;
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setProgress(null);
+        closeEventSource();
+      };
+
+      void handleDisconnect();
+    });
+
+    es.addEventListener("timeout", () => {
+      timedOutRef.current = true;
+      closeEventSource();
+      setProgress(null);
+
+      if (showEmailField && submittedEmailRef.current) {
+        // Processing continues in background; user will get email notification
+        setTimedOut(true);
+        setTimedOutWithEmail(true);
+        setLastPreviewId(id);
+        // Keep status as "processing" - don't set to failed
+      } else {
+        // No email fallback - show timeout with check status option
+        setTimedOut(true);
+        setTimedOutWithEmail(false);
+        setLastPreviewId(id);
+        // Keep status as "processing" to allow check status
       }
     });
   }
@@ -338,8 +533,16 @@ export function TryForm({
 
       setStatus("creating");
       setError(null);
+      setErrorCode(null);
+      setErrorStage(null);
       setProgress(null);
       setPreviewUrl(null);
+      setTimedOut(false);
+      timedOutRef.current = false;
+      submittedEmailRef.current = trimmedEmail;
+      setTimedOutWithEmail(false);
+      setLastPreviewId(null);
+      lastStageRef.current = null;
       closeEventSource();
       setLastRequestKey(requestKey);
 
@@ -348,14 +551,12 @@ export function TryForm({
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = controller;
-      let streamed = false;
 
       try {
         const response = await fetch("/api/previews", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Accept: "text/event-stream",
           },
           body: JSON.stringify({
             sourceUrl: trimmedUrl,
@@ -367,26 +568,30 @@ export function TryForm({
           signal: controller.signal,
         });
 
-        const contentType = response.headers.get("content-type") ?? "";
-
-        if (contentType.includes("text/event-stream")) {
-          streamed = true;
-          await consumeEventStream(response);
-          return;
-        }
-
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
-          throw new Error(reason);
+          applyErrorFromPayload(payload ?? {}, reason);
+          setStatus("failed");
+          return;
         }
 
         const payload = await response.json();
         const id = payload?.previewId as string | undefined;
+        const streamUrl =
+          typeof payload?.streamUrl === "string" ? (payload.streamUrl as string) : null;
         const immediatePreview = payload?.previewUrl as string | undefined;
 
-        if (immediatePreview) {
+        applyStageFromPayload(payload ?? {});
+
+        if (payload?.status === "failed") {
+          applyErrorFromPayload(payload);
+          setStatus("failed");
+          return;
+        }
+
+        if (payload?.status === "ready" && immediatePreview) {
           setPreviewUrl(immediatePreview);
           setStatus("ready");
           return;
@@ -396,9 +601,9 @@ export function TryForm({
           throw new Error("Preview was created but no ID was returned.");
         }
 
-        connectSSE(id);
+        connectSSE(id, streamUrl);
       } finally {
-        if (!streamed && abortControllerRef.current === controller) {
+        if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
         }
       }
@@ -406,112 +611,6 @@ export function TryForm({
       const message = err instanceof Error ? err.message : "Failed to generate preview.";
       setError(message);
       setStatus("failed");
-    }
-  }
-
-  async function consumeEventStream(response: Response) {
-    if (!response.body) {
-      throw new Error("Stream response missing body");
-    }
-
-    setStatus("processing");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const handlePayload = (data: Record<string, unknown>) => {
-      if (typeof data.previewUrl === "string") {
-        setPreviewUrl(data.previewUrl);
-      }
-      if (data.message || data.stage) {
-        setProgress((data.message as string) ?? (data.stage as string));
-      }
-      if (data.status === "ready") {
-        setStatus("ready");
-        setProgress(null);
-        return true;
-      }
-      if (data.status === "failed") {
-        setError((data.error as string) || "Preview failed.");
-        setStatus("failed");
-        setProgress(null);
-        return true;
-      }
-      if (isPreviewStatus(data.status)) {
-        setStatus(data.status);
-      }
-      return false;
-    };
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let separatorIndex;
-        while ((separatorIndex = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, separatorIndex);
-          buffer = buffer.slice(separatorIndex + 2);
-          const event = parseSseEvent(rawEvent);
-          if (!event) continue;
-
-          if (event.type === "progress" || event.type === "status" || event.type === "message") {
-            const data = safeParseJson(event.data);
-            if (data) {
-              const doneHandled = handlePayload(data);
-              if (doneHandled) return;
-            }
-          }
-
-          if (event.type === "complete") {
-            const data = safeParseJson(event.data);
-            if (data && typeof data.previewUrl === "string") {
-              setPreviewUrl(data.previewUrl);
-            }
-            setStatus("ready");
-            setProgress(null);
-            return;
-          }
-
-          if (event.type === "error") {
-            const data = safeParseJson(event.data) ?? {};
-            setError((data.error as string) || "Preview failed.");
-            setStatus("failed");
-            setProgress(null);
-            return;
-          }
-        }
-      }
-    } finally {
-      abortControllerRef.current = null;
-    }
-
-    // If stream ends without terminal event
-    setError("Preview stream ended unexpectedly.");
-    setStatus("failed");
-  }
-
-  function parseSseEvent(raw: string): { type: string; data: string } | null {
-    const lines = raw.split("\n");
-    let type = "message";
-    const data: string[] = [];
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        type = line.slice(6).trim();
-      } else if (line.startsWith("data:")) {
-        data.push(line.slice(5).trim());
-      }
-    }
-    if (!data.length) return null;
-    return { type, data: data.join("\n") };
-  }
-
-  function safeParseJson(input: string): Record<string, unknown> | null {
-    try {
-      return JSON.parse(input);
-    } catch {
-      return null;
     }
   }
 
@@ -531,16 +630,90 @@ export function TryForm({
     }
   }
 
+  async function handleCheckStatus(previewId?: string): Promise<boolean | null> {
+    const id = previewId ?? lastPreviewId;
+    if (!id || checkingStatus) return null;
+    if (previewId) {
+      setLastPreviewId(previewId);
+    }
+
+    setCheckingStatus(true);
+    try {
+      const response = await fetch(`/api/previews/${id}`);
+      const bodyText = await response.text();
+      let payload: Record<string, unknown> | null = null;
+      if (bodyText) {
+        try {
+          payload = JSON.parse(bodyText) as Record<string, unknown>;
+        } catch {
+          payload = null;
+        }
+      }
+      if (!response.ok) {
+        const decision = resolveStatusCheckFailure(response.status, payload);
+        if (decision === "processing") {
+          setProgress(t("try.status.stillProcessing"));
+          return false;
+        }
+        const reason =
+          (payload && typeof payload.error === "string" ? payload.error : "") ||
+          (payload && typeof payload.message === "string" ? payload.message : "") ||
+          t("try.error.default");
+        applyErrorFromPayload(payload ?? {}, reason);
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      }
+      if (!payload || typeof payload !== "object") {
+        setProgress(t("try.status.stillProcessing"));
+        return false;
+      }
+      const data = payload as Record<string, unknown>;
+
+      if (data.status === "ready") {
+        if (typeof data.previewUrl === "string") {
+          setPreviewUrl(data.previewUrl);
+        }
+        setStatus("ready");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      } else if (data.status === "failed") {
+        applyErrorFromPayload(data, t("try.error.default"));
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      } else {
+        // Still processing - update progress text
+        const stage = isPreviewStage(data.stage) ? data.stage : null;
+        const stageMessage = stage ? resolveStageMessage(stage) : null;
+        setProgress(stageMessage || t("try.status.stillProcessing"));
+        return false;
+      }
+    } catch {
+      setProgress(t("try.status.stillProcessing"));
+      return false;
+    } finally {
+      setCheckingStatus(false);
+    }
+  }
+
   const statusMessage = useMemo(() => {
     switch (status) {
       case "creating":
         return t("try.status.creating") || "Creating preview...";
+      case "pending":
+        return t("try.status.pending") || "Queued... starting soon.";
       case "processing":
         return progress || t("try.status.processing") || "Translating your page...";
       default:
         return null;
     }
   }, [status, progress, t]);
+  const resolvedError = errorCode ? t(PREVIEW_ERROR_MESSAGE_KEYS[errorCode]) : error;
+  const errorStageMessage = resolveStageMessage(errorStage);
 
   return (
     <div className="space-y-6">
@@ -598,7 +771,7 @@ export function TryForm({
         ) : null}
       </div>
 
-      {statusMessage && (
+      {statusMessage && !timedOut && (
         <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <div className="flex flex-col gap-1">
@@ -610,9 +783,36 @@ export function TryForm({
         </div>
       )}
 
-      {error && status === "failed" && (
+      {timedOut && timedOutWithEmail && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <p>{t("try.status.pendingEmail", undefined, { email: submittedEmail })}</p>
+          <p className="mt-1 text-xs opacity-80">{t("try.status.pendingEmailHint")}</p>
+        </div>
+      )}
+
+      {timedOut && !timedOutWithEmail && (
+        <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <p>{t("try.status.timedOutNoEmail")}</p>
+          <Button
+            onClick={() => handleCheckStatus()}
+            disabled={checkingStatus}
+            variant="outline"
+            size="sm"
+            className="w-fit"
+          >
+            {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
+          </Button>
+        </div>
+      )}
+
+      {resolvedError && status === "failed" && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+          <div>{resolvedError}</div>
+          {errorStageMessage ? (
+            <div className="text-xs text-destructive/80">
+              {t("try.error.stageLabel", undefined, { stage: errorStageMessage })}
+            </div>
+          ) : null}
         </div>
       )}
 

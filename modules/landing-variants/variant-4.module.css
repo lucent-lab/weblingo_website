@@ -1,0 +1,122 @@
+.root {
+  --background: 34 43% 96%;
+  --foreground: 164 34% 11%;
+  --card: 34 56% 98%;
+  --card-foreground: 164 34% 11%;
+  --popover: 34 56% 98%;
+  --popover-foreground: 164 34% 11%;
+  --primary: 156 56% 26%;
+  --primary-foreground: 34 56% 98%;
+  --secondary: 34 24% 90%;
+  --secondary-foreground: 164 34% 11%;
+  --muted: 34 18% 92%;
+  --muted-foreground: 164 10% 33%;
+  --accent: 16 74% 54%;
+  --accent-foreground: 34 56% 98%;
+  --destructive: 2 72% 48%;
+  --destructive-foreground: 34 56% 98%;
+  --border: 164 18% 78%;
+  --input: 164 18% 78%;
+  --ring: 156 56% 26%;
+  --radius: 1.4rem;
+
+  background:
+    radial-gradient(980px 520px at 20% 0%, rgba(29, 132, 92, 0.12), transparent 62%),
+    radial-gradient(920px 520px at 88% 10%, rgba(239, 111, 63, 0.1), transparent 66%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  color: hsl(var(--foreground));
+  position: relative;
+  overflow-x: clip;
+}
+
+.topo {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-radial-gradient(
+      circle at 30% 40%,
+      rgba(20, 83, 61, 0.11) 0px,
+      rgba(20, 83, 61, 0.11) 1px,
+      transparent 1px,
+      transparent 14px
+    ),
+    repeating-radial-gradient(
+      circle at 70% 20%,
+      rgba(20, 83, 61, 0.1) 0px,
+      rgba(20, 83, 61, 0.1) 1px,
+      transparent 1px,
+      transparent 16px
+    );
+  filter: blur(0.2px);
+  mask-image: radial-gradient(closest-side at 50% 20%, black, transparent 76%);
+}
+
+.blobA,
+.blobB {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(22px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: v4-float 10s ease-in-out infinite;
+}
+
+.blobA {
+  width: 460px;
+  height: 460px;
+  top: -220px;
+  left: -160px;
+  background: radial-gradient(circle at 30% 30%, rgba(29, 132, 92, 0.85), transparent 60%);
+}
+
+.blobB {
+  width: 520px;
+  height: 520px;
+  top: -260px;
+  right: -240px;
+  animation-delay: -4s;
+  background: radial-gradient(circle at 30% 30%, rgba(239, 111, 63, 0.75), transparent 60%);
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.enter {
+  animation: v4-enter 850ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+@keyframes v4-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes v4-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(16px, 10px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .blobA,
+  .blobB {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,92 @@
+export type PreviewErrorCode =
+  | "invalid_url"
+  | "blocked_host"
+  | "dns_failed"
+  | "dns_timeout"
+  | "page_too_large"
+  | "render_failed"
+  | "template_decode_failed"
+  | "waf_blocked"
+  | "translate_failed"
+  | "storage_failed"
+  | "config_error"
+  | "processing_timeout"
+  | "queue_enqueue_failed"
+  | "preview_not_found"
+  | "preview_expired"
+  | "canceled"
+  | "unknown";
+
+export type PreviewStage =
+  | "fetching_page"
+  | "analyzing_content"
+  | "translating"
+  | "generating_preview"
+  | "saving";
+
+const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
+  "invalid_url",
+  "blocked_host",
+  "dns_failed",
+  "dns_timeout",
+  "page_too_large",
+  "render_failed",
+  "template_decode_failed",
+  "waf_blocked",
+  "translate_failed",
+  "storage_failed",
+  "config_error",
+  "processing_timeout",
+  "queue_enqueue_failed",
+  "preview_not_found",
+  "preview_expired",
+  "canceled",
+  "unknown",
+];
+
+const PREVIEW_STAGES: PreviewStage[] = [
+  "fetching_page",
+  "analyzing_content",
+  "translating",
+  "generating_preview",
+  "saving",
+];
+
+export function isPreviewErrorCode(value: unknown): value is PreviewErrorCode {
+  return typeof value === "string" && PREVIEW_ERROR_CODES.includes(value as PreviewErrorCode);
+}
+
+export function isPreviewStage(value: unknown): value is PreviewStage {
+  return typeof value === "string" && PREVIEW_STAGES.includes(value as PreviewStage);
+}
+
+export function hasExplicitFailure(payload: Record<string, unknown>): boolean {
+  if (payload.status === "failed") {
+    return true;
+  }
+  if (isPreviewErrorCode(payload.errorCode) || payload.errorStage != null) {
+    return true;
+  }
+  if (payload.details && typeof payload.details === "object") {
+    const details = payload.details as Record<string, unknown>;
+    if (isPreviewErrorCode(details.errorCode) || details.errorStage != null) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export type StatusCheckDecision = "terminal" | "processing";
+
+export function resolveStatusCheckFailure(
+  status: number,
+  payload: Record<string, unknown> | null,
+): StatusCheckDecision {
+  if (payload && hasExplicitFailure(payload)) {
+    return "terminal";
+  }
+  if (status >= 500 || status === 429 || status === 408) {
+    return "processing";
+  }
+  return "terminal";
+}

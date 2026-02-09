@@ -1,36 +1,54 @@
 # AGENTS.md — WebLingo Marketing Site
 
-This document guides contributors working inside the `web` marketing site for WebLingo. The goal is to run a single SaaS website today, but structure code so modules can later move into shared packages when new products launch.
+This document guides contributors working inside the WebLingo marketing + dashboard site. The goal is to run a single SaaS website today, but structure code so modules can later move into shared packages when new products launch.
 
 ## Project Scope
 
-- Single marketing site for WebLingo (home, pricing, legal, contact, checkout flows).
+- Marketing site (home, pricing, legal, contact, checkout flows).
+- Lightweight dashboard surfaces for site onboarding/configuration (Supabase auth + Webhooks worker API).
+- Try-Now previews: create a preview, stream status via SSE, and open the rendered preview URL once ready.
 - Stripe Checkout for subscriptions; webhook to capture lifecycle events.
-- No multi-tenant routing, dashboards, or authenticated app surfaces.
 
 ## Directory Layout
 
 - `app/` — Next.js App Router entry points and API routes.
 - `components/` — UI components that stay within this app.
+- `content/` — MDX content (docs + blog) and indexes.
 - `internal/` — Proto-packages (core env parsing, billing, i18n, future auth/db/etc.).
 - `modules/` — Feature modules (pricing tiers, future account/dashboard logic).
 - `styles/` — Tailwind globals.
 - `docs/` — Updated guidance and runbooks.
+- `tests/` — Vitest + Playwright coverage.
 
 ## Environment Variables
 
-Define these in `.env.local`:
+Define these in `.env.local` (source of truth: `internal/core/env.ts`).
+
+Client (`NEXT_PUBLIC_*`):
 
 - `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_WEBHOOKS_API_BASE` (Webhooks worker base including `/api`, e.g. `https://api.weblingo.app/api`)
+
+Server only:
+
 - `HOME_PAGE_VARIANT` (`classic` | `expansion`, defaults to `expansion`)
 - `PUBLIC_PORTAL_MODE` (`enabled` | `disabled`)
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICING_TABLE_ID`
-- `STRIPE_PRICING_TABLE_ID_EN`
-- `STRIPE_PRICING_TABLE_ID_FR`
-- `STRIPE_PRICING_TABLE_ID_JA`
+- `STRIPE_PRICING_TABLE_ID` (optional)
+- `STRIPE_PRICING_TABLE_ID_EN` (optional)
+- `STRIPE_PRICING_TABLE_ID_FR` (optional)
+- `STRIPE_PRICING_TABLE_ID_JA` (optional)
+- `SUPABASE_SECRET_KEY`
+- `TRY_NOW_TOKEN` (optional; required to enable server-side preview proxy routes under `app/api/previews/*`)
+- Redis (required; pick one provider):
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, or
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN`
 
 ## Development Principles
 
@@ -61,6 +79,14 @@ Define these in `.env.local`:
 
 - `POST /api/stripe/create-checkout-session` creates a subscription Checkout session for a pricing tier. Metadata includes `siteId` so multiple SaaS projects can share one Stripe account.
 - `POST /api/stripe/webhook` verifies signature, logs checkout and subscription lifecycle events.
+
+## Preview Integration Contract
+
+- Website server routes proxy to the Webhooks worker using `TRY_NOW_TOKEN`:
+- `POST /api/previews` → `POST {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews` (adds `x-preview-token`)
+- `GET /api/previews/:id` → `GET {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews/:id`
+- `GET /api/previews/:id/stream` → `GET {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews/:id/stream` (SSE)
+- Preview `errorCode` and `stage` enums must stay consistent with the backend `webhooks-worker` preview endpoints.
 
 ## Extraction Path (When New Sites Arrive)
 

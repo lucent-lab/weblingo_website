@@ -2,6 +2,11 @@
 
 Purpose: describe the user journeys and UX expectations for the customer dashboard, with a clear split between normal customers and agency users. This doc complements `docs/backend/DASHBOARD_SPECS.md` (API contracts) and `docs/dashboard-milestone-plan.md` (delivery plan).
 
+## Related docs
+
+- `docs/backend/DASHBOARD_SPECS.md` — API contract source of truth.
+- `docs/AGENCY_CLIENT_APP_GUIDE.md` — agency-specific UX and plan gating notes.
+
 ## Personas
 
 - Normal customer: owns a single account and manages only their own sites.
@@ -19,11 +24,11 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
    - Subdomain pattern.
    - Site profile (brand voice).
 5. Verify domains (DNS instructions, then verify/provision/refresh).
-6. Trigger crawl to refresh translations.
+6. Trigger crawl to refresh translations or translate without recrawl when snapshots are fresh.
 7. Manage translations per site:
    - Glossary, overrides, and slugs (if enabled by plan).
-8. Monitor deployments per locale.
-9. Pause/resume translations for a site.
+8. Monitor deployments per locale and translation run status.
+9. Enable or disable serving per locale (serve toggle per target language).
 
 ## Core flows (agency admin)
 
@@ -126,3 +131,6 @@ Workspace switcher (header):
 - `/sites`: list sites for the current subject account.
 - `/agency/customers`: agency list and summary (plan status + active site counts + totals).
 - `/auth/token` with `subjectAccountId` for agency context switching.
+- `/sites/{siteId}/translate`: translate without recrawl.
+- `/sites/{siteId}/translation-runs/{runId}`: status, cancel, resume.
+- `/sites/{siteId}/locales/{targetLang}/serve`: per-locale serving toggle.

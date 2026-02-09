@@ -1,0 +1,82 @@
+.root {
+  --background: 38 44% 97%;
+  --foreground: 230 18% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 230 18% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 230 18% 10%;
+  --primary: 350 78% 46%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 38 24% 92%;
+  --secondary-foreground: 230 18% 10%;
+  --muted: 38 20% 93%;
+  --muted-foreground: 230 10% 38%;
+  --accent: 210 60% 34%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 74% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 230 10% 85%;
+  --input: 230 10% 85%;
+  --ring: 230 18% 10%;
+  --radius: 0.75rem;
+
+  background:
+    radial-gradient(900px 560px at 12% 0%, rgba(190, 24, 93, 0.12), transparent 62%),
+    radial-gradient(900px 560px at 88% 10%, rgba(30, 64, 175, 0.08), transparent 62%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  color: hsl(var(--foreground));
+  position: relative;
+  overflow-x: clip;
+}
+
+.paper {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.18) 0.6px, transparent 0.7px),
+    radial-gradient(circle at 80% 40%, rgba(0, 0, 0, 0.18) 0.6px, transparent 0.7px),
+    radial-gradient(circle at 35% 75%, rgba(0, 0, 0, 0.16) 0.6px, transparent 0.7px);
+  background-size: 18px 18px;
+  filter: contrast(140%);
+  mask-image: radial-gradient(closest-side at 50% 18%, black, transparent 74%);
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.05em;
+}
+
+.kicker {
+  letter-spacing: 0.24em;
+}
+
+.rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.18), transparent);
+}
+
+.enter {
+  animation: v9-enter 820ms cubic-bezier(0.18, 0.9, 0.2, 1) both;
+}
+
+@keyframes v9-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,34 @@
+export const metadata = {
+  title: "Domain + CNAME Setup",
+  description: "Point traffic to WebLingo and keep your source site intact.",
+  section: "Basics",
+  order: 2,
+};
+
+# Domain + CNAME Setup
+
+WebLingo serves translated pages from the edge, but your source site stays exactly where it is.
+
+## Recommended flow
+
+1. Keep your primary domain on the existing host.
+2. Add a subdomain for localized content (for example, `fr.example.com`).
+3. Point the subdomain CNAME to the WebLingo target provided in the dashboard.
+
+## Validation tips
+
+- Verify the CNAME before launching production traffic. WebLingo can issue a verification token
+  and DNS instructions for TXT/CNAME checks.
+- Keep an eye on SSL propagation (typically a few minutes).
+- Start with a single locale before expanding to more markets.
+
+## Cloudflare for SaaS (optional)
+
+If your account uses Cloudflare for SaaS provisioning, you can request a managed hostname and
+refresh its validation state from the dashboard.
+
+## Related docs
+
+- [Getting Started](../getting-started)
+- [Translation Pipeline](../translation-pipeline)
+- [API Reference](../api-reference)

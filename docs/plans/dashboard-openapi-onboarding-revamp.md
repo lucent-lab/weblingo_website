@@ -42,7 +42,7 @@ Primary outcomes:
   - `GET /accounts/me`
   - `POST /sites/:siteId/domains/:domain/provision`
   - `POST /sites/:siteId/domains/:domain/refresh`
-- [ ] Fix `createSite(...)` payload requirements (worker requires `sitePlan` + `maxLocales`).
+- [ ] Fix `createSite(...)` payload requirements (worker requires `servingMode` + `maxLocales`).
 - [ ] Validation: `pnpm run check`.
 
 ### M2 — Dashboard auth + entitlements (“Clerk-like has”)
@@ -72,7 +72,7 @@ Primary outcomes:
 
 ### M4 — Site onboarding wizard (create → connect domains → crawl)
 
-- [ ] Add `sitePlan` + `maxLocales` inputs:
+- [ ] Add `servingMode` + `maxLocales` inputs:
   - default/max based on `accounts/me` flags/quotas
   - prevent “free user sends maxLocales=null and bypasses limits” (UI must enforce)
   - server-side enforcement: webhooks worker validates plan limits and rejects mismatches (UI gating is not sufficient)
@@ -85,7 +85,7 @@ Primary outcomes:
 
 - [ ] Restructure site detail view into clear sections/tabs:
   - Overview, Domains, Deployments, Glossary (if enabled), Overrides (if enabled), Slugs (if enabled), Settings
-- [ ] Hide/disable nav items and actions when not allowed by plan (`featureFlags`) or site plan (`site.sitePlan`).
+- [ ] Hide/disable nav items and actions when not allowed by plan (`featureFlags`).
 - [ ] Remove or redirect the legacy debug dashboard at `/:locale/dashboard` to avoid confusion.
 - [ ] Validation: manual browse + `pnpm run check`.
 

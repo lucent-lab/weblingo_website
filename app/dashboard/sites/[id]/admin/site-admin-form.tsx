@@ -31,8 +31,7 @@ import type {
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
 const LanguageTagCombobox = dynamic(
-  () =>
-    import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
+  () => import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),
   { ssr: false },
 );
 

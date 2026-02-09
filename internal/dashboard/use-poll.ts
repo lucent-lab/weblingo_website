@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type UsePollOptions<T> = {
   enabled: boolean;
@@ -21,10 +21,20 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
   const [value, setValue] = useState<T>(initial);
   const [error, setError] = useState<Error | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const fetcherRef = useRef(fetcher);
+  const isTerminalRef = useRef(isTerminal);
 
   useEffect(() => {
     setValue(initial);
   }, [initial]);
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  useEffect(() => {
+    isTerminalRef.current = isTerminal;
+  }, [isTerminal]);
 
   useEffect(() => {
     if (!enabled) {
@@ -39,13 +49,13 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
     const tick = async () => {
       const token = (inFlightToken += 1);
       try {
-        const nextValue = await fetcher();
+        const nextValue = await fetcherRef.current();
         if (!active || token !== inFlightToken) {
           return;
         }
         setValue(nextValue);
         setError(null);
-        if (isTerminal(nextValue)) {
+        if (isTerminalRef.current(nextValue)) {
           setIsPolling(false);
           return;
         }
@@ -73,7 +83,7 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
       }
       setIsPolling(false);
     };
-  }, [enabled, fetcher, initial, intervalMs, isTerminal]);
+  }, [enabled, intervalMs]);
 
   return { value, error, isPolling };
 }
