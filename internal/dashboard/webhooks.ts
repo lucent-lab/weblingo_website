@@ -3,6 +3,10 @@ import { z } from "zod";
 import { env } from "@internal/core";
 
 const apiBase = env.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
+const apiTimeoutMs = Number(env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS);
+if (!Number.isFinite(apiTimeoutMs) || apiTimeoutMs < 1) {
+  throw new Error("[config] NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS must be a positive integer");
+}
 
 export class WebhooksApiError extends Error {
   status: number;
@@ -463,6 +467,8 @@ async function request<T>({
     ? path
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
   let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), apiTimeoutMs);
   try {
     response = await fetch(url, {
       method,
@@ -473,14 +479,20 @@ async function request<T>({
       },
       body: body ? JSON.stringify(body) : undefined,
       cache: "no-store",
+      signal: controller.signal,
     });
   } catch (error) {
-    logTiming(0, false, "fetch_failed");
+    const timedOut = controller.signal.aborted;
+    logTiming(0, false, timedOut ? "timeout" : "fetch_failed");
     throw new WebhooksApiError(
-      "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
-      0,
+      timedOut
+        ? "The WebLingo API request timed out. Please retry."
+        : "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
+      timedOut ? 504 : 0,
       error,
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   const text = await response.text();

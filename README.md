@@ -37,6 +37,7 @@ HOME_PAGE_VARIANT=expansion # optional: classic | expansion (default expansion)
 PUBLIC_PORTAL_MODE=enabled # required: enabled | disabled
 # Public endpoint consumed by the dashboard UI. Protect with auth, CORS, and rate limits.
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
+NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS=15000
 TRY_NOW_TOKEN=preview_token_value
 
 # Stripe
@@ -52,6 +53,7 @@ STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=public-anon-key
 SUPABASE_SECRET_KEY=service-role-key
+SUPABASE_AUTH_TIMEOUT_MS=15000
 
 # Analytics (optional)
 NEXT_PUBLIC_POSTHOG_KEY=phc_...
