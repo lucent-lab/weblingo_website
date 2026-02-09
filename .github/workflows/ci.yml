@@ -8,6 +8,21 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      HOME_PAGE_VARIANT: expansion
+      KV_REST_API_TOKEN: dummy
+      KV_REST_API_URL: https://example.com
+      NEXT_PUBLIC_APP_URL: https://example.com
+      NEXT_PUBLIC_POSTHOG_HOST: https://example.com
+      NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon_dummy
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_WEBHOOKS_API_BASE: https://example.com
+      PUBLIC_PORTAL_MODE: disabled
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      SUPABASE_SECRET_KEY: service_role_dummy
     steps:
       - name: Checkout
         uses: actions/checkout@v4
