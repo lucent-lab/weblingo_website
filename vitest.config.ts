@@ -1,8 +1,10 @@
-import { defineConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
 
-export default defineConfig({
+const config: ViteUserConfig = {
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx"],
   },
-});
+};
+
+export default config;
