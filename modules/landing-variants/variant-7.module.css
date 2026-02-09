@@ -1,0 +1,87 @@
+.root {
+  --background: 210 100% 97%;
+  --foreground: 222 24% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 24% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 24% 12%;
+  --primary: 334 86% 56%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 160 58% 92%;
+  --secondary-foreground: 222 24% 12%;
+  --muted: 210 35% 93%;
+  --muted-foreground: 222 10% 40%;
+  --accent: 48 100% 58%;
+  --accent-foreground: 222 24% 12%;
+  --destructive: 0 74% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 222 14% 76%;
+  --input: 222 14% 76%;
+  --ring: 334 86% 56%;
+  --radius: 1.5rem;
+
+  background:
+    radial-gradient(1000px 620px at 10% 0%, rgba(255, 87, 170, 0.14), transparent 60%),
+    radial-gradient(900px 560px at 92% 10%, rgba(255, 213, 79, 0.14), transparent 60%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  color: hsl(var(--foreground));
+  position: relative;
+  overflow-x: clip;
+}
+
+.dots {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.06) 1px, transparent 1.2px),
+    radial-gradient(circle at 70% 35%, rgba(0, 0, 0, 0.05) 1px, transparent 1.2px),
+    radial-gradient(circle at 40% 80%, rgba(0, 0, 0, 0.05) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(closest-side at 50% 18%, black, transparent 72%);
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.cardPop {
+  box-shadow:
+    0 0 0 2px rgba(20, 24, 28, 0.18),
+    0 20px 0 rgba(20, 24, 28, 0.08);
+}
+
+.wobble {
+  transform-origin: 40% 10%;
+  transition: transform 180ms ease;
+}
+
+.wobble:hover {
+  transform: rotate(-1.2deg) translateY(-1px);
+}
+
+.enter {
+  animation: v7-enter 780ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+@keyframes v7-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none !important;
+  }
+}
+
