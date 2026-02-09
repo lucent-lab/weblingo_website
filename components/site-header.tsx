@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import type { Translator } from "@internal/i18n";
 
 const navLinks = [
@@ -20,7 +20,7 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ locale, t }: SiteHeaderProps) {
   const tryHref = `/${locale}#try`;
-  const portalEnabled = env.PUBLIC_PORTAL_MODE === "enabled";
+  const portalEnabled = envServer.PUBLIC_PORTAL_MODE === "enabled";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">

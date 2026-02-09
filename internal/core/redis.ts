@@ -1,7 +1,9 @@
+import "server-only";
+
 import { Redis } from "@upstash/redis";
 
-import { env } from "./env";
+import { envServer } from "./env-server";
 
-void env;
+void envServer;
 
 export const redis = Redis.fromEnv();

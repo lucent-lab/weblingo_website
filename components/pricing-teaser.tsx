@@ -1,7 +1,7 @@
 import Script from "next/script";
 
 import { getPricingTableId } from "@internal/billing";
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import type { Translator } from "@internal/i18n";
 
 type PricingTeaserProps = {
@@ -11,7 +11,7 @@ type PricingTeaserProps = {
 
 export function PricingTeaser({ locale, t }: PricingTeaserProps) {
   const pricingTableId = getPricingTableId(locale);
-  const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  const publishableKey = envServer.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
   if (!pricingTableId || !publishableKey) {
     throw new Error("Missing required Stripe configuration");

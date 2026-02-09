@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createCheckoutSession } from "@internal/billing";
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import { i18nConfig, normalizeLocale } from "@internal/i18n";
 
 const bodySchema = z.object({
@@ -13,7 +13,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+  if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     return NextResponse.json({ error: "Checkout disabled" }, { status: 403 });
   }
   let payload: unknown;
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   const { planId, cadence, email, locale } = parseResult.data;
   const normalizedLocale = normalizeLocale(locale);
-  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const appUrl = envServer.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
   try {
     const session = await createCheckoutSession({

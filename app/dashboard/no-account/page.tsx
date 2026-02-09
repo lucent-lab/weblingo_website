@@ -8,7 +8,7 @@ import { logout } from "@/app/auth/logout/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import { getPricingTableId } from "@internal/billing";
 import { i18nConfig } from "@internal/i18n";
 
@@ -19,12 +19,12 @@ type NoAccountPageProps = {
 };
 
 export default async function NoAccountPage({ searchParams }: NoAccountPageProps) {
-  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+  if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     notFound();
   }
   const locale = i18nConfig.defaultLocale;
   const pricingTableId = getPricingTableId(locale);
-  const publishableKey = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  const publishableKey = envServer.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
   const resolvedSearchParams = await searchParams;
   const rawError = resolvedSearchParams?.error;

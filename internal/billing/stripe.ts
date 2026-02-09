@@ -1,9 +1,11 @@
+import "server-only";
+
 import Stripe from "stripe";
 
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import { SITE_ID, pricingTiers } from "@modules/pricing";
 
-const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(envServer.STRIPE_SECRET_KEY);
 
 function resolvePriceId(planId: string, cadence: "monthly" | "yearly") {
   const plan = pricingTiers.find((tier) => tier.id === planId);
@@ -62,7 +64,7 @@ export async function createCheckoutSession({
 }
 
 export function verifyStripeSignature(payload: Buffer, signature: string) {
-  return stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET);
+  return stripe.webhooks.constructEvent(payload, signature, envServer.STRIPE_WEBHOOK_SECRET);
 }
 
 export function getStripeClient() {

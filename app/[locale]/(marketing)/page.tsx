@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 import { normalizeLocale } from "@internal/i18n";
 import { ClassicHomePage, getClassicHomeMetadata } from "@modules/home/classic-home";
 import { LandingSegmentPage, getLandingSegmentMetadata } from "@modules/landing/segment-page";
@@ -15,7 +15,7 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
     notFound();
   }
 
-  if (env.HOME_PAGE_VARIANT === "expansion") {
+  if (envServer.HOME_PAGE_VARIANT === "expansion") {
     return <LandingSegmentPage locale={locale} segment={expansionSegment} />;
   }
 
@@ -33,7 +33,7 @@ export async function generateMetadata({
     return {};
   }
 
-  if (env.HOME_PAGE_VARIANT === "expansion") {
+  if (envServer.HOME_PAGE_VARIANT === "expansion") {
     return getLandingSegmentMetadata({ locale, segment: expansionSegment });
   }
 

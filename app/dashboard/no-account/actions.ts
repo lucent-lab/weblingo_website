@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { env } from "@internal/core";
+import { envServer } from "@internal/core";
 
 export async function claimAccount() {
-  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+  if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     redirect("/");
   }
   const supabase = await createClient();
@@ -18,7 +18,7 @@ export async function claimAccount() {
     redirect("/auth/login");
   }
 
-  const apiBase = env.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
+  const apiBase = envServer.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
 
   let shouldRedirectToDashboard = false;
   let errorMessage: string | null = null;
