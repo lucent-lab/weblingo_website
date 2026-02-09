@@ -36,8 +36,8 @@
   opacity: 0.25;
   background-image: repeating-conic-gradient(
     from 180deg at 50% 12%,
-    rgba(245, 158, 11, 0.0) 0deg,
-    rgba(245, 158, 11, 0.0) 10deg,
+    rgba(245, 158, 11, 0) 0deg,
+    rgba(245, 158, 11, 0) 10deg,
     rgba(245, 158, 11, 0.09) 10deg,
     rgba(245, 158, 11, 0.09) 12deg
   );
@@ -113,4 +113,3 @@
     animation: none !important;
   }
 }
-

@@ -22,7 +22,7 @@
 
   background:
     radial-gradient(900px 560px at 16% 0%, rgba(37, 99, 235, 0.14), transparent 60%),
-    radial-gradient(720px 520px at 92% 12%, rgba(16, 185, 129, 0.10), transparent 62%),
+    radial-gradient(720px 520px at 92% 12%, rgba(16, 185, 129, 0.1), transparent 62%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
   color: hsl(var(--foreground));
   position: relative;
@@ -102,4 +102,3 @@
     animation: none !important;
   }
 }
-

@@ -21,7 +21,7 @@
   --radius: 0.55rem;
 
   background:
-    radial-gradient(900px 560px at 16% 0%, rgba(37, 99, 235, 0.10), transparent 62%),
+    radial-gradient(900px 560px at 16% 0%, rgba(37, 99, 235, 0.1), transparent 62%),
     radial-gradient(760px 560px at 92% 12%, rgba(249, 115, 22, 0.12), transparent 62%),
     repeating-linear-gradient(
       to right,
@@ -80,4 +80,3 @@
     animation: none !important;
   }
 }
-

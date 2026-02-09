@@ -41,7 +41,12 @@ export function LandingVariant8({
             <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-white/5">
               <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_20px_rgba(245,158,11,0.25)]" />
             </span>
-            <span className={cn(styles.display, "text-base font-semibold tracking-[0.06em] text-foreground")}>
+            <span
+              className={cn(
+                styles.display,
+                "text-base font-semibold tracking-[0.06em] text-foreground",
+              )}
+            >
               WebLingo
             </span>
           </Link>
@@ -149,7 +154,9 @@ export function LandingVariant8({
                   <h2 className={cn(styles.display, "mt-3 text-lg font-semibold text-foreground")}>
                     {t("try.header.title")}
                   </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("try.header.description")}
+                  </p>
                 </div>
                 <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground sm:block">
                   {t("nav.try")}
@@ -173,7 +180,9 @@ export function LandingVariant8({
       <section className="border-y border-white/10 bg-secondary/25 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div>
-            <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+            <h2
+              className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+            >
               {t(content.pain.titleKey)}
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">{t(content.pain.subtitleKey)}</p>
@@ -198,7 +207,9 @@ export function LandingVariant8({
                     <h3 className={cn(styles.display, "text-lg font-semibold text-foreground")}>
                       {t(item.titleKey)}
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {t(item.bodyKey)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -211,7 +222,9 @@ export function LandingVariant8({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+              <h2
+                className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+              >
                 {t(content.useCases.titleKey)}
               </h2>
               <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
@@ -222,7 +235,9 @@ export function LandingVariant8({
               <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                 {t("nav.how")}
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t("landing.expansion.how.risk")}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.expansion.how.risk")}
+              </p>
             </div>
           </div>
 
@@ -232,17 +247,29 @@ export function LandingVariant8({
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent shadow-[0_0_0_1px_rgba(34,197,159,0.14)]">
                   <item.icon className="h-5 w-5" />
                 </div>
-                <h3 className={cn(styles.display, "text-lg font-semibold text-foreground")}>{t(item.titleKey)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                <h3 className={cn(styles.display, "text-lg font-semibold text-foreground")}>
+                  {t(item.titleKey)}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(item.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-white/10 bg-secondary/25 px-4 py-16 sm:px-6 sm:py-24">
+      <section
+        id="how-it-works"
+        className="border-y border-white/10 bg-secondary/25 px-4 py-16 sm:px-6 sm:py-24"
+      >
         <div className="mx-auto max-w-5xl">
-          <h2 className={cn(styles.display, "text-center text-3xl font-semibold text-foreground sm:text-4xl")}>
+          <h2
+            className={cn(
+              styles.display,
+              "text-center text-3xl font-semibold text-foreground sm:text-4xl",
+            )}
+          >
             {t(content.how.titleKey)}
           </h2>
 
@@ -258,7 +285,9 @@ export function LandingVariant8({
                 <h3 className={cn(styles.display, "mt-4 text-lg font-semibold text-foreground")}>
                   {t(step.titleKey)}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(step.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
@@ -270,15 +299,22 @@ export function LandingVariant8({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className={cn(styles.glass, "rounded-3xl p-8")}>
-              <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+              <h2
+                className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+              >
                 {t("landing.faq.title")}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{t("landing.hero.guardrail")}</p>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.hero.guardrail")}
+              </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {LANDING_FAQ_ITEMS.map((item) => (
-                <details key={item.questionKey} className={cn(styles.glass, "group rounded-3xl p-6")}>
+                <details
+                  key={item.questionKey}
+                  className={cn(styles.glass, "group rounded-3xl p-6")}
+                >
                   <summary className="cursor-pointer list-none">
                     <div className="flex items-start justify-between gap-4">
                       <h3 className={cn(styles.display, "text-lg font-semibold text-foreground")}>
@@ -289,7 +325,9 @@ export function LandingVariant8({
                       </span>
                     </div>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(item.answerKey)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {t(item.answerKey)}
+                  </p>
                 </details>
               ))}
             </div>
@@ -334,4 +372,3 @@ export function LandingVariant8({
     </div>
   );
 }
-

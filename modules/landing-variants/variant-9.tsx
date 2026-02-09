@@ -43,7 +43,12 @@ export function LandingVariant9({
             </span>
           </Link>
 
-          <nav className={cn(styles.kicker, "hidden items-center gap-7 text-[11px] font-semibold uppercase text-muted-foreground md:flex")}>
+          <nav
+            className={cn(
+              styles.kicker,
+              "hidden items-center gap-7 text-[11px] font-semibold uppercase text-muted-foreground md:flex",
+            )}
+          >
             <Link href="#features" className="transition hover:text-foreground">
               {t("nav.features")}
             </Link>
@@ -66,10 +71,18 @@ export function LandingVariant9({
 
       <section id="try" className="px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
         <div className="mx-auto max-w-6xl">
-          <div className={cn(styles.enter, "grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-14")} style={{ animationDelay: "40ms" }}>
+          <div
+            className={cn(styles.enter, "grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-14")}
+            style={{ animationDelay: "40ms" }}
+          >
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <span className={cn(styles.kicker, "text-[11px] font-semibold uppercase text-muted-foreground")}>
+                <span
+                  className={cn(
+                    styles.kicker,
+                    "text-[11px] font-semibold uppercase text-muted-foreground",
+                  )}
+                >
                   {t(content.hero.taglineKey)}
                 </span>
                 <span className="h-1 w-1 rounded-full bg-muted-foreground/60" />
@@ -108,14 +121,22 @@ export function LandingVariant9({
 
               <div className="mt-12 rounded-2xl border border-border bg-card p-6">
                 <div className="flex items-baseline justify-between gap-4">
-                  <div className={cn(styles.kicker, "text-[11px] font-semibold uppercase text-muted-foreground")}>
+                  <div
+                    className={cn(
+                      styles.kicker,
+                      "text-[11px] font-semibold uppercase text-muted-foreground",
+                    )}
+                  >
                     {t("nav.features")}
                   </div>
                   <div className="text-xs text-muted-foreground">{t("landing.cta.startSmall")}</div>
                 </div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-3">
                   {content.stats.map((stat) => (
-                    <div key={stat.valueKey} className="border-l border-border pl-4 first:border-l-0 first:pl-0">
+                    <div
+                      key={stat.valueKey}
+                      className="border-l border-border pl-4 first:border-l-0 first:pl-0"
+                    >
                       <div className={cn(styles.display, "text-3xl font-semibold text-foreground")}>
                         {t(stat.valueKey)}
                       </div>
@@ -130,13 +151,22 @@ export function LandingVariant9({
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className={cn(styles.kicker, "inline-flex text-[11px] font-semibold uppercase text-muted-foreground")}>
+                    <div
+                      className={cn(
+                        styles.kicker,
+                        "inline-flex text-[11px] font-semibold uppercase text-muted-foreground",
+                      )}
+                    >
                       {t("try.header.tagline")}
                     </div>
-                    <h2 className={cn(styles.display, "mt-3 text-lg font-semibold text-foreground")}>
+                    <h2
+                      className={cn(styles.display, "mt-3 text-lg font-semibold text-foreground")}
+                    >
                       {t("try.header.title")}
                     </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {t("try.header.description")}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-6">
@@ -157,13 +187,23 @@ export function LandingVariant9({
       <section className="border-y border-border bg-secondary/55 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div>
-            <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+            <h2
+              className={cn(
+                styles.display,
+                "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+              )}
+            >
               {t(content.pain.titleKey)}
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">{t(content.pain.subtitleKey)}</p>
 
             <div className="mt-8 rounded-2xl border border-border bg-card p-6">
-              <div className={cn(styles.kicker, "text-[11px] font-semibold uppercase text-muted-foreground")}>
+              <div
+                className={cn(
+                  styles.kicker,
+                  "text-[11px] font-semibold uppercase text-muted-foreground",
+                )}
+              >
                 {t(content.pain.costTitleKey)}
               </div>
               <p className="mt-3 text-base text-foreground">{t(content.pain.costBodyKey)}</p>
@@ -183,7 +223,9 @@ export function LandingVariant9({
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {t(item.bodyKey)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -196,7 +238,12 @@ export function LandingVariant9({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+              <h2
+                className={cn(
+                  styles.display,
+                  "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+                )}
+              >
                 {t(content.useCases.titleKey)}
               </h2>
               <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
@@ -204,42 +251,69 @@ export function LandingVariant9({
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6">
-              <div className={cn(styles.kicker, "text-[11px] font-semibold uppercase text-muted-foreground")}>
+              <div
+                className={cn(
+                  styles.kicker,
+                  "text-[11px] font-semibold uppercase text-muted-foreground",
+                )}
+              >
                 {t("nav.how")}
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t("landing.expansion.how.risk")}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.expansion.how.risk")}
+              </p>
             </div>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {content.useCases.items.map((item) => (
-              <div key={item.titleKey} className="rounded-2xl border border-border bg-card p-6 transition hover:-translate-y-0.5 hover:border-primary/25">
+              <div
+                key={item.titleKey}
+                className="rounded-2xl border border-border bg-card p-6 transition hover:-translate-y-0.5 hover:border-primary/25"
+              >
                 <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
                   <item.icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(item.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-border bg-secondary/55 px-4 py-16 sm:px-6 sm:py-24">
+      <section
+        id="how-it-works"
+        className="border-y border-border bg-secondary/55 px-4 py-16 sm:px-6 sm:py-24"
+      >
         <div className="mx-auto max-w-5xl">
-          <h2 className={cn(styles.display, "text-center text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+          <h2
+            className={cn(
+              styles.display,
+              "text-center text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+            )}
+          >
             {t(content.how.titleKey)}
           </h2>
 
           <div className="mx-auto mt-12 max-w-3xl border-t border-border">
             {content.how.items.map((step, index) => (
-              <div key={step.titleKey} className="grid gap-4 border-b border-border py-8 sm:grid-cols-[72px_1fr]">
-                <div className={cn(styles.display, "text-4xl font-semibold leading-none text-primary")}>
+              <div
+                key={step.titleKey}
+                className="grid gap-4 border-b border-border py-8 sm:grid-cols-[72px_1fr]"
+              >
+                <div
+                  className={cn(styles.display, "text-4xl font-semibold leading-none text-primary")}
+                >
                   {index + 1}
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{t(step.titleKey)}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {t(step.bodyKey)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -253,20 +327,32 @@ export function LandingVariant9({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className="rounded-2xl border border-border bg-card p-8">
-              <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+              <h2
+                className={cn(
+                  styles.display,
+                  "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+                )}
+              >
                 {t("landing.faq.title")}
               </h2>
               <div className="mt-4">
                 <div className={styles.rule} />
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{t("landing.hero.guardrail")}</p>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.hero.guardrail")}
+              </p>
             </div>
 
             <div className="grid gap-0 rounded-2xl border border-border bg-card">
               {LANDING_FAQ_ITEMS.map((item, idx) => (
-                <div key={item.questionKey} className={cn("p-6", idx !== 0 ? "border-t border-border" : null)}>
+                <div
+                  key={item.questionKey}
+                  className={cn("p-6", idx !== 0 ? "border-t border-border" : null)}
+                >
                   <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.answerKey)}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {t(item.answerKey)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -276,7 +362,12 @@ export function LandingVariant9({
 
       <section className="border-t border-border bg-secondary/55 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-4xl text-center">
-          <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.9] text-foreground sm:text-6xl")}>
+          <h2
+            className={cn(
+              styles.display,
+              "text-4xl font-semibold leading-[0.9] text-foreground sm:text-6xl",
+            )}
+          >
             {t(content.cta.titleKey)}
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">{t(content.cta.subtitleKey)}</p>
@@ -302,4 +393,3 @@ export function LandingVariant9({
     </div>
   );
 }
-

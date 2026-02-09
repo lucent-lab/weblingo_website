@@ -69,12 +69,7 @@
   height: 90%;
   pointer-events: none;
   opacity: 0.18;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(0, 0, 0, 0.65),
-    transparent
-  );
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.65), transparent);
   animation: v2-scan 3.2s linear infinite;
 }
 
@@ -129,4 +124,3 @@
     animation: none !important;
   }
 }
-

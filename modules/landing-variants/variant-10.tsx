@@ -37,12 +37,25 @@ export function LandingVariant10({
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href={`/${locale}`} className={cn(styles.sticker, "inline-flex items-center gap-3 rounded-2xl bg-card px-4 py-2")}>
+          <Link
+            href={`/${locale}`}
+            className={cn(
+              styles.sticker,
+              "inline-flex items-center gap-3 rounded-2xl bg-card px-4 py-2",
+            )}
+          >
             <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-            <span className={cn(styles.display, "text-base font-semibold text-foreground")}>WebLingo</span>
+            <span className={cn(styles.display, "text-base font-semibold text-foreground")}>
+              WebLingo
+            </span>
           </Link>
 
-          <nav className={cn(styles.mono, "hidden items-center gap-6 text-[11px] font-semibold uppercase text-muted-foreground md:flex")}>
+          <nav
+            className={cn(
+              styles.mono,
+              "hidden items-center gap-6 text-[11px] font-semibold uppercase text-muted-foreground md:flex",
+            )}
+          >
             <Link href="#features" className="transition hover:text-foreground">
               {t("nav.features")}
             </Link>
@@ -70,8 +83,15 @@ export function LandingVariant10({
       <section id="try" className="px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
         <div className="mx-auto grid max-w-6xl items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
           <div className={cn(styles.enter)} style={{ animationDelay: "50ms" }}>
-            <div className={cn(styles.sticker, "inline-flex items-center rounded-full bg-card px-4 py-2")}>
-              <span className={cn(styles.mono, "text-[11px] font-semibold uppercase text-foreground")}>
+            <div
+              className={cn(
+                styles.sticker,
+                "inline-flex items-center rounded-full bg-card px-4 py-2",
+              )}
+            >
+              <span
+                className={cn(styles.mono, "text-[11px] font-semibold uppercase text-foreground")}
+              >
                 {t(content.hero.taglineKey)}
               </span>
             </div>
@@ -83,7 +103,12 @@ export function LandingVariant10({
               )}
             >
               <span className="relative inline-block">
-                <span className={cn(styles.sticker, "absolute -inset-x-3 -inset-y-2 -z-10 rotate-[-1.2deg] rounded-[1.6rem] bg-primary/20")} />
+                <span
+                  className={cn(
+                    styles.sticker,
+                    "absolute -inset-x-3 -inset-y-2 -z-10 rotate-[-1.2deg] rounded-[1.6rem] bg-primary/20",
+                  )}
+                />
                 {t(content.hero.titleKey)}
               </span>
             </h1>
@@ -93,13 +118,22 @@ export function LandingVariant10({
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Button asChild size="lg" className="rounded-full border-2 border-border bg-primary px-8 text-primary-foreground shadow-none hover:bg-primary/90">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full border-2 border-border bg-primary px-8 text-primary-foreground shadow-none hover:bg-primary/90"
+              >
                 <Link href="#features">
                   {t(content.cta.primaryKey)}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full border-2 border-border bg-card px-8 shadow-none hover:bg-secondary">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full border-2 border-border bg-card px-8 shadow-none hover:bg-secondary"
+              >
                 <a href="mailto:contact@weblingo.app">{t(content.cta.secondaryKey)}</a>
               </Button>
             </div>
@@ -122,7 +156,12 @@ export function LandingVariant10({
                   <div className={cn(styles.display, "text-3xl font-semibold text-foreground")}>
                     {t(stat.valueKey)}
                   </div>
-                  <div className={cn(styles.mono, "mt-2 text-[10px] font-semibold uppercase text-muted-foreground")}>
+                  <div
+                    className={cn(
+                      styles.mono,
+                      "mt-2 text-[10px] font-semibold uppercase text-muted-foreground",
+                    )}
+                  >
                     {t(stat.labelKey)}
                   </div>
                 </div>
@@ -131,19 +170,28 @@ export function LandingVariant10({
           </div>
 
           <aside className={cn(styles.enter)} style={{ animationDelay: "130ms" }}>
-            <div className={cn(styles.sticker, styles.jitter, "relative rounded-[2rem] bg-card p-6")}>
+            <div
+              className={cn(styles.sticker, styles.jitter, "relative rounded-[2rem] bg-card p-6")}
+            >
               <div aria-hidden className={cn(styles.tape, "left-8 top-[-10px]")} />
               <div aria-hidden className={cn(styles.tape, "right-8 top-[-10px] rotate-[10deg]")} />
 
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className={cn(styles.mono, "inline-flex rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold uppercase text-secondary-foreground")}>
+                  <div
+                    className={cn(
+                      styles.mono,
+                      "inline-flex rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold uppercase text-secondary-foreground",
+                    )}
+                  >
                     {t("try.header.tagline")}
                   </div>
                   <h2 className={cn(styles.display, "mt-3 text-lg font-semibold text-foreground")}>
                     {t("try.header.title")}
                   </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("try.header.description")}
+                  </p>
                 </div>
               </div>
 
@@ -164,13 +212,23 @@ export function LandingVariant10({
       <section className="border-y-2 border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div>
-            <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+            <h2
+              className={cn(
+                styles.display,
+                "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+              )}
+            >
               {t(content.pain.titleKey)}
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">{t(content.pain.subtitleKey)}</p>
 
             <div className={cn(styles.sticker, "mt-8 rounded-3xl bg-card p-6")}>
-              <div className={cn(styles.mono, "text-[10px] font-semibold uppercase text-muted-foreground")}>
+              <div
+                className={cn(
+                  styles.mono,
+                  "text-[10px] font-semibold uppercase text-muted-foreground",
+                )}
+              >
                 {t(content.pain.costTitleKey)}
               </div>
               <p className="mt-3 text-base text-foreground">{t(content.pain.costBodyKey)}</p>
@@ -191,7 +249,9 @@ export function LandingVariant10({
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {t(item.bodyKey)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -204,7 +264,12 @@ export function LandingVariant10({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+              <h2
+                className={cn(
+                  styles.display,
+                  "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+                )}
+              >
                 {t(content.useCases.titleKey)}
               </h2>
               <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
@@ -212,10 +277,17 @@ export function LandingVariant10({
               </p>
             </div>
             <div className={cn(styles.sticker, "rounded-3xl bg-card p-6")}>
-              <div className={cn(styles.mono, "text-[10px] font-semibold uppercase text-muted-foreground")}>
+              <div
+                className={cn(
+                  styles.mono,
+                  "text-[10px] font-semibold uppercase text-muted-foreground",
+                )}
+              >
                 {t("nav.how")}
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t("landing.expansion.how.risk")}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.expansion.how.risk")}
+              </p>
             </div>
           </div>
 
@@ -230,16 +302,26 @@ export function LandingVariant10({
                   <item.icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(item.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y-2 border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24">
+      <section
+        id="how-it-works"
+        className="border-y-2 border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24"
+      >
         <div className="mx-auto max-w-5xl">
-          <h2 className={cn(styles.display, "text-center text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+          <h2
+            className={cn(
+              styles.display,
+              "text-center text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+            )}
+          >
             {t(content.how.titleKey)}
           </h2>
 
@@ -247,13 +329,24 @@ export function LandingVariant10({
             {content.how.items.map((step, index) => (
               <div key={step.titleKey} className={cn(styles.sticker, "rounded-3xl bg-card p-6")}>
                 <div className="flex items-center justify-between gap-4">
-                  <div className={cn(styles.display, "text-xl font-semibold text-foreground")}>{index + 1}</div>
-                  <div className={cn(styles.mono, "text-[10px] font-semibold uppercase text-muted-foreground")}>
+                  <div className={cn(styles.display, "text-xl font-semibold text-foreground")}>
+                    {index + 1}
+                  </div>
+                  <div
+                    className={cn(
+                      styles.mono,
+                      "text-[10px] font-semibold uppercase text-muted-foreground",
+                    )}
+                  >
                     {t("nav.how")}
                   </div>
                 </div>
-                <h3 className={cn(styles.display, "mt-4 text-lg font-semibold text-foreground")}>{t(step.titleKey)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
+                <h3 className={cn(styles.display, "mt-4 text-lg font-semibold text-foreground")}>
+                  {t(step.titleKey)}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(step.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
@@ -266,24 +359,38 @@ export function LandingVariant10({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className={cn(styles.sticker, "rounded-3xl bg-card p-8")}>
-              <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl")}>
+              <h2
+                className={cn(
+                  styles.display,
+                  "text-4xl font-semibold leading-[0.95] text-foreground sm:text-5xl",
+                )}
+              >
                 {t("landing.faq.title")}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{t("landing.hero.guardrail")}</p>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.hero.guardrail")}
+              </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {LANDING_FAQ_ITEMS.map((item) => (
-                <details key={item.questionKey} className={cn(styles.sticker, "group rounded-3xl bg-card p-6")}>
+                <details
+                  key={item.questionKey}
+                  className={cn(styles.sticker, "group rounded-3xl bg-card p-6")}
+                >
                   <summary className="cursor-pointer list-none">
                     <div className="flex items-start justify-between gap-4">
-                      <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {t(item.questionKey)}
+                      </h3>
                       <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full border-2 border-border bg-accent text-accent-foreground transition group-open:rotate-45">
                         +
                       </span>
                     </div>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(item.answerKey)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {t(item.answerKey)}
+                  </p>
                 </details>
               ))}
             </div>
@@ -292,19 +399,38 @@ export function LandingVariant10({
       </section>
 
       <section className="border-t-2 border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24">
-        <div className={cn(styles.sticker, "mx-auto max-w-4xl rounded-[2.2rem] bg-card p-8 text-center sm:p-10")}>
-          <h2 className={cn(styles.display, "text-4xl font-semibold leading-[0.9] text-foreground sm:text-6xl")}>
+        <div
+          className={cn(
+            styles.sticker,
+            "mx-auto max-w-4xl rounded-[2.2rem] bg-card p-8 text-center sm:p-10",
+          )}
+        >
+          <h2
+            className={cn(
+              styles.display,
+              "text-4xl font-semibold leading-[0.9] text-foreground sm:text-6xl",
+            )}
+          >
             {t(content.cta.titleKey)}
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">{t(content.cta.subtitleKey)}</p>
           <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-            <Button asChild size="lg" className="rounded-full border-2 border-border bg-primary px-8 text-primary-foreground shadow-none hover:bg-primary/90">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full border-2 border-border bg-primary px-8 text-primary-foreground shadow-none hover:bg-primary/90"
+            >
               <Link href="#try">
                 {t(content.cta.primaryKey)}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="rounded-full border-2 border-border bg-card px-8 shadow-none hover:bg-secondary">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="rounded-full border-2 border-border bg-card px-8 shadow-none hover:bg-secondary"
+            >
               <a href="mailto:contact@weblingo.app">{t(content.cta.secondaryKey)}</a>
             </Button>
           </div>
@@ -319,4 +445,3 @@ export function LandingVariant10({
     </div>
   );
 }
-

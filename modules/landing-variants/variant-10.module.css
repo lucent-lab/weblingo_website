@@ -21,9 +21,9 @@
   --radius: 1.25rem;
 
   background:
-    radial-gradient(880px 560px at 16% 0%, rgba(0, 204, 255, 0.20), transparent 60%),
+    radial-gradient(880px 560px at 16% 0%, rgba(0, 204, 255, 0.2), transparent 60%),
     radial-gradient(760px 520px at 90% 6%, rgba(76, 222, 128, 0.18), transparent 60%),
-    radial-gradient(680px 520px at 70% 80%, rgba(255, 59, 115, 0.10), transparent 60%),
+    radial-gradient(680px 520px at 70% 80%, rgba(255, 59, 115, 0.1), transparent 60%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
   color: hsl(var(--foreground));
   position: relative;
@@ -73,7 +73,7 @@
       rgba(255, 255, 255, 0.32) 6px,
       rgba(255, 255, 255, 0.32) 12px
     ),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.0));
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0));
   border: 2px solid rgba(15, 23, 42, 0.9);
   border-radius: 10px;
   transform: rotate(-8deg);
@@ -117,4 +117,3 @@
     animation: none !important;
   }
 }
-

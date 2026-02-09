@@ -66,7 +66,10 @@ export function LandingVariant6({
         </div>
       </header>
 
-      <section id="try" className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
+      <section
+        id="try"
+        className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16"
+      >
         <div aria-hidden className={styles.shapes} />
 
         <div className="mx-auto grid max-w-6xl items-start gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-12">
@@ -176,7 +179,9 @@ export function LandingVariant6({
       <section className="border-y border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div>
-            <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+            <h2
+              className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+            >
               {t(content.pain.titleKey)}
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">{t(content.pain.subtitleKey)}</p>
@@ -217,7 +222,9 @@ export function LandingVariant6({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div>
-              <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+              <h2
+                className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+              >
                 {t(content.useCases.titleKey)}
               </h2>
               <p className="mt-4 max-w-3xl text-lg text-muted-foreground">
@@ -245,29 +252,44 @@ export function LandingVariant6({
                   <item.icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(item.bodyKey)}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {t(item.bodyKey)}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24">
+      <section
+        id="how-it-works"
+        className="border-y border-border bg-secondary/60 px-4 py-16 sm:px-6 sm:py-24"
+      >
         <div className="mx-auto max-w-5xl">
-          <h2 className={cn(styles.display, "text-center text-3xl font-semibold text-foreground sm:text-4xl")}>
+          <h2
+            className={cn(
+              styles.display,
+              "text-center text-3xl font-semibold text-foreground sm:text-4xl",
+            )}
+          >
             {t(content.how.titleKey)}
           </h2>
 
           <div className="mx-auto mt-12 grid max-w-3xl gap-6">
             {content.how.items.map((step, index) => (
-              <div key={step.titleKey} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <div
+                key={step.titleKey}
+                className="rounded-3xl border border-border bg-card p-6 shadow-sm"
+              >
                 <div className="flex gap-5">
                   <div className="grid h-12 w-12 flex-shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-sm">
                     <span className={cn(styles.display, "text-sm font-semibold")}>{index + 1}</span>
                   </div>
                   <div className="pt-1">
                     <h3 className="text-lg font-semibold text-foreground">{t(step.titleKey)}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(step.bodyKey)}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {t(step.bodyKey)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -282,10 +304,14 @@ export function LandingVariant6({
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
-              <h2 className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}>
+              <h2
+                className={cn(styles.display, "text-3xl font-semibold text-foreground sm:text-4xl")}
+              >
                 {t("landing.faq.title")}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{t("landing.hero.guardrail")}</p>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                {t("landing.hero.guardrail")}
+              </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -296,13 +322,17 @@ export function LandingVariant6({
                 >
                   <summary className="cursor-pointer list-none">
                     <div className="flex items-start justify-between gap-4">
-                      <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {t(item.questionKey)}
+                      </h3>
                       <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full border border-border bg-background text-sm font-semibold text-muted-foreground transition group-open:bg-primary group-open:text-primary-foreground">
                         +
                       </span>
                     </div>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(item.answerKey)}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {t(item.answerKey)}
+                  </p>
                 </details>
               ))}
             </div>
@@ -338,4 +368,3 @@ export function LandingVariant6({
     </div>
   );
 }
-

@@ -23,7 +23,7 @@
   background:
     radial-gradient(900px 560px at 18% 0%, rgba(132, 204, 22, 0.18), transparent 60%),
     radial-gradient(760px 560px at 92% 14%, rgba(14, 116, 144, 0.16), transparent 62%),
-    radial-gradient(640px 460px at 52% 92%, rgba(245, 158, 11, 0.10), transparent 60%),
+    radial-gradient(640px 460px at 52% 92%, rgba(245, 158, 11, 0.1), transparent 60%),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
   color: hsl(var(--foreground));
   position: relative;
@@ -38,7 +38,7 @@
   filter: blur(70px) saturate(130%);
   background-image:
     radial-gradient(circle at 20% 20%, rgba(132, 204, 22, 0.34), transparent 54%),
-    radial-gradient(circle at 80% 30%, rgba(14, 116, 144, 0.30), transparent 52%),
+    radial-gradient(circle at 80% 30%, rgba(14, 116, 144, 0.3), transparent 52%),
     radial-gradient(circle at 45% 85%, rgba(245, 158, 11, 0.22), transparent 52%);
   animation: v20-glow 18s ease-in-out infinite alternate;
 }
@@ -104,4 +104,3 @@
     animation: none !important;
   }
 }
-
