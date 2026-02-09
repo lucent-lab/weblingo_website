@@ -5,7 +5,7 @@ const PREVIEW_TOKEN = process.env.TRY_NOW_TOKEN;
 
 export const runtime = "nodejs";
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   if (!API_BASE || !PREVIEW_TOKEN) {
@@ -16,13 +16,20 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Invalid preview id" }, { status: 400 });
   }
 
+  const statusToken = request.nextUrl.searchParams.get("token")?.trim() ?? "";
+  if (!statusToken) {
+    return NextResponse.json({ error: "Missing preview status token" }, { status: 400 });
+  }
+
   try {
     const upstream = await fetch(`${API_BASE}/previews/${id}`, {
       method: "GET",
       headers: {
         "x-preview-token": PREVIEW_TOKEN,
+        "x-preview-status-token": statusToken,
       },
       cache: "no-store",
+      signal: request.signal,
     });
 
     const text = await upstream.text();

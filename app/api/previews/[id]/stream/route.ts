@@ -5,11 +5,20 @@ const PREVIEW_TOKEN = process.env.TRY_NOW_TOKEN;
 
 export const runtime = "nodejs";
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   if (!API_BASE || !PREVIEW_TOKEN) {
     return new Response("Preview service is not configured.", { status: 500 });
+  }
+
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
+    return new Response("Invalid preview id", { status: 400 });
+  }
+
+  const statusToken = request.nextUrl.searchParams.get("token")?.trim() ?? "";
+  if (!statusToken) {
+    return new Response("Missing preview status token", { status: 400 });
   }
 
   let upstream: Response;
@@ -19,9 +28,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       headers: {
         Accept: "text/event-stream",
         "x-preview-token": PREVIEW_TOKEN,
+        "x-preview-status-token": statusToken,
       },
       cache: "no-store",
-      signal: _request.signal,
+      signal: request.signal,
     });
   } catch (error) {
     console.warn("[preview] stream fetch failed", error);

@@ -60,4 +60,3 @@ describe("webhooks request wrapper", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 });
-

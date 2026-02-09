@@ -56,4 +56,3 @@ describe("fetchUserByEmail", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 });
-
