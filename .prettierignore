@@ -4,5 +4,8 @@ yarn.lock
 pnpm-lock.yaml
 test-results/.last-run.json
 
+# Local/ephemeral review scratchpad (untracked, can exist during audits)
+review.md
+
 # Supabase generated types
 types/database.ts
