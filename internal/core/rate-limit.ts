@@ -27,10 +27,10 @@ export async function rateLimitFixedWindow(
   const limit = options.limit;
   const windowMs = options.windowMs;
 
-  if (!Number.isFinite(limit) || limit < 1) {
+  if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("[config] rateLimitFixedWindow limit must be a positive integer");
   }
-  if (!Number.isFinite(windowMs) || windowMs < 1) {
+  if (!Number.isInteger(windowMs) || windowMs < 1) {
     throw new Error("[config] rateLimitFixedWindow windowMs must be a positive integer");
   }
 

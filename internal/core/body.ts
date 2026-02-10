@@ -18,7 +18,7 @@ export async function readJsonBodyLimited(
   request: Request,
   options: { maxBytes: number },
 ): Promise<unknown> {
-  if (!Number.isFinite(options.maxBytes) || options.maxBytes < 1) {
+  if (!Number.isInteger(options.maxBytes) || options.maxBytes < 1) {
     throw new Error("[config] maxBytes must be a positive integer");
   }
 
