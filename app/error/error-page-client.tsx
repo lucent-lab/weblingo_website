@@ -37,6 +37,9 @@ export default function ErrorPageClient() {
   }, [trace, isProd]);
 
   useEffect(() => {
+    if (isProd) {
+      return;
+    }
     const context = {
       href: typeof window !== "undefined" ? window.location.href : "unknown",
       online: typeof navigator !== "undefined" ? navigator.onLine : undefined,
@@ -47,10 +50,10 @@ export default function ErrorPageClient() {
 
     console.group("Error page diagnostics");
     console.error("Message:", message ?? "(none)");
-    if (trace) console.error("Trace:", trace);
+    if (safeTrace) console.error("Trace:", safeTrace);
     console.info("Context:", context);
     console.groupEnd();
-  }, [message, trace, searchParams]);
+  }, [isProd, message, safeTrace, searchParams]);
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col gap-6 px-4 py-12">
