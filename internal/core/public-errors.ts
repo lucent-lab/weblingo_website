@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 export type PublicErrorBody = {
   error: string;
   request_id: string;
@@ -15,7 +17,8 @@ export function buildRequestId(): string {
     return maybeCrypto.randomUUID();
   }
   // Best-effort fallback; only used when randomUUID isn't available.
-  return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  // Use cryptographic entropy (avoid Math.random()) and keep length stable.
+  return `req_${Date.now().toString(36)}_${randomBytes(12).toString("hex")}`;
 }
 
 export function buildPublicErrorBody(options: {
