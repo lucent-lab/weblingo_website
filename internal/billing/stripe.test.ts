@@ -29,9 +29,10 @@ describe("stripe client", () => {
     const { getStripeClient } = await import("./stripe");
     expect(getStripeClient()).toBeTruthy();
 
-    expect(capturedConstructorArgs).toBeTruthy();
-    const [, config] = capturedConstructorArgs as unknown[] as [string, { apiVersion?: string }];
+    if (!capturedConstructorArgs) {
+      throw new Error("Stripe constructor was not called");
+    }
+    const [, config] = capturedConstructorArgs as [string, { apiVersion?: string }];
     expect(config.apiVersion).toBe("2025-10-29.clover");
   });
 });
-
