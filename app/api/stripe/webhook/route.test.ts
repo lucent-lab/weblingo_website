@@ -57,20 +57,22 @@ describe("POST /api/stripe/webhook", () => {
     const originalNodeEnv = process.env.NODE_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
-    verifyStripeSignature.mockImplementationOnce(() => {
-      throw new Error("secret sk_test_leak");
-    });
+    try {
+      verifyStripeSignature.mockImplementationOnce(() => {
+        throw new Error("secret sk_test_leak");
+      });
 
-    vi.resetModules();
-    const { POST } = await import("./route");
-    const response = await POST(makeRequest("{}"));
+      vi.resetModules();
+      const { POST } = await import("./route");
+      const response = await POST(makeRequest("{}"));
 
-    expect(response.status).toBe(400);
-    const payload = await response.json();
-    expect(payload).toMatchObject({ error: "Invalid Stripe signature" });
-    expect(payload.request_id).toBeTruthy();
-    expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
-
-    (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+      expect(response.status).toBe(400);
+      const payload = await response.json();
+      expect(payload).toMatchObject({ error: "Invalid Stripe signature" });
+      expect(payload.request_id).toBeTruthy();
+      expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+    }
   });
 });

@@ -56,20 +56,22 @@ describe("POST /api/stripe/create-checkout-session", () => {
     const originalNodeEnv = process.env.NODE_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
-    createCheckoutSession.mockRejectedValueOnce(new Error("secret sk_test_leak"));
+    try {
+      createCheckoutSession.mockRejectedValueOnce(new Error("secret sk_test_leak"));
 
-    vi.resetModules();
-    const { POST } = await import("./route");
-    const response = await POST(
-      makeRequest({ planId: "starter", cadence: "monthly", locale: "en", email: "a@b.com" }),
-    );
+      vi.resetModules();
+      const { POST } = await import("./route");
+      const response = await POST(
+        makeRequest({ planId: "starter", cadence: "monthly", locale: "en", email: "a@b.com" }),
+      );
 
-    expect(response.status).toBe(500);
-    const payload = await response.json();
-    expect(payload).toMatchObject({ error: "Unable to start checkout right now" });
-    expect(payload.request_id).toBeTruthy();
-    expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
-
-    (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+      expect(response.status).toBe(500);
+      const payload = await response.json();
+      expect(payload).toMatchObject({ error: "Unable to start checkout right now" });
+      expect(payload.request_id).toBeTruthy();
+      expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+    }
   });
 });
