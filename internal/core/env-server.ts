@@ -16,6 +16,42 @@ const serverEnvSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1),
   SUPABASE_AUTH_TIMEOUT_MS: z.string().regex(/^[1-9]\d*$/),
   TRY_NOW_TOKEN: z.string().min(1).optional(),
+  WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_MAX_BODY_BYTES: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
+  WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   KV_REST_API_URL: z.string().url().optional(),
@@ -61,6 +97,30 @@ const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema).superRefine((env, c
       message: "NEXT_PUBLIC_WEBHOOKS_API_BASE is required when TRY_NOW_TOKEN is set.",
     });
   }
+
+  if (hasPreviewToken) {
+    const requiredPreviewVars = [
+      "WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS",
+      "WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW",
+      "WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW",
+      "WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW",
+      "WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW",
+      "WEBSITE_PREVIEW_MAX_BODY_BYTES",
+      "WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS",
+      "WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS",
+      "WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS",
+    ] as const;
+
+    for (const key of requiredPreviewVars) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when TRY_NOW_TOKEN is set.`,
+        });
+      }
+    }
+  }
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -78,6 +138,19 @@ const readServerEnv = () => ({
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   SUPABASE_AUTH_TIMEOUT_MS: process.env.SUPABASE_AUTH_TIMEOUT_MS,
   TRY_NOW_TOKEN: process.env.TRY_NOW_TOKEN,
+  WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS: process.env.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS,
+  WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW: process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW,
+  WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW:
+    process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW,
+  WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW: process.env.WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW,
+  WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW: process.env.WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW,
+  WEBSITE_PREVIEW_MAX_BODY_BYTES: process.env.WEBSITE_PREVIEW_MAX_BODY_BYTES,
+  WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS:
+    process.env.WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS,
+  WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS:
+    process.env.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS,
+  WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS:
+    process.env.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   KV_REST_API_URL: process.env.KV_REST_API_URL,
