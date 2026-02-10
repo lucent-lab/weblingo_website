@@ -5,7 +5,9 @@ import Stripe from "stripe";
 import { envServer } from "@internal/core/env-server";
 import { SITE_ID, pricingTiers } from "@modules/pricing";
 
-const stripe = new Stripe(envServer.STRIPE_SECRET_KEY);
+// Pin the API version so Stripe behavior is stable across account defaults.
+// Keep this aligned with the Stripe SDK's latest typed API version.
+const stripe = new Stripe(envServer.STRIPE_SECRET_KEY, { apiVersion: "2025-10-29.clover" });
 
 function resolvePriceId(planId: string, cadence: "monthly" | "yearly") {
   const plan = pricingTiers.find((tier) => tier.id === planId);
