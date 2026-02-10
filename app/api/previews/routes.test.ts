@@ -205,6 +205,22 @@ describe("/api/previews proxy routes", () => {
 
     const response = await GET(request, { params: Promise.resolve({ id }) });
     expect(response.status).toBe(504);
+    const body = await response.text();
+    expect(body).not.toContain("preview_token");
+  });
+
+  test("GET /api/previews/:id/stream returns 400 for invalid id", async () => {
+    const { GET } = await import("./[id]/stream/route");
+
+    const request = buildNextRequest("http://localhost/api/previews/not-a-uuid/stream?token=t", {
+      method: "GET",
+      headers: { "x-forwarded-for": "1.2.3.4" },
+    });
+
+    const response = await GET(request, { params: Promise.resolve({ id: "not-a-uuid" }) });
+    expect(response.status).toBe(400);
+    const body = await response.text();
+    expect(body).not.toContain("preview_token");
   });
 
   test("GET /api/previews/:id/stream rejects non-event-stream upstream", async () => {
@@ -231,5 +247,7 @@ describe("/api/previews proxy routes", () => {
 
     const response = await GET(request, { params: Promise.resolve({ id }) });
     expect(response.status).toBe(502);
+    const body = await response.text();
+    expect(body).not.toContain("preview_token");
   });
 });
