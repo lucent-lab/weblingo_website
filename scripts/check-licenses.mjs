@@ -18,7 +18,7 @@ function main() {
   }
 
   const data = readJson(inputPath);
-  if (!data || typeof data !== "object") {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("[licenses] Expected a JSON object mapping license -> packages");
   }
 
