@@ -46,6 +46,12 @@ Server only:
 - `STRIPE_PRICING_TABLE_ID_JA` (optional)
 - `SUPABASE_SECRET_KEY`
 - `TRY_NOW_TOKEN` (optional; required to enable server-side preview proxy routes under `app/api/previews/*`)
+- Public form abuse controls:
+- `WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS`
+- `WEBSITE_WAITLIST_MAX_PER_WINDOW`
+- `WEBSITE_WAITLIST_MAX_BODY_BYTES`
+- `WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS`
+- `WEBSITE_CONTACT_MAX_PER_WINDOW`
 - Preview abuse controls (required when `TRY_NOW_TOKEN` is set):
 - `WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS`
 - `WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW`

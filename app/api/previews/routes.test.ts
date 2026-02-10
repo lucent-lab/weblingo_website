@@ -31,6 +31,12 @@ beforeAll(() => {
   process.env.SUPABASE_SECRET_KEY = "sb_secret";
   process.env.SUPABASE_AUTH_TIMEOUT_MS = "15000";
 
+  process.env.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_WAITLIST_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_WAITLIST_MAX_BODY_BYTES = "4096";
+  process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
+
   process.env.TRY_NOW_TOKEN = "preview_token";
   process.env.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW = "20";

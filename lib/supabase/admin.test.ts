@@ -19,6 +19,12 @@ function setRequiredEnv() {
   process.env.SUPABASE_SECRET_KEY = "sb_service_role";
   process.env.SUPABASE_AUTH_TIMEOUT_MS = "15000";
 
+  process.env.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_WAITLIST_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_WAITLIST_MAX_BODY_BYTES = "4096";
+  process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
+
   // envServer requires either Upstash or KV REST credentials.
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.com";
   process.env.UPSTASH_REDIS_REST_TOKEN = "redis_token";

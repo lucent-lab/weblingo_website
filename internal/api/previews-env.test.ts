@@ -27,6 +27,12 @@ function setRequiredEnv() {
   process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
   process.env.UPSTASH_REDIS_REST_TOKEN = "upstash_token";
 
+  process.env.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_WAITLIST_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_WAITLIST_MAX_BODY_BYTES = "4096";
+  process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
+
   // Only required when TRY_NOW_TOKEN is set; set here to keep route imports stable.
   process.env.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW = "20";

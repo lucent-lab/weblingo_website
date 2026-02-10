@@ -1,10 +1,12 @@
 import "server-only";
 
-export function getClientIp(request: Request): string {
+type HeaderLike = { get(name: string): string | null };
+
+export function getClientIpFromHeaders(headers: HeaderLike): string {
   const candidates = [
-    request.headers.get("x-forwarded-for"),
-    request.headers.get("cf-connecting-ip"),
-    request.headers.get("x-real-ip"),
+    headers.get("x-forwarded-for"),
+    headers.get("cf-connecting-ip"),
+    headers.get("x-real-ip"),
   ]
     .map((value) => value?.trim() ?? "")
     .filter(Boolean);
@@ -19,4 +21,8 @@ export function getClientIp(request: Request): string {
   }
 
   return "unknown";
+}
+
+export function getClientIp(request: Request): string {
+  return getClientIpFromHeaders(request.headers);
 }

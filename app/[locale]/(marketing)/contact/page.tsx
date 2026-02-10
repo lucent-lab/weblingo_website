@@ -24,7 +24,8 @@ export default async function ContactPage({
   const submitted = resolvedSearchParams?.submitted === "1";
   const errorParam =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : undefined;
-  const hasError = errorParam === "server" || errorParam === "invalid";
+  const hasError =
+    errorParam === "server" || errorParam === "invalid" || errorParam === "rate_limited";
   const action = submitContactMessage.bind(null, locale);
 
   return (
