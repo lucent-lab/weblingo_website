@@ -11,10 +11,9 @@ export function getClientIpFromHeaders(headers: HeaderLike): string {
     .map((value) => value?.trim() ?? "")
     .filter(Boolean);
 
-  const forwarded = candidates[0] ?? "";
-  if (forwarded) {
+  for (const candidate of candidates) {
     // x-forwarded-for can be a list: client, proxy1, proxy2
-    const first = forwarded.split(",")[0]?.trim() ?? "";
+    const first = candidate.split(",")[0]?.trim() ?? "";
     if (first) {
       return first;
     }
