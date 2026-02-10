@@ -67,6 +67,9 @@ jobs:
       - name: Audit dependencies (high+)
         run: pnpm audit --audit-level=high --ignore-registry-errors
 
+      - name: License check (prod)
+        run: pnpm licenses list --prod --json > licenses.json && node scripts/check-licenses.mjs licenses.json
+
       - name: Unit tests
         run: pnpm test
 
