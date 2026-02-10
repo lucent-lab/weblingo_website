@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  process.env = ORIGINAL_ENV;
+  process.env = { ...ORIGINAL_ENV };
   (globalThis as { fetch: typeof fetch }).fetch = ORIGINAL_FETCH;
   vi.restoreAllMocks();
 });
