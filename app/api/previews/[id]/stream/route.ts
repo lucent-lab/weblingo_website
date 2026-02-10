@@ -37,20 +37,40 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   );
 
   const ip = getClientIp(request);
-  const ipLimit = await rateLimitFixedWindow(redis, {
-    key: `rl:v1:preview:stream:ip:${encodeURIComponent(ip)}`,
-    limit: maxPerWindow,
-    windowMs,
-  });
-  if (!ipLimit.allowed) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
-    return new Response("Too many stream requests. Please try again shortly.", {
-      status: 429,
-      headers: {
-        "Retry-After": String(retryAfterSeconds),
-        "Content-Type": "text/plain",
-      },
+  try {
+    const ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:preview:stream:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
     });
+    if (!ipLimit.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
+      return new Response("Too many stream requests. Please try again shortly.", {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+          "Content-Type": "text/plain",
+        },
+      });
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (preview stream ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    if (process.env.NODE_ENV === "production") {
+      return new Response("Service temporarily unavailable. Please try again shortly.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
   }
 
   let upstream: Response;

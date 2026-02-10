@@ -48,22 +48,42 @@ export async function POST(request: NextRequest) {
   const upstreamTimeoutMs = Number(envServer.WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS);
 
   const ip = getClientIp(request);
-  const ipLimit = await rateLimitFixedWindow(redis, {
-    key: `rl:v1:preview:create:ip:${encodeURIComponent(ip)}`,
-    limit: maxPerWindow,
-    windowMs,
-  });
-  if (!ipLimit.allowed) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
-    return NextResponse.json(
-      { error: "Too many preview requests. Please try again shortly." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfterSeconds),
+  try {
+    const ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:preview:create:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
+    });
+    if (!ipLimit.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
+      return NextResponse.json(
+        { error: "Too many preview requests. Please try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfterSeconds),
+          },
         },
-      },
+      );
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (preview create ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
     );
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable. Please try again shortly." },
+        { status: 503 },
+      );
+    }
   }
 
   let payload: unknown;
@@ -81,22 +101,42 @@ export async function POST(request: NextRequest) {
 
   const sourceHost = tryExtractSourceHost(payload);
   if (sourceHost) {
-    const hostLimit = await rateLimitFixedWindow(redis, {
-      key: `rl:v1:preview:create:host:${encodeURIComponent(sourceHost)}`,
-      limit: maxPerHostPerWindow,
-      windowMs,
-    });
-    if (!hostLimit.allowed) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((hostLimit.resetAtMs - Date.now()) / 1000));
-      return NextResponse.json(
-        { error: "Too many preview requests for this site. Please try again shortly." },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSeconds),
+    try {
+      const hostLimit = await rateLimitFixedWindow(redis, {
+        key: `rl:v1:preview:create:host:${encodeURIComponent(sourceHost)}`,
+        limit: maxPerHostPerWindow,
+        windowMs,
+      });
+      if (!hostLimit.allowed) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((hostLimit.resetAtMs - Date.now()) / 1000));
+        return NextResponse.json(
+          { error: "Too many preview requests for this site. Please try again shortly." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(retryAfterSeconds),
+            },
           },
-        },
+        );
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify(
+          {
+            level: "error",
+            message: "Rate limit backend failed (preview create host)",
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          0,
+        ),
       );
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Service temporarily unavailable. Please try again shortly." },
+          { status: 503 },
+        );
+      }
     }
   }
 

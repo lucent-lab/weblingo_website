@@ -9,6 +9,7 @@ const createServiceRoleClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient }));
 
 const ORIGINAL_ENV = { ...process.env };
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -74,6 +75,23 @@ describe("POST /api/waitlist", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBeTruthy();
+  });
+
+  it("returns 503 when the rate limit backend fails in production", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    try {
+      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+
+      vi.resetModules();
+      const { POST } = await import("./route");
+      const response = await POST(makeRequest({ email: "a@example.com" }));
+
+      expect(response.status).toBe(503);
+      const body = await response.json();
+      expect(body.error).toBeTruthy();
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
+    }
   });
 
   it("returns 413 when payload exceeds max bytes", async () => {

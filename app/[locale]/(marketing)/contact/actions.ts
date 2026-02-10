@@ -22,12 +22,37 @@ export async function submitContactMessage(locale: string, formData: FormData) {
   const windowMs = Number(envServer.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS);
   const maxPerWindow = Number(envServer.WEBSITE_CONTACT_MAX_PER_WINDOW);
   const ip = getClientIpFromHeaders(await headers());
-  const ipLimit = await rateLimitFixedWindow(redis, {
-    key: `rl:v1:contact:create:ip:${encodeURIComponent(ip)}`,
-    limit: maxPerWindow,
-    windowMs,
-  });
-  if (!ipLimit.allowed) {
+
+  let ipLimit:
+    | {
+        allowed: boolean;
+        resetAtMs: number;
+      }
+    | undefined;
+  try {
+    ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:contact:create:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
+    });
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (contact create ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    if (process.env.NODE_ENV === "production") {
+      return redirect(`/${locale}/contact?error=server`);
+    }
+  }
+
+  if (ipLimit && !ipLimit.allowed) {
     return redirect(`/${locale}/contact?error=rate_limited`);
   }
 

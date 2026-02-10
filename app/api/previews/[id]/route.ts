@@ -36,22 +36,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const upstreamTimeoutMs = Number(envServer.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS);
 
     const ip = getClientIp(request);
-    const ipLimit = await rateLimitFixedWindow(redis, {
-      key: `rl:v1:preview:status:ip:${encodeURIComponent(ip)}`,
-      limit: maxPerWindow,
-      windowMs,
-    });
-    if (!ipLimit.allowed) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
-      return NextResponse.json(
-        { error: "Too many status requests. Please try again shortly." },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSeconds),
+    try {
+      const ipLimit = await rateLimitFixedWindow(redis, {
+        key: `rl:v1:preview:status:ip:${encodeURIComponent(ip)}`,
+        limit: maxPerWindow,
+        windowMs,
+      });
+      if (!ipLimit.allowed) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
+        return NextResponse.json(
+          { error: "Too many status requests. Please try again shortly." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(retryAfterSeconds),
+            },
           },
-        },
+        );
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify(
+          {
+            level: "error",
+            message: "Rate limit backend failed (preview status ip)",
+            error: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          0,
+        ),
       );
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Service temporarily unavailable. Please try again shortly." },
+          { status: 503 },
+        );
+      }
     }
 
     const upstream = await fetchWithTimeout(

@@ -26,6 +26,7 @@ const createServiceRoleClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient }));
 
 const ORIGINAL_ENV = { ...process.env };
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -89,6 +90,27 @@ describe("submitContactMessage", () => {
       url: "/en/contact?error=rate_limited",
     });
     expect(createServiceRoleClient).not.toHaveBeenCalled();
+  });
+
+  it("redirects with server when the rate limit backend fails in production", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    try {
+      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+
+      vi.resetModules();
+      const { submitContactMessage } = await import("./actions");
+
+      const formData = new FormData();
+      formData.set("fullName", "A");
+      formData.set("workEmail", "a@example.com");
+
+      await expect(submitContactMessage("en", formData)).rejects.toMatchObject({
+        url: "/en/contact?error=server",
+      });
+      expect(createServiceRoleClient).not.toHaveBeenCalled();
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
+    }
   });
 
   it("redirects with submitted=1 when insert succeeds", async () => {
