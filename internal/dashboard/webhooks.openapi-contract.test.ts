@@ -114,6 +114,91 @@ function normalizeOpenApiSchema(
   return resolved;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeStringArrays(left: unknown, right: unknown): string[] | undefined {
+  const leftStrings = Array.isArray(left)
+    ? left.filter((v): v is string => typeof v === "string")
+    : [];
+  const rightStrings = Array.isArray(right)
+    ? right.filter((v): v is string => typeof v === "string")
+    : [];
+  const merged = Array.from(new Set([...leftStrings, ...rightStrings]));
+  return merged.length ? merged : undefined;
+}
+
+function mergeOpenApiSchemaObjects(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...left, ...right };
+
+  const leftProps = left.properties;
+  const rightProps = right.properties;
+  if (isPlainObject(leftProps) || isPlainObject(rightProps)) {
+    const mergedProps: Record<string, unknown> = {
+      ...(isPlainObject(leftProps) ? leftProps : {}),
+      ...(isPlainObject(rightProps) ? rightProps : {}),
+    };
+    if (isPlainObject(leftProps) && isPlainObject(rightProps)) {
+      for (const key of Object.keys(leftProps)) {
+        if (key in rightProps) {
+          mergedProps[key] = { allOf: [leftProps[key], rightProps[key]] };
+        }
+      }
+    }
+    out.properties = mergedProps;
+  }
+
+  const required = mergeStringArrays(left.required, right.required);
+  if (required) {
+    out.required = required;
+  }
+
+  const leftItems = left.items;
+  const rightItems = right.items;
+  if (leftItems && rightItems) {
+    out.items = { allOf: [leftItems, rightItems] };
+  } else if (rightItems) {
+    out.items = rightItems;
+  } else if (leftItems) {
+    out.items = leftItems;
+  }
+
+  return out;
+}
+
+function flattenAllOf(
+  spec: OpenApiSpec,
+  definitionsIndex: Map<string, unknown>,
+  schema: unknown,
+): unknown {
+  const normalized = normalizeOpenApiSchema(spec, definitionsIndex, schema);
+  if (!isPlainObject(normalized)) {
+    return normalized;
+  }
+
+  const allOf = normalized.allOf;
+  if (!Array.isArray(allOf)) {
+    return normalized;
+  }
+
+  const base: Record<string, unknown> = { ...normalized };
+  delete base.allOf;
+
+  let merged = base;
+  for (const sub of allOf) {
+    const subFlattened = flattenAllOf(spec, definitionsIndex, sub);
+    if (!isPlainObject(subFlattened)) {
+      continue;
+    }
+    merged = mergeOpenApiSchemaObjects(merged, subFlattened);
+  }
+  return merged;
+}
+
 function openApiHasPath(
   spec: OpenApiSpec,
   definitionsIndex: Map<string, unknown>,
@@ -139,7 +224,12 @@ function openApiHasPath(
   }
   const allOf = (normalized as { allOf?: unknown }).allOf;
   if (Array.isArray(allOf)) {
-    return allOf.some((sub) => openApiHasPath(spec, definitionsIndex, sub, path));
+    return openApiHasPath(
+      spec,
+      definitionsIndex,
+      flattenAllOf(spec, definitionsIndex, normalized),
+      path,
+    );
   }
 
   const [head, ...tail] = path;
@@ -237,6 +327,18 @@ function uniquePaths(paths: string[][]): string[][] {
 }
 
 describe("webhooks OpenAPI contract (dashboard client)", () => {
+  it("merges allOf branches when checking for paths", () => {
+    const spec: OpenApiSpec = {};
+    const definitionsIndex = new Map<string, unknown>();
+    const schema = {
+      allOf: [{ type: "object", properties: { a: { type: "object" } } }],
+      type: "object",
+      properties: { a: { type: "object", properties: { b: { type: "string" } } } },
+    };
+
+    expect(openApiHasPath(spec, definitionsIndex, schema, ["a", "b"])).toBe(true);
+  });
+
   it("matches the backend OpenAPI paths and response shapes", async () => {
     const spec = readOpenApiSpecFromEnv();
     if (!spec) {
