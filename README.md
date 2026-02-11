@@ -90,6 +90,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 1. Install dependencies: `pnpm install`
 2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` for the dashboard and `TRY_NOW_TOKEN` for previews).
+   Redis credentials are required for public-form and preview rate limiting (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, or `KV_REST_API_URL` + `KV_REST_API_TOKEN`).
 3. Start dev server: `pnpm run dev` (opens `http://localhost:3000`).
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
 5. Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
@@ -105,6 +106,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 - **Build**: `pnpm run build` (Next.js static + server output).
 - **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 20.9+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
+- **Rate limiting store**: Provision Upstash Redis (or compatible REST KV) and configure either `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` or `KV_REST_API_URL`/`KV_REST_API_TOKEN`. This is required for waitlist/contact/preview abuse controls.
 - **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.
 - **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin. Use `TRY_NOW_TOKEN` for server-side preview requests.
 - **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.
