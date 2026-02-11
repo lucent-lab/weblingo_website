@@ -32,11 +32,11 @@ jobs:
       WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: "60000"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout backend (OpenAPI contracts)
         if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN != '' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: lucent-lab/weblingo
           path: backend
