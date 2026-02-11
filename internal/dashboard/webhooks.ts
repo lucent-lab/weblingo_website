@@ -3,6 +3,10 @@ import { z } from "zod";
 import { env } from "@internal/core";
 
 const apiBase = env.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
+const apiTimeoutMs = Number(env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS);
+if (!Number.isFinite(apiTimeoutMs) || apiTimeoutMs < 1) {
+  throw new Error("[config] NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS must be a positive integer");
+}
 
 export class WebhooksApiError extends Error {
   status: number;
@@ -145,6 +149,8 @@ const siteSchema = z.object({
     .optional(),
 });
 
+const listSitesResponseSchema = z.object({ sites: z.array(siteSchema) });
+
 const sitePageSummarySchema = z.object({
   id: z.string(),
   sourcePath: z.string(),
@@ -159,6 +165,8 @@ const crawlStatusSchema = z.object({
   enqueued: z.boolean(),
   error: z.string().optional(),
 });
+
+const siteWithCrawlStatusSchema = siteSchema.extend({ crawlStatus: crawlStatusSchema }).strict();
 
 const translationRunSchema = z
   .object({
@@ -214,6 +222,8 @@ const deploymentSchema = z.object({
   translationRun: translationRunSchema.nullable().optional(),
 });
 
+const listDeploymentsResponseSchema = z.object({ deployments: z.array(deploymentSchema) });
+
 const glossaryEntrySchema = z.object({
   source: z.string(),
   target: z.string(),
@@ -222,6 +232,8 @@ const glossaryEntrySchema = z.object({
   caseSensitive: z.boolean().optional(),
   scope: z.enum(["segment", "in_segment"]).optional(),
 });
+
+const glossaryResponseSchema = z.object({ entries: z.array(glossaryEntrySchema) });
 
 const authResponseSchema = z.object({
   token: z.string().min(1),
@@ -343,6 +355,43 @@ const dashboardBootstrapResponseSchema = z
   })
   .strict();
 
+const translationRunResponseSchema = z.object({ run: translationRunSchema }).strict();
+
+const resumeTranslationRunResponseSchema = z
+  .object({
+    run: translationRunSchema,
+    enqueued: z.number().int().nonnegative(),
+    enqueuedTranslate: z.number().int().nonnegative(),
+    enqueuedRender: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const domainResponseSchema = z.object({ domain: domainSchema });
+
+const createOverrideResponseSchema = z
+  .object({
+    segmentId: z.string(),
+    targetLang: z.string(),
+    contextHashScope: z.string().nullable(),
+  })
+  .strict();
+
+const setSlugResponseSchema = z
+  .object({
+    pageId: z.string(),
+    lang: z.string(),
+    path: z.string(),
+    crawlStatus: crawlStatusSchema,
+  })
+  .strict();
+
+const upsertGlossaryResponseSchema = z
+  .object({
+    entries: z.array(glossaryEntrySchema),
+    crawlStatus: crawlStatusSchema.nullable().optional(),
+  })
+  .strict();
+
 export type Site = z.infer<typeof siteSchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
@@ -361,6 +410,31 @@ export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema
 export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
 export type CreateAgencyCustomerResponse = z.infer<typeof createAgencyCustomerResponseSchema>;
 export type DashboardBootstrapResponse = z.infer<typeof dashboardBootstrapResponseSchema>;
+
+// Exported for cross-repo contract tests only (OpenAPI ↔ website zod schemas).
+export const __webhooksZodContracts = {
+  supportedLanguagesResponseSchema,
+  authResponseSchema,
+  dashboardBootstrapResponseSchema,
+  accountMeSchema,
+  listAgencyCustomersResponseSchema,
+  createAgencyCustomerResponseSchema,
+  listSitesResponseSchema,
+  siteSchema,
+  siteWithCrawlStatusSchema,
+  crawlStatusSchema,
+  translateSiteResponseSchema,
+  setLocaleServingResponseSchema,
+  translationRunResponseSchema,
+  resumeTranslationRunResponseSchema,
+  domainResponseSchema,
+  listDeploymentsResponseSchema,
+  listSitePagesResponseSchema,
+  glossaryResponseSchema,
+  upsertGlossaryResponseSchema,
+  createOverrideResponseSchema,
+  setSlugResponseSchema,
+} as const;
 
 export type WebhooksAuth = {
   token: string;
@@ -463,6 +537,8 @@ async function request<T>({
     ? path
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
   let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), apiTimeoutMs);
   try {
     response = await fetch(url, {
       method,
@@ -473,14 +549,20 @@ async function request<T>({
       },
       body: body ? JSON.stringify(body) : undefined,
       cache: "no-store",
+      signal: controller.signal,
     });
   } catch (error) {
-    logTiming(0, false, "fetch_failed");
+    const timedOut = controller.signal.aborted;
+    logTiming(0, false, timedOut ? "timeout" : "fetch_failed");
     throw new WebhooksApiError(
-      "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
-      0,
+      timedOut
+        ? "The WebLingo API request timed out. Please retry."
+        : "Unable to reach the WebLingo API. Check NEXT_PUBLIC_WEBHOOKS_API_BASE and that the webhooks worker is running.",
+      timedOut ? 504 : 0,
       error,
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   const text = await response.text();
@@ -647,7 +729,7 @@ export async function listSites(auth: AuthInput): Promise<Site[]> {
   const data = await request({
     path: "/sites",
     auth,
-    schema: z.object({ sites: z.array(siteSchema) }),
+    schema: listSitesResponseSchema,
   });
 
   return data.sites;
@@ -682,7 +764,7 @@ export async function createSite(auth: AuthInput, payload: CreateSitePayload) {
     method: "POST",
     auth,
     body: payload,
-    schema: siteSchema.extend({ crawlStatus: crawlStatusSchema }).strict(),
+    schema: siteWithCrawlStatusSchema,
   });
 }
 
@@ -705,16 +787,6 @@ export async function updateSite(
 
 export async function deactivateSite(auth: AuthInput, siteId: string) {
   return updateSite(auth, siteId, { status: "inactive" });
-}
-
-export async function deleteSite(auth: AuthInput, siteId: string) {
-  return request({
-    path: `/sites/${siteId}`,
-    method: "DELETE",
-    auth,
-    schema: z.void(),
-    allowEmptyResponse: true,
-  });
 }
 
 export async function triggerCrawl(
@@ -769,7 +841,7 @@ export async function fetchTranslationRun(auth: AuthInput, siteId: string, runId
   const data = await request({
     path: `/sites/${siteId}/translation-runs/${runId}`,
     auth,
-    schema: z.object({ run: translationRunSchema }).strict(),
+    schema: translationRunResponseSchema,
   });
   return data.run;
 }
@@ -779,7 +851,7 @@ export async function cancelTranslationRun(auth: AuthInput, siteId: string, runI
     path: `/sites/${siteId}/translation-runs/${runId}/cancel`,
     method: "POST",
     auth,
-    schema: z.object({ run: translationRunSchema }).strict(),
+    schema: translationRunResponseSchema,
   });
   return data.run;
 }
@@ -789,14 +861,7 @@ export async function resumeTranslationRun(auth: AuthInput, siteId: string, runI
     path: `/sites/${siteId}/translation-runs/${runId}/resume`,
     method: "POST",
     auth,
-    schema: z
-      .object({
-        run: translationRunSchema,
-        enqueued: z.number().int().nonnegative(),
-        enqueuedTranslate: z.number().int().nonnegative(),
-        enqueuedRender: z.number().int().nonnegative(),
-      })
-      .strict(),
+    schema: resumeTranslationRunResponseSchema,
   });
   return data;
 }
@@ -821,7 +886,7 @@ export async function verifyDomain(
     method: "POST",
     auth,
     body: overrideToken ? { token: overrideToken } : {},
-    schema: z.object({ domain: domainSchema }),
+    schema: domainResponseSchema,
   });
 }
 
@@ -830,7 +895,7 @@ export async function provisionDomain(auth: AuthInput, siteId: string, domain: s
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/provision`,
     method: "POST",
     auth,
-    schema: z.object({ domain: domainSchema }),
+    schema: domainResponseSchema,
   });
 }
 
@@ -839,7 +904,7 @@ export async function refreshDomain(auth: AuthInput, siteId: string, domain: str
     path: `/sites/${siteId}/domains/${encodeURIComponent(domain)}/refresh`,
     method: "POST",
     auth,
-    schema: z.object({ domain: domainSchema }),
+    schema: domainResponseSchema,
   });
 }
 
@@ -847,7 +912,7 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
   const data = await request({
     path: `/sites/${siteId}/deployments`,
     auth,
-    schema: z.object({ deployments: z.array(deploymentSchema) }),
+    schema: listDeploymentsResponseSchema,
   });
 
   return data.deployments;
@@ -881,7 +946,7 @@ export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<Gl
   const data = await request({
     path: `/sites/${siteId}/glossary`,
     auth,
-    schema: z.object({ entries: z.array(glossaryEntrySchema) }),
+    schema: glossaryResponseSchema,
   });
 
   return data.entries;
@@ -898,12 +963,7 @@ export async function updateGlossary(
     method: "PUT",
     auth,
     body: { entries, retranslate },
-    schema: z
-      .object({
-        entries: z.array(glossaryEntrySchema),
-        crawlStatus: crawlStatusSchema.nullable().optional(),
-      })
-      .strict(),
+    schema: upsertGlossaryResponseSchema,
   });
 }
 
@@ -917,13 +977,7 @@ export async function createOverride(
     method: "POST",
     auth,
     body: payload,
-    schema: z
-      .object({
-        segmentId: z.string(),
-        targetLang: z.string(),
-        contextHashScope: z.string().nullable(),
-      })
-      .strict(),
+    schema: createOverrideResponseSchema,
   });
 }
 
@@ -937,13 +991,6 @@ export async function updateSlug(
     method: "POST",
     auth,
     body: payload,
-    schema: z
-      .object({
-        pageId: z.string(),
-        lang: z.string(),
-        path: z.string(),
-        crawlStatus: crawlStatusSchema,
-      })
-      .strict(),
+    schema: setSlugResponseSchema,
   });
 }

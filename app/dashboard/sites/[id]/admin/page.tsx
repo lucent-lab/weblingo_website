@@ -11,7 +11,6 @@ import {
   activateSiteAction,
   cancelTranslationRunAction,
   deactivateSiteAction,
-  deleteSiteAction,
   setLocaleServingAction,
   translateAndServeAction,
   triggerCrawlAction,
@@ -20,7 +19,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
@@ -52,7 +50,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   });
   const billingBlocked = settingsAccess.billingBlocked;
   const canDeactivate = auth.has({ feature: "edit" }) && !billingBlocked;
-  const canDelete = auth.has({ feature: "edit" });
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
   const canToggleServing = auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
@@ -842,53 +839,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                 ? "Enable localization before forcing a crawl."
                 : "Use this after publishing changes on your source site to refresh translations."}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger zone</CardTitle>
-          <CardDescription>
-            Deleting a site removes its pages, translations, deployments, and domains. This cannot
-            be undone.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            This action permanently deletes all data for this site.
-          </div>
-          <ActionForm
-            action={deleteSiteAction}
-            className="space-y-3"
-            loading="Deleting site..."
-            success="Site deleted."
-            error="Unable to delete site."
-          >
-            <>
-              <input name="siteId" type="hidden" value={site.id} />
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Type DELETE to confirm
-                </label>
-                <Input
-                  name="confirmation"
-                  placeholder="DELETE"
-                  required
-                  pattern="DELETE"
-                  autoComplete="off"
-                  disabled={!canDelete}
-                />
-              </div>
-              <Button type="submit" variant="destructive" disabled={!canDelete} title="Delete site">
-                Delete site
-              </Button>
-              {!canDelete ? (
-                <p className="text-xs text-muted-foreground">
-                  You do not have permission to delete this site.
-                </p>
-              ) : null}
-            </>
-          </ActionForm>
         </CardContent>
       </Card>
     </div>

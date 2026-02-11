@@ -112,6 +112,7 @@ export function TryForm({
   const lastStageRef = useRef<PreviewStage | null>(null);
   const timedOutRef = useRef(false);
   const submittedEmailRef = useRef("");
+  const statusTokenRef = useRef<string | null>(null);
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -297,11 +298,13 @@ export function TryForm({
     }
   }
 
-  function connectSSE(id: string, streamUrl?: string | null) {
+  function connectSSE(id: string, statusToken: string) {
     closeEventSource();
     setStatus("processing");
 
-    const es = new EventSource(streamUrl ?? `/api/previews/${id}/stream`);
+    const es = new EventSource(
+      `/api/previews/${id}/stream?token=${encodeURIComponent(statusToken)}`,
+    );
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -542,6 +545,7 @@ export function TryForm({
       submittedEmailRef.current = trimmedEmail;
       setTimedOutWithEmail(false);
       setLastPreviewId(null);
+      statusTokenRef.current = null;
       lastStageRef.current = null;
       closeEventSource();
       setLastRequestKey(requestKey);
@@ -579,8 +583,8 @@ export function TryForm({
 
         const payload = await response.json();
         const id = payload?.previewId as string | undefined;
-        const streamUrl =
-          typeof payload?.streamUrl === "string" ? (payload.streamUrl as string) : null;
+        const statusToken =
+          typeof payload?.statusToken === "string" ? (payload.statusToken as string) : null;
         const immediatePreview = payload?.previewUrl as string | undefined;
 
         applyStageFromPayload(payload ?? {});
@@ -601,7 +605,11 @@ export function TryForm({
           throw new Error("Preview was created but no ID was returned.");
         }
 
-        connectSSE(id, streamUrl);
+        if (!statusToken) {
+          throw new Error("Preview was created but no status token was returned.");
+        }
+        statusTokenRef.current = statusToken;
+        connectSSE(id, statusToken);
       } finally {
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
@@ -633,13 +641,19 @@ export function TryForm({
   async function handleCheckStatus(previewId?: string): Promise<boolean | null> {
     const id = previewId ?? lastPreviewId;
     if (!id || checkingStatus) return null;
+    const statusToken = statusTokenRef.current;
+    if (!statusToken) {
+      setError(t("try.error.default") || "Preview status token missing. Please try again.");
+      setStatus("failed");
+      return true;
+    }
     if (previewId) {
       setLastPreviewId(previewId);
     }
 
     setCheckingStatus(true);
     try {
-      const response = await fetch(`/api/previews/${id}`);
+      const response = await fetch(`/api/previews/${id}?token=${encodeURIComponent(statusToken)}`);
       const bodyText = await response.text();
       let payload: Record<string, unknown> | null = null;
       if (bodyText) {
@@ -705,7 +719,7 @@ export function TryForm({
       case "creating":
         return t("try.status.creating") || "Creating preview...";
       case "pending":
-        return t("try.status.pending") || "Queued... starting soon.";
+        return progress || t("try.status.pending") || "Queued... starting soon.";
       case "processing":
         return progress || t("try.status.processing") || "Translating your page...";
       default:

@@ -37,7 +37,32 @@ HOME_PAGE_VARIANT=expansion # optional: classic | expansion (default expansion)
 PUBLIC_PORTAL_MODE=enabled # required: enabled | disabled
 # Public endpoint consumed by the dashboard UI. Protect with auth, CORS, and rate limits.
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
+NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS=15000
 TRY_NOW_TOKEN=preview_token_value
+
+# Public form abuse controls
+WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS=60000
+WEBSITE_WAITLIST_MAX_PER_WINDOW=20
+WEBSITE_WAITLIST_MAX_BODY_BYTES=4096
+WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS=60000
+WEBSITE_CONTACT_MAX_PER_WINDOW=10
+
+# Preview abuse controls (required when TRY_NOW_TOKEN is set)
+WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS=60000
+WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW=20
+WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW=10
+WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW=120
+WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW=30
+WEBSITE_PREVIEW_MAX_BODY_BYTES=16384
+WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS=15000
+WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS=15000
+WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS=15000
+
+# Redis (required; pick one provider)
+UPSTASH_REDIS_REST_URL=https://<db>.upstash.io
+UPSTASH_REDIS_REST_TOKEN=upstash_token
+# or KV_REST_API_URL=...
+# KV_REST_API_TOKEN=...
 
 # Stripe
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -52,6 +77,7 @@ STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=public-anon-key
 SUPABASE_SECRET_KEY=service-role-key
+SUPABASE_AUTH_TIMEOUT_MS=15000
 
 # Analytics (optional)
 NEXT_PUBLIC_POSTHOG_KEY=phc_...
@@ -64,6 +90,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 1. Install dependencies: `pnpm install`
 2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` for the dashboard and `TRY_NOW_TOKEN` for previews).
+   Redis credentials are required for public-form and preview rate limiting (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, or `KV_REST_API_URL` + `KV_REST_API_TOKEN`).
 3. Start dev server: `pnpm run dev` (opens `http://localhost:3000`).
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
 5. Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
@@ -79,6 +106,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 - **Build**: `pnpm run build` (Next.js static + server output).
 - **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 20.9+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
+- **Rate limiting store**: Provision Upstash Redis (or compatible REST KV) and configure either `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` or `KV_REST_API_URL`/`KV_REST_API_TOKEN`. This is required for waitlist/contact/preview abuse controls.
 - **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.
 - **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin. Use `TRY_NOW_TOKEN` for server-side preview requests.
 - **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.

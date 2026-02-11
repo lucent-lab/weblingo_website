@@ -34,7 +34,11 @@ STRIPE_PRICING_TABLE_ID_EN=prctbl_for_en
 STRIPE_PRICING_TABLE_ID_FR=prctbl_for_fr
 STRIPE_PRICING_TABLE_ID_JA=prctbl_for_ja
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
+NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS=15000 # required; dashboard -> webhooks API timeout in ms (integer >=1); fail-fast if missing/invalid
+SUPABASE_AUTH_TIMEOUT_MS=15000 # required; server-side Supabase Auth/Admin timeout in ms (integer >=1); fail-fast if missing/invalid
 ```
+
+`15000` is the recommended default for both values to balance normal cross-region latency and transient network jitter without masking upstream outages for too long.
 
 Set `PUBLIC_PORTAL_MODE=disabled` to hide login/signup UI, block auth actions, and disable checkout flows on deployed environments.
 

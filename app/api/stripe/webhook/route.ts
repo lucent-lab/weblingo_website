@@ -3,6 +3,7 @@ import Stripe from "stripe";
 
 import { createServiceRoleClient, fetchUserByEmail } from "@/lib/supabase/admin";
 import { verifyStripeSignature } from "@internal/billing";
+import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
 import { SITE_ID } from "@modules/pricing";
 
 export const runtime = "nodejs";
@@ -12,6 +13,20 @@ const webhookEvents = new Set<Stripe.Event.Type>([
   "customer.subscription.updated",
   "customer.subscription.deleted",
 ]);
+
+function maskStripeId(id: string) {
+  const trimmed = id.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  const suffix = trimmed.length > 6 ? trimmed.slice(-6) : trimmed;
+  const underscore = trimmed.indexOf("_");
+  if (underscore !== -1) {
+    const prefix = trimmed.slice(0, underscore + 1);
+    return `${prefix}***${suffix}`;
+  }
+  return `***${suffix}`;
+}
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
@@ -27,8 +42,25 @@ export async function POST(request: NextRequest) {
   try {
     event = verifyStripeSignature(rawBody, signature);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to verify webhook";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const requestId = buildRequestId();
+    console.warn(
+      JSON.stringify(
+        {
+          level: "warn",
+          message: "Stripe signature verification failed",
+          request_id: requestId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    const message = isProdEnv()
+      ? "Invalid Stripe signature"
+      : error instanceof Error
+        ? error.message
+        : "Unable to verify webhook";
+    return NextResponse.json(buildPublicErrorBody({ error: message, requestId }), { status: 400 });
   }
 
   if (!webhookEvents.has(event.type)) {
@@ -47,7 +79,7 @@ export async function POST(request: NextRequest) {
               message: "Unexpected checkout session mode",
               mode: session.mode,
               siteId: SITE_ID,
-              sessionId: session.id,
+              sessionId: maskStripeId(session.id),
             },
             null,
             0,
@@ -70,7 +102,7 @@ export async function POST(request: NextRequest) {
               level: "error",
               message: "Missing customer or subscription on completed checkout session",
               siteId: SITE_ID,
-              sessionId: session.id,
+              sessionId: maskStripeId(session.id),
             },
             null,
             0,
@@ -85,9 +117,9 @@ export async function POST(request: NextRequest) {
             level: "info",
             message: "Checkout session completed",
             siteId: SITE_ID,
-            sessionId: session.id,
-            customerId,
-            subscriptionId,
+            sessionId: maskStripeId(session.id),
+            customerId: maskStripeId(customerId),
+            subscriptionId: maskStripeId(subscriptionId),
           },
           null,
           0,
@@ -110,7 +142,7 @@ export async function POST(request: NextRequest) {
             level: "info",
             message: "Subscription lifecycle event",
             siteId: SITE_ID,
-            subscriptionId: subscription.id,
+            subscriptionId: maskStripeId(subscription.id),
             status: subscription.status,
           },
           null,
@@ -144,9 +176,9 @@ async function ensureSupabaseUser({
           level: "warn",
           message: "Unable to create Supabase user without email",
           siteId: SITE_ID,
-          sessionId: session.id,
-          customerId,
-          subscriptionId,
+          sessionId: maskStripeId(session.id),
+          customerId: maskStripeId(customerId),
+          subscriptionId: maskStripeId(subscriptionId),
         },
         null,
         0,
@@ -167,9 +199,9 @@ async function ensureSupabaseUser({
           level: "error",
           message: "Failed to fetch Supabase user by email",
           siteId: SITE_ID,
-          sessionId: session.id,
-          customerId,
-          subscriptionId,
+          sessionId: maskStripeId(session.id),
+          customerId: maskStripeId(customerId),
+          subscriptionId: maskStripeId(subscriptionId),
           error: fetchError instanceof Error ? fetchError.message : String(fetchError),
         },
         null,
@@ -196,9 +228,9 @@ async function ensureSupabaseUser({
             level: "error",
             message: "Failed to update Supabase user metadata after Stripe checkout",
             siteId: SITE_ID,
-            sessionId: session.id,
-            customerId,
-            subscriptionId,
+            sessionId: maskStripeId(session.id),
+            customerId: maskStripeId(customerId),
+            subscriptionId: maskStripeId(subscriptionId),
             error: updateError.message,
           },
           null,
@@ -228,9 +260,9 @@ async function ensureSupabaseUser({
           level: "error",
           message: "Failed to create Supabase user from Stripe checkout",
           siteId: SITE_ID,
-          sessionId: session.id,
-          customerId,
-          subscriptionId,
+          sessionId: maskStripeId(session.id),
+          customerId: maskStripeId(customerId),
+          subscriptionId: maskStripeId(subscriptionId),
           error: error.message,
         },
         null,

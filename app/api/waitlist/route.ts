@@ -3,6 +3,15 @@ import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
+import {
+  readJsonBodyLimited,
+  RequestBodyInvalidJsonError,
+  RequestBodyTooLargeError,
+} from "@internal/core/body";
+import { envServer } from "@internal/core/env-server";
+import { rateLimitFixedWindow } from "@internal/core/rate-limit";
+import { redis } from "@internal/core/redis";
+import { getClientIp } from "@internal/core/request-ip";
 
 const payloadSchema = z.object({
   email: z.string().email().max(320),
@@ -16,12 +25,64 @@ type WaitlistRow = Pick<
   Database["public"]["Tables"][typeof TABLE_NAME]["Row"],
   "id" | "created_at"
 >;
+
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
+  const windowMs = Number(envServer.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS);
+  const maxPerWindow = Number(envServer.WEBSITE_WAITLIST_MAX_PER_WINDOW);
+  const maxBodyBytes = Number(envServer.WEBSITE_WAITLIST_MAX_BODY_BYTES);
+
+  const ip = getClientIp(request);
+  try {
+    const ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:waitlist:create:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
+    });
+    if (!ipLimit.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
+      return NextResponse.json(
+        { error: "Too many signup attempts. Please try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfterSeconds),
+          },
+        },
+      );
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (waitlist create ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable. Please try again shortly." },
+        { status: 503 },
+      );
+    }
+  }
+
   let json: unknown;
   try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    json = await readJsonBodyLimited(request, { maxBytes: maxBodyBytes });
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+    }
+    if (error instanceof RequestBodyInvalidJsonError) {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   const base =

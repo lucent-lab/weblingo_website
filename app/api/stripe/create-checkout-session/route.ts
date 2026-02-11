@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createCheckoutSession } from "@internal/billing";
-import { env } from "@internal/core";
+import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
+import { envServer } from "@internal/core/env-server";
 import { i18nConfig, normalizeLocale } from "@internal/i18n";
 
 const bodySchema = z.object({
@@ -13,7 +14,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  if (env.PUBLIC_PORTAL_MODE !== "enabled") {
+  if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     return NextResponse.json({ error: "Checkout disabled" }, { status: 403 });
   }
   let payload: unknown;
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const { planId, cadence, email, locale } = parseResult.data;
   const normalizedLocale = normalizeLocale(locale);
-  const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const appUrl = envServer.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
   try {
     const session = await createCheckoutSession({
@@ -60,6 +61,31 @@ export async function POST(request: NextRequest) {
       clientErrorPatterns.some((pattern) => error.message.includes(pattern));
     const status = isClientError ? 400 : 500;
 
-    return NextResponse.json({ error: message }, { status });
+    if (status !== 500) {
+      return NextResponse.json({ error: message }, { status });
+    }
+
+    const requestId = buildRequestId();
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Failed to create checkout session",
+          request_id: requestId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+
+    if (isProdEnv()) {
+      return NextResponse.json(
+        buildPublicErrorBody({ error: "Unable to start checkout right now", requestId }),
+        { status },
+      );
+    }
+
+    return NextResponse.json(buildPublicErrorBody({ error: message, requestId }), { status });
   }
 }

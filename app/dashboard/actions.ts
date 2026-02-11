@@ -6,7 +6,6 @@ import {
   createOverride,
   createSite,
   deactivateSite,
-  deleteSite,
   cancelTranslationRun,
   provisionDomain,
   refreshDomain,
@@ -927,38 +926,6 @@ export async function deactivateSiteAction(
     return failed(
       toFriendlyDashboardActionError(error, "Unable to deactivate this site right now."),
     );
-  }
-}
-
-export async function deleteSiteAction(
-  _prevState: ActionResponse | undefined,
-  formData: FormData,
-): Promise<ActionResponse> {
-  const siteId = formData.get("siteId")?.toString();
-  const confirmation = formData.get("confirmation")?.toString().trim();
-
-  if (!siteId) {
-    return failed("Site ID is required.");
-  }
-
-  if (confirmation !== "DELETE") {
-    return failed("Type DELETE to confirm.");
-  }
-
-  try {
-    await withWebhooksAuth(async (auth) => {
-      await deleteSite(auth, siteId);
-      await invalidateSitesCache(auth);
-    });
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
-    return succeeded("Site deleted.", { redirectTo: "/dashboard/sites" });
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] deleteSiteAction failed:", error);
-    return failed(toFriendlyDashboardActionError(error, "Unable to delete this site right now."));
   }
 }
 

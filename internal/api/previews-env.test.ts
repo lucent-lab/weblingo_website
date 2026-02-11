@@ -4,6 +4,47 @@ import type { NextRequest } from "next/server";
 const ORIGINAL_ENV = { ...process.env };
 const ORIGINAL_FETCH = globalThis.fetch;
 
+const rateLimitFixedWindow = vi.fn();
+vi.mock("@internal/core/rate-limit", () => ({ rateLimitFixedWindow }));
+vi.mock("@internal/core/redis", () => ({ redis: {} }));
+
+function setRequiredEnv() {
+  process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
+  process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://example.com";
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable";
+  process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://client.example.com/api";
+  process.env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS = "15000";
+
+  process.env.PUBLIC_PORTAL_MODE = "enabled";
+  process.env.STRIPE_SECRET_KEY = "sk_test";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+  process.env.SUPABASE_SECRET_KEY = "sb_secret";
+  process.env.SUPABASE_AUTH_TIMEOUT_MS = "15000";
+
+  process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash_token";
+
+  process.env.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_WAITLIST_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_WAITLIST_MAX_BODY_BYTES = "4096";
+  process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
+
+  // Only required when TRY_NOW_TOKEN is set; set here to keep route imports stable.
+  process.env.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS = "60000";
+  process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW = "10";
+  process.env.WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW = "60";
+  process.env.WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW = "20";
+  process.env.WEBSITE_PREVIEW_MAX_BODY_BYTES = "200";
+  process.env.WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS = "15000";
+  process.env.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS = "15000";
+  process.env.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS = "15000";
+}
+
 function makeRequest(payload: unknown, accept = "application/json") {
   return new Request("http://localhost/api/previews", {
     method: "POST",
@@ -22,7 +63,17 @@ async function loadRoute() {
 
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  setRequiredEnv();
   (globalThis as { fetch: typeof fetch }).fetch = ORIGINAL_FETCH;
+  rateLimitFixedWindow.mockReset();
+  rateLimitFixedWindow.mockResolvedValue({
+    allowed: true,
+    limit: 100,
+    remaining: 99,
+    resetAtMs: Date.now() + 1000,
+    current: 1,
+    key: "k",
+  });
 });
 
 afterEach(() => {
@@ -33,7 +84,6 @@ afterEach(() => {
 
 describe("preview api env", () => {
   it("returns 500 when preview env is missing", async () => {
-    delete process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE;
     delete process.env.TRY_NOW_TOKEN;
 
     const { POST } = await loadRoute();
@@ -43,7 +93,6 @@ describe("preview api env", () => {
   });
 
   it("uses public preview base with the server-only token", async () => {
-    process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://client.example.com/api";
     process.env.TRY_NOW_TOKEN = "server-preview-token";
     process.env.NEXT_PUBLIC_TRY_NOW_TOKEN = "client-preview-token";
 

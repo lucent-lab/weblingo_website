@@ -1,9 +1,14 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { envServer } from "@internal/core/env-server";
+import { rateLimitFixedWindow } from "@internal/core/rate-limit";
+import { redis } from "@internal/core/redis";
+import { getClientIpFromHeaders } from "@internal/core/request-ip";
 
 const contactSchema = z.object({
   fullName: z.string().min(1, "fullName").max(200),
@@ -14,6 +19,43 @@ const contactSchema = z.object({
 });
 
 export async function submitContactMessage(locale: string, formData: FormData) {
+  const windowMs = Number(envServer.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS);
+  const maxPerWindow = Number(envServer.WEBSITE_CONTACT_MAX_PER_WINDOW);
+  const ip = getClientIpFromHeaders(await headers());
+
+  let ipLimit:
+    | {
+        allowed: boolean;
+        resetAtMs: number;
+      }
+    | undefined;
+  try {
+    ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:contact:create:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
+    });
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (contact create ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    if (process.env.NODE_ENV === "production") {
+      return redirect(`/${locale}/contact?error=server`);
+    }
+  }
+
+  if (ipLimit && !ipLimit.allowed) {
+    return redirect(`/${locale}/contact?error=rate_limited`);
+  }
+
   const parsed = contactSchema.safeParse({
     fullName: formData.get("fullName")?.toString() ?? "",
     workEmail: formData.get("workEmail")?.toString() ?? "",

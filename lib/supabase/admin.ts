@@ -1,6 +1,9 @@
+import "server-only";
+
 import { createClient, type User } from "@supabase/supabase-js";
 
-import { env } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
+import { FetchTimeoutError, fetchWithTimeout } from "@internal/core/fetch-timeout";
 import type { Database } from "@/types/database";
 
 let cachedAdminClient: ReturnType<typeof createClient<Database>> | null = null;
@@ -11,8 +14,8 @@ export function createServiceRoleClient() {
   }
 
   cachedAdminClient = createClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.SUPABASE_SECRET_KEY,
+    envServer.NEXT_PUBLIC_SUPABASE_URL,
+    envServer.SUPABASE_SECRET_KEY,
     {
       auth: {
         autoRefreshToken: false,
@@ -25,18 +28,34 @@ export function createServiceRoleClient() {
 }
 
 export async function fetchUserByEmail(email: string): Promise<User | null> {
-  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
+  const baseUrl = envServer.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
   const url = new URL("/auth/v1/admin/users", baseUrl);
   url.searchParams.set("email", email);
 
-  const response = await fetch(url, {
-    headers: {
-      apikey: env.SUPABASE_SECRET_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+  const timeoutMs = Number(envServer.SUPABASE_AUTH_TIMEOUT_MS);
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
+    throw new Error("[config] SUPABASE_AUTH_TIMEOUT_MS must be a positive integer");
+  }
+
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      url,
+      {
+        headers: {
+          apikey: envServer.SUPABASE_SECRET_KEY,
+          Authorization: `Bearer ${envServer.SUPABASE_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      },
+      { timeoutMs },
+    );
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown";
+    const label = error instanceof FetchTimeoutError ? "timed_out" : "fetch_failed";
+    throw new Error(`Supabase admin user lookup ${label}: ${reason}`);
+  }
 
   if (!response.ok) {
     throw new Error(`Failed to fetch Supabase user by email: ${response.statusText}`);

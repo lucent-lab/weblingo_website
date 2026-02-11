@@ -1,30 +1,101 @@
 import { NextRequest } from "next/server";
 
-const API_BASE = process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE?.replace(/\/$/, "");
-const PREVIEW_TOKEN = process.env.TRY_NOW_TOKEN;
+import { envServer } from "@internal/core/env-server";
+import { redis } from "@internal/core/redis";
+import { getClientIp } from "@internal/core/request-ip";
+import { rateLimitFixedWindow } from "@internal/core/rate-limit";
+import { fetchWithTimeout, FetchTimeoutError } from "@internal/core/fetch-timeout";
 
 export const runtime = "nodejs";
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (!API_BASE || !PREVIEW_TOKEN) {
+  const apiBase = envServer.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
+  const previewToken = envServer.TRY_NOW_TOKEN;
+  if (!apiBase || !previewToken) {
     return new Response("Preview service is not configured.", { status: 500 });
+  }
+
+  if (!id || !isUuid(id)) {
+    return new Response("Invalid preview id", { status: 400 });
+  }
+
+  const statusToken = request.nextUrl.searchParams.get("token")?.trim() ?? "";
+  if (!statusToken) {
+    return new Response("Missing preview status token", { status: 400 });
+  }
+
+  const windowMs = Number(envServer.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS);
+  const maxPerWindow = Number(envServer.WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW);
+  const upstreamConnectTimeoutMs = Number(
+    envServer.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS,
+  );
+
+  const ip = getClientIp(request);
+  try {
+    const ipLimit = await rateLimitFixedWindow(redis, {
+      key: `rl:v1:preview:stream:ip:${encodeURIComponent(ip)}`,
+      limit: maxPerWindow,
+      windowMs,
+    });
+    if (!ipLimit.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
+      return new Response("Too many stream requests. Please try again shortly.", {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+          "Content-Type": "text/plain",
+        },
+      });
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Rate limit backend failed (preview stream ip)",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        0,
+      ),
+    );
+    if (process.env.NODE_ENV === "production") {
+      return new Response("Service temporarily unavailable. Please try again shortly.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
   }
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${API_BASE}/previews/${encodeURIComponent(id)}/stream`, {
-      method: "GET",
-      headers: {
-        Accept: "text/event-stream",
-        "x-preview-token": PREVIEW_TOKEN,
+    upstream = await fetchWithTimeout(
+      `${apiBase}/previews/${encodeURIComponent(id)}/stream`,
+      {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          Accept: "text/event-stream",
+          "x-preview-token": previewToken,
+          "x-preview-status-token": statusToken,
+        },
+        cache: "no-store",
       },
-      cache: "no-store",
-      signal: _request.signal,
-    });
+      { timeoutMs: upstreamConnectTimeoutMs, signal: request.signal },
+    );
   } catch (error) {
-    console.warn("[preview] stream fetch failed", error);
+    if (error instanceof FetchTimeoutError) {
+      return new Response("Preview service timed out", {
+        status: 504,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
     return new Response("Unable to reach preview service.", { status: 502 });
   }
 
@@ -37,12 +108,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 
   const headers = new Headers();
-  const passthrough = ["content-type"];
-  upstream.headers.forEach((value, key) => {
-    if (passthrough.includes(key.toLowerCase())) {
-      headers.set(key, value);
-    }
-  });
+  const contentType = upstream.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/event-stream")) {
+    return new Response("Preview stream unavailable.", {
+      status: 502,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+  headers.set("Content-Type", "text/event-stream");
   headers.set("Cache-Control", "no-cache");
   headers.set("X-Accel-Buffering", "no");
 
