@@ -719,7 +719,7 @@ export function TryForm({
       case "creating":
         return t("try.status.creating") || "Creating preview...";
       case "pending":
-        return t("try.status.pending") || "Queued... starting soon.";
+        return progress || t("try.status.pending") || "Queued... starting soon.";
       case "processing":
         return progress || t("try.status.processing") || "Translating your page...";
       default:
