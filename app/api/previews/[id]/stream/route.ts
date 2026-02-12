@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { envServer } from "@internal/core/env-server";
+import { buildErrorLogFields } from "@internal/core/error-log";
 import { redis } from "@internal/core/redis";
 import { getClientIp } from "@internal/core/request-ip";
 import { rateLimitFixedWindow } from "@internal/core/rate-limit";
@@ -59,18 +60,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         {
           level: "error",
           message: "Rate limit backend failed (preview stream ip)",
-          error: error instanceof Error ? error.message : String(error),
+          ...buildErrorLogFields(error),
         },
         null,
         0,
       ),
     );
-    if (process.env.NODE_ENV === "production") {
-      return new Response("Service temporarily unavailable. Please try again shortly.", {
-        status: 503,
-        headers: { "Content-Type": "text/plain" },
-      });
-    }
+    return new Response("Service temporarily unavailable. Please try again shortly.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   let upstream: Response;

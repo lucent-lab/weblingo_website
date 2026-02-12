@@ -8,6 +8,7 @@ import {
   RequestBodyInvalidJsonError,
   RequestBodyTooLargeError,
 } from "@internal/core/body";
+import { buildErrorLogFields } from "@internal/core/error-log";
 import { envServer } from "@internal/core/env-server";
 import { rateLimitFixedWindow } from "@internal/core/rate-limit";
 import { redis } from "@internal/core/redis";
@@ -58,18 +59,16 @@ export async function POST(request: NextRequest) {
         {
           level: "error",
           message: "Rate limit backend failed (waitlist create ip)",
-          error: error instanceof Error ? error.message : String(error),
+          ...buildErrorLogFields(error),
         },
         null,
         0,
       ),
     );
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "Service temporarily unavailable. Please try again shortly." },
-        { status: 503 },
-      );
-    }
+    return NextResponse.json(
+      { error: "Service temporarily unavailable. Please try again shortly." },
+      { status: 503 },
+    );
   }
 
   let json: unknown;
