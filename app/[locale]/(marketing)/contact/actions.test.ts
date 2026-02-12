@@ -52,8 +52,8 @@ function setRequiredEnv() {
   process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
 
-  process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash_token";
+  process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.upstash.io";
+  process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "upstash_token";
 }
 
 beforeAll(() => {

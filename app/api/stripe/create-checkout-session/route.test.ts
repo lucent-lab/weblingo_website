@@ -28,8 +28,8 @@ function setRequiredEnv() {
   process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
 
-  process.env.KV_REST_API_URL = "https://example.com";
-  process.env.KV_REST_API_TOKEN = "dummy";
+  process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.com";
+  process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "dummy";
 }
 
 function makeRequest(payload: unknown): NextRequest {

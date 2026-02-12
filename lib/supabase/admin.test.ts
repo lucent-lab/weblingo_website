@@ -26,8 +26,8 @@ function setRequiredEnv() {
   process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
 
   // envServer requires either Upstash or KV REST credentials.
-  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.com";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "redis_token";
+  process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://redis.example.com";
+  process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "redis_token";
 }
 
 beforeEach(() => {

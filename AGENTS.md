@@ -62,9 +62,8 @@ Server only:
 - `WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS`
 - `WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS`
 - `WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS`
-- Redis (required; pick one provider):
-- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, or
-- `KV_REST_API_URL` + `KV_REST_API_TOKEN`
+- Redis (required):
+- `UPSTASH_REDIS__KV_REST_API_URL` + `UPSTASH_REDIS__KV_REST_API_TOKEN`
 
 ## Development Principles
 
@@ -110,3 +109,8 @@ Server only:
 2. Promote `modules/*` to feature packages as needed.
 3. Switch imports from `@internal/*` to package-scoped aliases (e.g., `@acme/core`).
 4. Use Next.js `transpilePackages` to share code across sites.
+
+## Pull Request Notes
+
+- Follow `.github/pull_request_template.md` when opening/updating PRs; keep Summary/Testing aligned with commands actually run.
+- If `gh pr edit` fails with `GraphQL: Projects (classic) ... projectCards`, patch via REST instead: `BODY="$(cat /tmp/pr_body.md)" && gh api repos/<owner>/<repo>/pulls/<number> -X PATCH --raw-field title='...' --raw-field body="$BODY"`, then verify with `gh pr view <number> --json title,body`.
