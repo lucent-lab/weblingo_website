@@ -9,7 +9,6 @@ const createServiceRoleClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient }));
 
 const ORIGINAL_ENV = { ...process.env };
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -33,8 +32,8 @@ function setRequiredEnv() {
   process.env.WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_CONTACT_MAX_PER_WINDOW = "10";
 
-  process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash_token";
+  process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.upstash.io";
+  process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "upstash_token";
 }
 
 function makeRequest(payload: unknown): NextRequest {
@@ -77,10 +76,17 @@ describe("POST /api/waitlist", () => {
     expect(response.headers.get("retry-after")).toBeTruthy();
   });
 
-  it("returns 503 when the rate limit backend fails in production", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  it("returns 503 and logs cause details when the rate limit backend fails", async () => {
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+      const error = new Error("fetch failed");
+      (error as Error & { cause?: unknown }).cause = {
+        message: "getaddrinfo ENOTFOUND example.upstash.io",
+        code: "ENOTFOUND",
+        syscall: "getaddrinfo",
+        hostname: "example.upstash.io",
+      };
+      rateLimitFixedWindow.mockRejectedValueOnce(error);
 
       vi.resetModules();
       const { POST } = await import("./route");
@@ -89,8 +95,19 @@ describe("POST /api/waitlist", () => {
       expect(response.status).toBe(503);
       const body = await response.json();
       expect(body.error).toBeTruthy();
+      expect(logSpy).toHaveBeenCalledOnce();
+      const logPayload = JSON.parse(String(logSpy.mock.calls[0]?.[0] ?? "{}"));
+      expect(logPayload).toMatchObject({
+        level: "error",
+        message: "Rate limit backend failed (waitlist create ip)",
+        error: "fetch failed",
+        error_cause: "getaddrinfo ENOTFOUND example.upstash.io",
+        error_cause_code: "ENOTFOUND",
+        error_cause_syscall: "getaddrinfo",
+        error_cause_hostname: "example.upstash.io",
+      });
     } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
+      logSpy.mockRestore();
     }
   });
 

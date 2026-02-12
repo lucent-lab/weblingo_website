@@ -1,8 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
-
 const rateLimitFixedWindow = vi.fn();
 vi.mock("@internal/core/rate-limit", () => ({ rateLimitFixedWindow }));
 
@@ -50,8 +48,8 @@ beforeAll(() => {
   process.env.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS = "15000";
   process.env.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS = "15000";
 
-  process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash_token";
+  process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.upstash.io";
+  process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "upstash_token";
 });
 
 beforeEach(() => {
@@ -90,13 +88,20 @@ describe("/api/previews proxy routes", () => {
     expect(response.headers.get("retry-after")).toBeTruthy();
   });
 
-  test("POST /api/previews returns 503 when the rate limit backend fails in production", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    try {
-      vi.resetModules();
-      const { POST } = await import("./route");
+  test("POST /api/previews returns 503 and logs cause details when rate limit backend fails", async () => {
+    vi.resetModules();
+    const { POST } = await import("./route");
 
-      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const error = new Error("fetch failed");
+      (error as Error & { cause?: unknown }).cause = {
+        message: "getaddrinfo ENOTFOUND example.upstash.io",
+        code: "ENOTFOUND",
+        syscall: "getaddrinfo",
+        hostname: "example.upstash.io",
+      };
+      rateLimitFixedWindow.mockRejectedValueOnce(error);
 
       const request = buildNextRequest("http://localhost/api/previews", {
         method: "POST",
@@ -110,41 +115,19 @@ describe("/api/previews proxy routes", () => {
       const response = await POST(request);
       expect(response.status).toBe(503);
       expect(fetchWithTimeout).not.toHaveBeenCalled();
-    } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
-    }
-  });
-
-  test("POST /api/previews bypasses rate limiting when the backend fails in development", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
-    try {
-      vi.resetModules();
-      const { POST } = await import("./route");
-
-      rateLimitFixedWindow
-        .mockRejectedValueOnce(new Error("fetch failed"))
-        .mockRejectedValueOnce(new Error("fetch failed"));
-      fetchWithTimeout.mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 202,
-          headers: { "content-type": "application/json" },
-        }),
-      );
-
-      const request = buildNextRequest("http://localhost/api/previews", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-forwarded-for": "1.2.3.4",
-        },
-        body: JSON.stringify({ sourceUrl: "https://example.com" }),
+      expect(logSpy).toHaveBeenCalledOnce();
+      const logPayload = JSON.parse(String(logSpy.mock.calls[0]?.[0] ?? "{}"));
+      expect(logPayload).toMatchObject({
+        level: "error",
+        message: "Rate limit backend failed (preview create ip)",
+        error: "fetch failed",
+        error_cause: "getaddrinfo ENOTFOUND example.upstash.io",
+        error_cause_code: "ENOTFOUND",
+        error_cause_syscall: "getaddrinfo",
+        error_cause_hostname: "example.upstash.io",
       });
-
-      const response = await POST(request);
-      expect(response.status).toBe(202);
-      expect(fetchWithTimeout).toHaveBeenCalledOnce();
     } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
+      logSpy.mockRestore();
     }
   });
 
@@ -243,26 +226,21 @@ describe("/api/previews proxy routes", () => {
     expect(response.status).toBe(429);
   });
 
-  test("GET /api/previews/:id returns 503 when the rate limit backend fails in production", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    try {
-      vi.resetModules();
-      const { GET } = await import("./[id]/route");
+  test("GET /api/previews/:id returns 503 when the rate limit backend fails", async () => {
+    vi.resetModules();
+    const { GET } = await import("./[id]/route");
 
-      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+    rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
 
-      const id = "11111111-1111-1111-1111-111111111111";
-      const request = buildNextRequest(`http://localhost/api/previews/${id}?token=t`, {
-        method: "GET",
-        headers: { "x-forwarded-for": "1.2.3.4" },
-      });
+    const id = "11111111-1111-1111-1111-111111111111";
+    const request = buildNextRequest(`http://localhost/api/previews/${id}?token=t`, {
+      method: "GET",
+      headers: { "x-forwarded-for": "1.2.3.4" },
+    });
 
-      const response = await GET(request, { params: Promise.resolve({ id }) });
-      expect(response.status).toBe(503);
-      expect(fetchWithTimeout).not.toHaveBeenCalled();
-    } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
-    }
+    const response = await GET(request, { params: Promise.resolve({ id }) });
+    expect(response.status).toBe(503);
+    expect(fetchWithTimeout).not.toHaveBeenCalled();
   });
 
   test("GET /api/previews/:id/stream returns 504 when upstream connect times out", async () => {
@@ -291,26 +269,21 @@ describe("/api/previews proxy routes", () => {
     expect(body).not.toContain("preview_token");
   });
 
-  test("GET /api/previews/:id/stream returns 503 when the rate limit backend fails in production", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    try {
-      vi.resetModules();
-      const { GET } = await import("./[id]/stream/route");
+  test("GET /api/previews/:id/stream returns 503 when the rate limit backend fails", async () => {
+    vi.resetModules();
+    const { GET } = await import("./[id]/stream/route");
 
-      rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
+    rateLimitFixedWindow.mockRejectedValueOnce(new Error("fetch failed"));
 
-      const id = "11111111-1111-1111-1111-111111111111";
-      const request = buildNextRequest(`http://localhost/api/previews/${id}/stream?token=t`, {
-        method: "GET",
-        headers: { "x-forwarded-for": "1.2.3.4" },
-      });
+    const id = "11111111-1111-1111-1111-111111111111";
+    const request = buildNextRequest(`http://localhost/api/previews/${id}/stream?token=t`, {
+      method: "GET",
+      headers: { "x-forwarded-for": "1.2.3.4" },
+    });
 
-      const response = await GET(request, { params: Promise.resolve({ id }) });
-      expect(response.status).toBe(503);
-      expect(fetchWithTimeout).not.toHaveBeenCalled();
-    } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
-    }
+    const response = await GET(request, { params: Promise.resolve({ id }) });
+    expect(response.status).toBe(503);
+    expect(fetchWithTimeout).not.toHaveBeenCalled();
   });
 
   test("GET /api/previews/:id/stream returns 400 for invalid id", async () => {
