@@ -1,62 +1,57 @@
+import { RedocApiReference } from "@/components/docs/redoc-api-reference";
+
 export const metadata = {
   title: "API Reference",
-  description: "Code-synced capabilities, auth requirements, and operation IDs.",
+  description: "OpenAPI-style reference with payload schemas, responses, and playbook context.",
   section: "Developer",
   order: 1,
 };
 
-# API Reference
+Use this page as your implementation reference. It shows user-facing API operations with auth,
+path/query parameters, request fields, and success response schema details sourced from the synced
+backend OpenAPI snapshot.
 
-This page is user-facing and syncs to backend-generated artifacts. Use it for capability discovery,
-then use backend OpenAPI for payload-level contracts.
-
-## Base path + auth model
+## Base URL + auth
 
 - Base path: `/api`
-- Most operations require `Authorization: Bearer <dashboard-token>`.
-- `POST /auth/token` mints dashboard tokens from a Supabase access token.
-- Preview creation can use `x-preview-token`; preview status can use `x-preview-status-token`.
-- Rate limits return `429` with a `Retry-After` header.
+- Default API auth: `Authorization: Bearer <dashboard-jwt>`
+- Preview creation auth: `x-preview-token` or bearer JWT
+- Preview status auth: `x-preview-status-token` or bearer JWT (when enabled)
+- Rate limiting: `429` with `Retry-After`
 
-## Synced source artifacts
+## Serve surfaces (outside `/api`)
 
-- `content/docs/_generated/backend-openapi.snapshot.json`
-- `content/docs/_generated/backend-feature-catalog.snapshot.json`
-- `content/docs/_generated/backend-playbooks.snapshot.md`
-- `content/docs/_generated/backend-sync-manifest.json`
+Serving endpoints are not in the OpenAPI `/api` group, but they are part of the user-facing
+feature set.
 
-## Capability Index (User-Facing)
+- Serving enable/disable operation: `POST /api/sites/{siteId}/locales/{targetLang}/serve`
+  (`sites.locales.serve`)
+- Localized pages: `GET /{path}`
+- Preview pages: `GET /_preview/{previewId}`
+- Surface auth: `None`
 
-### API capabilities (`/api/*`)
+For rollout sequencing, use the backend playbook label `Playbook: Serving Access and Previews`.
 
-| Capability                                      | operationId(s)                                                                                                                                                                              | Auth                                                               | Stability | Playbook                                                                          |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------- | --------------------------------------------------------------------------------- |
-| Account and language setup                      | `accounts.claim`, `accounts.me`, `meta.languages.list`                                                                                                                                      | Bearer JWT (none for `meta.languages.list`)                        | GA        | `Playbook: Account & Language Setup`                                              |
-| Dashboard bootstrap and token minting           | `auth.token.mint`, `dashboard.bootstrap`                                                                                                                                                    | Bearer JWT                                                         | GA        | `Playbook 1: Dashboard Bootstrap and Site Setup`                                  |
-| Agency customer portfolio                       | `agency.customers.list`, `agency.customers.create`                                                                                                                                          | Bearer JWT                                                         | GA        | `Playbook: Site Portfolio Management`                                             |
-| Site portfolio management                       | `sites.list`, `sites.get`, `sites.update`, `sites.pages.list`                                                                                                                               | Bearer JWT                                                         | GA        | `Playbook: Site Portfolio Management`                                             |
-| Site creation and deployment listing            | `sites.create`, `sites.deployments.list`                                                                                                                                                    | Bearer JWT                                                         | GA        | `Playbook 1: Dashboard Bootstrap and Site Setup`                                  |
-| Domain verification and provisioning            | `sites.domains.verify`, `sites.domains.provision`, `sites.domains.refresh`                                                                                                                  | Bearer JWT                                                         | GA        | `Playbook 2: Domain Verification and Serving Activation`                          |
-| Locale serving toggle and translation summaries | `sites.locales.serve`, `sites.locales.translationSummary.put`, `sites.translationSummaries.list`                                                                                            | Bearer JWT                                                         | GA/Beta   | `Playbook: Serving Access and Previews`, `Playbook 5: Previews and Notifications` |
-| Crawl and translation lifecycle                 | `sites.crawl.trigger`, `sites.pages.crawl`, `sites.crawl_translate.trigger`, `sites.translate`, `sites.translationRuns.get`, `sites.translationRuns.cancel`, `sites.translationRuns.resume` | Bearer JWT                                                         | GA/Beta   | `Playbook 3: Crawl and Translate Lifecycle`                                       |
-| Translation quality controls                    | `sites.glossary.get`, `sites.glossary.put`, `sites.overrides.create`, `sites.slugs.set`                                                                                                     | Bearer JWT                                                         | GA        | `Playbook 4: Translation Quality and Content Controls`                            |
-| Previews and digest settings                    | `previews.create`, `previews.status`, `digests.subscription.upsert`                                                                                                                         | `x-preview-token` or Bearer JWT; `x-preview-status-token` (status) | Beta      | `Playbook 5: Previews and Notifications`                                          |
+## Workflows
 
-### Serving capabilities (non-`/api` HTTP)
+Use [Workflow Playbooks](../workflows) when you need ordered, task-specific guidance (setup,
+domain verification, crawl/translate, previews). Use this page for schema-level contracts.
 
-| Capability               | Enabling operation / surface paths                                           | Auth | Stability | Playbook                                |
-| ------------------------ | ---------------------------------------------------------------------------- | ---- | --------- | --------------------------------------- |
-| Localized page serving   | `sites.locales.serve`, `GET /{path}` (`/{path}`)                             | None | GA        | `Playbook: Serving Access and Previews` |
-| Preview artifact serving | `sites.locales.serve`, `GET /_preview/{previewId}` (`/_preview/{previewId}`) | None | Beta      | `Playbook: Serving Access and Previews` |
+## OpenAPI Explorer
 
-## Playbooks and schema details
+<RedocApiReference />
 
-- Workflow sequencing lives in `content/docs/_generated/backend-playbooks.snapshot.md`.
-- Operation schemas/examples live in backend generated references:
-- `docs/reference/API_REFERENCE.md`
-- `docs/reference/openapi.json`
+## Error model
 
-Last sync metadata is recorded in `content/docs/_generated/backend-sync-manifest.json`.
+- Standard API errors return:
+  - `{"error":"<message>","details":...}`
+- Common statuses:
+  - `400` invalid request
+  - `401` auth invalid or expired
+  - `403` entitlement or permission issue
+  - `404` resource not found
+  - `429` rate limited
+  - `5xx` upstream or internal failure
 
 ## Related docs
 
