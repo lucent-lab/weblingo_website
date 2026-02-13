@@ -1,21 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-
-type CatalogEntry = {
-  family: string;
-  userFacing: boolean;
-  endpoint?: {
-    operationId?: string;
-  };
-  surfaces?: Array<{
-    path?: string;
-  }>;
-};
-
-type FeatureCatalog = {
-  features: CatalogEntry[];
-};
+import {
+  buildUserFacingOpenApiSpec,
+  collectOperationIdsFromSpec,
+  getUserFacingApiOperationIds,
+  parsePlaybooksMarkdown,
+  type FeatureCatalog,
+  type OpenApiSpec,
+} from "../../components/docs/api-reference-data";
+import { getWorkflowPlaybooks } from "../../content/docs/workflow-playbooks";
 
 function readUtf8OrThrow(relativePath: string): string {
   const absolutePath = resolve(process.cwd(), relativePath);
@@ -25,71 +19,67 @@ function readUtf8OrThrow(relativePath: string): string {
   return readFileSync(absolutePath, "utf8");
 }
 
-function parseOperationIdsFromPlaybooks(playbooksMarkdown: string): Set<string> {
-  const ids = new Set<string>();
-  const matcher = /`operationId`:\s*`([^`]+)`/g;
-  for (const match of playbooksMarkdown.matchAll(matcher)) {
-    const operationId = match[1]?.trim();
-    if (operationId) {
-      ids.add(operationId);
-    }
-  }
-  return ids;
-}
-
 describe("docs feature coverage", () => {
+  const openApiSpec = JSON.parse(
+    readUtf8OrThrow("content/docs/_generated/backend-openapi.snapshot.json"),
+  ) as OpenApiSpec;
   const featureCatalog = JSON.parse(
     readUtf8OrThrow("content/docs/_generated/backend-feature-catalog.snapshot.json"),
   ) as FeatureCatalog;
   const playbooksMarkdown = readUtf8OrThrow(
     "content/docs/_generated/backend-playbooks.snapshot.md",
   );
+  const parsedPlaybooks = parsePlaybooksMarkdown(playbooksMarkdown);
   const apiReferenceMarkdown = readUtf8OrThrow("content/docs/api-reference.mdx");
-  const playbookOperationIds = parseOperationIdsFromPlaybooks(playbooksMarkdown);
+  const userFacingSpec = buildUserFacingOpenApiSpec(openApiSpec, featureCatalog);
+  const features = featureCatalog.features ?? [];
+  const renderedOperationIds = collectOperationIdsFromSpec(userFacingSpec);
+  const playbookOperationIds = new Set(
+    parsedPlaybooks.flatMap((playbook) => playbook.operationIds),
+  );
+  const workflowPlaybooks = getWorkflowPlaybooks();
 
-  it("documents every user-facing API capability operationId", () => {
-    const userFacingOperationIds = featureCatalog.features
-      .filter((entry) => entry.family === "api" && entry.userFacing)
-      .map((entry) => entry.endpoint?.operationId)
-      .filter((operationId): operationId is string => typeof operationId === "string")
-      .sort((left, right) => left.localeCompare(right));
+  it("mounts redoc component and links users to workflow docs", () => {
+    expect(apiReferenceMarkdown).toContain("<RedocApiReference />");
+    expect(apiReferenceMarkdown).not.toContain("<ApiPlaybookSummary />");
+    expect(apiReferenceMarkdown).toContain("../workflows");
+    expect(apiReferenceMarkdown).toContain("`sites.locales.serve`");
+    expect(apiReferenceMarkdown).toContain("/{path}");
+    expect(apiReferenceMarkdown).toContain("/_preview/{previewId}");
+  });
 
+  it("builds user-facing workflow pages from synced playbooks", () => {
+    expect(workflowPlaybooks.length).toBeGreaterThan(0);
+    for (const playbook of workflowPlaybooks) {
+      expect(playbook.slug.length).toBeGreaterThan(0);
+      expect(playbook.stepDetails.length).toBeGreaterThan(0);
+      expect(playbook.operationIds.length + playbook.surfacePaths.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("renders every user-facing API capability operationId in redoc spec", () => {
+    const userFacingOperationIds = Array.from(getUserFacingApiOperationIds(featureCatalog));
     const missing = userFacingOperationIds.filter(
-      (operationId) => !apiReferenceMarkdown.includes(`\`${operationId}\``),
+      (operationId) => !renderedOperationIds.has(operationId),
     );
     expect(missing).toEqual([]);
   });
 
-  it("documents all user-facing serve surface paths and serving playbook", () => {
-    const userFacingHttpPaths = featureCatalog.features
-      .filter((entry) => entry.family === "http" && entry.userFacing)
-      .flatMap((entry) => entry.surfaces ?? [])
-      .map((surface) => surface.path)
-      .filter((pathValue): pathValue is string => typeof pathValue === "string")
-      .sort((left, right) => left.localeCompare(right));
-
-    const missingPaths = userFacingHttpPaths.filter(
-      (pathValue) => !apiReferenceMarkdown.includes(`\`${pathValue}\``),
-    );
-    expect(missingPaths).toEqual([]);
-    expect(apiReferenceMarkdown).toContain("Playbook: Serving Access and Previews");
-  });
-
-  it("does not expose internal API operationIds in the user-facing API reference", () => {
-    const internalOperationIds = featureCatalog.features
+  it("does not expose internal API operationIds in redoc spec", () => {
+    const internalOperationIds = features
       .filter((entry) => entry.family === "api" && !entry.userFacing)
       .map((entry) => entry.endpoint?.operationId)
       .filter((operationId): operationId is string => typeof operationId === "string");
 
     const leaked = internalOperationIds.filter((operationId) =>
-      apiReferenceMarkdown.includes(`\`${operationId}\``),
+      renderedOperationIds.has(operationId),
     );
     expect(leaked).toEqual([]);
   });
 
   it("only references operationIds that exist in the synced feature catalog", () => {
     const knownOperationIds = new Set(
-      featureCatalog.features
+      features
         .filter((entry) => entry.family === "api")
         .map((entry) => entry.endpoint?.operationId)
         .filter((operationId): operationId is string => typeof operationId === "string"),

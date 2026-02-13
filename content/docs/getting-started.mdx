@@ -1,29 +1,44 @@
 export const metadata = {
   title: "Getting Started",
-  description: "Spin up your first localized site in minutes.",
+  description: "Launch your first localized site with a practical step-by-step path.",
   section: "Basics",
   order: 1,
 };
 
-# Getting Started
+Welcome to WebLingo. This guide is for teams shipping their first production locale and wanting a
+reliable rollout path.
 
-Welcome to WebLingo. This short guide walks through the minimal steps to go from a single-language
-site to a live, localized deployment.
+## Before you start
 
-## Quick checklist
+- A source site URL ready to crawl (for example, `https://www.example.com`).
+- One target locale to launch first (for example, `fr`).
+- A subdomain for localized traffic (for example, `fr.example.com`).
+- Dashboard access with API token support.
 
-- Decide the target locales you want to ship first.
-- Add a staging subdomain for the localized content.
-- Run a small crawl to verify segmentation and translations.
-- Publish when the preview looks right.
+## 15-minute launch path
 
-## What you will configure
+1. Create your site configuration:
+   - `POST /api/sites` (`sites.create`)
+2. Verify the customer domain:
+   - `POST /api/sites/{siteId}/domains/{domain}/verify` (`sites.domains.verify`)
+3. (If needed) provision managed hostname:
+   - `POST /api/sites/{siteId}/domains/{domain}/provision` (`sites.domains.provision`)
+4. Trigger the first crawl:
+   - `POST /api/sites/{siteId}/crawl` (`sites.crawl.trigger`)
+5. Trigger translation for one locale:
+   - `POST /api/sites/{siteId}/translate` (`sites.translate`)
+6. Enable serving for the locale:
+   - `POST /api/sites/{siteId}/locales/{targetLang}/serve` (`sites.locales.serve`)
+7. Validate live delivery:
+   - `GET /{path}` (localized serving surface)
 
-1. The primary domain for your source content.
-2. A CNAME target for localized traffic.
-3. A translation run that produces your first deployment.
+## First-launch acceptance checklist
 
-Once those are in place, WebLingo keeps translations fresh and your localized pages in sync.
+- Locale is reachable on your localized domain.
+- Navigation links and translated slugs resolve correctly.
+- Canonical + hreflang tags are present.
+- One full page render is visually validated.
+- A second crawl updates only changed content.
 
 ## Related docs
 

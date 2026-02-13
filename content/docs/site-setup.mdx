@@ -1,31 +1,48 @@
 export const metadata = {
   title: "Domain + CNAME Setup",
-  description: "Point traffic to WebLingo and keep your source site intact.",
+  description: "Connect domains safely and enable locale serving.",
   section: "Basics",
   order: 2,
 };
 
-# Domain + CNAME Setup
+WebLingo serves translated pages at the edge while your source site remains unchanged on its
+existing host.
 
-WebLingo serves translated pages from the edge, but your source site stays exactly where it is.
+## Recommended domain model
 
-## Recommended flow
+- Keep source content on the primary domain.
+- Route localized traffic through subdomains (for example, `fr.example.com`).
+- Map each locale to one serving target.
 
-1. Keep your primary domain on the existing host.
-2. Add a subdomain for localized content (for example, `fr.example.com`).
-3. Point the subdomain CNAME to the WebLingo target provided in the dashboard.
+## Setup workflow
 
-## Validation tips
+1. Verify ownership:
+   - `POST /api/sites/{siteId}/domains/{domain}/verify` (`sites.domains.verify`)
+2. Provision managed hostname (Cloudflare for SaaS accounts):
+   - `POST /api/sites/{siteId}/domains/{domain}/provision` (`sites.domains.provision`)
+3. Refresh validation/certificate status if needed:
+   - `POST /api/sites/{siteId}/domains/{domain}/refresh` (`sites.domains.refresh`)
+4. Enable locale serving:
+   - `POST /api/sites/{siteId}/locales/{targetLang}/serve` (`sites.locales.serve`)
 
-- Verify the CNAME before launching production traffic. WebLingo can issue a verification token
-  and DNS instructions for TXT/CNAME checks.
-- Keep an eye on SSL propagation (typically a few minutes).
-- Start with a single locale before expanding to more markets.
+## Validation checklist
 
-## Cloudflare for SaaS (optional)
+- DNS records resolve publicly.
+- Domain status is verified in dashboard/API.
+- TLS certificate status is healthy.
+- Locale serving is enabled and deployment is active.
+- `GET /{path}` returns localized content.
 
-If your account uses Cloudflare for SaaS provisioning, you can request a managed hostname and
-refresh its validation state from the dashboard.
+## Common rollout issues
+
+- Domain stays pending:
+  - re-check TXT/CNAME values and TTL.
+- Certificate status lags:
+  - call refresh endpoint and wait for propagation.
+- Localized route returns source content:
+  - ensure locale serving is enabled and a deployment exists.
+- Localized route returns not found:
+  - confirm the source page was crawled and published.
 
 ## Related docs
 

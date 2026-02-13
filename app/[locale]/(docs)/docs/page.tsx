@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { docSections } from "@/content/docs";
+import { getWorkflowPlaybooks } from "@/content/docs/workflow-playbooks";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function DocsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -15,6 +16,7 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
   }
 
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const workflowCount = getWorkflowPlaybooks().length;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
@@ -59,6 +61,36 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
             </div>
           </section>
         ))}
+
+        {workflowCount > 0 ? (
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Workflows</h2>
+              <p className="text-sm text-muted-foreground">
+                {workflowCount} generated playbook{workflowCount === 1 ? "" : "s"} linked to API
+                capabilities.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Link href={`/${locale}/docs/workflows`} className="group">
+                <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-xl">Workflow Playbooks</CardTitle>
+                    <CardDescription>
+                      Task-specific docs generated from synced backend playbooks.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                      Open workflows
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );
