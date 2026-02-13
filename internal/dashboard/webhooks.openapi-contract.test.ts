@@ -32,6 +32,8 @@ type OpenApiSpec = {
   };
 };
 
+const DEFAULT_OPENAPI_SPEC_PATH = "content/docs/_generated/backend-openapi.snapshot.json";
+
 function buildOpenApiDefinitionsIndex(spec: OpenApiSpec): Map<string, unknown> {
   const index = new Map<string, unknown>();
   const schemas = spec.components?.schemas ?? {};
@@ -48,16 +50,13 @@ function buildOpenApiDefinitionsIndex(spec: OpenApiSpec): Map<string, unknown> {
   return index;
 }
 
-function readOpenApiSpecFromEnv(): OpenApiSpec | null {
-  const envPath = process.env.WEBHOOKS_OPENAPI_JSON_PATH;
-  if (!envPath) {
-    return null;
-  }
-
-  const absPath = resolve(process.cwd(), envPath);
+function readOpenApiSpecFromEnv(): OpenApiSpec {
+  const configuredPath =
+    process.env.WEBHOOKS_OPENAPI_JSON_PATH?.trim() || DEFAULT_OPENAPI_SPEC_PATH;
+  const absPath = resolve(process.cwd(), configuredPath);
   if (!existsSync(absPath)) {
     throw new Error(
-      `[contracts] WEBHOOKS_OPENAPI_JSON_PATH is set but file is missing: ${absPath}`,
+      `[contracts] OpenAPI spec file is missing: ${absPath}. Run WEBLINGO_REPO_PATH=/path/to/weblingo pnpm docs:sync`,
     );
   }
 
@@ -341,10 +340,6 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
 
   it("matches the backend OpenAPI paths and response shapes", async () => {
     const spec = readOpenApiSpecFromEnv();
-    if (!spec) {
-      // This runs in CI only when the backend repo is checked out.
-      return;
-    }
     const definitionsIndex = buildOpenApiDefinitionsIndex(spec);
 
     vi.resetModules();

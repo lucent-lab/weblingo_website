@@ -1,0 +1,2006 @@
+{
+  "features": [
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "accounts.claim",
+        "path": "/accounts/claim"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "accounts",
+      "id": "api.accounts.claim",
+      "name": "Create/link an account for the authenticated Supabase user",
+      "playbooks": [
+        {
+          "anchor": "playbook-account-language-setup",
+          "id": "playbook-account-language-setup",
+          "title": "Playbook: Account & Language Setup"
+        }
+      ],
+      "routeIds": [
+        "accounts.claim"
+      ],
+      "stability": "GA",
+      "summary": "Create/link an account for the authenticated Supabase user",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "accounts.me",
+        "path": "/accounts/me"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "accounts",
+      "id": "api.accounts.me",
+      "name": "Get current account entitlements and quotas",
+      "playbooks": [
+        {
+          "anchor": "playbook-account-language-setup",
+          "id": "playbook-account-language-setup",
+          "title": "Playbook: Account & Language Setup"
+        }
+      ],
+      "routeIds": [
+        "accounts.me"
+      ],
+      "stability": "GA",
+      "summary": "Get current account entitlements and quotas",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "agency.customers.create",
+        "path": "/agency/customers"
+      },
+      "family": "api",
+      "flagKeys": [
+        "agencyActionsEnabled"
+      ],
+      "group": "agency",
+      "id": "api.agency.customers.create",
+      "name": "Create/invite a managed customer account",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "agency.customers.create"
+      ],
+      "stability": "GA",
+      "summary": "Create/invite a managed customer account",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "agency.customers.list",
+        "path": "/agency/customers"
+      },
+      "family": "api",
+      "flagKeys": [
+        "agencyActionsEnabled"
+      ],
+      "group": "agency",
+      "id": "api.agency.customers.list",
+      "name": "List agency-managed customer accounts",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "agency.customers.list"
+      ],
+      "stability": "GA",
+      "summary": "List agency-managed customer accounts",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "auth.token.mint",
+        "path": "/auth/token"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "auth",
+      "id": "api.auth.token.mint",
+      "name": "Exchange Supabase access token for webhooks JWT",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "auth.token.mint"
+      ],
+      "stability": "GA",
+      "summary": "Mints a short-lived WebLingo dashboard JWT from a Supabase access token. Agencies can scope the token to a managed customer account.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "dashboard.bootstrap",
+        "path": "/dashboard/bootstrap"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "dashboard",
+      "id": "api.dashboard.bootstrap",
+      "name": "Bootstrap dashboard auth + account context",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "dashboard.bootstrap"
+      ],
+      "stability": "GA",
+      "summary": "Bootstrap dashboard auth + account context",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PUT",
+        "operationId": "digests.subscription.upsert",
+        "path": "/digests/subscription"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "digests",
+      "id": "api.digests.subscription.upsert",
+      "name": "Upsert digest subscription",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "digests.subscription.upsert"
+      ],
+      "stability": "Beta",
+      "summary": "Creates or updates the account-level translation digest destination and frequency.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "none",
+        "method": "GET",
+        "operationId": "meta.languages.list",
+        "path": "/meta/languages"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "meta",
+      "id": "api.meta.languages.list",
+      "name": "List supported languages",
+      "playbooks": [
+        {
+          "anchor": "playbook-account-language-setup",
+          "id": "playbook-account-language-setup",
+          "title": "Playbook: Account & Language Setup"
+        }
+      ],
+      "routeIds": [
+        "meta.languages.list"
+      ],
+      "stability": "GA",
+      "summary": "List supported languages",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewToken",
+        "method": "POST",
+        "operationId": "previews.create",
+        "path": "/previews"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "previews",
+      "id": "api.previews.create",
+      "name": "Create try-now preview",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "previews.create"
+      ],
+      "stability": "Beta",
+      "summary": "Creates an ephemeral preview translation request and enqueues preview processing. Supports either public preview token auth or dashboard bearer auth.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewStatusToken",
+        "method": "GET",
+        "operationId": "previews.status",
+        "path": "/previews/:previewId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "previews",
+      "id": "api.previews.status",
+      "name": "Get preview status",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "previews.status"
+      ],
+      "stability": "Beta",
+      "summary": "Get preview status",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.crawl_translate.trigger",
+        "path": "/sites/:siteId/crawl-translate"
+      },
+      "family": "api",
+      "flagKeys": [
+        "crawlTriggerEnabled"
+      ],
+      "group": "sites.crawl_translate",
+      "id": "api.sites.crawl_translate.trigger",
+      "name": "Trigger crawl+translate for selected pages",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.crawl_translate.trigger"
+      ],
+      "stability": "GA",
+      "summary": "Trigger crawl+translate for selected pages",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.crawl.trigger",
+        "path": "/sites/:siteId/crawl"
+      },
+      "family": "api",
+      "flagKeys": [
+        "crawlTriggerEnabled"
+      ],
+      "group": "sites.crawl",
+      "id": "api.sites.crawl.trigger",
+      "name": "Trigger crawl",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.crawl.trigger"
+      ],
+      "stability": "GA",
+      "summary": "Trigger crawl",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.create",
+        "path": "/sites"
+      },
+      "family": "api",
+      "flagKeys": [
+        "siteCreateEnabled"
+      ],
+      "group": "sites.create",
+      "id": "api.sites.create",
+      "name": "Create site",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        },
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        }
+      ],
+      "routeIds": [
+        "sites.create"
+      ],
+      "stability": "GA",
+      "summary": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.deployments.list",
+        "path": "/sites/:siteId/deployments"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.deployments",
+      "id": "api.sites.deployments.list",
+      "name": "List deployments per locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "sites.deployments.list"
+      ],
+      "stability": "GA",
+      "summary": "List deployments per locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.dlq.list",
+        "path": "/sites/:siteId/dlq"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.dlq",
+      "id": "api.sites.dlq.list",
+      "name": "List DLQ messages for a site",
+      "playbooks": [
+        {
+          "anchor": "playbook-6-operations-and-incident-response",
+          "id": "playbook-6",
+          "title": "Playbook 6: Operations and Incident Response"
+        }
+      ],
+      "routeIds": [
+        "sites.dlq.list"
+      ],
+      "stability": "Internal",
+      "summary": "List DLQ messages for a site",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.dlq.replay",
+        "path": "/sites/:siteId/dlq/replay"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.dlq",
+      "id": "api.sites.dlq.replay",
+      "name": "Replay DLQ messages for a site",
+      "playbooks": [
+        {
+          "anchor": "playbook-6-operations-and-incident-response",
+          "id": "playbook-6",
+          "title": "Playbook 6: Operations and Incident Response"
+        }
+      ],
+      "routeIds": [
+        "sites.dlq.replay"
+      ],
+      "stability": "Internal",
+      "summary": "Replay DLQ messages for a site",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.domains.provision",
+        "path": "/sites/:siteId/domains/:domain/provision"
+      },
+      "family": "api",
+      "flagKeys": [
+        "domainVerifyEnabled"
+      ],
+      "group": "sites.domains",
+      "id": "api.sites.domains.provision",
+      "name": "Provision domain via Cloudflare for SaaS (CNAME + Custom Hostname)",
+      "playbooks": [
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        }
+      ],
+      "routeIds": [
+        "sites.domains.provision"
+      ],
+      "stability": "GA",
+      "summary": "Provision domain via Cloudflare for SaaS (CNAME + Custom Hostname)",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.domains.refresh",
+        "path": "/sites/:siteId/domains/:domain/refresh"
+      },
+      "family": "api",
+      "flagKeys": [
+        "domainVerifyEnabled"
+      ],
+      "group": "sites.domains",
+      "id": "api.sites.domains.refresh",
+      "name": "Refresh Cloudflare validation and resync domain status",
+      "playbooks": [
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        }
+      ],
+      "routeIds": [
+        "sites.domains.refresh"
+      ],
+      "stability": "GA",
+      "summary": "Refresh Cloudflare validation and resync domain status",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.domains.verify",
+        "path": "/sites/:siteId/domains/:domain/verify"
+      },
+      "family": "api",
+      "flagKeys": [
+        "domainVerifyEnabled"
+      ],
+      "group": "sites.domains",
+      "id": "api.sites.domains.verify",
+      "name": "Verify domain via TXT or test token",
+      "playbooks": [
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        }
+      ],
+      "routeIds": [
+        "sites.domains.verify"
+      ],
+      "stability": "GA",
+      "summary": "Verify domain via TXT or test token",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.get",
+        "path": "/sites/:siteId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.get",
+      "id": "api.sites.get",
+      "name": "Get site",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "sites.get"
+      ],
+      "stability": "GA",
+      "summary": "Get site",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.glossary.get",
+        "path": "/sites/:siteId/glossary"
+      },
+      "family": "api",
+      "flagKeys": [
+        "glossaryEnabled"
+      ],
+      "group": "sites.glossary",
+      "id": "api.sites.glossary.get",
+      "name": "Get glossary entries",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.glossary.get"
+      ],
+      "stability": "GA",
+      "summary": "Get glossary entries",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PUT",
+        "operationId": "sites.glossary.put",
+        "path": "/sites/:siteId/glossary"
+      },
+      "family": "api",
+      "flagKeys": [
+        "glossaryEnabled"
+      ],
+      "group": "sites.glossary",
+      "id": "api.sites.glossary.put",
+      "name": "Upsert glossary entries",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.glossary.put"
+      ],
+      "stability": "GA",
+      "summary": "Upsert glossary entries",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.list",
+        "path": "/sites"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.list",
+      "id": "api.sites.list",
+      "name": "List sites",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.list"
+      ],
+      "stability": "GA",
+      "summary": "List sites",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.locales.serve",
+        "path": "/sites/:siteId/locales/:targetLang/serve"
+      },
+      "family": "api",
+      "flagKeys": [
+        "serveAllowed",
+        "localeUpdateEnabled"
+      ],
+      "group": "sites.locales",
+      "id": "api.sites.locales.serve",
+      "name": "Enable or disable serving for a locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-serving-access-and-previews",
+          "id": "playbook-serving-access-and-previews",
+          "title": "Playbook: Serving Access and Previews"
+        },
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        },
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.locales.serve"
+      ],
+      "stability": "GA",
+      "summary": "Enable or disable serving for a locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PUT",
+        "operationId": "sites.locales.translationSummary.put",
+        "path": "/sites/:siteId/locales/:targetLang/translation-summary"
+      },
+      "family": "api",
+      "flagKeys": [
+        "localeUpdateEnabled"
+      ],
+      "group": "sites.locales",
+      "id": "api.sites.locales.translationSummary.put",
+      "name": "Configure translation summary notification frequency for a locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "sites.locales.translationSummary.put"
+      ],
+      "stability": "Beta",
+      "summary": "Configure translation summary notification frequency for a locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.overrides.create",
+        "path": "/sites/:siteId/overrides"
+      },
+      "family": "api",
+      "flagKeys": [
+        "overridesEnabled"
+      ],
+      "group": "sites.overrides",
+      "id": "api.sites.overrides.create",
+      "name": "Create segment override",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.overrides.create"
+      ],
+      "stability": "GA",
+      "summary": "Create segment override",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.pages.crawl",
+        "path": "/sites/:siteId/pages/:pageId/crawl"
+      },
+      "family": "api",
+      "flagKeys": [
+        "crawlTriggerEnabled"
+      ],
+      "group": "sites.pages",
+      "id": "api.sites.pages.crawl",
+      "name": "Trigger extract for a single page",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.pages.crawl"
+      ],
+      "stability": "GA",
+      "summary": "Trigger extract for a single page",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.pages.list",
+        "path": "/sites/:siteId/pages"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.pages",
+      "id": "api.sites.pages.list",
+      "name": "List discovered pages",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.pages.list"
+      ],
+      "stability": "GA",
+      "summary": "List discovered pages",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.pipeline.status.get",
+        "path": "/sites/:siteId/pipeline/status/:pageVersionId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.pipeline",
+      "id": "api.sites.pipeline.status.get",
+      "name": "Get pipeline status for a page version",
+      "playbooks": [
+        {
+          "anchor": "playbook-6-operations-and-incident-response",
+          "id": "playbook-6",
+          "title": "Playbook 6: Operations and Incident Response"
+        }
+      ],
+      "routeIds": [
+        "sites.pipeline.status.get"
+      ],
+      "stability": "Internal",
+      "summary": "Get pipeline status for a page version",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.slugs.set",
+        "path": "/sites/:siteId/slugs"
+      },
+      "family": "api",
+      "flagKeys": [
+        "slugEditEnabled"
+      ],
+      "group": "sites.slugs",
+      "id": "api.sites.slugs.set",
+      "name": "Set translated slug path",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.slugs.set"
+      ],
+      "stability": "GA",
+      "summary": "Set translated slug path",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.translate",
+        "path": "/sites/:siteId/translate"
+      },
+      "family": "api",
+      "flagKeys": [
+        "pipelineAllowed",
+        "renderEnabled",
+        "publishEnabled"
+      ],
+      "group": "sites.translate",
+      "id": "api.sites.translate",
+      "name": "Translate a site without recrawling",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.translate"
+      ],
+      "stability": "Beta",
+      "summary": "Starts a translation run using existing page snapshots without launching a new crawl.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.translationRuns.cancel",
+        "path": "/sites/:siteId/translation-runs/:runId/cancel"
+      },
+      "family": "api",
+      "flagKeys": [
+        "pipelineAllowed"
+      ],
+      "group": "sites.translationRuns",
+      "id": "api.sites.translationRuns.cancel",
+      "name": "Cancel a translation run",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.translationRuns.cancel"
+      ],
+      "stability": "Beta",
+      "summary": "Cancel a translation run",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.translationRuns.get",
+        "path": "/sites/:siteId/translation-runs/:runId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.translationRuns",
+      "id": "api.sites.translationRuns.get",
+      "name": "Get translation run status",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.translationRuns.get"
+      ],
+      "stability": "Beta",
+      "summary": "Get translation run status",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.translationRuns.resume",
+        "path": "/sites/:siteId/translation-runs/:runId/resume"
+      },
+      "family": "api",
+      "flagKeys": [
+        "pipelineAllowed"
+      ],
+      "group": "sites.translationRuns",
+      "id": "api.sites.translationRuns.resume",
+      "name": "Resume a translation run",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.translationRuns.resume"
+      ],
+      "stability": "Beta",
+      "summary": "Resume a translation run",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.translationSummaries.list",
+        "path": "/sites/:siteId/translation-summaries"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.translationSummaries",
+      "id": "api.sites.translationSummaries.list",
+      "name": "List translation summary rollups for dashboard charts",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "sites.translationSummaries.list"
+      ],
+      "stability": "Beta",
+      "summary": "List translation summary rollups for dashboard charts",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PATCH",
+        "operationId": "sites.update",
+        "path": "/sites/:siteId"
+      },
+      "family": "api",
+      "flagKeys": [
+        "localeUpdateEnabled"
+      ],
+      "group": "sites.update",
+      "id": "api.sites.update",
+      "name": "Update site",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.update"
+      ],
+      "stability": "GA",
+      "summary": "Update site",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": false,
+        "pro": false,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "agencyActionsEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.agencyActionsEnabled",
+      "name": "agencyActionsEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `agencyActionsEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "clientRuntimeToggleEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.clientRuntimeToggleEnabled",
+      "name": "clientRuntimeToggleEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `clientRuntimeToggleEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "crawlCaptureModeEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.crawlCaptureModeEnabled",
+      "name": "crawlCaptureModeEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `crawlCaptureModeEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "crawlTriggerEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.crawlTriggerEnabled",
+      "name": "crawlTriggerEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `crawlTriggerEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": false,
+        "free": false,
+        "pro": false,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "demoMode"
+      ],
+      "group": "entitlements",
+      "id": "flag.demoMode",
+      "name": "demoMode",
+      "stability": "Internal",
+      "summary": "Entitlement/config flag `demoMode` resolved from plan defaults plus account overrides.",
+      "userFacing": false
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "domainVerifyEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.domainVerifyEnabled",
+      "name": "domainVerifyEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `domainVerifyEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "editEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.editEnabled",
+      "name": "editEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `editEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": [],
+        "free": [],
+        "pro": [],
+        "starter": []
+      },
+      "family": "flags",
+      "flagKeys": [
+        "featurePreview"
+      ],
+      "group": "entitlements",
+      "id": "flag.featurePreview",
+      "name": "featurePreview",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `featurePreview` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "glossaryEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.glossaryEnabled",
+      "name": "glossaryEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `glossaryEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": false,
+        "free": false,
+        "pro": false,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.internalOpsEnabled",
+      "name": "internalOpsEnabled",
+      "stability": "Internal",
+      "summary": "Entitlement/config flag `internalOpsEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": false
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": false,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "localeUpdateEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.localeUpdateEnabled",
+      "name": "localeUpdateEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `localeUpdateEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": null,
+        "free": 1,
+        "pro": null,
+        "starter": null
+      },
+      "family": "flags",
+      "flagKeys": [
+        "maxDailyPageRecrawls"
+      ],
+      "group": "entitlements",
+      "id": "flag.maxDailyPageRecrawls",
+      "name": "maxDailyPageRecrawls",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `maxDailyPageRecrawls` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": null,
+        "free": 1,
+        "pro": null,
+        "starter": null
+      },
+      "family": "flags",
+      "flagKeys": [
+        "maxDailyRecrawls"
+      ],
+      "group": "entitlements",
+      "id": "flag.maxDailyRecrawls",
+      "name": "maxDailyRecrawls",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `maxDailyRecrawls` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": null,
+        "free": 5,
+        "pro": 2000,
+        "starter": 50
+      },
+      "family": "flags",
+      "flagKeys": [
+        "maxGlossarySources"
+      ],
+      "group": "entitlements",
+      "id": "flag.maxGlossarySources",
+      "name": "maxGlossarySources",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `maxGlossarySources` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": null,
+        "free": 1,
+        "pro": null,
+        "starter": null
+      },
+      "family": "flags",
+      "flagKeys": [
+        "maxLocales"
+      ],
+      "group": "entitlements",
+      "id": "flag.maxLocales",
+      "name": "maxLocales",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `maxLocales` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": null,
+        "free": 1,
+        "pro": null,
+        "starter": null
+      },
+      "family": "flags",
+      "flagKeys": [
+        "maxSites"
+      ],
+      "group": "entitlements",
+      "id": "flag.maxSites",
+      "name": "maxSites",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `maxSites` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": false,
+        "pro": true,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "overridesEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.overridesEnabled",
+      "name": "overridesEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `overridesEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "pipelineAllowed"
+      ],
+      "group": "entitlements",
+      "id": "flag.pipelineAllowed",
+      "name": "pipelineAllowed",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `pipelineAllowed` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "publishEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.publishEnabled",
+      "name": "publishEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `publishEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "renderEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.renderEnabled",
+      "name": "renderEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `renderEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "serveAllowed"
+      ],
+      "group": "entitlements",
+      "id": "flag.serveAllowed",
+      "name": "serveAllowed",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `serveAllowed` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "siteCreateEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.siteCreateEnabled",
+      "name": "siteCreateEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `siteCreateEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": false,
+        "pro": true,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "slugEditEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.slugEditEnabled",
+      "name": "slugEditEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `slugEditEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": false,
+        "pro": true,
+        "starter": false
+      },
+      "family": "flags",
+      "flagKeys": [
+        "tmWriteEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.tmWriteEnabled",
+      "name": "tmWriteEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `tmWriteEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "defaultsByPlan": {
+        "agency": true,
+        "free": true,
+        "pro": true,
+        "starter": true
+      },
+      "family": "flags",
+      "flagKeys": [
+        "translatableAttributesEnabled"
+      ],
+      "group": "entitlements",
+      "id": "flag.translatableAttributesEnabled",
+      "name": "translatableAttributesEnabled",
+      "stability": "GA",
+      "summary": "Entitlement/config flag `translatableAttributesEnabled` resolved from plan defaults plus account overrides.",
+      "userFacing": true
+    },
+    {
+      "family": "http",
+      "group": "crawl",
+      "id": "http.crawl.health",
+      "name": "Crawl worker health endpoint",
+      "stability": "Internal",
+      "summary": "Simple health response for crawl-worker.",
+      "surfaces": [
+        {
+          "method": "GET",
+          "path": "/",
+          "trigger": "http",
+          "worker": "crawl-worker"
+        }
+      ],
+      "userFacing": false
+    },
+    {
+      "family": "http",
+      "group": "crawl",
+      "id": "http.crawl.trigger",
+      "name": "Crawl trigger endpoint",
+      "stability": "Internal",
+      "summary": "Internal HTTP trigger for crawl queue fan-out.",
+      "surfaces": [
+        {
+          "auth": "Bearer CRAWL_TRIGGER_TOKEN or x-crawl-token",
+          "method": "POST",
+          "path": "/",
+          "trigger": "http",
+          "worker": "crawl-worker"
+        }
+      ],
+      "userFacing": false
+    },
+    {
+      "family": "http",
+      "group": "digest",
+      "id": "http.digest.scheduled",
+      "name": "Digest scheduled trigger",
+      "stability": "Internal",
+      "summary": "Scheduled digest summary generation and notify enqueue flow.",
+      "surfaces": [
+        {
+          "trigger": "scheduled",
+          "worker": "digest-worker"
+        }
+      ],
+      "userFacing": false
+    },
+    {
+      "family": "http",
+      "group": "digest",
+      "id": "http.digest.trigger",
+      "name": "Digest trigger endpoint",
+      "stability": "Internal",
+      "summary": "Authenticated HTTP trigger for digest summary generation.",
+      "surfaces": [
+        {
+          "auth": "Bearer DIGEST_TRIGGER_TOKEN or x-digest-trigger",
+          "method": "POST",
+          "path": "/",
+          "trigger": "http",
+          "worker": "digest-worker"
+        }
+      ],
+      "userFacing": false
+    },
+    {
+      "family": "http",
+      "group": "serve",
+      "id": "http.serve.dictionary",
+      "name": "Serve runtime dictionaries",
+      "stability": "Beta",
+      "summary": "Serve deployment-scoped runtime dictionary artifacts for hydration-safe runtime/proxy translation paths.",
+      "surfaces": [
+        {
+          "method": "GET|HEAD",
+          "path": "/.well-known/weblingo/dict/*",
+          "trigger": "http",
+          "worker": "serve-worker"
+        }
+      ],
+      "userFacing": false
+    },
+    {
+      "family": "http",
+      "group": "serve",
+      "id": "http.serve.localized",
+      "name": "Serve localized content",
+      "playbooks": [
+        {
+          "anchor": "playbook-serving-access-and-previews",
+          "id": "playbook-serving-access-and-previews",
+          "title": "Playbook: Serving Access and Previews"
+        }
+      ],
+      "stability": "GA",
+      "summary": "DB-free localized page serving via KV deployment pointers and R2 artifacts.",
+      "surfaces": [
+        {
+          "auth": "None",
+          "method": "GET|HEAD",
+          "path": "/{path}",
+          "trigger": "http",
+          "worker": "serve-worker"
+        }
+      ],
+      "userFacing": true
+    },
+    {
+      "family": "http",
+      "group": "serve",
+      "id": "http.serve.preview",
+      "name": "Serve preview pages",
+      "playbooks": [
+        {
+          "anchor": "playbook-serving-access-and-previews",
+          "id": "playbook-serving-access-and-previews",
+          "title": "Playbook: Serving Access and Previews"
+        }
+      ],
+      "stability": "Beta",
+      "summary": "Serve ephemeral preview artifacts from R2 with strict preview TTL semantics.",
+      "surfaces": [
+        {
+          "auth": "None",
+          "method": "GET|HEAD",
+          "path": "/_preview/{previewId}",
+          "trigger": "http",
+          "worker": "serve-worker"
+        }
+      ],
+      "userFacing": true
+    },
+    {
+      "family": "pipeline",
+      "group": "crawl",
+      "id": "pipeline.CrawlRunQueuePayload",
+      "name": "CrawlRunQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"crawl_run\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "crawl_id",
+            "optional": false,
+            "type": "CrawlRunId"
+          },
+          {
+            "name": "force",
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "target_langs",
+            "optional": true,
+            "type": "LangTag[]"
+          }
+        ],
+        "interfaceName": "CrawlRunQueuePayload",
+        "kindLiteral": "crawl_run"
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for crawl worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "crawl",
+      "id": "pipeline.CrawlSiteQueuePayload",
+      "name": "CrawlSiteQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"crawl\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "source_url",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "force",
+            "optional": true,
+            "type": "boolean"
+          }
+        ],
+        "interfaceName": "CrawlSiteQueuePayload",
+        "kindLiteral": "crawl"
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for crawl worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "notify",
+      "id": "pipeline.NotifyTranslationRunQueuePayload",
+      "name": "NotifyTranslationRunQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "type",
+            "optional": false,
+            "type": "\"translation.completed\" | \"translation.failed\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "translation_run_id",
+            "optional": false,
+            "type": "TranslationRunId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "deployment_id",
+            "optional": false,
+            "type": "DeploymentId"
+          },
+          {
+            "name": "pages_total",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "pages_completed",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "pages_failed",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "finished_at",
+            "optional": false,
+            "type": "string"
+          }
+        ],
+        "interfaceName": "NotifyTranslationRunQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for notify worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "notify",
+      "id": "pipeline.NotifyTranslationSummaryQueuePayload",
+      "name": "NotifyTranslationSummaryQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "type",
+            "optional": false,
+            "type": "\"translation.summary\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "period",
+            "optional": false,
+            "type": "\"daily\" | \"weekly\""
+          },
+          {
+            "name": "range_start",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "range_end",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "pages_translated",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "pages_updated",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "last_deployment_at",
+            "optional": true,
+            "type": "string | null"
+          }
+        ],
+        "interfaceName": "NotifyTranslationSummaryQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for notify worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "preview-email",
+      "id": "pipeline.PreviewEmailQueuePayload",
+      "name": "PreviewEmailQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "preview_id",
+            "optional": false,
+            "type": "PreviewRequestId"
+          }
+        ],
+        "interfaceName": "PreviewEmailQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for preview-email worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "preview",
+      "id": "pipeline.PreviewQueuePayload",
+      "name": "PreviewQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "preview_id",
+            "optional": false,
+            "type": "PreviewRequestId"
+          },
+          {
+            "name": "parent_request_id",
+            "optional": false,
+            "type": "string | null"
+          },
+          {
+            "name": "preview_request_url",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "enqueued_at_ms",
+            "optional": true,
+            "type": "number"
+          }
+        ],
+        "interfaceName": "PreviewQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for preview worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "publish",
+      "id": "pipeline.PublishFinalizeQueuePayload",
+      "name": "PublishFinalizeQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"finalize\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "translation_run_id",
+            "optional": false,
+            "type": "TranslationRunId"
+          }
+        ],
+        "interfaceName": "PublishFinalizeQueuePayload",
+        "kindLiteral": "finalize"
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for publish worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "publish",
+      "id": "pipeline.PublishPageQueuePayload",
+      "name": "PublishPageQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"page\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "page_version_id",
+            "optional": false,
+            "type": "PageVersionId"
+          },
+          {
+            "name": "source_path",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "target_path",
+            "optional": true,
+            "type": "string | null"
+          },
+          {
+            "name": "timestamp",
+            "optional": true,
+            "type": "number"
+          },
+          {
+            "name": "translation_run_id",
+            "optional": true,
+            "type": "TranslationRunId"
+          }
+        ],
+        "interfaceName": "PublishPageQueuePayload",
+        "kindLiteral": "page"
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for publish worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "render",
+      "id": "pipeline.RenderQueuePayload",
+      "name": "RenderQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "page_version_id",
+            "optional": false,
+            "type": "PageVersionId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "translation_run_id",
+            "optional": true,
+            "type": "TranslationRunId"
+          }
+        ],
+        "interfaceName": "RenderQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for render worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "translate",
+      "id": "pipeline.TranslateQueuePayload",
+      "name": "TranslateQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "page_version_id",
+            "optional": false,
+            "type": "PageVersionId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "translation_run_id",
+            "optional": true,
+            "type": "TranslationRunId"
+          }
+        ],
+        "interfaceName": "TranslateQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for translate worker messages.",
+      "userFacing": false
+    }
+  ],
+  "generatedFrom": {
+    "featureFlags": "packages/common/src/feature-flags.ts",
+    "pipelineTypes": "packages/common/src/pipeline-types.ts",
+    "playbooks": "docs/reference/API_PLAYBOOKS.md",
+    "routes": "workers/webhooks-worker/src/routes.ts"
+  },
+  "policy": {
+    "internalStability": [
+      "Internal"
+    ],
+    "userFacingStability": [
+      "GA",
+      "Beta"
+    ]
+  }
+}

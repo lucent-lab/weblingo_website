@@ -94,6 +94,19 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
 5. Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
 
+## Backend Docs Sync
+
+Website API docs use backend-synced snapshots under `content/docs/_generated`.
+
+- Refresh snapshots:
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync`
+- Verify snapshots are fresh (fails fast when missing/stale):
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check`
+- Contract/doc coverage tests:
+  - `pnpm test:contracts`
+
+`WEBLINGO_REPO_PATH` is required for sync commands. There is no fallback path.
+
 ## Stripe Setup
 
 1. Create three recurring prices for the Launch, Growth, and Enterprise plans. Name the price IDs so they include the site identifier, e.g. `price_weblingo_growth_monthly`.
