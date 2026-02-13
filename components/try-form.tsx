@@ -36,8 +36,17 @@ type TryFormProps = {
 };
 
 type PreviewStatus = "idle" | "creating" | "pending" | "processing" | "ready" | "failed";
+type PendingPreviewState = {
+  previewId: string;
+  statusToken: string;
+  requestKey: string;
+  updatedAt: number;
+};
 
 const emailSchema = z.email();
+const PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-preview:v1";
+const POLL_FALLBACK_INTERVAL_MS = 2_000;
+const POLL_FALLBACK_TIMEOUT_MS = 60_000;
 const PREVIEW_STATUSES: PreviewStatus[] = [
   "idle",
   "creating",
@@ -77,6 +86,54 @@ function isPreviewStatus(value: unknown): value is PreviewStatus {
   return typeof value === "string" && PREVIEW_STATUSES.includes(value as PreviewStatus);
 }
 
+function readPendingPreviewState(): PendingPreviewState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const raw = window.localStorage.getItem(PENDING_PREVIEW_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (
+      typeof parsed.previewId === "string" &&
+      typeof parsed.statusToken === "string" &&
+      typeof parsed.requestKey === "string" &&
+      typeof parsed.updatedAt === "number"
+    ) {
+      return {
+        previewId: parsed.previewId,
+        statusToken: parsed.statusToken,
+        requestKey: parsed.requestKey,
+        updatedAt: parsed.updatedAt,
+      };
+    }
+  } catch {
+    // Ignore malformed localStorage payloads.
+  }
+  window.localStorage.removeItem(PENDING_PREVIEW_STORAGE_KEY);
+  return null;
+}
+
+function writePendingPreviewState(state: PendingPreviewState): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(PENDING_PREVIEW_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore localStorage write failures (private mode, quota, etc.).
+  }
+}
+
+function clearPendingPreviewState(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.removeItem(PENDING_PREVIEW_STORAGE_KEY);
+}
+
 export function TryForm({
   locale,
   messages,
@@ -107,12 +164,15 @@ export function TryForm({
   const [checkingStatus, setCheckingStatus] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const statusPollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const statusPollStartedAtRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastStageRef = useRef<PreviewStage | null>(null);
   const timedOutRef = useRef(false);
   const submittedEmailRef = useRef("");
   const statusTokenRef = useRef<string | null>(null);
+  const resumeAttemptedRef = useRef(false);
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -159,6 +219,9 @@ export function TryForm({
       if (idleTimerRef.current) {
         clearInterval(idleTimerRef.current);
       }
+      if (statusPollTimerRef.current) {
+        clearInterval(statusPollTimerRef.current);
+      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -171,6 +234,12 @@ export function TryForm({
   useEffect(() => {
     setHasCopied(false);
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (status === "ready" || status === "failed") {
+      clearPendingPreviewState();
+    }
+  }, [status]);
 
   function isValidHttpUrl(candidate: string) {
     try {
@@ -296,6 +365,125 @@ export function TryForm({
       clearInterval(idleTimerRef.current);
       idleTimerRef.current = null;
     }
+    if (statusPollTimerRef.current) {
+      clearInterval(statusPollTimerRef.current);
+      statusPollTimerRef.current = null;
+    }
+    statusPollStartedAtRef.current = null;
+  }
+
+  async function handleCheckStatus(previewId?: string): Promise<boolean | null> {
+    const id = previewId ?? lastPreviewId;
+    if (!id || checkingStatus) return null;
+    const statusToken = statusTokenRef.current;
+    if (!statusToken) {
+      setError(t("try.error.default") || "Preview status token missing. Please try again.");
+      setStatus("failed");
+      return true;
+    }
+    if (previewId) {
+      setLastPreviewId(previewId);
+    }
+
+    setCheckingStatus(true);
+    try {
+      const response = await fetch(`/api/previews/${id}?token=${encodeURIComponent(statusToken)}`);
+      const bodyText = await response.text();
+      let payload: Record<string, unknown> | null = null;
+      if (bodyText) {
+        try {
+          payload = JSON.parse(bodyText) as Record<string, unknown>;
+        } catch {
+          payload = null;
+        }
+      }
+      if (!response.ok) {
+        const decision = resolveStatusCheckFailure(response.status, payload);
+        if (decision === "processing") {
+          setProgress(t("try.status.stillProcessing"));
+          return false;
+        }
+        const reason =
+          (payload && typeof payload.error === "string" ? payload.error : "") ||
+          (payload && typeof payload.message === "string" ? payload.message : "") ||
+          t("try.error.default");
+        applyErrorFromPayload(payload ?? {}, reason);
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      }
+      if (!payload || typeof payload !== "object") {
+        setProgress(t("try.status.stillProcessing"));
+        return false;
+      }
+      const data = payload as Record<string, unknown>;
+
+      if (data.status === "ready") {
+        if (typeof data.previewUrl === "string") {
+          setPreviewUrl(data.previewUrl);
+        }
+        setStatus("ready");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      } else if (data.status === "failed") {
+        applyErrorFromPayload(data, t("try.error.default"));
+        setStatus("failed");
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
+        return true;
+      } else {
+        // Still processing - update progress text
+        const stage = isPreviewStage(data.stage) ? data.stage : null;
+        const stageMessage = stage ? resolveStageMessage(stage) : null;
+        setProgress(stageMessage || t("try.status.stillProcessing"));
+        return false;
+      }
+    } catch {
+      setProgress(t("try.status.stillProcessing"));
+      return false;
+    } finally {
+      setCheckingStatus(false);
+    }
+  }
+
+  function startPollingFallback(id: string) {
+    closeEventSource();
+    setStatus("processing");
+    setProgress(t("try.status.processing"));
+    statusPollStartedAtRef.current = Date.now();
+
+    const poll = async () => {
+      const terminal = await handleCheckStatus(id);
+      if (terminal) {
+        closeEventSource();
+        return;
+      }
+      const startedAt = statusPollStartedAtRef.current;
+      if (!startedAt) {
+        return;
+      }
+      if (Date.now() - startedAt < POLL_FALLBACK_TIMEOUT_MS) {
+        return;
+      }
+
+      timedOutRef.current = true;
+      setTimedOut(true);
+      setLastPreviewId(id);
+      setProgress(null);
+      if (showEmailField && submittedEmailRef.current) {
+        setTimedOutWithEmail(true);
+      } else {
+        setTimedOutWithEmail(false);
+      }
+      closeEventSource();
+    };
+
+    void poll();
+    statusPollTimerRef.current = setInterval(() => {
+      void poll();
+    }, POLL_FALLBACK_INTERVAL_MS);
   }
 
   function connectSSE(id: string, statusToken: string) {
@@ -496,6 +684,49 @@ export function TryForm({
     });
   }
 
+  function persistPendingPreview(id: string, statusToken: string, requestKey: string) {
+    writePendingPreviewState({
+      previewId: id,
+      statusToken,
+      requestKey,
+      updatedAt: Date.now(),
+    });
+  }
+
+  function connectStatusUpdates(id: string, statusToken: string, requestKey: string) {
+    setLastPreviewId(id);
+    statusTokenRef.current = statusToken;
+    persistPendingPreview(id, statusToken, requestKey);
+
+    if (typeof window === "undefined" || typeof window.EventSource !== "function") {
+      startPollingFallback(id);
+      return;
+    }
+    connectSSE(id, statusToken);
+  }
+
+  useEffect(() => {
+    if (resumeAttemptedRef.current) {
+      return;
+    }
+    resumeAttemptedRef.current = true;
+    const pending = readPendingPreviewState();
+    if (!pending) {
+      return;
+    }
+
+    timedOutRef.current = false;
+    setTimedOut(false);
+    setTimedOutWithEmail(false);
+    setError(null);
+    setErrorCode(null);
+    setErrorStage(null);
+    setPreviewUrl(null);
+    setLastRequestKey(pending.requestKey);
+
+    connectStatusUpdates(pending.previewId, pending.statusToken, pending.requestKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleGenerate() {
     if (!trimmedUrl || disabled) return;
 
@@ -548,6 +779,7 @@ export function TryForm({
       statusTokenRef.current = null;
       lastStageRef.current = null;
       closeEventSource();
+      clearPendingPreviewState();
       setLastRequestKey(requestKey);
 
       const controller = new AbortController();
@@ -608,8 +840,7 @@ export function TryForm({
         if (!statusToken) {
           throw new Error("Preview was created but no status token was returned.");
         }
-        statusTokenRef.current = statusToken;
-        connectSSE(id, statusToken);
+        connectStatusUpdates(id, statusToken, requestKey);
       } finally {
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
@@ -635,82 +866,6 @@ export function TryForm({
       }, 2000);
     } catch {
       setHasCopied(false);
-    }
-  }
-
-  async function handleCheckStatus(previewId?: string): Promise<boolean | null> {
-    const id = previewId ?? lastPreviewId;
-    if (!id || checkingStatus) return null;
-    const statusToken = statusTokenRef.current;
-    if (!statusToken) {
-      setError(t("try.error.default") || "Preview status token missing. Please try again.");
-      setStatus("failed");
-      return true;
-    }
-    if (previewId) {
-      setLastPreviewId(previewId);
-    }
-
-    setCheckingStatus(true);
-    try {
-      const response = await fetch(`/api/previews/${id}?token=${encodeURIComponent(statusToken)}`);
-      const bodyText = await response.text();
-      let payload: Record<string, unknown> | null = null;
-      if (bodyText) {
-        try {
-          payload = JSON.parse(bodyText) as Record<string, unknown>;
-        } catch {
-          payload = null;
-        }
-      }
-      if (!response.ok) {
-        const decision = resolveStatusCheckFailure(response.status, payload);
-        if (decision === "processing") {
-          setProgress(t("try.status.stillProcessing"));
-          return false;
-        }
-        const reason =
-          (payload && typeof payload.error === "string" ? payload.error : "") ||
-          (payload && typeof payload.message === "string" ? payload.message : "") ||
-          t("try.error.default");
-        applyErrorFromPayload(payload ?? {}, reason);
-        setStatus("failed");
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
-      }
-      if (!payload || typeof payload !== "object") {
-        setProgress(t("try.status.stillProcessing"));
-        return false;
-      }
-      const data = payload as Record<string, unknown>;
-
-      if (data.status === "ready") {
-        if (typeof data.previewUrl === "string") {
-          setPreviewUrl(data.previewUrl);
-        }
-        setStatus("ready");
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
-      } else if (data.status === "failed") {
-        applyErrorFromPayload(data, t("try.error.default"));
-        setStatus("failed");
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
-      } else {
-        // Still processing - update progress text
-        const stage = isPreviewStage(data.stage) ? data.stage : null;
-        const stageMessage = stage ? resolveStageMessage(stage) : null;
-        setProgress(stageMessage || t("try.status.stillProcessing"));
-        return false;
-      }
-    } catch {
-      setProgress(t("try.status.stillProcessing"));
-      return false;
-    } finally {
-      setCheckingStatus(false);
     }
   }
 
