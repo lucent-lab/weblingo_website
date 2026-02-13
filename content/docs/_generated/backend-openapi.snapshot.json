@@ -1317,7 +1317,7 @@
         "properties": {
           "sites": {
             "items": {
-              "$ref": "#/components/schemas/Site"
+              "$ref": "#/components/schemas/SiteSummary"
             },
             "type": "array"
           }
@@ -2244,6 +2244,86 @@
         "required": [
           "id",
           "sourcePath"
+        ],
+        "type": "object"
+      },
+      "SiteSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "domainCount": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "localeCount": {
+            "type": "number"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "serveEnabledLocaleCount": {
+            "type": "number"
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "verifiedDomainCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "sourceUrl",
+          "status",
+          "servingMode",
+          "maxLocales",
+          "sourceLang",
+          "targetLangs",
+          "localeCount",
+          "serveEnabledLocaleCount",
+          "domainCount",
+          "verifiedDomainCount"
         ],
         "type": "object"
       },
@@ -3747,25 +3827,19 @@
                   "sites": [
                     {
                       "accountId": "string",
-                      "domains": [
-                        {
-                          "domain": "string",
-                          "status": "pending",
-                          "verificationToken": "string"
-                        }
-                      ],
+                      "domainCount": 1,
                       "id": "string",
-                      "locales": [
-                        {
-                          "serveEnabled": true,
-                          "sourceLang": "string",
-                          "targetLang": "string"
-                        }
-                      ],
+                      "localeCount": 1,
                       "maxLocales": 1,
+                      "serveEnabledLocaleCount": 1,
                       "servingMode": "strict",
+                      "sourceLang": "string",
                       "sourceUrl": "string",
-                      "status": "active"
+                      "status": "active",
+                      "targetLangs": [
+                        "string"
+                      ],
+                      "verifiedDomainCount": 1
                     }
                   ]
                 },
