@@ -1280,10 +1280,35 @@
               "$ref": "#/components/schemas/SitePageSummary"
             },
             "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": false,
+            "properties": {
+              "hasMore": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "offset": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "limit",
+              "offset",
+              "total",
+              "hasMore"
+            ],
+            "type": "object"
           }
         },
         "required": [
-          "pages"
+          "pages",
+          "pagination"
         ],
         "type": "object"
       },
@@ -5398,6 +5423,29 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Maximum number of pages to return (1-200). Defaults to 25.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of pages to skip before returning results. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -5410,7 +5458,13 @@
                       "id": "string",
                       "sourcePath": "string"
                     }
-                  ]
+                  ],
+                  "pagination": {
+                    "hasMore": true,
+                    "limit": 1,
+                    "offset": 1,
+                    "total": 1
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ListSitePagesResponse"

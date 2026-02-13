@@ -37,7 +37,7 @@ export async function setWorkspaceAction(formData: FormData) {
   }
 
   if (!allowedIds.has(subjectAccountId)) {
-    redirect("/dashboard?error=Unsupported workspace selection.");
+    redirect("/dashboard");
   }
 
   const cookieStore = await cookies();
