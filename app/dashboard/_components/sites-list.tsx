@@ -16,11 +16,7 @@ export function SitesList({ sites }: { sites: SiteSummary[] }) {
                 <CardTitle className="text-lg font-semibold">{site.sourceUrl}</CardTitle>
                 <StatusBadge status={site.status} />
               </div>
-              <CardDescription>
-                {site.sourceLang
-                  ? `${site.sourceLang}→${site.targetLangs.join(" · ")}`
-                  : site.targetLangs.join(" · ")}
-              </CardDescription>
+              <CardDescription>{renderLanguageDescription(site)}</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">
@@ -57,4 +53,14 @@ function StatusBadge({ status }: { status: SiteSummary["status"] }) {
   }
 
   return <Badge variant="outline">Inactive</Badge>;
+}
+
+function renderLanguageDescription(site: SiteSummary): string {
+  if (site.targetLangs.length > 0) {
+    return site.sourceLang
+      ? `${site.sourceLang}→${site.targetLangs.join(" · ")}`
+      : site.targetLangs.join(" · ");
+  }
+
+  return site.sourceLang ?? "No target languages";
 }

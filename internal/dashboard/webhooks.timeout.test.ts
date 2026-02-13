@@ -61,6 +61,7 @@ describe("webhooks request wrapper", () => {
   });
 
   it("applies endpoint timeout profiles for list/detail/auth requests", async () => {
+    const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
     const fetchSpy = vi
       .fn()
@@ -121,7 +122,7 @@ describe("webhooks request wrapper", () => {
         return new Response(
           JSON.stringify({
             token: "wb-token",
-            expiresAt: "2026-02-13T00:00:00.000Z",
+            expiresAt: tokenExpiresAt,
             entitlements: { planType: "pro", planStatus: "active" },
             actorAccountId: "acct-1",
             subjectAccountId: "acct-1",

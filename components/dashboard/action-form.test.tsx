@@ -34,10 +34,7 @@ vi.mock("react", async () => {
 
 import { ActionForm } from "./action-form";
 
-function renderActionForm(extraProps?: {
-  refreshOnSuccess?: boolean;
-  meta?: Record<string, unknown>;
-}) {
+function renderActionForm(extraProps?: { refreshOnSuccess?: boolean }) {
   const action = async (
     prev: ActionResponse | undefined,
     formData: FormData,
