@@ -445,7 +445,8 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       expect(openApiSchema).toBeTruthy();
       const paths = uniquePaths(collectZodPaths(schema));
       for (const path of paths) {
-        expect(openApiHasPath(spec, definitionsIndex, openApiSchema, path)).toBe(true);
+        const hasPath = openApiHasPath(spec, definitionsIndex, openApiSchema, path);
+        expect(hasPath, `[contracts] ${name} missing OpenAPI path: ${path.join(".")}`).toBe(true);
       }
     }
   });

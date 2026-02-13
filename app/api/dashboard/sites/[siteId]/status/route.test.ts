@@ -38,6 +38,7 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   webhooksAuth: {
     token: "token",
     expiresAt: "2025-01-01T00:00:00Z",
+    subjectAccountId,
     refresh: async () => "token",
   },
   account: null,
