@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { docSections, docs, getDocBySlug } from "@/content/docs";
+import { cn } from "@/lib/utils";
 import { env } from "@internal/core";
 import { i18nConfig, normalizeLocale } from "@internal/i18n";
 
@@ -40,9 +41,10 @@ export default async function DocPage({
   const prev = currentIndex > 0 ? orderedDocs[currentIndex - 1] : null;
   const next = currentIndex >= 0 ? (orderedDocs[currentIndex + 1] ?? null) : null;
   const DocComponent = doc.component;
+  const isApiReference = doc.slug.join("/") === "api-reference";
 
   return (
-    <article className="mx-auto w-full max-w-3xl pb-16">
+    <article className={cn("mx-auto w-full pb-16", isApiReference ? "max-w-none" : "max-w-3xl")}>
       <header className="space-y-4 pb-8">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {doc.section}
@@ -57,26 +59,28 @@ export default async function DocPage({
 
       <DocComponent />
 
-      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
-        {prev ? (
-          <Button asChild variant="outline" className="gap-2">
-            <Link href={`/${locale}/docs/${prev.slug.join("/")}`}>
-              <ArrowLeft className="h-4 w-4" />
-              {prev.title}
-            </Link>
-          </Button>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <Button asChild variant="outline" className="gap-2">
-            <Link href={`/${locale}/docs/${next.slug.join("/")}`}>
-              {next.title}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        ) : null}
-      </div>
+      {isApiReference ? null : (
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+          {prev ? (
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={`/${locale}/docs/${prev.slug.join("/")}`}>
+                <ArrowLeft className="h-4 w-4" />
+                {prev.title}
+              </Link>
+            </Button>
+          ) : (
+            <span />
+          )}
+          {next ? (
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={`/${locale}/docs/${next.slug.join("/")}`}>
+                {next.title}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      )}
     </article>
   );
 }

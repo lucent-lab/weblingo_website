@@ -42,6 +42,7 @@ Thumbs.db
 coverage/
 .nyc_output/
 test-results/
+.tmp/
 
 .vercel/
 *.log

@@ -1,38 +1,56 @@
 export const metadata = {
   title: "Translation Pipeline",
-  description: "Understand how crawls become localized deployments.",
+  description: "Understand how crawl, translate, render, and serving fit together.",
   section: "Pipeline",
   order: 1,
 };
 
-# Translation Pipeline
+Every rollout follows the same deterministic flow so you can re-run safely and track status.
 
-Every translation run follows a deterministic flow so you can reproduce results. Depending on the
-request, WebLingo can crawl first or translate existing snapshots without recrawling.
+## Pipeline stages
 
-## 1. Crawl (when needed)
+1. Crawl source content
+   - `POST /api/sites/{siteId}/crawl` (`sites.crawl.trigger`)
+   - Optional selected-pages flow: `POST /api/sites/{siteId}/crawl-translate`
+     (`sites.crawl_translate.trigger`)
+2. Translate snapshots
+   - `POST /api/sites/{siteId}/translate` (`sites.translate`)
+3. Render and publish
+   - Artifacts are rendered and deployed per locale.
+4. Serve from edge
+   - Localized: `GET /{path}`
+   - Previews: `GET /_preview/{previewId}`
 
-We fetch your source HTML, respect `robots.txt`, and capture snapshots for processing.
+## Monitor and control runs
 
-## 2. Segment + translate
+- Check run status:
+  - `GET /api/sites/{siteId}/translation-runs/{runId}` (`sites.translationRuns.get`)
+- Pause or recover a run:
+  - `POST /api/sites/{siteId}/translation-runs/{runId}/cancel`
+    (`sites.translationRuns.cancel`)
+  - `POST /api/sites/{siteId}/translation-runs/{runId}/resume`
+    (`sites.translationRuns.resume`)
+- List pages and deployments:
+  - `GET /api/sites/{siteId}/pages` (`sites.pages.list`)
+  - `GET /api/sites/{siteId}/deployments` (`sites.deployments.list`)
 
-HTML is segmented into stable chunks, then translated with precedence rules for overrides,
-glossaries, and translation memory.
+## Quality controls
 
-## 3. Render + publish
+- Glossary:
+  - `GET /api/sites/{siteId}/glossary` (`sites.glossary.get`)
+  - `PUT /api/sites/{siteId}/glossary` (`sites.glossary.put`)
+- Overrides:
+  - `POST /api/sites/{siteId}/overrides` (`sites.overrides.create`)
+- Slugs:
+  - `POST /api/sites/{siteId}/slugs` (`sites.slugs.set`)
 
-Translated content is applied to the original snapshot and published to the edge with localized
-SEO metadata.
+## Summary digests (optional)
 
-## 3b. Translate without recrawl (optional)
-
-If you already have fresh snapshots, you can trigger translation without a new crawl. This keeps
-the pipeline deterministic while skipping the fetch step.
-
-## 4. Monitor
-
-When your source changes, WebLingo detects diffs and only re-translates what changed. Translation
-runs expose status updates and can be cancelled or resumed when needed.
+- Locale summary frequency:
+  - `PUT /api/sites/{siteId}/locales/{targetLang}/translation-summary`
+    (`sites.locales.translationSummary.put`)
+- Read range summaries:
+  - `GET /api/sites/{siteId}/translation-summaries` (`sites.translationSummaries.list`)
 
 ## Related docs
 

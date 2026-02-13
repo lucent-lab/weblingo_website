@@ -1,0 +1,6262 @@
+{
+  "components": {
+    "schemas": {
+      "AccountClaimResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "planType": {
+            "$ref": "#/components/schemas/AccountPlanType"
+          },
+          "status": {
+            "enum": [
+              "created",
+              "exists"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "status",
+          "planType",
+          "planStatus"
+        ],
+        "type": "object"
+      },
+      "AccountMeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "dailyCrawlUsage": {
+            "$ref": "#/components/schemas/DailyCrawlUsage"
+          },
+          "featureFlags": {
+            "$ref": "#/components/schemas/ResolvedFeatureFlags"
+          },
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "planType": {
+            "$ref": "#/components/schemas/AccountPlanType"
+          },
+          "quotas": {
+            "$ref": "#/components/schemas/AccountQuotas"
+          }
+        },
+        "required": [
+          "accountId",
+          "planType",
+          "planStatus",
+          "featureFlags",
+          "dailyCrawlUsage",
+          "quotas"
+        ],
+        "type": "object"
+      },
+      "AccountPlanStatus": {
+        "$ref": "#/components/schemas/PlanStatus"
+      },
+      "AccountPlanType": {
+        "$ref": "#/components/schemas/PlanType"
+      },
+      "AccountQuotas": {
+        "additionalProperties": false,
+        "properties": {
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "proQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "starterQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "maxSites",
+          "starterQuota",
+          "proQuota"
+        ],
+        "type": "object"
+      },
+      "AgencyCustomer": {
+        "additionalProperties": false,
+        "properties": {
+          "activeSiteCount": {
+            "type": "number"
+          },
+          "agencyAccountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerAccountId": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerPlan": {
+            "$ref": "#/components/schemas/AgencyCustomerPlan"
+          },
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgencyCustomerStatus"
+          }
+        },
+        "required": [
+          "agencyAccountId",
+          "customerAccountId",
+          "customerPlan",
+          "planStatus",
+          "status",
+          "activeSiteCount"
+        ],
+        "type": "object"
+      },
+      "AgencyCustomerPlan": {
+        "enum": [
+          "starter",
+          "pro"
+        ],
+        "type": "string"
+      },
+      "AgencyCustomersSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "totalActiveSites": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "totalActiveSites",
+          "maxSites"
+        ],
+        "type": "object"
+      },
+      "AgencyCustomerStatus": {
+        "enum": [
+          "active",
+          "suspended"
+        ],
+        "type": "string"
+      },
+      "AuthTokenRequest": {
+        "additionalProperties": false,
+        "example": {
+          "subjectAccountId": "00000000-0000-0000-0000-000000000001"
+        },
+        "examples": [
+          {
+            "subjectAccountId": "00000000-0000-0000-0000-000000000001"
+          }
+        ],
+        "properties": {
+          "subjectAccountId": {
+            "description": "Optional: agencies can request a token scoped to a customer account they manage. When omitted, the token is minted for the authenticated Supabase user (self).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AuthTokenResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actorAccountId": {
+            "type": "string"
+          },
+          "entitlements": {
+            "$ref": "#/components/schemas/Entitlements"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "subjectAccountId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "entitlements",
+          "actorAccountId",
+          "subjectAccountId"
+        ],
+        "type": "object"
+      },
+      "CancelTranslationRunResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/TranslationRun"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "type": "object"
+      },
+      "CloudflareHostnameState": {
+        "additionalProperties": false,
+        "properties": {
+          "certStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHostnameId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorMessages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hostnameStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSyncedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "customHostnameId",
+          "hostnameStatus",
+          "certStatus",
+          "lastSyncedAt",
+          "errors"
+        ],
+        "type": "object"
+      },
+      "CrawlCaptureMode": {
+        "enum": [
+          "template_plus_hydrated",
+          "template_only",
+          "hydrated_only"
+        ],
+        "type": "string"
+      },
+      "CrawlRunStatus": {
+        "enum": [
+          "in_progress",
+          "completed",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "CrawlRunSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "crawlCaptureMode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrawlCaptureMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "pagesDiscovered": {
+            "type": "number"
+          },
+          "pagesEnqueued": {
+            "type": "number"
+          },
+          "selectedCount": {
+            "type": "number"
+          },
+          "skippedDueToLimitCount": {
+            "type": "number"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CrawlRunStatus"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/CrawlRunTrigger"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sourceUrl",
+          "trigger",
+          "status",
+          "pagesDiscovered",
+          "pagesEnqueued",
+          "selectedCount",
+          "skippedDueToLimitCount"
+        ],
+        "type": "object"
+      },
+      "CrawlRunTrigger": {
+        "enum": [
+          "cron",
+          "queue"
+        ],
+        "type": "string"
+      },
+      "CrawlStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "enqueued": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enqueued"
+        ],
+        "type": "object"
+      },
+      "CrawlTranslateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "force": {
+            "type": "boolean"
+          },
+          "pageIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sourcePaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "targetLangs"
+        ],
+        "type": "object"
+      },
+      "CrawlTranslateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "crawlId": {
+            "type": "string"
+          },
+          "enqueuedCount": {
+            "type": "number"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "selectedCount": {
+            "type": "number"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "crawlId",
+          "selectedCount",
+          "enqueuedCount",
+          "targetLangs",
+          "force"
+        ],
+        "type": "object"
+      },
+      "CrawlTriggerRequest": {
+        "additionalProperties": false,
+        "example": {
+          "force": true
+        },
+        "examples": [
+          {
+            "force": true
+          }
+        ],
+        "properties": {
+          "force": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "CreateAgencyCustomerRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "customerPlan": {
+            "$ref": "#/components/schemas/AgencyCustomerPlan"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "customerPlan"
+        ],
+        "type": "object"
+      },
+      "CreateAgencyCustomerResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/AgencyCustomer"
+          },
+          "inviteLink": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer",
+          "inviteLink"
+        ],
+        "type": "object"
+      },
+      "CreateOverrideRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "contextHashScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "segmentId": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "segmentId",
+          "targetLang",
+          "text"
+        ],
+        "type": "object"
+      },
+      "CreateOverrideResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "contextHashScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "segmentId": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "segmentId",
+          "targetLang",
+          "contextHashScope"
+        ],
+        "type": "object"
+      },
+      "CreateSiteRequest": {
+        "additionalProperties": false,
+        "example": {
+          "maxLocales": 5,
+          "servingMode": "strict",
+          "sourceLang": "en",
+          "sourceUrl": "https://www.example.com",
+          "subdomainPattern": "{lang}.example.com",
+          "targetLangs": [
+            "fr",
+            "de"
+          ]
+        },
+        "examples": [
+          {
+            "maxLocales": 5,
+            "servingMode": "strict",
+            "sourceLang": "en",
+            "sourceUrl": "https://www.example.com",
+            "subdomainPattern": "{lang}.example.com",
+            "targetLangs": [
+              "fr",
+              "de"
+            ]
+          }
+        ],
+        "properties": {
+          "clientRuntimeEnabled": {
+            "type": "boolean"
+          },
+          "crawlCaptureMode": {
+            "$ref": "#/components/schemas/CrawlCaptureMode"
+          },
+          "localeAliases": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "spaRefresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaRefreshSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subdomainPattern": {
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "translatableAttributes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "webhookSecret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "sourceUrl",
+          "sourceLang",
+          "targetLangs",
+          "subdomainPattern",
+          "servingMode",
+          "maxLocales"
+        ],
+        "type": "object"
+      },
+      "DailyCrawlUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "pageCrawls": {
+            "type": "number"
+          },
+          "siteCrawls": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "siteCrawls",
+          "pageCrawls"
+        ],
+        "type": "object"
+      },
+      "DashboardBootstrapRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "includeAgencyCustomers": {
+            "description": "Optional: include agency customer list when actor is an agency account.",
+            "type": "boolean"
+          },
+          "subjectAccountId": {
+            "description": "Optional: agencies can request a bootstrap scoped to a customer account they manage. When omitted, the bootstrap is scoped to the authenticated Supabase user (self).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DashboardBootstrapResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountMeResponse"
+          },
+          "actorAccountId": {
+            "type": "string"
+          },
+          "agencyCustomers": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListAgencyCustomersResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entitlements": {
+            "$ref": "#/components/schemas/Entitlements"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "subjectAccountId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "entitlements",
+          "actorAccountId",
+          "subjectAccountId",
+          "account",
+          "agencyCustomers"
+        ],
+        "type": "object"
+      },
+      "Deployment": {
+        "additionalProperties": false,
+        "properties": {
+          "activatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artifactManifest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deploymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "domainStatus": {
+            "enum": [
+              "pending",
+              "verified",
+              "failed",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "serveEnabled": {
+            "type": "boolean"
+          },
+          "servingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "status": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "translationRun": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TranslationRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "targetLang",
+          "status",
+          "serveEnabled",
+          "servingStatus"
+        ],
+        "type": "object"
+      },
+      "DeploymentServingStatus": {
+        "enum": [
+          "inactive",
+          "disabled",
+          "needs_domain",
+          "ready",
+          "serving"
+        ],
+        "type": "string"
+      },
+      "DigestSubscription": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "frequency": {
+            "enum": [
+              "daily",
+              "weekly",
+              "off"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "email",
+          "frequency"
+        ],
+        "type": "object"
+      },
+      "DigestSubscriptionRequest": {
+        "additionalProperties": false,
+        "example": {
+          "email": "alerts@example.com",
+          "frequency": "weekly"
+        },
+        "examples": [
+          {
+            "email": "alerts@example.com",
+            "frequency": "weekly"
+          }
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "frequency": {
+            "enum": [
+              "daily",
+              "weekly",
+              "off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "frequency"
+        ],
+        "type": "object"
+      },
+      "DigestSubscriptionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/DigestSubscription"
+          }
+        },
+        "required": [
+          "subscription"
+        ],
+        "type": "object"
+      },
+      "DlqListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/DlqMessage"
+            },
+            "type": "array"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DlqSummary"
+          }
+        },
+        "required": [
+          "siteId",
+          "summary",
+          "messages",
+          "complete"
+        ],
+        "type": "object"
+      },
+      "DlqMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "payload": {},
+          "timestamp": {
+            "type": "string"
+          },
+          "worker": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "worker",
+          "attempts",
+          "error",
+          "timestamp",
+          "payload"
+        ],
+        "type": "object"
+      },
+      "DlqReplayFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "error"
+        ],
+        "type": "object"
+      },
+      "DlqReplayRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "deleteOnSuccess": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "type": "object"
+      },
+      "DlqReplayResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attempted": {
+            "type": "number"
+          },
+          "deleted": {
+            "type": "number"
+          },
+          "deleteOnSuccess": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/DlqReplayFailure"
+            },
+            "type": "array"
+          },
+          "sent": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "attempted",
+          "dryRun",
+          "deleteOnSuccess",
+          "sent",
+          "deleted",
+          "failures"
+        ],
+        "type": "object"
+      },
+      "DlqSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "newest": {
+            "type": "string"
+          },
+          "oldest": {
+            "type": "string"
+          },
+          "perWorker": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "perWorker",
+          "errors"
+        ],
+        "type": "object"
+      },
+      "DnsInstructions": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "type": {
+            "const": "CNAME",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "target"
+        ],
+        "type": "object"
+      },
+      "Entitlements": {
+        "additionalProperties": false,
+        "properties": {
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "planType": {
+            "$ref": "#/components/schemas/AccountPlanType"
+          }
+        },
+        "required": [
+          "planType",
+          "planStatus"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "example": {
+          "details": {
+            "code": "unauthorized"
+          },
+          "error": "Unauthorized"
+        },
+        "examples": [
+          {
+            "details": {
+              "code": "unauthorized"
+            },
+            "error": "Unauthorized"
+          }
+        ],
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "GlossaryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "caseSensitive": {
+            "type": "boolean"
+          },
+          "matchType": {
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "segment",
+              "in_segment"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "type": "object"
+      },
+      "GlossaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "crawlStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrawlStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/GlossaryEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "ListAgencyCustomersResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "customers": {
+            "items": {
+              "$ref": "#/components/schemas/AgencyCustomer"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AgencyCustomersSummary"
+          }
+        },
+        "required": [
+          "customers",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "ListDeploymentsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "deployments": {
+            "items": {
+              "$ref": "#/components/schemas/Deployment"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "deployments"
+        ],
+        "type": "object"
+      },
+      "ListSitePagesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/SitePageSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "pages"
+        ],
+        "type": "object"
+      },
+      "ListSitesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/Site"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sites"
+        ],
+        "type": "object"
+      },
+      "ListSupportedLanguagesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/SupportedLanguage"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "languages"
+        ],
+        "type": "object"
+      },
+      "ListTranslationSummariesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/TranslationSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "summaries"
+        ],
+        "type": "object"
+      },
+      "PipelineStage": {
+        "enum": [
+          "crawl",
+          "extract",
+          "translate",
+          "render",
+          "publish",
+          "done"
+        ],
+        "type": "string"
+      },
+      "PipelineStageStatus": {
+        "enum": [
+          "pending",
+          "in_progress",
+          "succeeded",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "PipelineStatusItem": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "$ref": "#/components/schemas/PipelineStage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PipelineStageStatus"
+          },
+          "targetLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "targetLang",
+          "stage",
+          "status",
+          "timestamp"
+        ],
+        "type": "object"
+      },
+      "PipelineStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "pageVersionId": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineStatusItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "siteId",
+          "pageVersionId",
+          "statuses"
+        ],
+        "type": "object"
+      },
+      "PlanStatus": {
+        "description": "Subscription/account status",
+        "enum": [
+          "active",
+          "past_due",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "PlanType": {
+        "description": "Account plan tiers",
+        "enum": [
+          "free",
+          "starter",
+          "pro",
+          "agency"
+        ],
+        "type": "string"
+      },
+      "PreviewRequest": {
+        "additionalProperties": false,
+        "example": {
+          "email": "owner@example.com",
+          "sourceLang": "en",
+          "sourceUrl": "https://example.com",
+          "targetLang": "fr"
+        },
+        "examples": [
+          {
+            "email": "owner@example.com",
+            "sourceLang": "en",
+            "sourceUrl": "https://example.com",
+            "targetLang": "fr"
+          }
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceUrl",
+          "sourceLang",
+          "targetLang"
+        ],
+        "type": "object"
+      },
+      "PreviewRequestStatus": {
+        "enum": [
+          "pending",
+          "processing",
+          "ready",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "PreviewStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "capture": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "hydratedBytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "hydratedFinalUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hydratedHttpStatus": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "hydratedWaitUntilTimeout": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "pageFinalUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "templateBytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "templateFinalUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "templateHttpStatus": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "templateResponseUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "templateWaitUntilTimeout": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "wafDetected": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorStage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previewId": {
+            "type": "string"
+          },
+          "previewUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PreviewRequestStatus"
+          },
+          "statusToken": {
+            "description": "Per-preview status token required for status polling + SSE. Only returned on create.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "streamUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "previewId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ProvisionDomainResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "$ref": "#/components/schemas/SiteDomain"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "RefreshDomainResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "$ref": "#/components/schemas/SiteDomain"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "ResolvedFeatureFlags": {
+        "additionalProperties": false,
+        "properties": {
+          "agencyActionsEnabled": {
+            "type": "boolean"
+          },
+          "clientRuntimeToggleEnabled": {
+            "type": "boolean"
+          },
+          "crawlCaptureModeEnabled": {
+            "type": "boolean"
+          },
+          "crawlTriggerEnabled": {
+            "type": "boolean"
+          },
+          "demoMode": {
+            "type": "boolean"
+          },
+          "domainVerifyEnabled": {
+            "type": "boolean"
+          },
+          "editEnabled": {
+            "type": "boolean"
+          },
+          "featurePreview": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "glossaryEnabled": {
+            "type": "boolean"
+          },
+          "internalOpsEnabled": {
+            "type": "boolean"
+          },
+          "localeUpdateEnabled": {
+            "type": "boolean"
+          },
+          "maxDailyPageRecrawls": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxDailyRecrawls": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxGlossarySources": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "overridesEnabled": {
+            "type": "boolean"
+          },
+          "pipelineAllowed": {
+            "type": "boolean"
+          },
+          "publishEnabled": {
+            "type": "boolean"
+          },
+          "renderEnabled": {
+            "type": "boolean"
+          },
+          "serveAllowed": {
+            "type": "boolean"
+          },
+          "siteCreateEnabled": {
+            "type": "boolean"
+          },
+          "slugEditEnabled": {
+            "type": "boolean"
+          },
+          "tmWriteEnabled": {
+            "type": "boolean"
+          },
+          "translatableAttributesEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "editEnabled",
+          "slugEditEnabled",
+          "glossaryEnabled",
+          "overridesEnabled",
+          "tmWriteEnabled",
+          "publishEnabled",
+          "pipelineAllowed",
+          "serveAllowed",
+          "siteCreateEnabled",
+          "localeUpdateEnabled",
+          "domainVerifyEnabled",
+          "crawlTriggerEnabled",
+          "crawlCaptureModeEnabled",
+          "clientRuntimeToggleEnabled",
+          "translatableAttributesEnabled",
+          "renderEnabled",
+          "agencyActionsEnabled",
+          "internalOpsEnabled",
+          "demoMode",
+          "maxSites",
+          "maxLocales",
+          "maxDailyRecrawls",
+          "maxDailyPageRecrawls",
+          "maxGlossarySources",
+          "featurePreview"
+        ],
+        "type": "object"
+      },
+      "ResumeTranslationRunResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "enqueued": {
+            "type": "number"
+          },
+          "enqueuedRender": {
+            "type": "number"
+          },
+          "enqueuedTranslate": {
+            "type": "number"
+          },
+          "run": {
+            "$ref": "#/components/schemas/TranslationRun"
+          }
+        },
+        "required": [
+          "run",
+          "enqueued",
+          "enqueuedTranslate",
+          "enqueuedRender"
+        ],
+        "type": "object"
+      },
+      "RouteConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "clientRuntimeEnabled": {
+            "description": "Default: true",
+            "type": "boolean"
+          },
+          "crawlCaptureMode": {
+            "$ref": "#/components/schemas/CrawlCaptureMode",
+            "description": "Default: template_plus_hydrated"
+          },
+          "locales": {
+            "items": {
+              "$ref": "#/components/schemas/RouteLocale"
+            },
+            "type": "array"
+          },
+          "pattern": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "sourceOrigin": {
+            "type": "string"
+          },
+          "spaRefresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaRefreshSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "translatableAttributes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sourceLang",
+          "sourceOrigin",
+          "locales"
+        ],
+        "type": "object"
+      },
+      "RouteLocale": {
+        "additionalProperties": false,
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lang",
+          "origin"
+        ],
+        "type": "object"
+      },
+      "ServingMode": {
+        "enum": [
+          "strict",
+          "tolerant"
+        ],
+        "type": "string"
+      },
+      "SetLocaleServingRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "SetLocaleServingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "activeDeploymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "serveEnabled": {
+            "type": "boolean"
+          },
+          "servingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "serveEnabled",
+          "servingStatus"
+        ],
+        "type": "object"
+      },
+      "SetSlugRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId",
+          "lang",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SetSlugResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "crawlStatus": {
+            "$ref": "#/components/schemas/CrawlStatus"
+          },
+          "lang": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId",
+          "lang",
+          "path",
+          "crawlStatus"
+        ],
+        "type": "object"
+      },
+      "SetTranslationSummaryPreferenceRequest": {
+        "additionalProperties": false,
+        "example": {
+          "frequency": "daily"
+        },
+        "examples": [
+          {
+            "frequency": "daily"
+          }
+        ],
+        "properties": {
+          "frequency": {
+            "$ref": "#/components/schemas/TranslationSummaryFrequency"
+          }
+        },
+        "required": [
+          "frequency"
+        ],
+        "type": "object"
+      },
+      "SetTranslationSummaryPreferenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "preference": {
+            "$ref": "#/components/schemas/TranslationSummaryPreference"
+          }
+        },
+        "required": [
+          "preference"
+        ],
+        "type": "object"
+      },
+      "Site": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomain"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "latestCrawlRun": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrawlRunSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locales": {
+            "items": {
+              "$ref": "#/components/schemas/SiteLocale"
+            },
+            "type": "array"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "routeConfig": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "webhookSecret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "sourceUrl",
+          "status",
+          "servingMode",
+          "maxLocales",
+          "locales",
+          "domains"
+        ],
+        "type": "object"
+      },
+      "SiteDomain": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudflare": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CloudflareHostnameState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dnsInstructions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DnsInstructions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domain": {
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "verified",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "verificationToken": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "domain",
+          "status",
+          "verificationToken"
+        ],
+        "type": "object"
+      },
+      "SiteLocale": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "serveEnabled": {
+            "type": "boolean"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceLang",
+          "targetLang",
+          "serveEnabled"
+        ],
+        "type": "object"
+      },
+      "SitePageSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lastCrawledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSnapshotAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastVersionAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextCrawlAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourcePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sourcePath"
+        ],
+        "type": "object"
+      },
+      "SiteWithCrawlStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "crawlStatus": {
+            "$ref": "#/components/schemas/CrawlStatus"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomain"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "latestCrawlRun": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrawlRunSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locales": {
+            "items": {
+              "$ref": "#/components/schemas/SiteLocale"
+            },
+            "type": "array"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "routeConfig": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "webhookSecret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "accountId",
+          "crawlStatus",
+          "domains",
+          "id",
+          "locales",
+          "maxLocales",
+          "servingMode",
+          "sourceUrl",
+          "status"
+        ],
+        "type": "object"
+      },
+      "SpaRefreshFallback": {
+        "enum": [
+          "globalOnly",
+          "baseline"
+        ],
+        "type": "string"
+      },
+      "SpaRefreshSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "enableSectionScope": {
+            "type": "boolean"
+          },
+          "errorFallback": {
+            "$ref": "#/components/schemas/SpaRefreshFallback"
+          },
+          "missingFallback": {
+            "$ref": "#/components/schemas/SpaRefreshFallback"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "SupportedLanguage": {
+        "additionalProperties": false,
+        "properties": {
+          "direction": {
+            "enum": [
+              "ltr",
+              "rtl"
+            ],
+            "type": "string"
+          },
+          "englishName": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "englishName",
+          "direction"
+        ],
+        "type": "object"
+      },
+      "TranslateSiteRequest": {
+        "additionalProperties": false,
+        "example": {
+          "intent": "translate_and_serve",
+          "targetLang": "fr"
+        },
+        "examples": [
+          {
+            "intent": "translate_and_serve",
+            "targetLang": "fr"
+          }
+        ],
+        "properties": {
+          "intent": {
+            "const": "translate_and_serve",
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang"
+        ],
+        "type": "object"
+      },
+      "TranslateSiteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "crawlEnqueued": {
+            "type": "boolean"
+          },
+          "enqueued": {
+            "type": "number"
+          },
+          "missingSnapshots": {
+            "type": "number"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TranslationRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "enqueued"
+        ],
+        "type": "object"
+      },
+      "TranslationRun": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "pagesCompleted": {
+            "type": "number"
+          },
+          "pagesFailed": {
+            "type": "number"
+          },
+          "pagesTotal": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TranslationRunStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "siteId",
+          "targetLang",
+          "status",
+          "pagesTotal",
+          "pagesCompleted",
+          "pagesFailed"
+        ],
+        "type": "object"
+      },
+      "TranslationRunResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/TranslationRun"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "type": "object"
+      },
+      "TranslationRunStatus": {
+        "enum": [
+          "queued",
+          "in_progress",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "TranslationSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastDeploymentAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pagesTranslated": {
+            "type": "number"
+          },
+          "pagesUpdated": {
+            "type": "number"
+          },
+          "period": {
+            "enum": [
+              "daily",
+              "weekly"
+            ],
+            "type": "string"
+          },
+          "rangeEnd": {
+            "type": "string"
+          },
+          "rangeStart": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "siteId",
+          "targetLang",
+          "period",
+          "rangeStart",
+          "rangeEnd",
+          "pagesTranslated",
+          "pagesUpdated"
+        ],
+        "type": "object"
+      },
+      "TranslationSummaryFrequency": {
+        "enum": [
+          "daily",
+          "weekly",
+          "off"
+        ],
+        "type": "string"
+      },
+      "TranslationSummaryPreference": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/TranslationSummaryFrequency"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "siteId",
+          "targetLang",
+          "frequency"
+        ],
+        "type": "object"
+      },
+      "UpdateSiteRequest": {
+        "additionalProperties": false,
+        "example": {
+          "servingMode": "tolerant",
+          "targetLangs": [
+            "fr",
+            "de",
+            "it"
+          ]
+        },
+        "examples": [
+          {
+            "servingMode": "tolerant",
+            "targetLangs": [
+              "fr",
+              "de",
+              "it"
+            ]
+          }
+        ],
+        "properties": {
+          "clientRuntimeEnabled": {
+            "type": "boolean"
+          },
+          "crawlCaptureMode": {
+            "$ref": "#/components/schemas/CrawlCaptureMode"
+          },
+          "localeAliases": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "spaRefresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaRefreshSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "subdomainPattern": {
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "translatableAttributes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "webhookSecret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "UpsertGlossaryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/GlossaryEntry"
+            },
+            "type": "array"
+          },
+          "retranslate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "VerifyDomainRequest": {
+        "additionalProperties": false,
+        "example": {
+          "token": "verification-token-from-create-site"
+        },
+        "examples": [
+          {
+            "token": "verification-token-from-create-site"
+          }
+        ],
+        "properties": {
+          "env": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "VerifyDomainResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "$ref": "#/components/schemas/SiteDomain"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "previewStatusToken": {
+        "in": "header",
+        "name": "x-preview-status-token",
+        "type": "apiKey"
+      },
+      "previewToken": {
+        "in": "header",
+        "name": "x-preview-token",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "API surface exposed by the webhooks-worker. Base path is /api; all endpoints require Authorization: Bearer <JWT> signed with WEBHOOK_SECRET unless noted.",
+    "title": "WebLingo Webhooks API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/accounts/claim": {
+      "post": {
+        "operationId": "accounts.claim",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "planStatus": "active",
+                  "planType": "free",
+                  "status": "created"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AccountClaimResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create/link an account for the authenticated Supabase user",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/me": {
+      "get": {
+        "operationId": "accounts.me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "dailyCrawlUsage": {
+                    "date": "string",
+                    "pageCrawls": 1,
+                    "siteCrawls": 1
+                  },
+                  "featureFlags": {
+                    "agencyActionsEnabled": true,
+                    "clientRuntimeToggleEnabled": true,
+                    "crawlCaptureModeEnabled": true,
+                    "crawlTriggerEnabled": true,
+                    "demoMode": true,
+                    "domainVerifyEnabled": true,
+                    "editEnabled": true,
+                    "featurePreview": [
+                      "string"
+                    ],
+                    "glossaryEnabled": true,
+                    "internalOpsEnabled": true,
+                    "localeUpdateEnabled": true,
+                    "maxDailyPageRecrawls": 1,
+                    "maxDailyRecrawls": 1,
+                    "maxGlossarySources": 1,
+                    "maxLocales": 1,
+                    "maxSites": 1,
+                    "overridesEnabled": true,
+                    "pipelineAllowed": true,
+                    "publishEnabled": true,
+                    "renderEnabled": true,
+                    "serveAllowed": true,
+                    "siteCreateEnabled": true,
+                    "slugEditEnabled": true,
+                    "tmWriteEnabled": true,
+                    "translatableAttributesEnabled": true
+                  },
+                  "planStatus": "active",
+                  "planType": "free",
+                  "quotas": {
+                    "maxSites": 1,
+                    "proQuota": 1,
+                    "starterQuota": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AccountMeResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get current account entitlements and quotas",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/agency/customers": {
+      "get": {
+        "operationId": "agency.customers.list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customers": [
+                    {
+                      "activeSiteCount": 1,
+                      "agencyAccountId": "string",
+                      "customerAccountId": "string",
+                      "customerPlan": "starter",
+                      "planStatus": "active",
+                      "status": "active"
+                    }
+                  ],
+                  "summary": {
+                    "maxSites": 1,
+                    "totalActiveSites": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListAgencyCustomersResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List agency-managed customer accounts",
+        "tags": [
+          "Agency"
+        ]
+      },
+      "post": {
+        "operationId": "agency.customers.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "customerPlan": "starter",
+                "email": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgencyCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customer": {
+                    "activeSiteCount": 1,
+                    "agencyAccountId": "string",
+                    "customerAccountId": "string",
+                    "customerPlan": "starter",
+                    "planStatus": "active",
+                    "status": "active"
+                  },
+                  "inviteLink": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAgencyCustomerResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create/invite a managed customer account",
+        "tags": [
+          "Agency"
+        ]
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "description": "Mints a short-lived WebLingo dashboard JWT from a Supabase access token. Agencies can scope the token to a managed customer account.",
+        "operationId": "auth.token.mint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "subjectAccountId": "00000000-0000-0000-0000-000000000001"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AuthTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "actorAccountId": "00000000-0000-0000-0000-000000000010",
+                  "entitlements": {
+                    "planStatus": "active",
+                    "planType": "pro"
+                  },
+                  "expiresAt": "2026-02-12T20:00:00.000Z",
+                  "subjectAccountId": "00000000-0000-0000-0000-000000000001",
+                  "token": "<jwt>"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Exchange Supabase access token for webhooks JWT",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/dashboard/bootstrap": {
+      "post": {
+        "operationId": "dashboard.bootstrap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "includeAgencyCustomers": true,
+                "subjectAccountId": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DashboardBootstrapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": {
+                    "accountId": "string",
+                    "dailyCrawlUsage": {
+                      "date": "string",
+                      "pageCrawls": 1,
+                      "siteCrawls": 1
+                    },
+                    "featureFlags": {
+                      "agencyActionsEnabled": true,
+                      "clientRuntimeToggleEnabled": true,
+                      "crawlCaptureModeEnabled": true,
+                      "crawlTriggerEnabled": true,
+                      "demoMode": true,
+                      "domainVerifyEnabled": true,
+                      "editEnabled": true,
+                      "featurePreview": [
+                        "string"
+                      ],
+                      "glossaryEnabled": true,
+                      "internalOpsEnabled": true,
+                      "localeUpdateEnabled": true,
+                      "maxDailyPageRecrawls": 1,
+                      "maxDailyRecrawls": 1,
+                      "maxGlossarySources": 1,
+                      "maxLocales": 1,
+                      "maxSites": 1,
+                      "overridesEnabled": true,
+                      "pipelineAllowed": true,
+                      "publishEnabled": true,
+                      "renderEnabled": true,
+                      "serveAllowed": true,
+                      "siteCreateEnabled": true,
+                      "slugEditEnabled": true,
+                      "tmWriteEnabled": true,
+                      "translatableAttributesEnabled": true
+                    },
+                    "planStatus": "active",
+                    "planType": "free",
+                    "quotas": {
+                      "maxSites": 1,
+                      "proQuota": 1,
+                      "starterQuota": 1
+                    }
+                  },
+                  "actorAccountId": "string",
+                  "agencyCustomers": {
+                    "customers": [
+                      {
+                        "activeSiteCount": 1,
+                        "agencyAccountId": "string",
+                        "customerAccountId": "string",
+                        "customerPlan": "starter",
+                        "status": "active"
+                      }
+                    ],
+                    "summary": {
+                      "maxSites": 1,
+                      "totalActiveSites": 1
+                    }
+                  },
+                  "entitlements": {
+                    "planStatus": "active",
+                    "planType": "free"
+                  },
+                  "expiresAt": "string",
+                  "subjectAccountId": "string",
+                  "token": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardBootstrapResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Bootstrap dashboard auth + account context",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/digests/subscription": {
+      "put": {
+        "description": "Creates or updates the account-level translation digest destination and frequency.",
+        "operationId": "digests.subscription.upsert",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "alerts@example.com",
+                "frequency": "weekly"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DigestSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "subscription": {
+                    "accountId": "00000000-0000-0000-0000-000000000001",
+                    "email": "alerts@example.com",
+                    "frequency": "weekly",
+                    "id": "be8123c6-acde-46f5-9f15-42667da3f9e0"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSubscriptionResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upsert digest subscription",
+        "tags": [
+          "Digests"
+        ]
+      }
+    },
+    "/meta/languages": {
+      "get": {
+        "operationId": "meta.languages.list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "languages": [
+                    {
+                      "direction": "ltr",
+                      "englishName": "string",
+                      "tag": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListSupportedLanguagesResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "List supported languages",
+        "tags": [
+          "Metadata"
+        ]
+      }
+    },
+    "/previews": {
+      "post": {
+        "description": "Creates an ephemeral preview translation request and enqueues preview processing. Supports either public preview token auth or dashboard bearer auth.",
+        "operationId": "previews.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "owner@example.com",
+                "sourceLang": "en",
+                "sourceUrl": "https://example.com",
+                "targetLang": "fr"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "expiresAt": "2026-02-12T21:00:00.000Z",
+                  "previewId": "9f27aa40-a2bc-4e8f-8f17-573b66195f1c",
+                  "previewUrl": null,
+                  "status": "queued",
+                  "statusToken": "<status-token>",
+                  "streamUrl": "/api/previews/9f27aa40-a2bc-4e8f-8f17-573b66195f1c/stream"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewToken": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create try-now preview",
+        "tags": [
+          "Previews"
+        ]
+      }
+    },
+    "/previews/{previewId}": {
+      "get": {
+        "operationId": "previews.status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "previewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "previewId": "string",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewStatusToken": []
+          }
+        ],
+        "summary": "Get preview status",
+        "tags": [
+          "Previews"
+        ]
+      }
+    },
+    "/sites": {
+      "get": {
+        "operationId": "sites.list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "sites": [
+                    {
+                      "accountId": "string",
+                      "domains": [
+                        {
+                          "domain": "string",
+                          "status": "pending",
+                          "verificationToken": "string"
+                        }
+                      ],
+                      "id": "string",
+                      "locales": [
+                        {
+                          "serveEnabled": true,
+                          "sourceLang": "string",
+                          "targetLang": "string"
+                        }
+                      ],
+                      "maxLocales": 1,
+                      "servingMode": "strict",
+                      "sourceUrl": "string",
+                      "status": "active"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListSitesResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List sites",
+        "tags": [
+          "Sites"
+        ]
+      },
+      "post": {
+        "description": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl.",
+        "operationId": "sites.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "maxLocales": 5,
+                "servingMode": "strict",
+                "sourceLang": "en",
+                "sourceUrl": "https://www.example.com",
+                "subdomainPattern": "{lang}.example.com",
+                "targetLangs": [
+                  "fr",
+                  "de"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateSiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "crawlStatus": {
+                    "enqueued": true
+                  },
+                  "domains": [
+                    {
+                      "domain": "string",
+                      "status": "pending",
+                      "verificationToken": "string"
+                    }
+                  ],
+                  "id": "string",
+                  "locales": [
+                    {
+                      "serveEnabled": true,
+                      "sourceLang": "string",
+                      "targetLang": "string"
+                    }
+                  ],
+                  "maxLocales": 1,
+                  "servingMode": "strict",
+                  "sourceUrl": "string",
+                  "status": "active"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteWithCrawlStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create site",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}": {
+      "get": {
+        "operationId": "sites.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "domains": [
+                    {
+                      "domain": "string",
+                      "status": "pending",
+                      "verificationToken": "string"
+                    }
+                  ],
+                  "id": "string",
+                  "locales": [
+                    {
+                      "serveEnabled": true,
+                      "sourceLang": "string",
+                      "targetLang": "string"
+                    }
+                  ],
+                  "maxLocales": 1,
+                  "servingMode": "strict",
+                  "sourceUrl": "string",
+                  "status": "active"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get site",
+        "tags": [
+          "Sites"
+        ]
+      },
+      "patch": {
+        "operationId": "sites.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "servingMode": "tolerant",
+                "targetLangs": [
+                  "fr",
+                  "de",
+                  "it"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "domains": [
+                    {
+                      "domain": "string",
+                      "status": "pending",
+                      "verificationToken": "string"
+                    }
+                  ],
+                  "id": "string",
+                  "locales": [
+                    {
+                      "serveEnabled": true,
+                      "sourceLang": "string",
+                      "targetLang": "string"
+                    }
+                  ],
+                  "maxLocales": 1,
+                  "servingMode": "strict",
+                  "sourceUrl": "string",
+                  "status": "active"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update site",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/crawl": {
+      "post": {
+        "operationId": "sites.crawl.trigger",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "force": true
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CrawlTriggerRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enqueued": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Trigger crawl",
+        "tags": [
+          "Sites",
+          "Crawl"
+        ]
+      }
+    },
+    "/sites/{siteId}/crawl-translate": {
+      "post": {
+        "operationId": "sites.crawl_translate.trigger",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "targetLangs": [
+                  "string"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CrawlTranslateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "crawlId": "string",
+                  "enqueuedCount": 1,
+                  "force": true,
+                  "selectedCount": 1,
+                  "targetLangs": [
+                    "string"
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlTranslateResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Trigger crawl+translate for selected pages",
+        "tags": [
+          "Sites",
+          "Crawl"
+        ]
+      }
+    },
+    "/sites/{siteId}/deployments": {
+      "get": {
+        "operationId": "sites.deployments.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "deployments": [
+                    {
+                      "serveEnabled": true,
+                      "servingStatus": "inactive",
+                      "status": "string",
+                      "targetLang": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDeploymentsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List deployments per locale",
+        "tags": [
+          "Sites",
+          "Deployments"
+        ]
+      }
+    },
+    "/sites/{siteId}/dlq": {
+      "get": {
+        "operationId": "sites.dlq.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "complete": true,
+                  "messages": [
+                    {
+                      "attempts": 1,
+                      "error": "string",
+                      "key": "string",
+                      "timestamp": "string",
+                      "worker": "string"
+                    }
+                  ],
+                  "siteId": "string",
+                  "summary": {
+                    "errors": {},
+                    "perWorker": {},
+                    "total": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DlqListResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List DLQ messages for a site",
+        "tags": [
+          "Sites",
+          "DLQ"
+        ]
+      }
+    },
+    "/sites/{siteId}/dlq/replay": {
+      "post": {
+        "operationId": "sites.dlq.replay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "keys": [
+                  "string"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DlqReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempted": 1,
+                  "deleted": 1,
+                  "deleteOnSuccess": true,
+                  "dryRun": true,
+                  "failures": [
+                    {
+                      "error": "string",
+                      "key": "string"
+                    }
+                  ],
+                  "sent": 1,
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/DlqReplayResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replay DLQ messages for a site",
+        "tags": [
+          "Sites",
+          "DLQ"
+        ]
+      }
+    },
+    "/sites/{siteId}/domains/{domain}/provision": {
+      "post": {
+        "operationId": "sites.domains.provision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "domain",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "domain": {
+                    "domain": "string",
+                    "status": "pending",
+                    "verificationToken": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionDomainResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Provision domain via Cloudflare for SaaS (CNAME + Custom Hostname)",
+        "tags": [
+          "Sites",
+          "Domains"
+        ]
+      }
+    },
+    "/sites/{siteId}/domains/{domain}/refresh": {
+      "post": {
+        "operationId": "sites.domains.refresh",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "domain",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "domain": {
+                    "domain": "string",
+                    "status": "pending",
+                    "verificationToken": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshDomainResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Refresh Cloudflare validation and resync domain status",
+        "tags": [
+          "Sites",
+          "Domains"
+        ]
+      }
+    },
+    "/sites/{siteId}/domains/{domain}/verify": {
+      "post": {
+        "operationId": "sites.domains.verify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "domain",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "token": "verification-token-from-create-site"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDomainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "domain": {
+                    "domain": "string",
+                    "status": "pending",
+                    "verificationToken": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyDomainResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Verify domain via TXT or test token",
+        "tags": [
+          "Sites",
+          "Domains"
+        ]
+      }
+    },
+    "/sites/{siteId}/glossary": {
+      "get": {
+        "operationId": "sites.glossary.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "entries": [
+                    {
+                      "source": "string",
+                      "target": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get glossary entries",
+        "tags": [
+          "Sites",
+          "Glossary"
+        ]
+      },
+      "put": {
+        "operationId": "sites.glossary.put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "entries": [
+                  {
+                    "source": "string",
+                    "target": "string"
+                  }
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpsertGlossaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "entries": [
+                    {
+                      "source": "string",
+                      "target": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upsert glossary entries",
+        "tags": [
+          "Sites",
+          "Glossary"
+        ]
+      }
+    },
+    "/sites/{siteId}/locales/{targetLang}/serve": {
+      "post": {
+        "operationId": "sites.locales.serve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "targetLang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "enabled": true
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SetLocaleServingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "serveEnabled": true,
+                  "servingStatus": "inactive",
+                  "targetLang": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SetLocaleServingResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Enable or disable serving for a locale",
+        "tags": [
+          "Sites",
+          "Locales"
+        ]
+      }
+    },
+    "/sites/{siteId}/locales/{targetLang}/translation-summary": {
+      "put": {
+        "operationId": "sites.locales.translationSummary.put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "targetLang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "frequency": "daily"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SetTranslationSummaryPreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "preference": {
+                    "frequency": "daily",
+                    "siteId": "string",
+                    "targetLang": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SetTranslationSummaryPreferenceResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Configure translation summary notification frequency for a locale",
+        "tags": [
+          "Sites",
+          "Locales"
+        ]
+      }
+    },
+    "/sites/{siteId}/overrides": {
+      "post": {
+        "operationId": "sites.overrides.create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "segmentId": "string",
+                "targetLang": "string",
+                "text": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "contextHashScope": "string",
+                  "segmentId": "string",
+                  "targetLang": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOverrideResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create segment override",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/pages": {
+      "get": {
+        "operationId": "sites.pages.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "pages": [
+                    {
+                      "id": "string",
+                      "sourcePath": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListSitePagesResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List discovered pages",
+        "tags": [
+          "Sites",
+          "Pages"
+        ]
+      }
+    },
+    "/sites/{siteId}/pages/{pageId}/crawl": {
+      "post": {
+        "operationId": "sites.pages.crawl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pageId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enqueued": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Trigger extract for a single page",
+        "tags": [
+          "Sites",
+          "Pages"
+        ]
+      }
+    },
+    "/sites/{siteId}/pipeline/status/{pageVersionId}": {
+      "get": {
+        "operationId": "sites.pipeline.status.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pageVersionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "pageVersionId": "string",
+                  "siteId": "string",
+                  "statuses": [
+                    {
+                      "stage": "crawl",
+                      "status": "pending",
+                      "targetLang": "string",
+                      "timestamp": 1
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineStatusResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get pipeline status for a page version",
+        "tags": [
+          "Sites",
+          "Pipeline"
+        ]
+      }
+    },
+    "/sites/{siteId}/slugs": {
+      "post": {
+        "operationId": "sites.slugs.set",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "lang": "string",
+                "pageId": "string",
+                "path": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SetSlugRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "crawlStatus": {
+                    "enqueued": true
+                  },
+                  "lang": "string",
+                  "pageId": "string",
+                  "path": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SetSlugResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set translated slug path",
+        "tags": [
+          "Sites",
+          "Slugs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translate": {
+      "post": {
+        "description": "Starts a translation run using existing page snapshots without launching a new crawl.",
+        "operationId": "sites.translate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "intent": "translate_and_serve",
+                "targetLang": "fr"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TranslateSiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enqueued": 1,
+                  "run": {
+                    "id": "string",
+                    "pagesCompleted": 1,
+                    "pagesFailed": 1,
+                    "pagesTotal": 1,
+                    "siteId": "string",
+                    "status": "queued",
+                    "targetLang": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TranslateSiteResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Translate a site without recrawling",
+        "tags": [
+          "Sites",
+          "Translation Runs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translation-runs/{runId}": {
+      "get": {
+        "operationId": "sites.translationRuns.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "run": {
+                    "id": "string",
+                    "pagesCompleted": 1,
+                    "pagesFailed": 1,
+                    "pagesTotal": 1,
+                    "siteId": "string",
+                    "status": "queued",
+                    "targetLang": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationRunResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get translation run status",
+        "tags": [
+          "Sites",
+          "Translation Runs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translation-runs/{runId}/cancel": {
+      "post": {
+        "operationId": "sites.translationRuns.cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "run": {
+                    "id": "string",
+                    "pagesCompleted": 1,
+                    "pagesFailed": 1,
+                    "pagesTotal": 1,
+                    "siteId": "string",
+                    "status": "queued",
+                    "targetLang": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CancelTranslationRunResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Cancel a translation run",
+        "tags": [
+          "Sites",
+          "Translation Runs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translation-runs/{runId}/resume": {
+      "post": {
+        "operationId": "sites.translationRuns.resume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enqueued": 1,
+                  "enqueuedRender": 1,
+                  "enqueuedTranslate": 1,
+                  "run": {
+                    "id": "string",
+                    "pagesCompleted": 1,
+                    "pagesFailed": 1,
+                    "pagesTotal": 1,
+                    "siteId": "string",
+                    "status": "queued",
+                    "targetLang": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeTranslationRunResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Resume a translation run",
+        "tags": [
+          "Sites",
+          "Translation Runs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translation-summaries": {
+      "get": {
+        "operationId": "sites.translationSummaries.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "summaries": [
+                    {
+                      "id": "string",
+                      "pagesTranslated": 1,
+                      "pagesUpdated": 1,
+                      "period": "daily",
+                      "rangeEnd": "string",
+                      "rangeStart": "string",
+                      "siteId": "string",
+                      "targetLang": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListTranslationSummariesResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List translation summary rollups for dashboard charts",
+        "tags": [
+          "Sites",
+          "Translation Summaries"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Local dev (wrangler dev:webhooks)",
+      "url": "http://127.0.0.1:8788/api"
+    },
+    {
+      "description": "Production/stage",
+      "url": "https://webhooks.example.com/api"
+    }
+  ]
+}

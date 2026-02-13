@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
-import { DocsShell, type DocsNavSection } from "./_components/docs-shell";
+import { DocsShell, type DocsNavIconKey, type DocsNavSection } from "./_components/docs-shell";
 
 import { docSections } from "@/content/docs";
+import { getWorkflowPlaybooks } from "@/content/docs/workflow-playbooks";
 import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function DocsLayout({
@@ -24,8 +25,21 @@ export default async function DocsLayout({
     items: section.items.map((item) => ({
       href: `/${locale}/docs/${item.slug.join("/")}`,
       title: item.title,
+      iconKey: resolveDocIconKey(item.slug),
     })),
   }));
+  if (getWorkflowPlaybooks().length > 0) {
+    navSections.push({
+      title: "Workflows",
+      items: [
+        {
+          href: `/${locale}/docs/workflows`,
+          title: "Workflow Playbooks",
+          iconKey: "workflows",
+        },
+      ],
+    });
+  }
   const copy = {
     title: t("docs.shell.title"),
     subtitle: t("docs.shell.subtitle"),
@@ -48,4 +62,20 @@ export default async function DocsLayout({
       {children}
     </DocsShell>
   );
+}
+
+function resolveDocIconKey(slug: string[]): DocsNavIconKey {
+  const key = slug.join("/");
+  switch (key) {
+    case "getting-started":
+      return "getting-started";
+    case "site-setup":
+      return "site-setup";
+    case "translation-pipeline":
+      return "pipeline";
+    case "api-reference":
+      return "api-reference";
+    default:
+      return "default";
+  }
 }

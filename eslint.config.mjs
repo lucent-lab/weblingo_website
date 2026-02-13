@@ -5,7 +5,14 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "types/database.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    ".tmp/**",
+    "next-env.d.ts",
+    "types/database.ts",
+  ]),
   {
     files: [
       "app/api/**/*.{ts,tsx,js,jsx}",

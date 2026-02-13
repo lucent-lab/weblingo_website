@@ -34,22 +34,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Checkout backend (OpenAPI contracts)
-        if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN != '' }}
-        uses: actions/checkout@v6
-        with:
-          repository: lucent-lab/weblingo
-          path: backend
-          token: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN }}
-
-      - name: Enable backend OpenAPI contract tests
-        if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN != '' }}
-        run: echo "WEBHOOKS_OPENAPI_JSON_PATH=backend/workers/webhooks-worker/src/openapi.generated.json" >> $GITHUB_ENV
-
-      - name: Backend contracts token missing (contract tests skipped)
-        if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN == '' }}
-        run: echo "Skipping backend OpenAPI contract tests. Set CROSS_REPO_CHECKOUT_TOKEN to enable."
-
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
@@ -78,3 +62,59 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  docs-sync-check:
+    if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    env:
+      HOME_PAGE_VARIANT: expansion
+      KV_REST_API_TOKEN: dummy
+      KV_REST_API_URL: https://example.com
+      NEXT_PUBLIC_APP_URL: https://example.com
+      NEXT_PUBLIC_POSTHOG_HOST: https://example.com
+      NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon_dummy
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_WEBHOOKS_API_BASE: https://example.com
+      NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS: "15000"
+      PUBLIC_PORTAL_MODE: disabled
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_WEBHOOK_SECRET: whsec_dummy
+      SUPABASE_AUTH_TIMEOUT_MS: "15000"
+      SUPABASE_SECRET_KEY: service_role_dummy
+      WEBSITE_CONTACT_MAX_PER_WINDOW: "10"
+      WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS: "60000"
+      WEBSITE_WAITLIST_MAX_BODY_BYTES: "4096"
+      WEBSITE_WAITLIST_MAX_PER_WINDOW: "20"
+      WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: "60000"
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v6
+
+      - name: Checkout backend repository
+        uses: actions/checkout@v6
+        with:
+          repository: lucent-lab/weblingo
+          path: backend
+          token: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN }}
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Docs sync freshness check
+        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" pnpm docs:sync:check
+
+      - name: Contract and docs coverage tests
+        run: pnpm test:contracts
