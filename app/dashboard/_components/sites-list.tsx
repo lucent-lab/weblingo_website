@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Site } from "@internal/dashboard/webhooks";
+import type { SiteSummary } from "@internal/dashboard/webhooks";
 
-export function SitesList({ sites }: { sites: Site[] }) {
+export function SitesList({ sites }: { sites: SiteSummary[] }) {
   return (
     <div className="grid gap-4">
       {sites.map((site) => (
@@ -17,15 +17,14 @@ export function SitesList({ sites }: { sites: Site[] }) {
                 <StatusBadge status={site.status} />
               </div>
               <CardDescription>
-                {site.locales
-                  .map((locale) => `${locale.sourceLang}→${locale.targetLang}`)
-                  .join(" · ")}
+                {site.sourceLang
+                  ? `${site.sourceLang}→${site.targetLangs.join(" · ")}`
+                  : site.targetLangs.join(" · ")}
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">
-                Domains: {site.domains.filter((domain) => domain.status === "verified").length} /{" "}
-                {site.domains.length}
+                Domains: {site.verifiedDomainCount} / {site.domainCount}
               </Badge>
               <Button asChild size="sm" variant="outline">
                 <Link href={`/dashboard/sites/${site.id}`} title="Manage">
@@ -34,25 +33,16 @@ export function SitesList({ sites }: { sites: Site[] }) {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-[2fr_1fr] md:items-start">
+          <CardContent className="grid gap-3 md:grid-cols-2 md:items-start">
             <div className="space-y-1 text-sm">
-              <p className="font-semibold text-foreground">Domains</p>
-              <div className="flex flex-wrap gap-2">
-                {site.domains.map((domain) => (
-                  <Badge
-                    key={domain.domain}
-                    variant={domain.status === "verified" ? "secondary" : "outline"}
-                  >
-                    {domain.domain} ({domain.status})
-                  </Badge>
-                ))}
-              </div>
+              <p className="font-semibold text-foreground">Languages</p>
+              <p className="text-muted-foreground">
+                {site.localeCount} locale(s), {site.serveEnabledLocaleCount} serving enabled
+              </p>
             </div>
             <div className="space-y-1 text-sm">
-              <p className="font-semibold text-foreground">Route config</p>
-              <p className="text-muted-foreground">
-                {site.routeConfig?.pattern ?? "No subdomain pattern recorded"}
-              </p>
+              <p className="font-semibold text-foreground">Serving mode</p>
+              <p className="text-muted-foreground">{site.servingMode}</p>
             </div>
           </CardContent>
         </Card>
@@ -61,7 +51,7 @@ export function SitesList({ sites }: { sites: Site[] }) {
   );
 }
 
-function StatusBadge({ status }: { status: Site["status"] }) {
+function StatusBadge({ status }: { status: SiteSummary["status"] }) {
   if (status === "active") {
     return <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>;
   }

@@ -5,14 +5,19 @@ import { cache } from "react";
 import { redis } from "@/internal/core/redis";
 
 import type { WebhooksAuthContext } from "./auth";
-import { listSites, listSupportedLanguages, type Site, type SupportedLanguage } from "./webhooks";
+import {
+  listSites,
+  listSupportedLanguages,
+  type SiteSummary,
+  type SupportedLanguage,
+} from "./webhooks";
 
 const SITES_CACHE_NAMESPACE = "dashboard:sites";
 const LANGUAGES_CACHE_KEY = "dashboard:supported-languages";
 const SITES_CACHE_TTL_SECONDS = 600;
 const LANGUAGES_CACHE_TTL_SECONDS = 21600;
 
-const sitesInflight = new Map<string, Promise<Site[]>>();
+const sitesInflight = new Map<string, Promise<SiteSummary[]>>();
 const languagesInflight = new Map<string, Promise<SupportedLanguage[]>>();
 
 function getCacheEnvPrefix(): string {
@@ -23,8 +28,8 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function getSitesCacheKey(token: string): string {
-  return `${SITES_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${hashToken(token)}`;
+function getSitesCacheKey(subjectAccountId: string): string {
+  return `${SITES_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${hashToken(subjectAccountId)}`;
 }
 
 function getLanguagesCacheKey(): string {
@@ -32,10 +37,10 @@ function getLanguagesCacheKey(): string {
 }
 
 export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
-  const cacheKey = getSitesCacheKey(auth.token);
+  const cacheKey = getSitesCacheKey(auth.subjectAccountId);
 
   try {
-    const cached = await redis.get<Site[]>(cacheKey);
+    const cached = await redis.get<SiteSummary[]>(cacheKey);
     if (cached) {
       console.info("[dashboard] sites cache hit");
       return cached;
@@ -108,7 +113,7 @@ export const listSupportedLanguagesCached = cache(async () => {
 });
 
 export async function invalidateSitesCache(auth: WebhooksAuthContext): Promise<void> {
-  const cacheKey = getSitesCacheKey(auth.token);
+  const cacheKey = getSitesCacheKey(auth.subjectAccountId);
   try {
     await redis.del(cacheKey);
   } catch (error) {

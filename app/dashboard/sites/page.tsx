@@ -3,13 +3,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSitesCached } from "@internal/dashboard/data";
-import { type Site } from "@internal/dashboard/webhooks";
+import { type SiteSummary } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
 import { SitesList } from "../_components/sites-list";
 
 export default async function SitesPage() {
-  let sites: Site[] = [];
+  let sites: SiteSummary[] = [];
   let error: string | null = null;
   let canCreateSite = false;
   let billingBlocked = false;

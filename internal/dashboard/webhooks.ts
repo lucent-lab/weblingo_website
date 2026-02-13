@@ -8,6 +8,17 @@ if (!Number.isFinite(apiTimeoutMs) || apiTimeoutMs < 1) {
   throw new Error("[config] NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS must be a positive integer");
 }
 
+const REQUEST_TIMEOUT_MS = {
+  auth: Math.min(apiTimeoutMs, 6_000),
+  bootstrap: Math.min(apiTimeoutMs, 8_000),
+  metadata: Math.min(apiTimeoutMs, 8_000),
+  list: Math.min(apiTimeoutMs, 7_500),
+  detail: Math.min(apiTimeoutMs, 10_000),
+  mutation: apiTimeoutMs,
+} as const;
+
+type RequestTimeoutProfile = keyof typeof REQUEST_TIMEOUT_MS;
+
 export class WebhooksApiError extends Error {
   status: number;
   details?: unknown;
@@ -110,6 +121,24 @@ const routeConfigSchema = z
 
 const siteProfileSchema = z.record(z.string(), z.unknown()).nullable();
 
+const siteSummarySchema = z
+  .object({
+    id: z.string(),
+    accountId: z.string(),
+    sourceUrl: z.string(),
+    status: z.enum(["active", "inactive"]),
+    servingMode: z.enum(["strict", "tolerant"]),
+    maxLocales: z.number().int().positive().nullable(),
+    siteProfile: siteProfileSchema,
+    sourceLang: z.string().nullable(),
+    targetLangs: z.array(z.string()),
+    localeCount: z.number().int().nonnegative(),
+    serveEnabledLocaleCount: z.number().int().nonnegative(),
+    domainCount: z.number().int().nonnegative(),
+    verifiedDomainCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
 const siteSchema = z.object({
   id: z.string(),
   accountId: z.string(),
@@ -149,7 +178,7 @@ const siteSchema = z.object({
     .optional(),
 });
 
-const listSitesResponseSchema = z.object({ sites: z.array(siteSchema) });
+const listSitesResponseSchema = z.object({ sites: z.array(siteSummarySchema) });
 
 const sitePageSummarySchema = z.object({
   id: z.string(),
@@ -401,6 +430,7 @@ const upsertGlossaryResponseSchema = z
   .strict();
 
 export type Site = z.infer<typeof siteSchema>;
+export type SiteSummary = z.infer<typeof siteSummarySchema>;
 export type Domain = z.infer<typeof domainSchema>;
 export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlCaptureMode = z.infer<typeof crawlCaptureModeSchema>;
@@ -430,6 +460,7 @@ export const __webhooksZodContracts = {
   listAgencyCustomersResponseSchema,
   createAgencyCustomerResponseSchema,
   listSitesResponseSchema,
+  siteSummarySchema,
   siteSchema,
   siteWithCrawlStatusSchema,
   crawlStatusSchema,
@@ -509,6 +540,8 @@ type RequestOptions<T> = {
   headers?: HeadersInit;
   retry?: boolean;
   allowEmptyResponse?: boolean;
+  timeoutProfile?: RequestTimeoutProfile;
+  traceId?: string;
 };
 
 async function request<T>({
@@ -520,9 +553,13 @@ async function request<T>({
   headers,
   retry = false,
   allowEmptyResponse = false,
+  timeoutProfile = "mutation",
+  traceId: inputTraceId,
 }: RequestOptions<T>): Promise<T> {
   const startedAt = Date.now();
   let loggedTiming = false;
+  const traceId = inputTraceId ?? buildDashboardTraceId();
+  const timeoutMs = REQUEST_TIMEOUT_MS[timeoutProfile];
   const logTiming = (status: number, ok: boolean, note?: string) => {
     if (loggedTiming) {
       return;
@@ -535,6 +572,9 @@ async function request<T>({
       ok,
       retry,
       durationMs: Date.now() - startedAt,
+      traceId,
+      timeoutProfile,
+      timeoutMs,
     };
     if (note) {
       payload.note = note;
@@ -548,13 +588,14 @@ async function request<T>({
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
   let response: Response;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), apiTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     response = await fetch(url, {
       method,
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(body ? { "Content-Type": "application/json" } : {}),
+        "x-dashboard-trace-id": traceId,
         ...headers,
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -593,6 +634,8 @@ async function request<T>({
           headers,
           retry: true,
           allowEmptyResponse,
+          timeoutProfile,
+          traceId,
         });
       } catch (refreshError) {
         console.warn("[webhooks] token refresh failed:", refreshError);
@@ -650,6 +693,13 @@ function normalizeAuth(auth?: AuthInput): WebhooksAuth | null {
   return auth;
 }
 
+function buildDashboardTraceId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function exchangeWebhooksToken(
   supabaseAccessToken: string,
   subjectAccountId?: string | null,
@@ -668,6 +718,7 @@ export async function exchangeWebhooksToken(
     },
     body: subjectAccountId ? { subjectAccountId } : undefined,
     schema: authResponseSchema,
+    timeoutProfile: "auth",
   });
 }
 
@@ -690,6 +741,7 @@ export async function fetchDashboardBootstrap(
     },
     body,
     schema: dashboardBootstrapResponseSchema,
+    timeoutProfile: "bootstrap",
   });
 }
 
@@ -698,6 +750,7 @@ export async function fetchAccountMe(auth: AuthInput): Promise<AccountMe> {
     path: "/accounts/me",
     auth,
     schema: accountMeSchema,
+    timeoutProfile: "detail",
   });
 }
 
@@ -706,6 +759,7 @@ export async function listAgencyCustomers(auth: AuthInput): Promise<AgencyCustom
     path: "/agency/customers",
     auth,
     schema: listAgencyCustomersResponseSchema,
+    timeoutProfile: "list",
   });
 }
 
@@ -719,6 +773,7 @@ export async function createAgencyCustomer(
     auth,
     body: payload,
     schema: createAgencyCustomerResponseSchema,
+    timeoutProfile: "mutation",
   });
 }
 
@@ -727,6 +782,7 @@ export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
     const data = await request({
       path: "/meta/languages",
       schema: supportedLanguagesResponseSchema,
+      timeoutProfile: "metadata",
     });
     return data.languages;
   } catch (error) {
@@ -735,11 +791,12 @@ export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
   }
 }
 
-export async function listSites(auth: AuthInput): Promise<Site[]> {
+export async function listSites(auth: AuthInput): Promise<SiteSummary[]> {
   const data = await request({
     path: "/sites",
     auth,
     schema: listSitesResponseSchema,
+    timeoutProfile: "list",
   });
 
   return data.sites;
@@ -750,6 +807,7 @@ export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> 
     path: `/sites/${siteId}`,
     auth,
     schema: siteSchema,
+    timeoutProfile: "detail",
   });
 }
 
@@ -852,6 +910,7 @@ export async function fetchTranslationRun(auth: AuthInput, siteId: string, runId
     path: `/sites/${siteId}/translation-runs/${runId}`,
     auth,
     schema: translationRunResponseSchema,
+    timeoutProfile: "detail",
   });
   return data.run;
 }
@@ -923,6 +982,7 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
     path: `/sites/${siteId}/deployments`,
     auth,
     schema: listDeploymentsResponseSchema,
+    timeoutProfile: "detail",
   });
 
   return data.deployments;
@@ -947,6 +1007,7 @@ export async function fetchSitePages(
     path,
     auth,
     schema: listSitePagesResponseSchema,
+    timeoutProfile: "detail",
   });
 
   return data;
@@ -957,6 +1018,7 @@ export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<Gl
     path: `/sites/${siteId}/glossary`,
     auth,
     schema: glossaryResponseSchema,
+    timeoutProfile: "detail",
   });
 
   return data.entries;

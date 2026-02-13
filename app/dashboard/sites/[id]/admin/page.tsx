@@ -377,6 +377,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                   loading="Pausing localization..."
                   success="Localization paused."
                   error="Unable to pause localization."
+                  refreshOnSuccess={true}
                 >
                   <>
                     <input name="siteId" type="hidden" value={site.id} />
@@ -396,6 +397,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                 loading="Enabling localization..."
                 success="Localization enabled."
                 error="Unable to enable localization."
+                refreshOnSuccess={true}
               >
                 <>
                   <input name="siteId" type="hidden" value={site.id} />

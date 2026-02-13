@@ -47,7 +47,7 @@ export default async function OpsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>
-          <CardDescription>Source, status, and latest crawl info.</CardDescription>
+          <CardDescription>Source, status, locale coverage, and domain readiness.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {sites.length === 0 ? (
@@ -58,12 +58,6 @@ export default async function OpsPage() {
                 typeof site.siteProfile?.label === "string"
                   ? (site.siteProfile.label as string)
                   : site.sourceUrl;
-              const latest = site.latestCrawlRun;
-              const latestLabel = latest
-                ? latest.pagesDiscovered == null
-                  ? `${latest.status}`
-                  : `${latest.status} · ${latest.pagesDiscovered} discovered`
-                : "—";
               return (
                 <div key={site.id} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -77,20 +71,15 @@ export default async function OpsPage() {
                     <InfoRow label="Source URL" value={site.sourceUrl} />
                     <InfoRow
                       label="Locales"
-                      value={`${site.locales.length} (${site.locales
-                        .map((locale) => locale.targetLang)
-                        .join(", ")})`}
-                    />
-                    <InfoRow label="Latest crawl" value={latestLabel} />
-                    <InfoRow
-                      label="Last crawl update"
-                      value={latest?.updatedAt ? formatTimestamp(latest.updatedAt) : "—"}
+                      value={`${site.localeCount} (${site.targetLangs.join(", ") || "—"})`}
                     />
                     <InfoRow
                       label="Domains"
-                      value={`${site.domains.filter((d) => d.status === "verified").length} / ${
-                        site.domains.length
-                      } verified`}
+                      value={`${site.verifiedDomainCount} / ${site.domainCount} verified`}
+                    />
+                    <InfoRow
+                      label="Serving locales"
+                      value={`${site.serveEnabledLocaleCount} enabled`}
                     />
                   </div>
                 </div>
@@ -118,15 +107,4 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="font-semibold text-foreground">{label}:</span> <span>{value}</span>
     </div>
   );
-}
-
-function formatTimestamp(value?: string | null): string {
-  if (!value) {
-    return "—";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toISOString();
 }
