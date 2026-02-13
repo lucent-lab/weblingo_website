@@ -108,7 +108,7 @@ export default async function SitePage({ params }: SitePageProps) {
   }
 
   if (pagesResult.status === "fulfilled") {
-    pages = pagesResult.value;
+    pages = pagesResult.value.pages;
   } else {
     const err = pagesResult.reason;
     if (err instanceof WebhooksApiError) {

@@ -246,6 +246,14 @@ const authResponseSchema = z.object({
 const listSitePagesResponseSchema = z
   .object({
     pages: z.array(sitePageSummarySchema),
+    pagination: z
+      .object({
+        limit: z.number().int().nonnegative(),
+        offset: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+        hasMore: z.boolean(),
+      })
+      .strict(),
   })
   .strict();
 
@@ -402,6 +410,8 @@ export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
+export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
+export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
@@ -922,7 +932,7 @@ export async function fetchSitePages(
   auth: AuthInput,
   siteId: string,
   options?: { limit?: number; offset?: number },
-): Promise<SitePageSummary[]> {
+): Promise<SitePagesResponse> {
   const qs = new URLSearchParams();
 
   if (typeof options?.limit === "number") {
@@ -939,7 +949,7 @@ export async function fetchSitePages(
     schema: listSitePagesResponseSchema,
   });
 
-  return data.pages;
+  return data;
 }
 
 export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<GlossaryEntry[]> {

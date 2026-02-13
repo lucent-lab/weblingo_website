@@ -3,10 +3,27 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResponse } from "@/app/dashboard/actions";
 import { envServer } from "@internal/core/env-server";
 import { FetchTimeoutError, fetchWithTimeout } from "@internal/core/fetch-timeout";
 
-export async function claimAccount() {
+const failed = (message: string): ActionResponse => ({
+  ok: false,
+  message,
+});
+
+const succeeded = (message: string, meta?: Record<string, unknown>): ActionResponse => ({
+  ok: true,
+  message,
+  meta,
+});
+
+export async function claimAccount(
+  _prevState: ActionResponse | undefined,
+  _formData: FormData,
+): Promise<ActionResponse> {
+  void _prevState;
+  void _formData;
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     redirect("/");
   }
@@ -61,10 +78,11 @@ export async function claimAccount() {
   }
 
   if (shouldRedirectToDashboard) {
-    redirect("/dashboard");
+    return succeeded("Account linked. Redirecting to dashboard.", {
+      redirectTo: "/dashboard",
+      refresh: false,
+    });
   }
 
-  redirect(
-    `/dashboard/no-account?error=${encodeURIComponent(errorMessage ?? "Unable to claim account")}`,
-  );
+  return failed(errorMessage ?? "Unable to claim account");
 }

@@ -426,6 +426,7 @@ export async function translateAndServeAction(
     const result = await withWebhooksAuth(async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
+        await invalidateSitesCache(auth);
       }
       return translateSite(auth, siteId, targetLang, { intent: "translate_and_serve" });
     });

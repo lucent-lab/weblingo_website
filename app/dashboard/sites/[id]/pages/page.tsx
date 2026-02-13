@@ -29,10 +29,17 @@ export const metadata = {
 
 type SitePagesPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ page?: string }>;
 };
 
-export default async function SitePagesPage({ params }: SitePagesPageProps) {
+const PAGES_PAGE_SIZE = 25;
+
+export default async function SitePagesPage({ params, searchParams }: SitePagesPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const requestedPage = Number.parseInt(resolvedSearchParams?.page ?? "1", 10);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const offset = (currentPage - 1) * PAGES_PAGE_SIZE;
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
@@ -96,12 +103,14 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
 
   let site: Site | null = null;
   let pages: SitePageSummary[] = [];
+  let pageTotal = 0;
+  let pageHasMore = false;
   let deployments: Deployment[] = [];
   let error: string | null = null;
 
   const [siteResult, pagesResult, deploymentsResult] = await Promise.allSettled([
     fetchSite(authToken, id),
-    fetchSitePages(authToken, id),
+    fetchSitePages(authToken, id, { limit: PAGES_PAGE_SIZE, offset }),
     fetchDeployments(authToken, id),
   ]);
 
@@ -129,7 +138,9 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
   }
 
   if (pagesResult.status === "fulfilled") {
-    pages = pagesResult.value;
+    pages = pagesResult.value.pages;
+    pageTotal = pagesResult.value.pagination.total;
+    pageHasMore = pagesResult.value.pagination.hasMore;
   } else {
     const err = pagesResult.reason;
     if (err instanceof WebhooksApiError) {
@@ -188,6 +199,13 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
   const servingRows = targetLangs
     .map((lang) => deploymentsByLang.get(lang))
     .filter((deployment): deployment is Deployment => Boolean(deployment));
+  const totalPages = Math.max(1, Math.ceil(pageTotal / PAGES_PAGE_SIZE));
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = pageHasMore;
+  const basePagesPath = `/dashboard/sites/${site.id}/pages`;
+  const previousPageHref =
+    currentPage - 1 <= 1 ? basePagesPath : `${basePagesPath}?page=${currentPage - 1}`;
+  const nextPageHref = `${basePagesPath}?page=${currentPage + 1}`;
 
   return (
     <div className="space-y-8">
@@ -308,69 +326,98 @@ export default async function SitePagesPage({ params }: SitePagesPageProps) {
           {pages.length === 0 ? (
             <p className="text-sm text-muted-foreground">{pagesEmpty}</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{pageColumnLabel}</th>
-                    <th className="px-3 py-2 text-left">{lastCrawlLabel}</th>
-                    <th className="px-3 py-2 text-left">{lastChangeLabel}</th>
-                    <th className="px-3 py-2 text-left">{pageNextCrawlLabel}</th>
-                    {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pages.map((page) => (
-                    <tr key={page.id} className="border-t border-border/50">
-                      <td className="px-3 py-3 align-top">
-                        <span className="rounded bg-muted/60 px-2 py-1 font-mono text-xs text-foreground">
-                          {page.sourcePath}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 align-top text-muted-foreground">
-                        {formatTimestamp(page.lastCrawledAt)}
-                      </td>
-                      <td className="px-3 py-3 align-top text-muted-foreground">
-                        {formatTimestamp(page.lastSnapshotAt)}
-                      </td>
-                      <td className="px-3 py-3 align-top text-muted-foreground">
-                        {formatNextCrawlAt(page.nextCrawlAt, eligibleNowLabel)}
-                      </td>
-                      {canCrawl ? (
-                        <td className="px-3 py-3 text-right align-top">
-                          <ActionForm
-                            action={triggerPageCrawlAction}
-                            loading="Starting page crawl..."
-                            success="Page crawl enqueued."
-                            error="Unable to enqueue page crawl."
-                            refreshOnSuccess={false}
-                          >
-                            <>
-                              <input name="siteId" type="hidden" value={site.id} />
-                              <input name="pageId" type="hidden" value={page.id} />
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant="outline"
-                                disabled={!crawlReady || pageCrawlLimitReached}
-                                title={
-                                  pageCrawlLimitReached
-                                    ? "Daily page crawl limit reached."
-                                    : crawlReady
-                                      ? "Enqueue a crawl for this page."
-                                      : "Enable localization to crawl."
-                                }
-                              >
-                                Force crawl
-                              </Button>
-                            </>
-                          </ActionForm>
-                        </td>
-                      ) : null}
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-lg border border-border/60">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left">{pageColumnLabel}</th>
+                      <th className="px-3 py-2 text-left">{lastCrawlLabel}</th>
+                      <th className="px-3 py-2 text-left">{lastChangeLabel}</th>
+                      <th className="px-3 py-2 text-left">{pageNextCrawlLabel}</th>
+                      {canCrawl ? <th className="px-3 py-2 text-right">Actions</th> : null}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pages.map((page) => (
+                      <tr key={page.id} className="border-t border-border/50">
+                        <td className="px-3 py-3 align-top">
+                          <span className="rounded bg-muted/60 px-2 py-1 font-mono text-xs text-foreground">
+                            {page.sourcePath}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 align-top text-muted-foreground">
+                          {formatTimestamp(page.lastCrawledAt)}
+                        </td>
+                        <td className="px-3 py-3 align-top text-muted-foreground">
+                          {formatTimestamp(page.lastSnapshotAt)}
+                        </td>
+                        <td className="px-3 py-3 align-top text-muted-foreground">
+                          {formatNextCrawlAt(page.nextCrawlAt, eligibleNowLabel)}
+                        </td>
+                        {canCrawl ? (
+                          <td className="px-3 py-3 text-right align-top">
+                            <ActionForm
+                              action={triggerPageCrawlAction}
+                              loading="Starting page crawl..."
+                              success="Page crawl enqueued."
+                              error="Unable to enqueue page crawl."
+                              refreshOnSuccess={false}
+                            >
+                              <>
+                                <input name="siteId" type="hidden" value={site.id} />
+                                <input name="pageId" type="hidden" value={page.id} />
+                                <Button
+                                  type="submit"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!crawlReady || pageCrawlLimitReached}
+                                  title={
+                                    pageCrawlLimitReached
+                                      ? "Daily page crawl limit reached."
+                                      : crawlReady
+                                        ? "Enqueue a crawl for this page."
+                                        : "Enable localization to crawl."
+                                  }
+                                >
+                                  Force crawl
+                                </Button>
+                              </>
+                            </ActionForm>
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {pageTotal > PAGES_PAGE_SIZE ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Page {Math.min(currentPage, totalPages)} of {totalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {hasPreviousPage ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={previousPageHref}>Previous</Link>
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>
+                        Previous
+                      </Button>
+                    )}
+                    {hasNextPage ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={nextPageHref}>Next</Link>
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled>
+                        Next
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </CardContent>
