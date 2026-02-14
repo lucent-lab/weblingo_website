@@ -11,10 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { getSiteDashboardCached } from "@internal/dashboard/data";
 import {
-  fetchDeployments,
-  fetchSite,
-  fetchSitePages,
   WebhooksApiError,
   type Deployment,
   type Site,
@@ -108,19 +106,21 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let deployments: Deployment[] = [];
   let error: string | null = null;
 
-  const [siteResult, pagesResult, deploymentsResult] = await Promise.allSettled([
-    fetchSite(authToken, id),
-    fetchSitePages(authToken, id, { limit: PAGES_PAGE_SIZE, offset }),
-    fetchDeployments(authToken, id),
-  ]);
-
-  if (siteResult.status === "fulfilled") {
-    site = siteResult.value;
-  } else {
-    const err = siteResult.reason;
+  try {
+    const payload = await getSiteDashboardCached(authToken, id, {
+      includePages: true,
+      limit: PAGES_PAGE_SIZE,
+      offset,
+    });
+    site = payload.site;
+    pages = payload.pages ?? [];
+    pageTotal = payload.pagination?.total ?? 0;
+    pageHasMore = payload.pagination?.hasMore ?? false;
+    deployments = payload.deployments;
+  } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site pages.";
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSite failed", {
+      console.warn("[dashboard] fetchSiteDashboard failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -130,42 +130,11 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchSite failed (unknown error)", {
+      console.warn("[dashboard] fetchSiteDashboard failed (unknown error)", {
         siteId: id,
         message: error,
       });
     }
-  }
-
-  if (pagesResult.status === "fulfilled") {
-    pages = pagesResult.value.pages;
-    pageTotal = pagesResult.value.pagination.total;
-    pageHasMore = pagesResult.value.pagination.hasMore;
-  } else {
-    const err = pagesResult.reason;
-    if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSitePages failed", {
-        siteId: id,
-        status: err.status,
-        message: err.message,
-        details: err.details ?? null,
-        subjectAccountId: auth.subjectAccountId,
-        actorAccountId: auth.actorAccountId,
-        actingAsCustomer: auth.actingAsCustomer,
-      });
-    } else {
-      const message = err instanceof Error ? err.message : "Unable to load site pages.";
-      console.warn("[dashboard] fetchSitePages failed (unknown error)", {
-        siteId: id,
-        message,
-      });
-    }
-  }
-
-  if (deploymentsResult.status === "fulfilled") {
-    deployments = deploymentsResult.value;
-  } else {
-    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
   }
 
   if (!site) {

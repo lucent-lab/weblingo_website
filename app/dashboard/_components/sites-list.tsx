@@ -23,7 +23,7 @@ export function SitesList({ sites }: { sites: SiteSummary[] }) {
                 Domains: {site.verifiedDomainCount} / {site.domainCount}
               </Badge>
               <Button asChild size="sm" variant="outline">
-                <Link href={`/dashboard/sites/${site.id}`} title="Manage">
+                <Link href={`/dashboard/sites/${site.id}`} prefetch={false} title="Manage">
                   Manage
                 </Link>
               </Button>

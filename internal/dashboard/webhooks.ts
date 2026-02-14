@@ -286,6 +286,15 @@ const listSitePagesResponseSchema = z
   })
   .strict();
 
+const siteDashboardResponseSchema = z
+  .object({
+    site: siteSchema,
+    deployments: z.array(deploymentSchema),
+    pages: z.array(sitePageSummarySchema).optional(),
+    pagination: listSitePagesResponseSchema.shape.pagination.optional(),
+  })
+  .strict();
+
 const featureFlagsSchema = z
   .object({
     editEnabled: z.boolean(),
@@ -442,6 +451,7 @@ export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
+export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
@@ -471,6 +481,7 @@ export const __webhooksZodContracts = {
   domainResponseSchema,
   listDeploymentsResponseSchema,
   listSitePagesResponseSchema,
+  siteDashboardResponseSchema,
   glossaryResponseSchema,
   upsertGlossaryResponseSchema,
   createOverrideResponseSchema,
@@ -807,6 +818,32 @@ export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> 
     path: `/sites/${siteId}`,
     auth,
     schema: siteSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function fetchSiteDashboard(
+  auth: AuthInput,
+  siteId: string,
+  options?: { includePages?: boolean; limit?: number; offset?: number },
+): Promise<SiteDashboardResponse> {
+  const qs = new URLSearchParams();
+  if (typeof options?.includePages === "boolean") {
+    qs.set("includePages", String(options.includePages));
+  }
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/dashboard?${qs.toString()}`
+    : `/sites/${siteId}/dashboard`;
+  return request({
+    path,
+    auth,
+    schema: siteDashboardResponseSchema,
     timeoutProfile: "detail",
   });
 }

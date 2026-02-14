@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { fetchDeployments, fetchSite, WebhooksApiError } from "@internal/dashboard/webhooks";
+import { fetchSite, WebhooksApiError } from "@internal/dashboard/webhooks";
 
 type RouteParams = {
   params: Promise<{
@@ -25,8 +25,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     if (site.accountId !== auth.subjectAccountId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const deployments = await fetchDeployments(token, siteId);
-    return NextResponse.json({ site, deployments });
+    return NextResponse.json({ site });
   } catch (error) {
     if (error instanceof WebhooksApiError && error.status === 404) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
