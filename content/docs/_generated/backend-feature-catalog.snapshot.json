@@ -357,6 +357,37 @@
       "endpoint": {
         "auth": "bearer",
         "method": "GET",
+        "operationId": "sites.dashboard.get",
+        "path": "/sites/:siteId/dashboard"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.dashboard",
+      "id": "api.sites.dashboard.get",
+      "name": "Get dashboard payload for a site",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        },
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "sites.dashboard.get"
+      ],
+      "stability": "GA",
+      "summary": "Returns a consolidated dashboard payload (site + deployments) and optional paginated pages when `includePages=true`.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
         "operationId": "sites.deployments.list",
         "path": "/sites/:siteId/deployments"
       },
@@ -620,7 +651,7 @@
         "sites.list"
       ],
       "stability": "GA",
-      "summary": "List sites",
+      "summary": "Returns summary records for dashboard/navigation use. Breaking change: this response no longer includes full `Site` fields (`locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, `latestCrawlRun`). Call `GET /api/sites/{siteId}` for full site details.",
       "userFacing": true
     },
     {
