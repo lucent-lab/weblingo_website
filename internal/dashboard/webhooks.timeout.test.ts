@@ -146,4 +146,72 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(10_000);
     expect(timeoutValues).toContain(6_000);
   });
+
+  it("requests consolidated site dashboard payload with query params", async () => {
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      expect(url).toContain("/sites/site-1/dashboard");
+      expect(url).toContain("includePages=true");
+      expect(url).toContain("limit=10");
+      expect(url).toContain("offset=20");
+
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer token");
+      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
+
+      return new Response(
+        JSON.stringify({
+          site: {
+            id: "site-1",
+            accountId: "acct-1",
+            sourceUrl: "https://example.com",
+            status: "active",
+            servingMode: "strict",
+            maxLocales: null,
+            siteProfile: null,
+            locales: [],
+            domains: [],
+            latestCrawlRun: null,
+          },
+          deployments: [],
+          pages: [
+            {
+              id: "page-1",
+              sourcePath: "/",
+              lastSeenAt: null,
+              lastCrawledAt: null,
+              lastSnapshotAt: null,
+              nextCrawlAt: null,
+              lastVersionAt: null,
+            },
+          ],
+          pagination: {
+            limit: 10,
+            offset: 20,
+            total: 21,
+            hasMore: false,
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+    vi.resetModules();
+    const { fetchSiteDashboard } = await import("./webhooks");
+    const payload = await fetchSiteDashboard("token", "site-1", {
+      includePages: true,
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(payload.site.id).toBe("site-1");
+    expect(payload.pages).toHaveLength(1);
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const timeoutValues = timeoutSpy.mock.calls
+      .map((call) => call[1])
+      .filter((value): value is number => typeof value === "number");
+    expect(timeoutValues).toContain(10_000);
+  });
 });
