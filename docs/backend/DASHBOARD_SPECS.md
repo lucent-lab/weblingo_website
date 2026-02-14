@@ -68,6 +68,13 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `id`, `accountId`, `sourceUrl`, `status`, `servingMode`, `maxLocales`, `siteProfile`.
   - List-level aggregates: `sourceLang`, `targetLangs`, `localeCount`, `serveEnabledLocaleCount`, `domainCount`, `verifiedDomainCount`.
   - Does **not** include sensitive/detail fields (`webhookSecret`, `verificationToken`, full route internals, domains/locales arrays).
+- **PageSummary**:
+  - Returned by `GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`.
+  - `id`, `sourcePath`.
+  - `lastSeenAt`, `lastCrawledAt`, `lastSnapshotAt`, `nextCrawlAt`, `lastVersionAt` (ISO strings or `null`).
+- **Pagination**:
+  - Returned alongside `pages` when pagination is enabled.
+  - `{ limit, offset, total, hasMore }`.
 - **RouteConfig**:
   - `sourceLang`, `sourceOrigin`, `pattern` (string or `null`).
   - `locales`: `[{ lang, origin, routePrefix }]`.
@@ -127,6 +134,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
 `GET /api/sites` → `{ sites: SiteSummary[] }` scoped to account.
+- **Breaking change:** list responses are summary-only and exclude detail fields such as `locales`, `domains`, `routeConfig`, `webhookSecret`, and `verificationToken`. For full details, call `GET /api/sites/:id` or `GET /api/sites/:id/dashboard`.
 
 `GET /api/sites/:id` → `Site`.
 

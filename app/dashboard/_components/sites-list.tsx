@@ -62,5 +62,9 @@ function renderLanguageDescription(site: SiteSummary): string {
       : site.targetLangs.join(" · ");
   }
 
-  return site.sourceLang ?? "No target languages";
+  if (site.sourceLang) {
+    return site.sourceLang;
+  }
+
+  return "No languages configured";
 }

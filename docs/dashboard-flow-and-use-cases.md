@@ -133,7 +133,7 @@ Workspace switcher (header):
 
 - `/accounts/me`: plan status, feature flags, quotas for the current subject account.
 - `/sites`: list sites for the current subject account.
-- `/sites/{siteId}/dashboard`: consolidated detail payload (`site + deployments`, optional paginated pages).
+- `/api/sites/{siteId}/dashboard`: consolidated detail payload (`site + deployments`, optional paginated pages).
 - `/agency/customers`: agency list and summary (plan status + active site counts + totals).
 - `/auth/token` with `subjectAccountId` for agency context switching.
 - `/sites/{siteId}/translate`: translate without recrawl.

@@ -121,7 +121,10 @@ describe("dashboard data caches", () => {
   });
 
   it("invalidates all indexed site dashboard cache variants", async () => {
-    redisMock.smembers.mockResolvedValue(["custom:dashboard:key:1", "custom:dashboard:key:2"]);
+    redisMock.smembers.mockResolvedValue([
+      "dashboard:site-dashboard:test:1",
+      "dashboard:site-dashboard:test:2",
+    ]);
     redisMock.del.mockResolvedValue(4);
 
     const { invalidateSiteDashboardCache } = await import("./data");
@@ -133,7 +136,10 @@ describe("dashboard data caches", () => {
     expect(redisMock.del).toHaveBeenCalledOnce();
     const deletedKeys = redisMock.del.mock.calls[0] as string[];
     expect(deletedKeys).toEqual(
-      expect.arrayContaining(["custom:dashboard:key:1", "custom:dashboard:key:2"]),
+      expect.arrayContaining([
+        "dashboard:site-dashboard:test:1",
+        "dashboard:site-dashboard:test:2",
+      ]),
     );
     expect(
       deletedKeys.filter((key) => key.startsWith("dashboard:site-dashboard:")).length,
