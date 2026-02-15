@@ -60,7 +60,7 @@ export function ActionForm({
       const metaRefresh =
         typeof state.meta?.refresh === "boolean" ? (state.meta.refresh as boolean) : undefined;
 
-      const shouldRefresh = refreshOnSuccess ?? metaRefresh ?? true;
+      const shouldRefresh = refreshOnSuccess ?? metaRefresh ?? false;
 
       if (shouldRefresh) {
         router.refresh();

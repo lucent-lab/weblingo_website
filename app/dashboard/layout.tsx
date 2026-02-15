@@ -25,7 +25,7 @@ import { logout } from "@/app/auth/logout/actions";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
 import { i18nConfig } from "@internal/i18n";
-import type { Site } from "@internal/dashboard/webhooks";
+import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
   title: "Customer Dashboard",
@@ -252,7 +252,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
 // Async component for sidebar sites navigation - streams in while layout shell renders
 async function SitesNavAsync({ auth }: { auth: DashboardAuth }) {
-  let sites: Site[] = [];
+  let sites: SiteSummary[] = [];
   try {
     if (auth.webhooksAuth) {
       sites = await listSitesCached(auth.webhooksAuth);

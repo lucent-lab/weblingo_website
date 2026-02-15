@@ -21,8 +21,12 @@ import {
   WebhooksApiError,
   type GlossaryEntry,
 } from "@internal/dashboard/webhooks";
-import { invalidateSitesCache } from "@internal/dashboard/data";
-import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
+import { invalidateSiteDashboardCache, invalidateSitesCache } from "@internal/dashboard/data";
+import {
+  requireDashboardAuth,
+  type DashboardAuth,
+  type WebhooksAuthContext,
+} from "@internal/dashboard/auth";
 import {
   buildSiteSettingsUpdatePayload,
   deriveSiteSettingsAccess,
@@ -170,6 +174,17 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
   return `Your plan is ${status}. Update billing to ${actionLabel}.`;
 }
 
+async function invalidateDashboardCaches(
+  auth: WebhooksAuthContext,
+  siteId: string,
+  options: { invalidateSitesList: boolean },
+): Promise<void> {
+  await invalidateSiteDashboardCache(auth, siteId);
+  if (options.invalidateSitesList) {
+    await invalidateSitesCache(auth);
+  }
+}
+
 function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
   if (!Array.isArray(entries)) {
     return "Glossary entries must be an array.";
@@ -309,7 +324,9 @@ export async function createSiteAction(
       }
     }
 
-    await invalidateSitesCache(auth.webhooksAuth);
+    await invalidateDashboardCaches(auth.webhooksAuth, site.id, {
+      invalidateSitesList: true,
+    });
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${site.id}`);
@@ -358,7 +375,9 @@ export async function updateSiteSettingsAction(
 
     await updateSite(auth.webhooksAuth, siteId, update.payload);
 
-    await invalidateSitesCache(auth.webhooksAuth);
+    await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+      invalidateSitesList: true,
+    });
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${siteId}`);
@@ -388,9 +407,11 @@ export async function triggerCrawlAction(
   }
 
   try {
-    const status = await withWebhooksAuth((auth) =>
-      triggerCrawl(auth, siteId, force ? { force } : undefined),
-    );
+    const status = await withWebhooksAuth(async (auth) => {
+      const response = await triggerCrawl(auth, siteId, force ? { force } : undefined);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     if (status.enqueued) {
       return succeeded("Crawl enqueued.");
@@ -426,9 +447,14 @@ export async function translateAndServeAction(
     const result = await withWebhooksAuth(async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
-        await invalidateSitesCache(auth);
       }
-      return translateSite(auth, siteId, targetLang, { intent: "translate_and_serve" });
+      const response = await translateSite(auth, siteId, targetLang, {
+        intent: "translate_and_serve",
+      });
+      await invalidateDashboardCaches(auth, siteId, {
+        invalidateSitesList: shouldActivate,
+      });
+      return response;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     if (shouldActivate) {
@@ -470,7 +496,10 @@ export async function cancelTranslationRunAction(
   }
 
   try {
-    await withWebhooksAuth((auth) => cancelTranslationRun(auth, siteId, runId));
+    await withWebhooksAuth(async (auth) => {
+      await cancelTranslationRun(auth, siteId, runId);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
     return succeeded("Translation run cancelled.");
@@ -517,7 +546,11 @@ export async function resumeTranslationRunAction(
   }
 
   try {
-    const result = await withWebhooksAuth((auth) => resumeTranslationRun(auth, siteId, runId));
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await resumeTranslationRun(auth, siteId, runId);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
     const message = buildResumeToast("resume", result);
@@ -543,7 +576,11 @@ export async function retryFailedTranslationRunAction(
   }
 
   try {
-    const result = await withWebhooksAuth((auth) => resumeTranslationRun(auth, siteId, runId));
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await resumeTranslationRun(auth, siteId, runId);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
     const message = buildResumeToast("retry", result);
@@ -569,7 +606,11 @@ export async function triggerPageCrawlAction(
   }
 
   try {
-    const status = await withWebhooksAuth((auth) => triggerPageCrawl(auth, siteId, pageId));
+    const status = await withWebhooksAuth(async (auth) => {
+      const response = await triggerPageCrawl(auth, siteId, pageId);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     if (status.enqueued) {
       return succeeded("Page crawl enqueued.");
@@ -605,10 +646,11 @@ export async function verifyDomainAction(
   try {
     const { domain: updated } = await withWebhooksAuth(async (auth) => {
       const result = await verifyDomain(auth, siteId, domain, overrideToken);
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -649,10 +691,11 @@ export async function provisionDomainAction(
   try {
     const { domain: updated } = await withWebhooksAuth(async (auth) => {
       const result = await provisionDomain(auth, siteId, domain);
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -693,10 +736,11 @@ export async function refreshDomainAction(
   try {
     const { domain: updated } = await withWebhooksAuth(async (auth) => {
       const result = await refreshDomain(auth, siteId, domain);
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -748,9 +792,11 @@ export async function updateGlossaryAction(
   }
 
   try {
-    const result = await withWebhooksAuth((auth) =>
-      updateGlossary(auth, siteId, entries, retranslate),
-    );
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await updateGlossary(auth, siteId, entries, retranslate);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Glossary saved.", { crawlStatus: result.crawlStatus });
   } catch (error) {
@@ -780,9 +826,16 @@ export async function createOverrideAction(
   }
 
   try {
-    const result = await withWebhooksAuth((auth) =>
-      createOverride(auth, siteId, { segmentId, targetLang, text, contextHashScope }),
-    );
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await createOverride(auth, siteId, {
+        segmentId,
+        targetLang,
+        text,
+        contextHashScope,
+      });
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Override saved.", { override: result });
   } catch (error) {
@@ -810,9 +863,11 @@ export async function updateSlugAction(
   }
 
   try {
-    const result = await withWebhooksAuth((auth) =>
-      updateSlug(auth, siteId, { pageId, lang, path }),
-    );
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await updateSlug(auth, siteId, { pageId, lang, path });
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded("Slug saved and crawl enqueued.", { status: result.crawlStatus });
   } catch (error) {
@@ -844,7 +899,7 @@ export async function updateSiteStatusAction(
   try {
     const updated = await withWebhooksAuth(async (auth) => {
       const updatedSite = await updateSite(auth, siteId, { status });
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
       return updatedSite;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
@@ -883,7 +938,7 @@ export async function setLocaleServingAction(
   try {
     await withWebhooksAuth(async (auth) => {
       await setLocaleServing(auth, siteId, targetLang, enabled);
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
@@ -913,7 +968,7 @@ export async function deactivateSiteAction(
   try {
     await withWebhooksAuth(async (auth) => {
       await deactivateSite(auth, siteId);
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
@@ -943,7 +998,7 @@ export async function activateSiteAction(
   try {
     await withWebhooksAuth(async (auth) => {
       await updateSite(auth, siteId, { status: "active" });
-      await invalidateSitesCache(auth);
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");

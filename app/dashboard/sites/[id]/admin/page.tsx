@@ -21,15 +21,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
-import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import {
-  fetchDeployments,
-  fetchSite,
-  type Deployment,
-  type Site,
-  type SupportedLanguage,
-} from "@internal/dashboard/webhooks";
+  getSiteDashboardCached,
+  listSitesCached,
+  listSupportedLanguagesCached,
+} from "@internal/dashboard/data";
+import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
+import { type Deployment, type Site, type SupportedLanguage } from "@internal/dashboard/webhooks";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
@@ -64,27 +62,20 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   let supportedLanguages: SupportedLanguage[] = [];
 
   // Parallelize all API fetches - optimistic that site exists (the common case)
-  const [siteResult, deploymentsResult, sitesResult, supportedLanguagesResult] =
-    await Promise.allSettled([
-      fetchSite(auth.webhooksAuth!, id),
-      fetchDeployments(auth.webhooksAuth!, id),
-      listSitesCached(auth.webhooksAuth!),
-      settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
-    ]);
+  const [siteDashboardResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
+    getSiteDashboardCached(auth.webhooksAuth!, id),
+    listSitesCached(auth.webhooksAuth!),
+    settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
+  ]);
 
-  if (siteResult.status === "fulfilled") {
-    site = siteResult.value;
+  if (siteDashboardResult.status === "fulfilled") {
+    site = siteDashboardResult.value.site;
+    deployments = siteDashboardResult.value.deployments;
   } else {
     error =
-      siteResult.reason instanceof Error
-        ? siteResult.reason.message
+      siteDashboardResult.reason instanceof Error
+        ? siteDashboardResult.reason.message
         : "Unable to load site settings.";
-  }
-
-  if (deploymentsResult.status === "fulfilled") {
-    deployments = deploymentsResult.value;
-  } else {
-    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
   }
 
   if (sitesResult.status === "fulfilled") {
@@ -377,6 +368,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                   loading="Pausing localization..."
                   success="Localization paused."
                   error="Unable to pause localization."
+                  refreshOnSuccess={true}
                 >
                   <>
                     <input name="siteId" type="hidden" value={site.id} />
@@ -396,6 +388,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                 loading="Enabling localization..."
                 success="Localization enabled."
                 error="Unable to enable localization."
+                refreshOnSuccess={true}
               >
                 <>
                   <input name="siteId" type="hidden" value={site.id} />

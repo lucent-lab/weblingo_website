@@ -52,6 +52,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
     - Crawl trigger disabled: `{ error: "Crawl triggers are disabled for this account", details: { code: "crawl_trigger_disabled" } }`
     - Slug edits disabled: `{ error: "Slug edits are disabled for this account", details: { code: "slug_edit_disabled" } }`
 - **Site**:
+  - Returned by detail surfaces (`GET /api/sites/:id`, `GET /api/sites/:id/dashboard`).
   - `id`, `accountId`, `sourceUrl`, `status` (`"active"|"inactive"`).
   - `siteProfile`: object or `null`.
   - `servingMode`: `"strict" | "tolerant"`.
@@ -62,6 +63,18 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `domains`: `[{ domain, status, verificationToken, verifiedAt?, lastCheckedAt?, dnsInstructions?, cloudflare? }]`.
   - `latestCrawlRun`: object or `null`.
   - Account plan/feature gating is sourced from `/accounts/me` (no per-site plan field).
+- **SiteSummary**:
+  - Returned by `GET /api/sites` list surface.
+  - `id`, `accountId`, `sourceUrl`, `status`, `servingMode`, `maxLocales`, `siteProfile`.
+  - List-level aggregates: `sourceLang`, `targetLangs`, `localeCount`, `serveEnabledLocaleCount`, `domainCount`, `verifiedDomainCount`.
+  - Does **not** include sensitive/detail fields (`webhookSecret`, `verificationToken`, full route internals, domains/locales arrays).
+- **PageSummary**:
+  - Returned by `GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`.
+  - `id`, `sourcePath`.
+  - `lastSeenAt`, `lastCrawledAt`, `lastSnapshotAt`, `nextCrawlAt`, `lastVersionAt` (ISO strings or `null`).
+- **Pagination**:
+  - Returned alongside `pages` on paginated page-list responses (`GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`).
+  - `{ limit, offset, total, hasMore }`.
 - **RouteConfig**:
   - `sourceLang`, `sourceOrigin`, `pattern` (string or `null`).
   - `locales`: `[{ lang, origin, routePrefix }]`.
@@ -120,9 +133,24 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Behavior: validates `sourceUrl` (HTTP 200), reads robots/sitemaps to seed initial pages, creates site + locales + route config, inserts domain records with verification tokens, and sets the site to `inactive` until activation.
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
-`GET /api/sites` → `{ sites: Site[] }` scoped to account.
+`GET /api/sites` → `{ sites: SiteSummary[] }` scoped to account.
+
+- **Breaking change:** list responses are summary-only and exclude detail fields such as `locales`, `domains`, `routeConfig`, `webhookSecret`, and `verificationToken`. For full details, call `GET /api/sites/:id` or `GET /api/sites/:id/dashboard`.
 
 `GET /api/sites/:id` → `Site`.
+
+`GET /api/sites/:id/dashboard`
+
+- Consolidated detail payload for dashboard screens.
+- Query:
+  - `includePages` (optional boolean, default `false`).
+  - `limit` (optional integer, default `25`, valid range `1..200`; used only when `includePages=true`).
+  - `offset` (optional integer, default `0`, must be `>=0`; used only when `includePages=true`).
+  - When `includePages=false`, `limit` and `offset` are ignored.
+  - Invalid query values return `400` (for example: `includePages` not boolean, `limit` out of range, `offset` negative).
+- Response:
+  - Default: `{ site, deployments }`.
+  - With `includePages=true`: `{ site, deployments, pages, pagination }`.
 
 `PATCH /api/sites/:id`
 
@@ -162,7 +190,8 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `GET /api/sites/:id/pages`
 
-- Response: `{ pages: [{ id, sourcePath, lastSeenAt?, lastCrawledAt?, lastSnapshotAt?, nextCrawlAt?, lastVersionAt? }] }`.
+- Query: `limit` (optional integer, default `25`, valid range `1..200`) and `offset` (optional integer, default `0`, must be `>=0`).
+- Response: `{ pages: [{ id, sourcePath, lastSeenAt?, lastCrawledAt?, lastSnapshotAt?, nextCrawlAt?, lastVersionAt? }], pagination: { limit, offset, total, hasMore } }`.
 
 `GET /api/sites/:id/pipeline/status/:pageVersionId`
 
@@ -275,7 +304,7 @@ The serve worker reads `site_configs`, `site_domains`, and `sites` directly. Use
 
 ## Maintenance checklist (OpenAPI parity)
 
-- Last verified against OpenAPI version `0.1.0` on 2026-01-27.
+- Last verified against OpenAPI version `0.1.0` on 2026-02-14.
 - Contract update policy: update this doc and the OpenAPI schema in the same PR.
 - Confirm every endpoint listed here exists in the OpenAPI file.
 - Verify payload required/optional fields match the schema.

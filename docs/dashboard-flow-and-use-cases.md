@@ -51,12 +51,16 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 - Overview: summary cards for active sites, unverified domains, and configured locales (`app/dashboard/page.tsx`).
 - Sites list: list + summary per site; plan + usage badges live in the shared header (`app/dashboard/sites/page.tsx`).
 - Site detail: domains, deployments, trigger crawl, glossary, overrides, slugs (`app/dashboard/sites/[id]/page.tsx`).
+- Detail data path: site detail/admin/pages routes consume consolidated `GET /api/sites/{siteId}/dashboard` payloads to avoid duplicate site + deployments fetches.
 - Feature gating: locked sections show disabled cards with upgrade CTAs instead of disappearing.
 - Onboarding: uses `maxLocales` from `/accounts/me` and blocks adding targets past the cap (`app/dashboard/sites/new/onboarding-form.tsx`).
 - Domain onboarding: handles CNAME instructions (provision/refresh) or TXT verification (`app/dashboard/sites/[id]/page.tsx`).
 - Agency surface: workspace switcher + agency overview/customers list (with filters and invite flow).
 - Auth refresh policy: dashboard exchanges Supabase tokens for webhooks JWTs server-side on each request, refreshes pre-expiry (5-minute buffer), and retries once on 401.
 - Billing policy: mutations require both actor and subject plans to be active; billing banners warn the billing owner (agency when acting as agency, customer when in own workspace) without showing agency billing warnings to customer workspaces.
+- Polling policy: `/api/dashboard/sites/{siteId}/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
+- Cache policy: sites list uses long-lived account-scoped cache; site dashboard payload uses short-TTL per-site cache with indexed invalidation for paginated variants.
+- Prefetch policy: disable implicit route prefetch on high-cardinality site links; keep prefetch only for low-cardinality/static navigation.
 
 ## Recommended UX (future)
 
@@ -129,8 +133,10 @@ Workspace switcher (header):
 
 - `/accounts/me`: plan status, feature flags, quotas for the current subject account.
 - `/sites`: list sites for the current subject account.
+- `/api/sites/{siteId}/dashboard`: consolidated detail payload (`site + deployments`, optional paginated pages).
 - `/agency/customers`: agency list and summary (plan status + active site counts + totals).
 - `/auth/token` with `subjectAccountId` for agency context switching.
 - `/sites/{siteId}/translate`: translate without recrawl.
 - `/sites/{siteId}/translation-runs/{runId}`: status, cancel, resume.
 - `/sites/{siteId}/locales/{targetLang}/serve`: per-locale serving toggle.
+- `/api/dashboard/sites/{siteId}/status`: polling proxy returning minimal crawl status (`{ site }`).

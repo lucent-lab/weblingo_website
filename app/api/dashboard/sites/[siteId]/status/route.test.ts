@@ -4,7 +4,7 @@ import type { Site } from "@internal/dashboard/webhooks";
 
 import { GET } from "./route";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { fetchDeployments, fetchSite } from "@internal/dashboard/webhooks";
+import { fetchSite } from "@internal/dashboard/webhooks";
 
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: vi.fn(),
@@ -23,14 +23,12 @@ vi.mock("@internal/dashboard/webhooks", () => {
   }
   return {
     fetchSite: vi.fn(),
-    fetchDeployments: vi.fn(),
     WebhooksApiError,
   };
 });
 
 const mockedRequireDashboardAuth = vi.mocked(requireDashboardAuth);
 const mockedFetchSite = vi.mocked(fetchSite);
-const mockedFetchDeployments = vi.mocked(fetchDeployments);
 
 const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   user: null,
@@ -38,6 +36,7 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   webhooksAuth: {
     token: "token",
     expiresAt: "2025-01-01T00:00:00Z",
+    subjectAccountId,
     refresh: async () => "token",
   },
   account: null,
@@ -85,13 +84,11 @@ describe("GET /api/dashboard/sites/[siteId]/status", () => {
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body.error).toMatch(/forbidden/i);
-    expect(mockedFetchDeployments).not.toHaveBeenCalled();
   });
 
-  it("returns site and deployments when account matches", async () => {
+  it("returns site when account matches", async () => {
     mockedRequireDashboardAuth.mockResolvedValue(makeAuth("acct-owner"));
     mockedFetchSite.mockResolvedValue(makeSite("acct-owner"));
-    mockedFetchDeployments.mockResolvedValue([]);
 
     const response = await GET(new Request("http://localhost"), {
       params: Promise.resolve({ siteId: "site-1" }),
@@ -100,6 +97,6 @@ describe("GET /api/dashboard/sites/[siteId]/status", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.site.accountId).toBe("acct-owner");
-    expect(Array.isArray(body.deployments)).toBe(true);
+    expect(body).not.toHaveProperty("deployments");
   });
 });

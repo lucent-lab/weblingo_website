@@ -35,6 +35,7 @@ export function SiteStatusToggleForm({
       success="Status updated."
       error="Unable to update status."
       confirmMessage={confirmMessage}
+      refreshOnSuccess={true}
     >
       <>
         <input name="siteId" type="hidden" value={siteId} />

@@ -20,10 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { getSiteDashboardCached } from "@internal/dashboard/data";
 import {
-  fetchDeployments,
-  fetchSite,
-  fetchSitePages,
   WebhooksApiError,
   type Deployment,
   type Site,
@@ -72,19 +70,19 @@ export default async function SitePage({ params }: SitePageProps) {
   let pages: SitePageSummary[] = [];
   let error: string | null = null;
 
-  const [siteResult, deploymentsResult, pagesResult] = await Promise.allSettled([
-    fetchSite(authToken, id),
-    fetchDeployments(authToken, id),
-    fetchSitePages(authToken, id),
-  ]);
-
-  if (siteResult.status === "fulfilled") {
-    site = siteResult.value;
-  } else {
-    const err = siteResult.reason;
+  try {
+    const payload = await getSiteDashboardCached(authToken, id, {
+      includePages: true,
+      limit: 25,
+      offset: 0,
+    });
+    site = payload.site;
+    deployments = payload.deployments;
+    pages = payload.pages ?? [];
+  } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site.";
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSite failed", {
+      console.warn("[dashboard] fetchSiteDashboard failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -94,38 +92,9 @@ export default async function SitePage({ params }: SitePageProps) {
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchSite failed (unknown error)", {
+      console.warn("[dashboard] fetchSiteDashboard failed (unknown error)", {
         siteId: id,
         message: error,
-      });
-    }
-  }
-
-  if (deploymentsResult.status === "fulfilled") {
-    deployments = deploymentsResult.value;
-  } else {
-    console.warn("[dashboard] fetchDeployments failed:", deploymentsResult.reason);
-  }
-
-  if (pagesResult.status === "fulfilled") {
-    pages = pagesResult.value.pages;
-  } else {
-    const err = pagesResult.reason;
-    if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSitePages failed", {
-        siteId: id,
-        status: err.status,
-        message: err.message,
-        details: err.details ?? null,
-        subjectAccountId: auth.subjectAccountId,
-        actorAccountId: auth.actorAccountId,
-        actingAsCustomer: auth.actingAsCustomer,
-      });
-    } else {
-      const message = err instanceof Error ? err.message : "Unable to load site pages.";
-      console.warn("[dashboard] fetchSitePages failed (unknown error)", {
-        siteId: id,
-        message,
       });
     }
   }

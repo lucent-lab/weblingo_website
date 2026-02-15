@@ -359,6 +359,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites", method: "post" },
       { path: "/sites/{siteId}", method: "get" },
       { path: "/sites/{siteId}", method: "patch" },
+      { path: "/sites/{siteId}/dashboard", method: "get" },
       { path: "/sites/{siteId}/crawl", method: "post" },
       { path: "/sites/{siteId}/translate", method: "post" },
       { path: "/sites/{siteId}/locales/{targetLang}/serve", method: "post" },
@@ -431,6 +432,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.listDeploymentsResponseSchema,
       },
       { name: "ListSitePagesResponse", schema: __webhooksZodContracts.listSitePagesResponseSchema },
+      { name: "SiteDashboardResponse", schema: __webhooksZodContracts.siteDashboardResponseSchema },
       { name: "GlossaryResponse", schema: __webhooksZodContracts.upsertGlossaryResponseSchema },
       {
         name: "CreateOverrideResponse",
@@ -445,7 +447,8 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       expect(openApiSchema).toBeTruthy();
       const paths = uniquePaths(collectZodPaths(schema));
       for (const path of paths) {
-        expect(openApiHasPath(spec, definitionsIndex, openApiSchema, path)).toBe(true);
+        const hasPath = openApiHasPath(spec, definitionsIndex, openApiSchema, path);
+        expect(hasPath, `[contracts] ${name} missing OpenAPI path: ${path.join(".")}`).toBe(true);
       }
     }
   });

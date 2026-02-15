@@ -1317,7 +1317,7 @@
         "properties": {
           "sites": {
             "items": {
-              "$ref": "#/components/schemas/Site"
+              "$ref": "#/components/schemas/SiteSummary"
             },
             "type": "array"
           }
@@ -2118,6 +2118,55 @@
         ],
         "type": "object"
       },
+      "SiteDashboardResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "deployments": {
+            "items": {
+              "$ref": "#/components/schemas/Deployment"
+            },
+            "type": "array"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/SitePageSummary"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": false,
+            "properties": {
+              "hasMore": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "offset": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "limit",
+              "offset",
+              "total",
+              "hasMore"
+            ],
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/Site"
+          }
+        },
+        "required": [
+          "site",
+          "deployments"
+        ],
+        "type": "object"
+      },
       "SiteDomain": {
         "additionalProperties": false,
         "properties": {
@@ -2244,6 +2293,92 @@
         "required": [
           "id",
           "sourcePath"
+        ],
+        "type": "object"
+      },
+      "SiteSummary": {
+        "additionalProperties": false,
+        "description": "Summary shape returned by `GET /api/sites`. Excludes detail/sensitive fields such as `locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, and `latestCrawlRun`.",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "domainCount": {
+            "description": "Total number of domains configured for this site.",
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "localeCount": {
+            "description": "Total number of locales configured for this site.",
+            "type": "number"
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "serveEnabledLocaleCount": {
+            "description": "Number of configured locales where serving is currently enabled.",
+            "type": "number"
+          },
+          "servingMode": {
+            "$ref": "#/components/schemas/ServingMode"
+          },
+          "siteProfile": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceLang": {
+            "description": "Primary source locale for the site summary. Derived from the first configured locale record; null when no locales exist.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "verifiedDomainCount": {
+            "description": "Number of configured domains currently in verified status.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "sourceUrl",
+          "status",
+          "servingMode",
+          "maxLocales",
+          "sourceLang",
+          "targetLangs",
+          "localeCount",
+          "serveEnabledLocaleCount",
+          "domainCount",
+          "verifiedDomainCount"
         ],
         "type": "object"
       },
@@ -3738,6 +3873,7 @@
     },
     "/sites": {
       "get": {
+        "description": "Returns summary records for dashboard/navigation use. Breaking change: this response no longer includes full `Site` fields (`locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, `latestCrawlRun`). Call `GET /api/sites/{siteId}` for full site details.",
         "operationId": "sites.list",
         "responses": {
           "200": {
@@ -3747,25 +3883,19 @@
                   "sites": [
                     {
                       "accountId": "string",
-                      "domains": [
-                        {
-                          "domain": "string",
-                          "status": "pending",
-                          "verificationToken": "string"
-                        }
-                      ],
+                      "domainCount": 1,
                       "id": "string",
-                      "locales": [
-                        {
-                          "serveEnabled": true,
-                          "sourceLang": "string",
-                          "targetLang": "string"
-                        }
-                      ],
+                      "localeCount": 1,
                       "maxLocales": 1,
+                      "serveEnabledLocaleCount": 1,
                       "servingMode": "strict",
+                      "sourceLang": "string",
                       "sourceUrl": "string",
-                      "status": "active"
+                      "status": "active",
+                      "targetLangs": [
+                        "string"
+                      ],
+                      "verifiedDomainCount": 1
                     }
                   ]
                 },
@@ -4342,6 +4472,148 @@
         "tags": [
           "Sites",
           "Crawl"
+        ]
+      }
+    },
+    "/sites/{siteId}/dashboard": {
+      "get": {
+        "description": "Returns a consolidated dashboard payload (site + deployments) and optional paginated pages when `includePages=true`.",
+        "operationId": "sites.dashboard.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "When true, include `pages` + `pagination` in the response. Defaults to false.",
+            "in": "query",
+            "name": "includePages",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Maximum number of pages to return when includePages=true (1-200). Defaults to 25.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of pages to skip when includePages=true. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "deployments": [
+                    {
+                      "serveEnabled": true,
+                      "servingStatus": "inactive",
+                      "status": "string",
+                      "targetLang": "string"
+                    }
+                  ],
+                  "site": {
+                    "accountId": "string",
+                    "domains": [
+                      {
+                        "domain": "string",
+                        "status": "pending",
+                        "verificationToken": "string"
+                      }
+                    ],
+                    "id": "string",
+                    "locales": [
+                      {
+                        "serveEnabled": true,
+                        "sourceLang": "string",
+                        "targetLang": "string"
+                      }
+                    ],
+                    "maxLocales": 1,
+                    "servingMode": "strict",
+                    "sourceUrl": "string",
+                    "status": "active"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteDashboardResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get dashboard payload for a site",
+        "tags": [
+          "Sites"
         ]
       }
     },

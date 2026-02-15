@@ -105,7 +105,11 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
               return (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={isItemActive} size="sm">
-                    <Link href={item.href} aria-current={isItemActive ? "page" : undefined}>
+                    <Link
+                      href={item.href}
+                      prefetch={false}
+                      aria-current={isItemActive ? "page" : undefined}
+                    >
                       <span className="truncate group-data-[collapsible=icon]:sr-only">
                         {item.label}
                       </span>

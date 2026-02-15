@@ -20,6 +20,7 @@ import { readSubjectAccountId } from "./workspace";
 export type WebhooksAuthContext = {
   token: string;
   expiresAt: string;
+  subjectAccountId: string;
   refresh: () => Promise<string>;
 };
 
@@ -164,10 +165,12 @@ function buildWebhooksAuthContext(
   const auth: WebhooksAuthContext = {
     token: payload.token,
     expiresAt: payload.expiresAt,
+    subjectAccountId: payload.subjectAccountId,
     refresh: async () => {
       const refreshed = await exchangeWebhooksToken(supabaseAccessToken, payload.subjectAccountId);
       auth.token = refreshed.token;
       auth.expiresAt = refreshed.expiresAt;
+      auth.subjectAccountId = refreshed.subjectAccountId;
       return refreshed.token;
     },
   };

@@ -25,9 +25,11 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `agency.customers.create`
 3. List portfolio sites:
    - `operationId`: `sites.list`
-4. Update site configuration:
+4. Load consolidated site dashboard payload (detail + deployments, optional pages):
+   - `operationId`: `sites.dashboard.get`
+5. Update site configuration:
    - `operationId`: `sites.update`
-5. List discovered pages for a site:
+6. List discovered pages for a site:
    - `operationId`: `sites.pages.list`
 
 ## Playbook: Serving Access and Previews
@@ -48,6 +50,8 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 3. Create site and locale/domain onboarding records:
    - `operationId`: `sites.create`
 4. Inspect site and deployments:
+   - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + `sites.deployments.list` when you need separate caching or independent refresh cadence.
+   - `operationId`: `sites.dashboard.get`
    - `operationId`: `sites.get`
    - `operationId`: `sites.deployments.list`
 
