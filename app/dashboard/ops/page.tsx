@@ -58,6 +58,9 @@ export default async function OpsPage() {
                 typeof site.siteProfile?.label === "string"
                   ? (site.siteProfile.label as string)
                   : site.sourceUrl;
+              const targetLangs = Array.isArray(site.targetLangs)
+                ? site.targetLangs.join(", ")
+                : "";
               return (
                 <div key={site.id} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +74,7 @@ export default async function OpsPage() {
                     <InfoRow label="Source URL" value={site.sourceUrl} />
                     <InfoRow
                       label="Locales"
-                      value={`${site.localeCount} (${site.targetLangs.join(", ") || "—"})`}
+                      value={`${site.localeCount} (${targetLangs || "—"})`}
                     />
                     <InfoRow
                       label="Domains"

@@ -58,7 +58,7 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 - Agency surface: workspace switcher + agency overview/customers list (with filters and invite flow).
 - Auth refresh policy: dashboard exchanges Supabase tokens for webhooks JWTs server-side on each request, refreshes pre-expiry (5-minute buffer), and retries once on 401.
 - Billing policy: mutations require both actor and subject plans to be active; billing banners warn the billing owner (agency when acting as agency, customer when in own workspace) without showing agency billing warnings to customer workspaces.
-- Polling policy: `/api/dashboard/sites/[siteId]/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
+- Polling policy: `/api/dashboard/sites/{siteId}/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
 - Cache policy: sites list uses long-lived account-scoped cache; site dashboard payload uses short-TTL per-site cache with indexed invalidation for paginated variants.
 - Prefetch policy: disable implicit route prefetch on high-cardinality site links; keep prefetch only for low-cardinality/static navigation.
 

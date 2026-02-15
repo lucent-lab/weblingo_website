@@ -2298,17 +2298,20 @@
       },
       "SiteSummary": {
         "additionalProperties": false,
+        "description": "Summary shape returned by `GET /api/sites`. Excludes detail/sensitive fields such as `locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, and `latestCrawlRun`.",
         "properties": {
           "accountId": {
             "type": "string"
           },
           "domainCount": {
+            "description": "Total number of domains configured for this site.",
             "type": "number"
           },
           "id": {
             "type": "string"
           },
           "localeCount": {
+            "description": "Total number of locales configured for this site.",
             "type": "number"
           },
           "maxLocales": {
@@ -2318,6 +2321,7 @@
             ]
           },
           "serveEnabledLocaleCount": {
+            "description": "Number of configured locales where serving is currently enabled.",
             "type": "number"
           },
           "servingMode": {
@@ -2335,6 +2339,7 @@
             ]
           },
           "sourceLang": {
+            "description": "Primary source locale for the site summary. Derived from the first configured locale record; null when no locales exist.",
             "type": [
               "string",
               "null"
@@ -2357,6 +2362,7 @@
             "type": "array"
           },
           "verifiedDomainCount": {
+            "description": "Number of configured domains currently in verified status.",
             "type": "number"
           }
         },

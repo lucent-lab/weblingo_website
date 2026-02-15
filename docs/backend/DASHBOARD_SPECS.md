@@ -73,7 +73,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `id`, `sourcePath`.
   - `lastSeenAt`, `lastCrawledAt`, `lastSnapshotAt`, `nextCrawlAt`, `lastVersionAt` (ISO strings or `null`).
 - **Pagination**:
-  - Returned alongside `pages` when pagination is enabled.
+  - Returned alongside `pages` on paginated page-list responses (`GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`).
   - `{ limit, offset, total, hasMore }`.
 - **RouteConfig**:
   - `sourceLang`, `sourceOrigin`, `pattern` (string or `null`).
@@ -134,6 +134,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
 `GET /api/sites` → `{ sites: SiteSummary[] }` scoped to account.
+
 - **Breaking change:** list responses are summary-only and exclude detail fields such as `locales`, `domains`, `routeConfig`, `webhookSecret`, and `verificationToken`. For full details, call `GET /api/sites/:id` or `GET /api/sites/:id/dashboard`.
 
 `GET /api/sites/:id` → `Site`.
@@ -141,7 +142,12 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 `GET /api/sites/:id/dashboard`
 
 - Consolidated detail payload for dashboard screens.
-- Query: `includePages` (`true|false`, default `false`), `limit` (1..200), `offset` (>=0).
+- Query:
+  - `includePages` (optional boolean, default `false`).
+  - `limit` (optional integer, default `25`, valid range `1..200`; used only when `includePages=true`).
+  - `offset` (optional integer, default `0`, must be `>=0`; used only when `includePages=true`).
+  - When `includePages=false`, `limit` and `offset` are ignored.
+  - Invalid query values return `400` (for example: `includePages` not boolean, `limit` out of range, `offset` negative).
 - Response:
   - Default: `{ site, deployments }`.
   - With `includePages=true`: `{ site, deployments, pages, pagination }`.
@@ -184,7 +190,8 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `GET /api/sites/:id/pages`
 
-- Response: `{ pages: [{ id, sourcePath, lastSeenAt?, lastCrawledAt?, lastSnapshotAt?, nextCrawlAt?, lastVersionAt? }] }`.
+- Query: `limit` (optional integer, default `25`, valid range `1..200`) and `offset` (optional integer, default `0`, must be `>=0`).
+- Response: `{ pages: [{ id, sourcePath, lastSeenAt?, lastCrawledAt?, lastSnapshotAt?, nextCrawlAt?, lastVersionAt? }], pagination: { limit, offset, total, hasMore } }`.
 
 `GET /api/sites/:id/pipeline/status/:pageVersionId`
 

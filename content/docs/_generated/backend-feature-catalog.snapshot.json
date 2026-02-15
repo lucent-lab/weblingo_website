@@ -651,7 +651,7 @@
         "sites.list"
       ],
       "stability": "GA",
-      "summary": "Returns summary records for dashboard/navigation use. Breaking change: this response no longer includes full `Site` fields (`locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, `latestCrawlRun`). Call `GET /sites/{siteId}` for full site details.",
+      "summary": "Returns summary records for dashboard/navigation use. Breaking change: this response no longer includes full `Site` fields (`locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, `latestCrawlRun`). Call `GET /api/sites/{siteId}` for full site details.",
       "userFacing": true
     },
     {

@@ -116,7 +116,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     pages = payload.pages ?? [];
     pageTotal = payload.pagination?.total ?? 0;
     pageHasMore = payload.pagination?.hasMore ?? false;
-    deployments = payload.deployments;
+    deployments = payload.deployments ?? [];
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site pages.";
     if (err instanceof WebhooksApiError) {
