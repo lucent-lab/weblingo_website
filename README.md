@@ -119,6 +119,8 @@ Ownership:
 
 - Website maintainers own `content/docs/_generated/*`, docs pages, and dashboard capability matrix updates.
 - Backend maintainers own canonical OpenAPI/feature catalog/playbooks and must notify website maintainers on user-facing contract changes.
+- Canonical website capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`.
+- Backend bridge pointer to this matrix: `weblingo/docs/backend/DASHBOARD_SPECS.md`.
 
 ## Stripe Setup
 

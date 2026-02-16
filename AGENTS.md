@@ -114,3 +114,17 @@ Server only:
 
 - Follow `.github/pull_request_template.md` when opening/updating PRs; keep Summary/Testing aligned with commands actually run.
 - If `gh pr edit` fails with `GraphQL: Projects (classic) ... projectCards`, patch via REST instead: `BODY="$(cat /tmp/pr_body.md)" && gh api repos/<owner>/<repo>/pulls/<number> -X PATCH --raw-field title='...' --raw-field body="$BODY"`, then verify with `gh pr view <number> --json title,body`.
+
+## Cross-Repo Capability Ownership & Discoverability
+
+For backend↔website capability alignment work (M6.5 and follow-ups), use these as first lookups:
+
+- Canonical website capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`
+- Synced backend artifacts consumed by docs: `content/docs/_generated/*`
+- Backend bridge pointer (in backend repo): `weblingo/docs/backend/DASHBOARD_SPECS.md`
+- Alignment plan/report (in backend repo): `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
+
+Operational commands:
+
+- Refresh backend docs snapshots: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync`
+- Verify freshness + contracts: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts`
