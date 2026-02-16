@@ -12,6 +12,8 @@ jobs:
       HOME_PAGE_VARIANT: expansion
       KV_REST_API_TOKEN: dummy
       KV_REST_API_URL: https://example.com
+      UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
+      UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
@@ -90,6 +92,8 @@ jobs:
       HOME_PAGE_VARIANT: expansion
       KV_REST_API_TOKEN: dummy
       KV_REST_API_URL: https://example.com
+      UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
+      UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
