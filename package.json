@@ -41,7 +41,7 @@
     "lucide-react": "^0.562.0",
     "mobx": "6",
     "next": "16.1.6",
-    "posthog-js": "^1.313.0",
+    "posthog-js": "^1.347.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "redoc": "2.5.2",
