@@ -231,6 +231,106 @@ const setLocaleServingResponseSchema = z
   })
   .strict();
 
+const digestFrequencySchema = z.enum(["daily", "weekly", "off"]);
+
+const digestSubscriptionSchema = z
+  .object({
+    id: z.string(),
+    accountId: z.string(),
+    email: z.string(),
+    frequency: digestFrequencySchema,
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const upsertDigestSubscriptionResponseSchema = z
+  .object({
+    subscription: digestSubscriptionSchema,
+  })
+  .strict();
+
+const crawlTranslateResponseSchema = z
+  .object({
+    crawlId: z.string(),
+    selectedCount: z.number().nonnegative(),
+    enqueuedCount: z.number().nonnegative(),
+    targetLangs: z.array(z.string().min(1)),
+    force: z.boolean(),
+  })
+  .strict();
+
+const translationSummaryFrequencySchema = digestFrequencySchema;
+
+const translationSummaryPreferenceSchema = z
+  .object({
+    siteId: z.string(),
+    targetLang: z.string(),
+    frequency: translationSummaryFrequencySchema,
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const setTranslationSummaryPreferenceResponseSchema = z
+  .object({
+    preference: translationSummaryPreferenceSchema,
+  })
+  .strict();
+
+const translationSummarySchema = z
+  .object({
+    id: z.string(),
+    siteId: z.string(),
+    targetLang: z.string(),
+    period: z.enum(["daily", "weekly"]),
+    rangeStart: z.string(),
+    rangeEnd: z.string(),
+    pagesTranslated: z.number().nonnegative(),
+    pagesUpdated: z.number().nonnegative(),
+    lastDeploymentAt: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const listTranslationSummariesResponseSchema = z
+  .object({
+    summaries: z.array(translationSummarySchema),
+  })
+  .strict();
+
+const languageSwitcherTemplateIdSchema = z.enum([
+  "inline",
+  "disclosure",
+  "pill",
+  "tabs",
+  "compact",
+]);
+
+const languageSwitcherSnippetTemplateIdSchema = z.union([
+  languageSwitcherTemplateIdSchema,
+  z.literal("headless"),
+]);
+
+const languageSwitcherSnippetSchema = z
+  .object({
+    templateId: languageSwitcherSnippetTemplateIdSchema,
+    html: z.string(),
+  })
+  .strict();
+
+const languageSwitcherSnippetsResponseSchema = z
+  .object({
+    siteId: z.string(),
+    path: z.string(),
+    currentLang: z.string(),
+    marker: z.string(),
+    fallbackIds: z.array(z.string()),
+    snippets: z.array(languageSwitcherSnippetSchema),
+  })
+  .strict();
+
 const artifactManifestSchema = z
   .union([z.string(), z.object({}).passthrough()])
   .nullable()
@@ -453,6 +553,16 @@ export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.sha
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
+export type DigestFrequency = z.infer<typeof digestFrequencySchema>;
+export type DigestSubscription = z.infer<typeof digestSubscriptionSchema>;
+export type CrawlTranslateResponse = z.infer<typeof crawlTranslateResponseSchema>;
+export type TranslationSummaryFrequency = z.infer<typeof translationSummaryFrequencySchema>;
+export type TranslationSummaryPreference = z.infer<typeof translationSummaryPreferenceSchema>;
+export type TranslationSummary = z.infer<typeof translationSummarySchema>;
+export type LanguageSwitcherSnippet = z.infer<typeof languageSwitcherSnippetSchema>;
+export type LanguageSwitcherSnippetsResponse = z.infer<
+  typeof languageSwitcherSnippetsResponseSchema
+>;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
 export type AgencyCustomer = z.infer<typeof agencyCustomerSchema>;
@@ -482,6 +592,11 @@ export const __webhooksZodContracts = {
   listDeploymentsResponseSchema,
   listSitePagesResponseSchema,
   siteDashboardResponseSchema,
+  upsertDigestSubscriptionResponseSchema,
+  crawlTranslateResponseSchema,
+  setTranslationSummaryPreferenceResponseSchema,
+  listTranslationSummariesResponseSchema,
+  languageSwitcherSnippetsResponseSchema,
   glossaryResponseSchema,
   upsertGlossaryResponseSchema,
   createOverrideResponseSchema,
@@ -912,6 +1027,25 @@ export async function triggerCrawl(
   });
 }
 
+export async function triggerCrawlTranslate(
+  auth: AuthInput,
+  siteId: string,
+  payload: {
+    targetLangs: string[];
+    pageIds?: string[];
+    sourcePaths?: string[];
+    force?: boolean;
+  },
+): Promise<CrawlTranslateResponse> {
+  return request({
+    path: `/sites/${siteId}/crawl-translate`,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: crawlTranslateResponseSchema,
+  });
+}
+
 export async function translateSite(
   auth: AuthInput,
   siteId: string,
@@ -939,6 +1073,72 @@ export async function setLocaleServing(
     auth,
     body: { enabled },
     schema: setLocaleServingResponseSchema,
+  });
+}
+
+export async function upsertDigestSubscription(
+  auth: AuthInput,
+  payload: { email: string; frequency: DigestFrequency },
+): Promise<DigestSubscription> {
+  const data = await request({
+    path: "/digests/subscription",
+    method: "PUT",
+    auth,
+    body: payload,
+    schema: upsertDigestSubscriptionResponseSchema,
+  });
+  return data.subscription;
+}
+
+export async function setTranslationSummaryPreference(
+  auth: AuthInput,
+  siteId: string,
+  targetLang: string,
+  frequency: TranslationSummaryFrequency,
+): Promise<TranslationSummaryPreference> {
+  const data = await request({
+    path: `/sites/${siteId}/locales/${encodeURIComponent(targetLang)}/translation-summary`,
+    method: "PUT",
+    auth,
+    body: { frequency },
+    schema: setTranslationSummaryPreferenceResponseSchema,
+  });
+  return data.preference;
+}
+
+export async function listTranslationSummaries(
+  auth: AuthInput,
+  siteId: string,
+): Promise<TranslationSummary[]> {
+  const data = await request({
+    path: `/sites/${siteId}/translation-summaries`,
+    auth,
+    schema: listTranslationSummariesResponseSchema,
+    timeoutProfile: "detail",
+  });
+  return data.summaries;
+}
+
+export async function fetchSwitcherSnippets(
+  auth: AuthInput,
+  siteId: string,
+  options?: { path?: string; currentLang?: string },
+): Promise<LanguageSwitcherSnippetsResponse> {
+  const searchParams = new URLSearchParams();
+  if (options?.path) {
+    searchParams.set("path", options.path);
+  }
+  if (options?.currentLang) {
+    searchParams.set("currentLang", options.currentLang);
+  }
+  const path = searchParams.size
+    ? `/sites/${siteId}/switcher-snippets?${searchParams.toString()}`
+    : `/sites/${siteId}/switcher-snippets`;
+  return request({
+    path,
+    auth,
+    schema: languageSwitcherSnippetsResponseSchema,
+    timeoutProfile: "detail",
   });
 }
 

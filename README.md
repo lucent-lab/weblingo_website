@@ -107,6 +107,19 @@ Website API docs use backend-synced snapshots under `content/docs/_generated`.
 
 `WEBLINGO_REPO_PATH` is required for sync commands. There is no fallback path.
 
+CI behavior:
+
+- When `CROSS_REPO_CHECKOUT_TOKEN` is available, `.github/workflows/ci.yml` checks out backend HEAD and runs:
+  - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" pnpm docs:sync:check`
+  - `pnpm test:contracts`
+- When token access is unavailable, run this fallback locally before opening/updating a PR:
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts`
+
+Ownership:
+
+- Website maintainers own `content/docs/_generated/*`, docs pages, and dashboard capability matrix updates.
+- Backend maintainers own canonical OpenAPI/feature catalog/playbooks and must notify website maintainers on user-facing contract changes.
+
 ## Stripe Setup
 
 1. Create three recurring prices for the Launch, Growth, and Enterprise plans. Name the price IDs so they include the site identifier, e.g. `price_weblingo_growth_monthly`.

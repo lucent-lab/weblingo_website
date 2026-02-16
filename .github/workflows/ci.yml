@@ -118,3 +118,13 @@ jobs:
 
       - name: Contract and docs coverage tests
         run: pnpm test:contracts
+
+  docs-sync-fallback-guidance:
+    if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cross-repo token unavailable
+        run: |
+          echo "CROSS_REPO_CHECKOUT_TOKEN is not set."
+          echo "Run fallback checks locally before merge:"
+          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts"

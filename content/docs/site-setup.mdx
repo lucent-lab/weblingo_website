@@ -25,6 +25,15 @@ existing host.
 4. Enable locale serving:
    - `POST /api/sites/{siteId}/locales/{targetLang}/serve` (`sites.locales.serve`)
 
+## Operational requirements (non-API)
+
+- TXT verification: add the exact token value shown in the dashboard/API before activation.
+- CNAME provisioning: for managed hostnames, point the locale host to the Cloudflare target and
+  wait for certificate validation.
+- DNS refresh checks: run dashboard/API refresh when DNS has propagated but status still shows
+  pending.
+- Activation guard: keep the site inactive until at least one domain is verified.
+
 ## Validation checklist
 
 - DNS records resolve publicly.

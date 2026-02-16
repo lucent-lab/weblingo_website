@@ -860,6 +860,32 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.switcherSnippets.get",
+        "path": "/sites/:siteId/switcher-snippets"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.switcherSnippets",
+      "id": "api.sites.switcherSnippets.get",
+      "name": "Get language switcher snippet templates",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.switcherSnippets.get"
+      ],
+      "stability": "GA",
+      "summary": "Get language switcher snippet templates",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "sites.translate",
         "path": "/sites/:siteId/translate"

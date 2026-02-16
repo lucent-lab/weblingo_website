@@ -52,6 +52,15 @@ Every rollout follows the same deterministic flow so you can re-run safely and t
 - Read range summaries:
   - `GET /api/sites/{siteId}/translation-summaries` (`sites.translationSummaries.list`)
 
+## Dashboard automation controls
+
+- Crawl + translate selection:
+  - Uses the selected-pages endpoint documented above in **Pipeline stages**.
+- Account digest subscription:
+  - `PUT /api/digests/subscription` (`digests.subscription.upsert`)
+- Language switcher snippets:
+  - `GET /api/sites/{siteId}/switcher-snippets` (`sites.switcherSnippets.get`)
+
 ## Related docs
 
 - [Getting Started](../getting-started)

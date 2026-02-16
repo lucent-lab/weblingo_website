@@ -3,10 +3,16 @@ import { notFound } from "next/navigation";
 
 import {
   cancelTranslationRunAction,
+  fetchSwitcherSnippetsAction,
+  listTranslationSummariesAction,
+  provisionDomainAction,
   refreshDomainAction,
   resumeTranslationRunAction,
   retryFailedTranslationRunAction,
+  setTranslationSummaryPreferenceAction,
+  triggerCrawlTranslateAction,
   translateAndServeAction,
+  upsertDigestSubscriptionAction,
   verifyDomainAction,
 } from "../../actions";
 import { SiteHeader } from "./site-header";
@@ -62,6 +68,7 @@ export default async function SitePage({ params }: SitePageProps) {
   const eligibleNowLabel = t("dashboard.crawl.summary.eligibleNow");
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
   const canDomains = auth.has({ allFeatures: ["edit", "domain_verify"] }) && mutationsAllowed;
+  const canAutomation = auth.has({ feature: "edit" }) && mutationsAllowed;
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
 
@@ -123,6 +130,7 @@ export default async function SitePage({ params }: SitePageProps) {
     acc[deployment.targetLang] = deployment;
     return acc;
   }, {});
+  const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const nextCrawlValue = resolveNextEligibleCrawlValue({
     pages,
     siteStatus: site.status,
@@ -187,6 +195,11 @@ export default async function SitePage({ params }: SitePageProps) {
         cloudflareLastSyncedLabel={cloudflareLastSyncedLabel}
         cloudflareErrorsLabel={cloudflareErrorsLabel}
         billingBlocked={!mutationsAllowed}
+      />
+      <CapabilityToolsSection
+        canManageCapabilities={canAutomation}
+        siteId={site.id}
+        targetLangs={targetLangs}
       />
     </div>
   );
@@ -585,27 +598,50 @@ function DomainSection({
                       ) : null}
                     </div>
                   ) : domain.dnsInstructions ? (
-                    <ActionForm
-                      action={refreshDomainAction}
-                      className="w-full md:w-auto"
-                      loading="Checking DNS..."
-                      success="DNS check requested."
-                      error="Unable to refresh domain."
-                    >
-                      <>
-                        <input name="siteId" type="hidden" value={siteId} />
-                        <input name="siteStatus" type="hidden" value={siteStatus} />
-                        <input name="domain" type="hidden" value={domain.domain} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          className="w-full md:w-auto"
-                          title="Check DNS"
-                        >
-                          Check DNS
-                        </Button>
-                      </>
-                    </ActionForm>
+                    <div className="flex w-full flex-col gap-2 md:items-end">
+                      <ActionForm
+                        action={provisionDomainAction}
+                        className="w-full md:w-auto"
+                        loading="Requesting provisioning..."
+                        success="Provisioning requested."
+                        error="Unable to request provisioning."
+                      >
+                        <>
+                          <input name="siteId" type="hidden" value={siteId} />
+                          <input name="siteStatus" type="hidden" value={siteStatus} />
+                          <input name="domain" type="hidden" value={domain.domain} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            className="w-full md:w-auto"
+                            title="Provision domain"
+                          >
+                            Provision domain
+                          </Button>
+                        </>
+                      </ActionForm>
+                      <ActionForm
+                        action={refreshDomainAction}
+                        className="w-full md:w-auto"
+                        loading="Checking DNS..."
+                        success="DNS check requested."
+                        error="Unable to refresh domain."
+                      >
+                        <>
+                          <input name="siteId" type="hidden" value={siteId} />
+                          <input name="siteStatus" type="hidden" value={siteStatus} />
+                          <input name="domain" type="hidden" value={domain.domain} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            className="w-full md:w-auto"
+                            title="Check DNS"
+                          >
+                            Check DNS
+                          </Button>
+                        </>
+                      </ActionForm>
+                    </div>
                   ) : (
                     <ActionForm
                       action={verifyDomainAction}
@@ -640,6 +676,203 @@ function DomainSection({
             );
           })
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CapabilityToolsSection({
+  canManageCapabilities,
+  siteId,
+  targetLangs,
+}: {
+  canManageCapabilities: boolean;
+  siteId: string;
+  targetLangs: string[];
+}) {
+  if (!canManageCapabilities) {
+    return null;
+  }
+
+  const defaultTarget = targetLangs[0] ?? "";
+
+  return (
+    <Card id="automation-tools">
+      <CardHeader>
+        <CardTitle>Automation and notifications</CardTitle>
+        <CardDescription>
+          Advanced controls for crawl+translate, digests, locale summaries, and switcher snippets.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 lg:grid-cols-2">
+        <ActionForm
+          action={triggerCrawlTranslateAction}
+          className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3"
+          loading="Queueing crawl + translate..."
+          success="Crawl + translate queued."
+          error="Unable to queue crawl + translate."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Crawl + translate selection</p>
+              <p className="text-xs text-muted-foreground">
+                Set target languages, optional page IDs/source paths, and queue a combined run.
+              </p>
+            </div>
+            <Input
+              name="targetLangs"
+              placeholder={targetLangs.join(", ") || "fr, de"}
+              required
+              title="Target languages (comma separated)"
+            />
+            <Input
+              name="pageIds"
+              placeholder="Optional page IDs: page_1, page_2"
+              title="Page IDs (comma separated)"
+            />
+            <Input
+              name="sourcePaths"
+              placeholder="Optional source paths: /pricing, /about"
+              title="Source paths (comma separated)"
+            />
+            <label
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+              htmlFor="force-crawl-translate"
+            >
+              <input id="force-crawl-translate" name="force" type="checkbox" value="true" />
+              Force crawl even when recrawl limits are near threshold
+            </label>
+            <Button type="submit" variant="outline" className="w-full sm:w-auto">
+              Queue crawl + translate
+            </Button>
+          </>
+        </ActionForm>
+
+        <ActionForm
+          action={upsertDigestSubscriptionAction}
+          className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3"
+          loading="Saving digest settings..."
+          success="Digest settings saved."
+          error="Unable to save digest settings."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Digest subscription</p>
+              <p className="text-xs text-muted-foreground">
+                Configure account-level translation digest delivery.
+              </p>
+            </div>
+            <Input name="email" type="email" placeholder="alerts@example.com" required />
+            <label className="space-y-1 text-xs text-muted-foreground">
+              Frequency
+              <select
+                name="frequency"
+                defaultValue="weekly"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              >
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="off">off</option>
+              </select>
+            </label>
+            <Button type="submit" variant="outline" className="w-full sm:w-auto">
+              Save digest settings
+            </Button>
+          </>
+        </ActionForm>
+
+        <ActionForm
+          action={setTranslationSummaryPreferenceAction}
+          className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3"
+          loading="Saving locale summary preference..."
+          success="Locale summary preference saved."
+          error="Unable to save locale summary preference."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Locale summary preference</p>
+              <p className="text-xs text-muted-foreground">
+                Set per-locale notification cadence for translation summaries.
+              </p>
+            </div>
+            <Input
+              name="targetLang"
+              defaultValue={defaultTarget}
+              placeholder="fr"
+              required
+              title="Target language"
+            />
+            <label className="space-y-1 text-xs text-muted-foreground">
+              Frequency
+              <select
+                name="frequency"
+                defaultValue="weekly"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              >
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="off">off</option>
+              </select>
+            </label>
+            <Button type="submit" variant="outline" className="w-full sm:w-auto">
+              Save locale preference
+            </Button>
+          </>
+        </ActionForm>
+
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-3">
+          <ActionForm
+            action={listTranslationSummariesAction}
+            className="space-y-3"
+            loading="Loading translation summaries..."
+            success="Translation summaries loaded."
+            error="Unable to load translation summaries."
+          >
+            <>
+              <input name="siteId" type="hidden" value={siteId} />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Summary history</p>
+                <p className="text-xs text-muted-foreground">
+                  Pull the latest aggregated summary records for this site.
+                </p>
+              </div>
+              <Button type="submit" variant="outline" className="w-full sm:w-auto">
+                Load translation summaries
+              </Button>
+            </>
+          </ActionForm>
+
+          <ActionForm
+            action={fetchSwitcherSnippetsAction}
+            className="space-y-3 border-t border-border/50 pt-3"
+            loading="Loading switcher snippets..."
+            success="Switcher snippets loaded."
+            error="Unable to load switcher snippets."
+          >
+            <>
+              <input name="siteId" type="hidden" value={siteId} />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Language switcher snippets</p>
+                <p className="text-xs text-muted-foreground">
+                  Retrieve snippet templates for the selected path/current language.
+                </p>
+              </div>
+              <Input name="path" defaultValue="/" placeholder="/" title="Relative path" />
+              <Input
+                name="currentLang"
+                defaultValue={defaultTarget}
+                placeholder="fr"
+                title="Current language"
+              />
+              <Button type="submit" variant="outline" className="w-full sm:w-auto">
+                Load switcher snippets
+              </Button>
+            </>
+          </ActionForm>
+        </div>
       </CardContent>
     </Card>
   );

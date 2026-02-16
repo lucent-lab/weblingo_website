@@ -132,6 +132,7 @@
   "try.preview.subscribe": "公開するには購読してください",
   "docs.title": "導入ガイド",
   "docs.overview": "4 つのステップでローカライズサイトを公開します。",
+  "docs.syncedBackendSnapshot": "同期済みバックエンドスナップショット",
   "docs.step.one": "料金ページからプランを契約します。",
   "docs.step.two": "ソースドメインを接続し、対象言語を選択します。",
   "docs.step.three": "WebLingo に向けた CNAME レコードを設定します。",

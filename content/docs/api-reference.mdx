@@ -37,6 +37,15 @@ For rollout sequencing, use the backend playbook label `Playbook: Serving Access
 Use [Workflow Playbooks](../workflows) when you need ordered, task-specific guidance (setup,
 domain verification, crawl/translate, previews). Use this page for schema-level contracts.
 
+Additional dashboard-oriented endpoints that are commonly used during rollout:
+
+- `POST /api/sites/{siteId}/crawl-translate` (`sites.crawl_translate.trigger`)
+- `PUT /api/digests/subscription` (`digests.subscription.upsert`)
+- `PUT /api/sites/{siteId}/locales/{targetLang}/translation-summary`
+  (`sites.locales.translationSummary.put`)
+- `GET /api/sites/{siteId}/translation-summaries` (`sites.translationSummaries.list`)
+- `GET /api/sites/{siteId}/switcher-snippets` (`sites.switcherSnippets.get`)
+
 ## OpenAPI Explorer
 
 <RedocApiReference />

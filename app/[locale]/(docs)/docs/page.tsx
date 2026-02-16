@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { docSections } from "@/content/docs";
+import backendSyncManifest from "@/content/docs/_generated/backend-sync-manifest.json";
 import { getWorkflowPlaybooks } from "@/content/docs/workflow-playbooks";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
@@ -17,12 +18,19 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
 
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const workflowCount = getWorkflowPlaybooks().length;
+  const backendSyncSummary = buildBackendSyncSummary(backendSyncManifest);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
       <header className="space-y-3">
         <h1 className="text-4xl font-semibold text-foreground">{t("docs.title")}</h1>
         <p className="text-base text-muted-foreground">{t("docs.overview")}</p>
+        {backendSyncSummary ? (
+          <p className="text-xs text-muted-foreground">
+            {t("docs.syncedBackendSnapshot")}: <code>{backendSyncSummary.sha}</code> (
+            {backendSyncSummary.date})
+          </p>
+        ) : null}
       </header>
 
       <div className="grid gap-10">
@@ -94,6 +102,29 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
       </div>
     </div>
   );
+}
+
+function buildBackendSyncSummary(manifest: unknown): { sha: string; date: string } | null {
+  if (!manifest || typeof manifest !== "object") {
+    return null;
+  }
+
+  const record = manifest as Record<string, unknown>;
+  const rawSha = typeof record.sourceRepoSha === "string" ? record.sourceRepoSha.trim() : "";
+  const rawTimestamp =
+    typeof record.sourceRepoCommitTimestamp === "string"
+      ? record.sourceRepoCommitTimestamp.trim()
+      : "";
+  if (!rawSha || !rawTimestamp) {
+    return null;
+  }
+
+  const parsed = new Date(rawTimestamp);
+  const dateLabel = Number.isNaN(parsed.valueOf()) ? rawTimestamp : parsed.toLocaleDateString();
+  return {
+    sha: rawSha.slice(0, 12),
+    date: dateLabel,
+  };
 }
 
 export async function generateMetadata({

@@ -145,6 +145,7 @@
   "try.action.checkingStatus": "Checking...",
   "docs.title": "Getting started",
   "docs.overview": "Launch localized sites in four steps.",
+  "docs.syncedBackendSnapshot": "Synced backend snapshot",
   "docs.step.one": "Subscribe to a plan on the pricing page.",
   "docs.step.two": "Connect your source domain and pick target locales.",
   "docs.step.three": "Create CNAME records pointing to WebLingo.",
