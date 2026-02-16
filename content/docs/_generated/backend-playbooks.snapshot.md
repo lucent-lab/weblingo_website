@@ -31,6 +31,8 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `sites.update`
 6. List discovered pages for a site:
    - `operationId`: `sites.pages.list`
+7. Generate language switcher snippets for custom frontend integration:
+   - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Serving Access and Previews
 

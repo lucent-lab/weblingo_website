@@ -214,4 +214,147 @@ describe("webhooks request wrapper", () => {
       .filter((value): value is number => typeof value === "number");
     expect(timeoutValues).toContain(10_000);
   });
+
+  it("calls crawl-translate, digest, summary, and switcher endpoints with expected payloads", async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/crawl-translate");
+        expect(init?.method).toBe("POST");
+        expect(init?.body).toBe(
+          JSON.stringify({
+            targetLangs: ["fr", "de"],
+            pageIds: ["page-1"],
+            sourcePaths: ["/pricing"],
+            force: true,
+          }),
+        );
+        return new Response(
+          JSON.stringify({
+            crawlId: "crawl-1",
+            selectedCount: 3,
+            enqueuedCount: 3,
+            targetLangs: ["fr", "de"],
+            force: true,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/digests/subscription");
+        expect(init?.method).toBe("PUT");
+        expect(init?.body).toBe(
+          JSON.stringify({
+            email: "alerts@example.com",
+            frequency: "weekly",
+          }),
+        );
+        return new Response(
+          JSON.stringify({
+            subscription: {
+              id: "sub-1",
+              accountId: "acct-1",
+              email: "alerts@example.com",
+              frequency: "weekly",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/locales/fr/translation-summary");
+        expect(init?.method).toBe("PUT");
+        expect(init?.body).toBe(JSON.stringify({ frequency: "daily" }));
+        return new Response(
+          JSON.stringify({
+            preference: {
+              siteId: "site-1",
+              targetLang: "fr",
+              frequency: "daily",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/translation-summaries");
+        return new Response(
+          JSON.stringify({
+            summaries: [
+              {
+                id: "sum-1",
+                siteId: "site-1",
+                targetLang: "fr",
+                period: "daily",
+                rangeStart: "2026-02-14T00:00:00.000Z",
+                rangeEnd: "2026-02-15T00:00:00.000Z",
+                pagesTranslated: 8,
+                pagesUpdated: 2,
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/switcher-snippets");
+        expect(url).toContain("path=%2Fpricing");
+        expect(url).toContain("currentLang=fr");
+        return new Response(
+          JSON.stringify({
+            siteId: "site-1",
+            path: "/pricing",
+            currentLang: "fr",
+            marker: "weblingo-switcher",
+            fallbackIds: ["nav"],
+            snippets: [{ templateId: "inline", html: "<nav>...</nav>" }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      });
+
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+
+    vi.resetModules();
+    const {
+      fetchSwitcherSnippets,
+      listTranslationSummaries,
+      setTranslationSummaryPreference,
+      triggerCrawlTranslate,
+      upsertDigestSubscription,
+    } = await import("./webhooks");
+
+    const crawlResult = await triggerCrawlTranslate("token", "site-1", {
+      targetLangs: ["fr", "de"],
+      pageIds: ["page-1"],
+      sourcePaths: ["/pricing"],
+      force: true,
+    });
+    expect(crawlResult.enqueuedCount).toBe(3);
+
+    const digest = await upsertDigestSubscription("token", {
+      email: "alerts@example.com",
+      frequency: "weekly",
+    });
+    expect(digest.frequency).toBe("weekly");
+
+    const preference = await setTranslationSummaryPreference("token", "site-1", "fr", "daily");
+    expect(preference.frequency).toBe("daily");
+
+    const summaries = await listTranslationSummaries("token", "site-1");
+    expect(summaries).toHaveLength(1);
+
+    const snippets = await fetchSwitcherSnippets("token", "site-1", {
+      path: "/pricing",
+      currentLang: "fr",
+    });
+    expect(snippets.snippets).toHaveLength(1);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
+  });
 });

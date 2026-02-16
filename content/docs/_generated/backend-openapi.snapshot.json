@@ -593,6 +593,26 @@
           "crawlCaptureMode": {
             "$ref": "#/components/schemas/CrawlCaptureMode"
           },
+          "footer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FooterSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "languageSwitcher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanguageSwitcherSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "localeAliases": {
             "additionalProperties": {
               "type": [
@@ -1178,6 +1198,41 @@
         ],
         "type": "object"
       },
+      "FooterCopyId": {
+        "enum": [
+          "powered_by_weblingo",
+          "translated_by_weblingo",
+          "website_translation_by_weblingo",
+          "website_localization_by_weblingo",
+          "translated_with_weblingo"
+        ],
+        "type": "string"
+      },
+      "FooterSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "copyId": {
+            "$ref": "#/components/schemas/FooterCopyId"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "themeId": {
+            "$ref": "#/components/schemas/FooterThemeId"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "FooterThemeId": {
+        "enum": [
+          "minimal",
+          "neutral"
+        ],
+        "type": "string"
+      },
       "GlossaryEntry": {
         "additionalProperties": false,
         "properties": {
@@ -1237,6 +1292,119 @@
           "entries"
         ],
         "type": "object"
+      },
+      "LanguageSwitcherMode": {
+        "enum": [
+          "server",
+          "snippet_only"
+        ],
+        "type": "string"
+      },
+      "LanguageSwitcherPlacement": {
+        "enum": [
+          "body-start",
+          "body-end"
+        ],
+        "type": "string"
+      },
+      "LanguageSwitcherSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/LanguageSwitcherMode"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/LanguageSwitcherPlacement"
+          },
+          "templateId": {
+            "$ref": "#/components/schemas/LanguageSwitcherTemplateId"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "LanguageSwitcherSnippet": {
+        "additionalProperties": false,
+        "properties": {
+          "html": {
+            "type": "string"
+          },
+          "templateId": {
+            "$ref": "#/components/schemas/LanguageSwitcherSnippetTemplateId"
+          }
+        },
+        "required": [
+          "templateId",
+          "html"
+        ],
+        "type": "object"
+      },
+      "LanguageSwitcherSnippetsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "currentLang": {
+            "type": "string"
+          },
+          "fallbackIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "marker": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "snippets": {
+            "items": {
+              "$ref": "#/components/schemas/LanguageSwitcherSnippet"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "siteId",
+          "path",
+          "currentLang",
+          "marker",
+          "fallbackIds",
+          "snippets"
+        ],
+        "type": "object"
+      },
+      "LanguageSwitcherSnippetTemplateId": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/LanguageSwitcherTemplateId"
+          },
+          {
+            "const": "headless",
+            "type": "string"
+          }
+        ]
+      },
+      "LanguageSwitcherTemplateId": {
+        "enum": [
+          "inline",
+          "disclosure",
+          "pill",
+          "tabs",
+          "compact"
+        ],
+        "type": "string"
       },
       "ListAgencyCustomersResponse": {
         "additionalProperties": false,
@@ -1829,6 +1997,26 @@
           "crawlCaptureMode": {
             "$ref": "#/components/schemas/CrawlCaptureMode",
             "description": "Default: template_plus_hydrated"
+          },
+          "footer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FooterSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "languageSwitcher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanguageSwitcherSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "locales": {
             "items": {
@@ -2799,6 +2987,26 @@
           },
           "crawlCaptureMode": {
             "$ref": "#/components/schemas/CrawlCaptureMode"
+          },
+          "footer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FooterSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "languageSwitcher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanguageSwitcherSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "localeAliases": {
             "additionalProperties": {
@@ -6080,6 +6288,115 @@
         "tags": [
           "Sites",
           "Slugs"
+        ]
+      }
+    },
+    "/sites/{siteId}/switcher-snippets": {
+      "get": {
+        "operationId": "sites.switcherSnippets.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Relative path used to generate locale links. Defaults to '/'.",
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Locale to mark as active in generated snippets. Defaults to source language.",
+            "in": "query",
+            "name": "currentLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "currentLang": "string",
+                  "fallbackIds": [
+                    "string"
+                  ],
+                  "marker": "string",
+                  "path": "string",
+                  "siteId": "string",
+                  "snippets": [
+                    {
+                      "html": "string",
+                      "templateId": "inline"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/LanguageSwitcherSnippetsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get language switcher snippet templates",
+        "tags": [
+          "Sites"
         ]
       }
     },

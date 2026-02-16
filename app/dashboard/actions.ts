@@ -7,19 +7,26 @@ import {
   createSite,
   deactivateSite,
   cancelTranslationRun,
+  fetchSwitcherSnippets,
+  listTranslationSummaries,
   provisionDomain,
   refreshDomain,
   resumeTranslationRun,
+  setTranslationSummaryPreference,
   setLocaleServing,
   translateSite,
   triggerCrawl,
+  triggerCrawlTranslate,
   triggerPageCrawl,
+  upsertDigestSubscription,
   updateGlossary,
   updateSite,
   updateSlug,
   verifyDomain,
   WebhooksApiError,
+  type DigestFrequency,
   type GlossaryEntry,
+  type TranslationSummaryFrequency,
 } from "@internal/dashboard/webhooks";
 import { invalidateSiteDashboardCache, invalidateSitesCache } from "@internal/dashboard/data";
 import {
@@ -54,6 +61,13 @@ const succeeded = (message: string, meta?: Record<string, unknown>): ActionRespo
   message,
   meta,
 });
+
+const digestFrequencies = new Set<DigestFrequency>(["daily", "weekly", "off"]);
+const translationSummaryFrequencies = new Set<TranslationSummaryFrequency>([
+  "daily",
+  "weekly",
+  "off",
+]);
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
   const isDev = process.env.NODE_ENV !== "production";
@@ -225,6 +239,17 @@ function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
   }
 
   return normalized;
+}
+
+function parseCsvField(rawValue: FormDataEntryValue | null): string[] {
+  if (typeof rawValue !== "string") {
+    return [];
+  }
+  const normalized = rawValue
+    .split(/[,\n]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return Array.from(new Set(normalized));
 }
 
 export async function createSiteAction(
@@ -429,6 +454,55 @@ export async function triggerCrawlAction(
   }
 }
 
+export async function triggerCrawlTranslateAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const targetLangs = parseCsvField(formData.get("targetLangs"));
+  const pageIds = parseCsvField(formData.get("pageIds"));
+  const sourcePaths = parseCsvField(formData.get("sourcePaths"));
+  const force = formData.get("force")?.toString() === "true";
+
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+  if (targetLangs.length === 0) {
+    return failed("At least one target language is required.");
+  }
+
+  try {
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await triggerCrawlTranslate(auth, siteId, {
+        targetLangs,
+        ...(pageIds.length ? { pageIds } : {}),
+        ...(sourcePaths.length ? { sourcePaths } : {}),
+        ...(force ? { force: true } : {}),
+      });
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/pages`);
+    return succeeded(
+      `Crawl + translate queued (${result.enqueuedCount}/${result.selectedCount} pages).`,
+      {
+        crawlId: result.crawlId,
+        selectedCount: result.selectedCount,
+        enqueuedCount: result.enqueuedCount,
+      },
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] triggerCrawlTranslateAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to queue crawl + translate right now."),
+    );
+  }
+}
+
 export async function translateAndServeAction(
   _prevState: ActionResponse | undefined,
   formData: FormData,
@@ -481,6 +555,161 @@ export async function translateAndServeAction(
     return failed(
       toTranslateAndServeError(error, "Unable to start translation and serving right now."),
     );
+  }
+}
+
+export async function upsertDigestSubscriptionAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const email = formData.get("email")?.toString().trim();
+  const frequencyRaw = formData.get("frequency")?.toString().trim();
+
+  if (!email) {
+    return failed("Digest email is required.");
+  }
+  if (!frequencyRaw || !digestFrequencies.has(frequencyRaw as DigestFrequency)) {
+    return failed("Digest frequency must be daily, weekly, or off.");
+  }
+
+  try {
+    const subscription = await withWebhooksAuth(async (auth) =>
+      upsertDigestSubscription(auth, {
+        email,
+        frequency: frequencyRaw as DigestFrequency,
+      }),
+    );
+    revalidatePath("/dashboard");
+    if (siteId) {
+      revalidatePath(`/dashboard/sites/${siteId}`);
+    }
+    return succeeded(
+      subscription.frequency === "off"
+        ? "Digest notifications disabled."
+        : `Digest subscription set to ${subscription.frequency}.`,
+      { subscription },
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] upsertDigestSubscriptionAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to update digest subscription right now."),
+    );
+  }
+}
+
+export async function setTranslationSummaryPreferenceAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const targetLang = formData.get("targetLang")?.toString().trim();
+  const frequencyRaw = formData.get("frequency")?.toString().trim();
+
+  if (!siteId || !targetLang) {
+    return failed("Site ID and target language are required.");
+  }
+  if (
+    !frequencyRaw ||
+    !translationSummaryFrequencies.has(frequencyRaw as TranslationSummaryFrequency)
+  ) {
+    return failed("Translation summary frequency must be daily, weekly, or off.");
+  }
+
+  try {
+    const preference = await withWebhooksAuth(async (auth) => {
+      const response = await setTranslationSummaryPreference(
+        auth,
+        siteId,
+        targetLang,
+        frequencyRaw as TranslationSummaryFrequency,
+      );
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      return response;
+    });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    return succeeded(`Summary notifications for ${targetLang} set to ${preference.frequency}.`, {
+      preference,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] setTranslationSummaryPreferenceAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(
+        error,
+        "Unable to update translation summary settings right now.",
+      ),
+    );
+  }
+}
+
+export async function listTranslationSummariesAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  try {
+    const summaries = await withWebhooksAuth(async (auth) =>
+      listTranslationSummaries(auth, siteId),
+    );
+    return succeeded(`Loaded ${summaries.length} translation summary record(s).`, {
+      summaries,
+      summaryCount: summaries.length,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] listTranslationSummariesAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to fetch translation summaries right now."),
+    );
+  }
+}
+
+export async function fetchSwitcherSnippetsAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const relativePath = formData.get("path")?.toString().trim();
+  const currentLang = formData.get("currentLang")?.toString().trim();
+
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  try {
+    const snippets = await withWebhooksAuth(async (auth) =>
+      fetchSwitcherSnippets(auth, siteId, {
+        ...(relativePath ? { path: relativePath } : {}),
+        ...(currentLang ? { currentLang } : {}),
+      }),
+    );
+    return succeeded(
+      `Loaded ${snippets.snippets.length} switcher snippet template(s) for ${snippets.path}.`,
+      {
+        marker: snippets.marker,
+        fallbackIds: snippets.fallbackIds,
+        snippetCount: snippets.snippets.length,
+        snippets: snippets.snippets,
+      },
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] fetchSwitcherSnippetsAction failed:", error);
+    return failed(toFriendlyDashboardActionError(error, "Unable to fetch switcher snippets."));
   }
 }
 

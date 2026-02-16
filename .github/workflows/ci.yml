@@ -12,6 +12,8 @@ jobs:
       HOME_PAGE_VARIANT: expansion
       KV_REST_API_TOKEN: dummy
       KV_REST_API_URL: https://example.com
+      UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
+      UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
@@ -52,7 +54,10 @@ jobs:
         run: pnpm audit --audit-level=high --ignore-registry-errors
 
       - name: License check (prod)
-        run: pnpm licenses list --prod --json > licenses.json && node scripts/check-licenses.mjs licenses.json
+        run: |
+          LICENSES_JSON="$(mktemp)"
+          pnpm licenses list --prod --json > "$LICENSES_JSON"
+          node scripts/check-licenses.mjs "$LICENSES_JSON"
 
       - name: Unit tests
         run: pnpm test
@@ -63,13 +68,32 @@ jobs:
       - name: Build
         run: pnpm build
 
+  docs-sync-token-check:
+    runs-on: ubuntu-latest
+    outputs:
+      has_cross_repo_token: ${{ steps.detect.outputs.has_cross_repo_token }}
+    steps:
+      - name: Detect cross-repo token availability
+        id: detect
+        env:
+          CROSS_REPO_CHECKOUT_TOKEN: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN }}
+        run: |
+          if [ -n "${CROSS_REPO_CHECKOUT_TOKEN}" ]; then
+            echo "has_cross_repo_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_cross_repo_token=false" >> "$GITHUB_OUTPUT"
+          fi
+
   docs-sync-check:
-    if: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN != '' }}
+    needs: docs-sync-token-check
+    if: ${{ needs.docs-sync-token-check.outputs.has_cross_repo_token == 'true' }}
     runs-on: ubuntu-latest
     env:
       HOME_PAGE_VARIANT: expansion
       KV_REST_API_TOKEN: dummy
       KV_REST_API_URL: https://example.com
+      UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
+      UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
@@ -118,3 +142,14 @@ jobs:
 
       - name: Contract and docs coverage tests
         run: pnpm test:contracts
+
+  docs-sync-fallback-guidance:
+    needs: docs-sync-token-check
+    if: ${{ needs.docs-sync-token-check.outputs.has_cross_repo_token == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cross-repo token unavailable
+        run: |
+          echo "CROSS_REPO_CHECKOUT_TOKEN is not set."
+          echo "Run fallback checks locally before merge:"
+          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts"

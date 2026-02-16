@@ -132,6 +132,7 @@
   "try.preview.subscribe": "S’abonner pour publier",
   "docs.title": "Bien démarrer",
   "docs.overview": "Lancez vos sites localisés en quatre étapes.",
+  "docs.syncedBackendSnapshot": "Snapshot backend synchronisé",
   "docs.step.one": "Souscrivez à une offre sur la page Tarifs.",
   "docs.step.two": "Connectez votre domaine source et choisissez les langues cibles.",
   "docs.step.three": "Créez les enregistrements CNAME pointant vers WebLingo.",
