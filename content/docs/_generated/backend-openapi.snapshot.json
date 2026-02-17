@@ -1637,6 +1637,43 @@
         ],
         "type": "object"
       },
+      "DeploymentCompleteness": {
+        "additionalProperties": false,
+        "properties": {
+          "discoveredPages": {
+            "type": "number"
+          },
+          "pendingPages": {
+            "type": "number"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentCompletenessStatus"
+          },
+          "translatedPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "discoveredPages",
+          "translatedPages",
+          "pendingPages",
+          "percentage",
+          "status"
+        ],
+        "type": "object"
+      },
+      "DeploymentCompletenessStatus": {
+        "enum": [
+          "not_started",
+          "partial",
+          "complete",
+          "unknown"
+        ],
+        "type": "string"
+      },
       "DeploymentHistoryByLocale": {
         "additionalProperties": false,
         "properties": {
