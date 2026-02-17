@@ -114,6 +114,9 @@ Local/dev TXT verification flow:
    - `operationId`: `sites.slugs.set`
 7. Run consistency lint/fix for a locale (dry-run first, then apply if safe):
    - `operationId`: `sites.consistency.fix.run`
+   - Request: `POST /api/sites/:siteId/consistency/fix` with boolean `dryRun` (`true` = preview/no writes, `false` = apply rewrites + enqueue render).
+   - Default: `dryRun=true` when omitted.
+   - Expected response signals: dry-run returns `rewritesPlanned`/samples without mutations; live apply returns `rewritesApplied` and `renderEnqueued`.
 8. Toggle locale serve state if needed:
    - `operationId`: `sites.locales.serve`
 

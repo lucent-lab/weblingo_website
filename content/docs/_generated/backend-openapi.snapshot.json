@@ -98,6 +98,24 @@
       },
       "AgencyCustomer": {
         "additionalProperties": false,
+        "example": {
+          "activeSiteCount": 1,
+          "agencyAccountId": "string",
+          "customerAccountId": "string",
+          "customerPlan": "starter",
+          "planStatus": "active",
+          "status": "active"
+        },
+        "examples": [
+          {
+            "activeSiteCount": 1,
+            "agencyAccountId": "string",
+            "customerAccountId": "string",
+            "customerPlan": "starter",
+            "planStatus": "active",
+            "status": "active"
+          }
+        ],
         "properties": {
           "activeSiteCount": {
             "type": "number"
@@ -929,6 +947,9 @@
       "CrawlRunSummary": {
         "additionalProperties": false,
         "properties": {
+          "attemptedCount": {
+            "type": "number"
+          },
           "crawlCaptureMode": {
             "anyOf": [
               {
@@ -947,6 +968,12 @@
               "string",
               "null"
             ]
+          },
+          "failedCount": {
+            "type": "number"
+          },
+          "fetchedSuccessCount": {
+            "type": "number"
           },
           "finishedAt": {
             "type": [
@@ -969,6 +996,9 @@
           "skippedDueToLimitCount": {
             "type": "number"
           },
+          "snapshotNewCount": {
+            "type": "number"
+          },
           "sourceUrl": {
             "type": "string"
           },
@@ -984,6 +1014,9 @@
           "trigger": {
             "$ref": "#/components/schemas/CrawlRunTrigger"
           },
+          "unchangedCount": {
+            "type": "number"
+          },
           "updatedAt": {
             "type": "string"
           }
@@ -996,6 +1029,11 @@
           "pagesDiscovered",
           "pagesEnqueued",
           "selectedCount",
+          "attemptedCount",
+          "fetchedSuccessCount",
+          "snapshotNewCount",
+          "unchangedCount",
+          "failedCount",
           "skippedDueToLimitCount"
         ],
         "type": "object"
@@ -1489,6 +1527,22 @@
       },
       "DeploymentCompleteness": {
         "additionalProperties": false,
+        "example": {
+          "discoveredPages": 10,
+          "pendingPages": 3,
+          "percentage": 70,
+          "status": "partial",
+          "translatedPages": 7
+        },
+        "examples": [
+          {
+            "discoveredPages": 10,
+            "pendingPages": 3,
+            "percentage": 70,
+            "status": "partial",
+            "translatedPages": 7
+          }
+        ],
         "properties": {
           "discoveredPages": {
             "type": "number"
@@ -4457,6 +4511,7 @@
                         "agencyAccountId": "string",
                         "customerAccountId": "string",
                         "customerPlan": "starter",
+                        "planStatus": "active",
                         "status": "active"
                       }
                     ],
@@ -6263,11 +6318,11 @@
                   "deployments": [
                     {
                       "completeness": {
-                        "discoveredPages": 1,
-                        "pendingPages": 1,
-                        "percentage": 1,
-                        "status": "not_started",
-                        "translatedPages": 1
+                        "discoveredPages": 10,
+                        "pendingPages": 3,
+                        "percentage": 70,
+                        "status": "partial",
+                        "translatedPages": 7
                       },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
@@ -6378,11 +6433,11 @@
                   "deployments": [
                     {
                       "completeness": {
-                        "discoveredPages": 1,
-                        "pendingPages": 1,
-                        "percentage": 1,
-                        "status": "not_started",
-                        "translatedPages": 1
+                        "discoveredPages": 10,
+                        "pendingPages": 3,
+                        "percentage": 70,
+                        "status": "partial",
+                        "translatedPages": 7
                       },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
