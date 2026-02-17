@@ -6,6 +6,7 @@ import { Info } from "lucide-react";
 import { SiteAdminForm } from "./site-admin-form";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { DeploymentCompletenessBadge } from "@/components/dashboard/deployment-completeness-badge";
 import { DeploymentHistoryTable } from "@/components/dashboard/deployment-history-table";
 
 import {
@@ -782,7 +783,10 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                         {deployment.targetLang.toUpperCase()}
                       </td>
                       <td className="px-3 py-3 align-top">
-                        <Badge variant="outline">{deployment.status}</Badge>
+                        <div className="flex flex-col gap-2">
+                          <Badge variant="outline">{deployment.status}</Badge>
+                          <DeploymentCompletenessBadge completeness={deployment.completeness} />
+                        </div>
                       </td>
                       <td className="px-3 py-3 align-top">
                         {renderOptionalValue(deployment.deploymentId, true)}

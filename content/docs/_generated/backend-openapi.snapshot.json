@@ -801,6 +801,9 @@
               "null"
             ]
           },
+          "completeness": {
+            "$ref": "#/components/schemas/DeploymentCompleteness"
+          },
           "deploymentId": {
             "type": [
               "string",
@@ -858,9 +861,47 @@
           "targetLang",
           "status",
           "serveEnabled",
-          "servingStatus"
+          "servingStatus",
+          "completeness"
         ],
         "type": "object"
+      },
+      "DeploymentCompleteness": {
+        "additionalProperties": false,
+        "properties": {
+          "discoveredPages": {
+            "type": "number"
+          },
+          "pendingPages": {
+            "type": "number"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentCompletenessStatus"
+          },
+          "translatedPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "discoveredPages",
+          "translatedPages",
+          "pendingPages",
+          "percentage",
+          "status"
+        ],
+        "type": "object"
+      },
+      "DeploymentCompletenessStatus": {
+        "enum": [
+          "not_started",
+          "partial",
+          "complete",
+          "unknown"
+        ],
+        "type": "string"
       },
       "DeploymentHistoryByLocale": {
         "additionalProperties": false,
@@ -2399,6 +2440,9 @@
             },
             "type": "array"
           },
+          "pagesSummary": {
+            "$ref": "#/components/schemas/SitePagesSummary"
+          },
           "pagination": {
             "additionalProperties": false,
             "properties": {
@@ -2513,6 +2557,34 @@
           "sourceLang",
           "targetLang",
           "serveEnabled"
+        ],
+        "type": "object"
+      },
+      "SitePagesSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "lastCrawlFinishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCrawlStartedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pagesPending": {
+            "type": "number"
+          },
+          "pagesUpdated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pagesUpdated",
+          "pagesPending"
         ],
         "type": "object"
       },
@@ -4815,6 +4887,13 @@
                 "example": {
                   "deployments": [
                     {
+                      "completeness": {
+                        "discoveredPages": 1,
+                        "pendingPages": 1,
+                        "percentage": 1,
+                        "status": "not_started",
+                        "translatedPages": 1
+                      },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
                       "status": "string",
@@ -4923,6 +5002,13 @@
                 "example": {
                   "deployments": [
                     {
+                      "completeness": {
+                        "discoveredPages": 1,
+                        "pendingPages": 1,
+                        "percentage": 1,
+                        "status": "not_started",
+                        "translatedPages": 1
+                      },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
                       "status": "string",

@@ -190,6 +190,15 @@ const sitePageSummarySchema = z.object({
   lastVersionAt: z.string().nullable().optional(),
 });
 
+const sitePagesSummarySchema = z
+  .object({
+    lastCrawlStartedAt: z.string().nullable().optional(),
+    lastCrawlFinishedAt: z.string().nullable().optional(),
+    pagesUpdated: z.number().int().nonnegative(),
+    pagesPending: z.number().int().nonnegative(),
+  })
+  .strict();
+
 const crawlStatusSchema = z.object({
   enqueued: z.boolean(),
   error: z.string().optional(),
@@ -336,6 +345,23 @@ const artifactManifestSchema = z
   .nullable()
   .optional();
 
+const deploymentCompletenessStatusSchema = z.enum([
+  "not_started",
+  "partial",
+  "complete",
+  "unknown",
+]);
+
+const deploymentCompletenessSchema = z
+  .object({
+    discoveredPages: z.number().int().nonnegative(),
+    translatedPages: z.number().int().nonnegative(),
+    pendingPages: z.number().int().nonnegative(),
+    percentage: z.number().int().min(0).max(100),
+    status: deploymentCompletenessStatusSchema,
+  })
+  .strict();
+
 const deploymentSchema = z.object({
   targetLang: z.string(),
   status: z.string(),
@@ -349,6 +375,7 @@ const deploymentSchema = z.object({
   serveEnabled: z.boolean(),
   servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving"]),
   translationRun: translationRunSchema.nullable().optional(),
+  completeness: deploymentCompletenessSchema,
 });
 
 const listDeploymentsResponseSchema = z.object({ deployments: z.array(deploymentSchema) });
@@ -415,6 +442,7 @@ const siteDashboardResponseSchema = z
   .object({
     site: siteSchema,
     deployments: z.array(deploymentSchema),
+    pagesSummary: sitePagesSummarySchema.optional(),
     pages: z.array(sitePageSummarySchema).optional(),
     pagination: listSitePagesResponseSchema.shape.pagination.optional(),
   })
@@ -572,11 +600,13 @@ export type SpaRefreshSettings = z.infer<typeof spaRefreshSchema>;
 export type SpaRefreshFallback = z.infer<typeof spaRefreshFallbackSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
+export type DeploymentCompleteness = z.infer<typeof deploymentCompletenessSchema>;
 export type DeploymentHistoryEntry = z.infer<typeof deploymentHistoryEntrySchema>;
 export type DeploymentHistoryByLocale = z.infer<typeof deploymentHistoryByLocaleSchema>;
 export type DeploymentHistoryResponse = z.infer<typeof listDeploymentHistoryResponseSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
+export type SitePagesSummary = z.infer<typeof sitePagesSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
