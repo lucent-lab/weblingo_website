@@ -26,6 +26,17 @@ Key modules today:
 
 Internationalization is handled via the `/[locale]` segment with English, French, and Japanese dictionaries stored under `internal/i18n/messages/*`.
 
+## Codex Quick Lookup
+
+- Env source of truth: `internal/core/env.ts` (client) and `internal/core/env-server.ts` (server).
+- Dashboard capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`.
+- Backend docs snapshot sync:
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check`
+- Minimal validation for docs/capability alignment:
+  - `corepack pnpm test:contracts`
+  - `corepack pnpm check`
+
 ## Environment Variables
 
 Create `.env.local` (or configure host env) with:
@@ -61,7 +72,6 @@ WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS=15000
 # Redis (required; preferred Vercel/Upstash naming)
 UPSTASH_REDIS__KV_REST_API_URL=https://<db>.upstash.io
 UPSTASH_REDIS__KV_REST_API_TOKEN=upstash_token
-# optional: UPSTASH_REDIS__KV_REST_API_READ_ONLY_TOKEN=...
 
 # Stripe
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -87,38 +97,39 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 ## Running Locally
 
-1. Install dependencies: `pnpm install`
+1. Install dependencies: `corepack pnpm install`
 2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` for the dashboard and `TRY_NOW_TOKEN` for previews).
    Redis credentials are required for public-form and preview rate limiting (`UPSTASH_REDIS__KV_REST_API_URL` + `UPSTASH_REDIS__KV_REST_API_TOKEN`).
-3. Start dev server: `pnpm run dev` (opens `http://localhost:3000`).
+3. Start dev server: `corepack pnpm run dev` (opens `http://localhost:3000`).
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
-5. Validation: optional `pnpm run lint`, `pnpm run typecheck`, `pnpm run format` before committing.
+5. Validation: optional `corepack pnpm run lint`, `corepack pnpm run typecheck`, `corepack pnpm run format` before committing.
 
 ## Backend Docs Sync
 
 Website API docs use backend-synced snapshots under `content/docs/_generated`.
 
 - Refresh snapshots:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
 - Verify snapshots are fresh (fails fast when missing/stale):
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check`
 - Contract/doc coverage tests:
-  - `pnpm test:contracts`
+  - `corepack pnpm test:contracts`
 
 `WEBLINGO_REPO_PATH` is required for sync commands. There is no fallback path.
 
 CI behavior:
 
 - When `CROSS_REPO_CHECKOUT_TOKEN` is available, `.github/workflows/ci.yml` checks out backend HEAD and runs:
-  - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" pnpm docs:sync:check`
-  - `pnpm test:contracts`
+  - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check`
+  - `corepack pnpm test:contracts`
 - When token access is unavailable, run this fallback locally before opening/updating a PR:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
 
 Ownership:
 
 - Website maintainers own `content/docs/_generated/*`, docs pages, and dashboard capability matrix updates.
 - Backend maintainers own canonical OpenAPI/feature catalog/playbooks and must notify website maintainers on user-facing contract changes.
+- Current maintainer model: one repository maintainer currently fulfills both roles.
 - Canonical website capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`.
 - Backend bridge pointer to this matrix: `weblingo/docs/backend/DASHBOARD_SPECS.md`.
 
@@ -131,7 +142,7 @@ Ownership:
 
 ## Deployment
 
-- **Build**: `pnpm run build` (Next.js static + server output).
+- **Build**: `corepack pnpm run build` (Next.js static + server output).
 - **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 20.9+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
 - **Rate limiting store**: Provision Upstash Redis (or compatible REST KV) and configure `UPSTASH_REDIS__KV_REST_API_URL`/`UPSTASH_REDIS__KV_REST_API_TOKEN`. This is required for waitlist/contact/preview abuse controls.
 - **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.

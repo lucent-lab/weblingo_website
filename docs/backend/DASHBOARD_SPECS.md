@@ -396,11 +396,12 @@ Legend:
 
 - **Primary owner**: Website dashboard/docs maintainers.
 - **Input owner**: Backend API/docs maintainers when user-facing capabilities change.
+- **Current maintainer model**: one repository maintainer currently fulfills both roles.
 - **Merge-time checks (required)**:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check`
-  - `pnpm test:contracts`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check`
+  - `corepack pnpm test:contracts`
 - **Refresh snapshots when backend HEAD advances**:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
 - **Drift policy**: keep checks merge-time only; add periodic drift audits only if stale snapshots repeatedly bypass PR checks.
 
 ## Maintenance checklist (OpenAPI parity)

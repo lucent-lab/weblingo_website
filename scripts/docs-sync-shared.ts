@@ -74,7 +74,7 @@ export function resolveWeblingoRepoPathOrThrow(cwd = process.cwd()): string {
   const configured = process.env.WEBLINGO_REPO_PATH?.trim();
   if (!configured) {
     throw new Error(
-      "[docs-sync] WEBLINGO_REPO_PATH is required. Example: WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync",
+      "[docs-sync] WEBLINGO_REPO_PATH is required. Example: WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync",
     );
   }
 
