@@ -6,6 +6,7 @@ import { Info } from "lucide-react";
 import { SiteAdminForm } from "./site-admin-form";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { DeploymentHistoryTable } from "@/components/dashboard/deployment-history-table";
 
 import {
   activateSiteAction,
@@ -27,7 +28,13 @@ import {
   listSupportedLanguagesCached,
 } from "@internal/dashboard/data";
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
-import { type Deployment, type Site, type SupportedLanguage } from "@internal/dashboard/webhooks";
+import {
+  fetchDeploymentHistory,
+  type Deployment,
+  type DeploymentHistoryByLocale,
+  type Site,
+  type SupportedLanguage,
+} from "@internal/dashboard/webhooks";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
@@ -57,16 +64,20 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   );
   let site: Site | null = null;
   let deployments: Deployment[] = [];
+  let deploymentHistory: DeploymentHistoryByLocale[] = [];
+  let deploymentHistoryLimit: number | null = null;
   let activeSiteCount: number | null = null;
   let error: string | null = null;
   let supportedLanguages: SupportedLanguage[] = [];
 
   // Parallelize all API fetches - optimistic that site exists (the common case)
-  const [siteDashboardResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
-    getSiteDashboardCached(auth.webhooksAuth!, id),
-    listSitesCached(auth.webhooksAuth!),
-    settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
-  ]);
+  const [siteDashboardResult, deploymentHistoryResult, sitesResult, supportedLanguagesResult] =
+    await Promise.allSettled([
+      getSiteDashboardCached(auth.webhooksAuth!, id),
+      fetchDeploymentHistory(auth.webhooksAuth!, id, { limit: 5 }),
+      listSitesCached(auth.webhooksAuth!),
+      settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
+    ]);
 
   if (siteDashboardResult.status === "fulfilled") {
     site = siteDashboardResult.value.site;
@@ -76,6 +87,16 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       siteDashboardResult.reason instanceof Error
         ? siteDashboardResult.reason.message
         : "Unable to load site settings.";
+  }
+
+  if (deploymentHistoryResult.status === "fulfilled") {
+    deploymentHistory = deploymentHistoryResult.value.history;
+    deploymentHistoryLimit = deploymentHistoryResult.value.perLocaleLimit;
+  } else {
+    console.warn(
+      "[dashboard] fetchDeploymentHistory failed while loading site admin:",
+      deploymentHistoryResult.reason,
+    );
   }
 
   if (sitesResult.status === "fulfilled") {
@@ -146,6 +167,14 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const deploymentRouteLabel = t("dashboard.deployments.route.label");
   const deploymentRouteHelpLabel = t("dashboard.deployments.route.helpLabel");
   const deploymentRouteHelp = t("dashboard.deployments.route.help");
+  const deploymentHistoryTitle = t("dashboard.deployments.history.title", "Deployment history");
+  const deploymentHistoryDescription = deploymentHistoryLimit
+    ? t(
+        "dashboard.deployments.history.descriptionWithLimit",
+        "Recent deployment attempts per locale (latest {limit} each).",
+        { limit: String(deploymentHistoryLimit) },
+      )
+    : t("dashboard.deployments.history.description", "Recent deployment attempts per locale.");
   const servingLanguagesTitle = t("dashboard.serving.languages.title");
   const servingLanguagesDescription = t("dashboard.serving.languages.description");
   const servingLanguageLabel = t("dashboard.serving.languages.columns.language");
@@ -770,6 +799,16 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{deploymentHistoryTitle}</CardTitle>
+          <CardDescription>{deploymentHistoryDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DeploymentHistoryTable history={deploymentHistory} locale={displayLocale} />
         </CardContent>
       </Card>
 

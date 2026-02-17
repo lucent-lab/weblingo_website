@@ -353,6 +353,31 @@ const deploymentSchema = z.object({
 
 const listDeploymentsResponseSchema = z.object({ deployments: z.array(deploymentSchema) });
 
+const deploymentHistoryEntrySchema = z
+  .object({
+    deploymentId: z.string(),
+    status: z.string(),
+    createdAt: z.string().nullable().optional(),
+    activatedAt: z.string().nullable().optional(),
+    routePrefix: z.string().nullable().optional(),
+    artifactManifest: artifactManifestSchema,
+  })
+  .strict();
+
+const deploymentHistoryByLocaleSchema = z
+  .object({
+    targetLang: z.string(),
+    entries: z.array(deploymentHistoryEntrySchema),
+  })
+  .strict();
+
+const listDeploymentHistoryResponseSchema = z
+  .object({
+    history: z.array(deploymentHistoryByLocaleSchema),
+    perLocaleLimit: z.number().int().positive(),
+  })
+  .strict();
+
 const glossaryEntrySchema = z.object({
   source: z.string(),
   target: z.string(),
@@ -547,6 +572,9 @@ export type SpaRefreshSettings = z.infer<typeof spaRefreshSchema>;
 export type SpaRefreshFallback = z.infer<typeof spaRefreshFallbackSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
+export type DeploymentHistoryEntry = z.infer<typeof deploymentHistoryEntrySchema>;
+export type DeploymentHistoryByLocale = z.infer<typeof deploymentHistoryByLocaleSchema>;
+export type DeploymentHistoryResponse = z.infer<typeof listDeploymentHistoryResponseSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
@@ -590,6 +618,7 @@ export const __webhooksZodContracts = {
   resumeTranslationRunResponseSchema,
   domainResponseSchema,
   listDeploymentsResponseSchema,
+  listDeploymentHistoryResponseSchema,
   listSitePagesResponseSchema,
   siteDashboardResponseSchema,
   upsertDigestSubscriptionResponseSchema,
@@ -1223,6 +1252,29 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
   });
 
   return data.deployments;
+}
+
+export async function fetchDeploymentHistory(
+  auth: AuthInput,
+  siteId: string,
+  options?: { targetLang?: string; limit?: number },
+): Promise<DeploymentHistoryResponse> {
+  const searchParams = new URLSearchParams();
+  if (options?.targetLang) {
+    searchParams.set("targetLang", options.targetLang);
+  }
+  if (typeof options?.limit === "number") {
+    searchParams.set("limit", String(options.limit));
+  }
+  const path = searchParams.size
+    ? `/sites/${siteId}/deployments/history?${searchParams.toString()}`
+    : `/sites/${siteId}/deployments/history`;
+  return request({
+    path,
+    auth,
+    schema: listDeploymentHistoryResponseSchema,
+    timeoutProfile: "detail",
+  });
 }
 
 export async function fetchSitePages(

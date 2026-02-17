@@ -376,6 +376,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}/domains/{domain}/provision", method: "post" },
       { path: "/sites/{siteId}/domains/{domain}/refresh", method: "post" },
       { path: "/sites/{siteId}/deployments", method: "get" },
+      { path: "/sites/{siteId}/deployments/history", method: "get" },
       { path: "/sites/{siteId}/pages", method: "get" },
       { path: "/sites/{siteId}/glossary", method: "get" },
       { path: "/sites/{siteId}/glossary", method: "put" },
@@ -447,6 +448,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "ListDeploymentsResponse",
         schema: __webhooksZodContracts.listDeploymentsResponseSchema,
+      },
+      {
+        name: "ListDeploymentHistoryResponse",
+        schema: __webhooksZodContracts.listDeploymentHistoryResponseSchema,
       },
       {
         name: "ListTranslationSummariesResponse",

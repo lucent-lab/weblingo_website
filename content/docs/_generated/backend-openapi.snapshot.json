@@ -862,6 +862,65 @@
         ],
         "type": "object"
       },
+      "DeploymentHistoryByLocale": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentHistoryEntry"
+            },
+            "type": "array"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "DeploymentHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "activatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artifactManifest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "status"
+        ],
+        "type": "object"
+      },
       "DeploymentServingStatus": {
         "enum": [
           "inactive",
@@ -1422,6 +1481,25 @@
         "required": [
           "customers",
           "summary"
+        ],
+        "type": "object"
+      },
+      "ListDeploymentHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentHistoryByLocale"
+            },
+            "type": "array"
+          },
+          "perLocaleLimit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "history",
+          "perLocaleLimit"
         ],
         "type": "object"
       },
@@ -4906,6 +4984,118 @@
           }
         ],
         "summary": "List deployments per locale",
+        "tags": [
+          "Sites",
+          "Deployments"
+        ]
+      }
+    },
+    "/sites/{siteId}/deployments/history": {
+      "get": {
+        "operationId": "sites.deployments.history.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional locale filter for deployment history (for example `fr`).",
+            "in": "query",
+            "name": "targetLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum entries per locale to include (1-50). Defaults to 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "history": [
+                    {
+                      "entries": [
+                        {
+                          "deploymentId": "string",
+                          "status": "string"
+                        }
+                      ],
+                      "targetLang": "string"
+                    }
+                  ],
+                  "perLocaleLimit": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDeploymentHistoryResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List deployment history grouped by locale",
         "tags": [
           "Sites",
           "Deployments"

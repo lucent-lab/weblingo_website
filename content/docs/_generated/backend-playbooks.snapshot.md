@@ -52,10 +52,11 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 3. Create site and locale/domain onboarding records:
    - `operationId`: `sites.create`
 4. Inspect site and deployments:
-   - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + `sites.deployments.list` when you need separate caching or independent refresh cadence.
+   - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + deployments endpoints when you need separate caching or independent refresh cadence.
    - `operationId`: `sites.dashboard.get`
    - `operationId`: `sites.get`
    - `operationId`: `sites.deployments.list`
+   - `operationId`: `sites.deployments.history.list`
 
 ## Playbook 2: Domain Verification and Serving Activation
 
