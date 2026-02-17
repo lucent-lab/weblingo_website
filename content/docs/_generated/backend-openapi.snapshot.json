@@ -5809,7 +5809,7 @@
                     {
                       "blockId": "string",
                       "contentId": "string",
-                      "reason": "string"
+                      "reason": "missing_canonical"
                     }
                   ],
                   "sourceLang": "string",
@@ -5949,7 +5949,7 @@
                       "contentId": "string",
                       "contextHashScope": "string",
                       "overrideText": "string",
-                      "reason": "string",
+                      "reason": "context_override_global_exact_conflict",
                       "segmentId": "string",
                       "sourceText": "string"
                     }
