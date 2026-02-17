@@ -38,7 +38,10 @@ export default async function SiteConsistencyPage({
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
-  const authToken = auth.webhooksAuth!;
+  const authToken = auth.webhooksAuth;
+  if (!authToken) {
+    throw new Error("Dashboard auth context is missing webhooksAuth.");
+  }
   const mutationsAllowed = auth.mutationsAllowed;
   const { t } = await resolveLocaleTranslator(
     Promise.resolve({ locale: i18nConfig.defaultLocale }),
@@ -58,7 +61,7 @@ export default async function SiteConsistencyPage({
   try {
     site = await fetchSite(authToken, id);
   } catch (error) {
-    siteLoadError = error instanceof Error ? error.message : "Unable to load consistency data.";
+    siteLoadError = error instanceof Error ? error.message : "Unable to load site.";
     if (error instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSite consistency failed", {
         siteId: id,
