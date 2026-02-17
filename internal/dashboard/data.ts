@@ -5,6 +5,7 @@ import { cache } from "react";
 import { redis } from "@/internal/core/redis";
 
 import type { WebhooksAuthContext } from "./auth";
+import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import {
   fetchSiteDashboard,
   listSites,
@@ -26,6 +27,11 @@ const LANGUAGES_CACHE_TTL_SECONDS = 21600;
 const sitesInflight = new Map<string, Promise<SiteSummary[]>>();
 const siteDashboardInflight = new Map<string, Promise<SiteDashboardResponse>>();
 const languagesInflight = new Map<string, Promise<SupportedLanguage[]>>();
+
+function shouldBypassDashboardCache(): boolean {
+  // Avoid external cache network flakiness during dashboard mock-mode smoke runs.
+  return isDashboardE2eMockEnabled();
+}
 
 function getCacheEnvPrefix(): string {
   return process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown";
@@ -88,6 +94,10 @@ function getSiteDashboardCacheIndexKey(subjectAccountId: string, siteId: string)
 }
 
 export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
+  if (shouldBypassDashboardCache()) {
+    return listSites(auth);
+  }
+
   const cacheKey = getSitesCacheKey(auth.subjectAccountId);
 
   try {
@@ -126,6 +136,10 @@ export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
 });
 
 export const listSupportedLanguagesCached = cache(async () => {
+  if (shouldBypassDashboardCache()) {
+    return listSupportedLanguages();
+  }
+
   const cacheKey = getLanguagesCacheKey();
 
   try {
@@ -170,6 +184,11 @@ export const getSiteDashboardCached = cache(
     options?: SiteDashboardCacheOptions,
   ): Promise<SiteDashboardResponse> => {
     const normalized = normalizeSiteDashboardOptions(options);
+
+    if (shouldBypassDashboardCache()) {
+      return fetchSiteDashboard(auth, siteId, normalized);
+    }
+
     const cacheKey = getSiteDashboardCacheKey(auth.subjectAccountId, siteId, normalized);
     const indexKey = getSiteDashboardCacheIndexKey(auth.subjectAccountId, siteId);
 
@@ -212,6 +231,10 @@ export const getSiteDashboardCached = cache(
 );
 
 export async function invalidateSitesCache(auth: WebhooksAuthContext): Promise<void> {
+  if (shouldBypassDashboardCache()) {
+    return;
+  }
+
   const cacheKey = getSitesCacheKey(auth.subjectAccountId);
   try {
     await redis.del(cacheKey);
@@ -224,6 +247,10 @@ export async function invalidateSiteDashboardCache(
   auth: WebhooksAuthContext,
   siteId: string,
 ): Promise<void> {
+  if (shouldBypassDashboardCache()) {
+    return;
+  }
+
   const indexKey = getSiteDashboardCacheIndexKey(auth.subjectAccountId, siteId);
   const keys = new Set<string>([
     getSiteDashboardCacheKey(auth.subjectAccountId, siteId),
