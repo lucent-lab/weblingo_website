@@ -104,6 +104,12 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
 5. Validation: optional `corepack pnpm run lint`, `corepack pnpm run typecheck`, `corepack pnpm run format` before committing.
 
+### Dashboard Smoke (Mock Mode)
+
+- Run `corepack pnpm test:e2e:smoke`.
+- This command sets `DASHBOARD_E2E_MOCK=1`, which bypasses Supabase login and serves deterministic mocked webhook payloads for dashboard smoke paths/actions.
+- Use this for CI/local smoke coverage of dashboard routing + action feedback without depending on live auth/API infrastructure.
+
 ## Backend Docs Sync
 
 Website API docs use backend-synced snapshots under `content/docs/_generated`.

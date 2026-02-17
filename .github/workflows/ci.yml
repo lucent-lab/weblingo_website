@@ -66,6 +66,12 @@ jobs:
       - name: Build
         run: corepack pnpm build
 
+      - name: Install Playwright browser
+        run: corepack pnpm exec playwright install --with-deps chromium
+
+      - name: Dashboard smoke (mock auth)
+        run: corepack pnpm test:e2e:smoke
+
   docs-sync-token-check:
     runs-on: ubuntu-latest
     outputs:

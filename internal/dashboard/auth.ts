@@ -15,6 +15,7 @@ import {
   type AgencyCustomersResponse,
 } from "./webhooks";
 import { createHas, type HasCheck } from "./entitlements";
+import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import { readSubjectAccountId } from "./workspace";
 
 export type WebhooksAuthContext = {
@@ -53,6 +54,8 @@ const BOOTSTRAP_CACHE_NAMESPACE = "dashboard:bootstrap";
 const BOOTSTRAP_CACHE_MAX_TTL_SECONDS = 300;
 const BOOTSTRAP_CACHE_MIN_TTL_SECONDS = 30;
 const BOOTSTRAP_CACHE_EXPIRY_BUFFER_SECONDS = 60;
+const DASHBOARD_E2E_ACCOUNT_ID = "acct-e2e-smoke";
+const DASHBOARD_E2E_TOKEN = "dashboard-e2e-smoke-token";
 
 const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
   editEnabled: false,
@@ -177,6 +180,88 @@ function buildWebhooksAuthContext(
   return auth;
 }
 
+function buildDashboardE2eMockAuth(): DashboardAuth {
+  const account: AccountMe = {
+    accountId: DASHBOARD_E2E_ACCOUNT_ID,
+    planType: "starter",
+    planStatus: "active",
+    featureFlags: {
+      editEnabled: true,
+      slugEditEnabled: true,
+      glossaryEnabled: true,
+      overridesEnabled: true,
+      tmWriteEnabled: true,
+      publishEnabled: true,
+      pipelineAllowed: true,
+      serveAllowed: true,
+      siteCreateEnabled: true,
+      localeUpdateEnabled: true,
+      domainVerifyEnabled: true,
+      crawlTriggerEnabled: true,
+      crawlCaptureModeEnabled: true,
+      clientRuntimeToggleEnabled: true,
+      translatableAttributesEnabled: true,
+      renderEnabled: true,
+      agencyActionsEnabled: false,
+      internalOpsEnabled: false,
+      demoMode: true,
+      maxSites: 10,
+      maxLocales: 8,
+      maxDailyRecrawls: 20,
+      maxDailyPageRecrawls: 200,
+      maxGlossarySources: 200,
+      featurePreview: [],
+    },
+    dailyCrawlUsage: {
+      date: new Date().toISOString().slice(0, 10),
+      siteCrawls: 1,
+      pageCrawls: 3,
+    },
+    quotas: {
+      maxSites: 10,
+      starterQuota: 10,
+      proQuota: 50,
+    },
+  };
+  const webhooksAuth: WebhooksAuthContext = {
+    token: DASHBOARD_E2E_TOKEN,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    subjectAccountId: DASHBOARD_E2E_ACCOUNT_ID,
+    refresh: async () => DASHBOARD_E2E_TOKEN,
+  };
+  const user = {
+    id: "user-e2e-smoke",
+    email: "e2e-smoke@weblingo.app",
+  } as User;
+  const session = {
+    access_token: "e2e-smoke-access-token",
+    refresh_token: "e2e-smoke-refresh-token",
+    expires_in: 3600,
+    token_type: "bearer",
+    user,
+  } as Session;
+
+  return {
+    user,
+    session,
+    webhooksAuth,
+    account,
+    actorAccount: account,
+    subjectAccount: account,
+    actorWebhooksAuth: webhooksAuth,
+    agencyCustomers: null,
+    actorAccountId: DASHBOARD_E2E_ACCOUNT_ID,
+    subjectAccountId: DASHBOARD_E2E_ACCOUNT_ID,
+    actingAsCustomer: false,
+    subjectFallbackToActor: false,
+    actorPlanActive: true,
+    subjectPlanActive: true,
+    mutationsAllowed: true,
+    billingIssue: null,
+    has: createHas(account),
+  };
+}
+
 async function getBootstrap({
   supabaseAccessToken,
   subjectAccountId,
@@ -256,6 +341,10 @@ async function getBootstrap({
 }
 
 export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
+  if (isDashboardE2eMockEnabled()) {
+    return buildDashboardE2eMockAuth();
+  }
+
   const supabase = await createClient();
   const [
     {

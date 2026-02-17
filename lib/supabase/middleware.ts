@@ -1,9 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 import { getSupabasePublicEnv } from "./env";
 
 export async function updateSession(request: NextRequest) {
+  if (isDashboardE2eMockEnabled()) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

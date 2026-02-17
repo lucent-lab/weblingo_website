@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { env } from "@internal/core";
+import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 
 const apiBase = env.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
 const apiTimeoutMs = Number(env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS);
@@ -16,6 +17,9 @@ const REQUEST_TIMEOUT_MS = {
   detail: Math.min(apiTimeoutMs, 10_000),
   mutation: apiTimeoutMs,
 } as const;
+const DASHBOARD_E2E_MOCK_SITE_ID = "site-smoke-1";
+const DASHBOARD_E2E_MOCK_ACCOUNT_ID = "acct-e2e-smoke";
+const DASHBOARD_E2E_MOCK_SOURCE_URL = "https://source.example.test";
 
 type RequestTimeoutProfile = keyof typeof REQUEST_TIMEOUT_MS;
 
@@ -716,6 +720,397 @@ const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
 
 export const SUPPORTED_LANGUAGES_STATIC: SupportedLanguage[] = [...FALLBACK_SUPPORTED_LANGUAGES];
 
+function createDashboardE2eMockSiteSummary(siteId: string) {
+  return {
+    id: siteId,
+    accountId: DASHBOARD_E2E_MOCK_ACCOUNT_ID,
+    sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+    status: "active" as const,
+    servingMode: "strict" as const,
+    maxLocales: null,
+    siteProfile: null,
+    sourceLang: "en",
+    targetLangs: ["fr", "ja"],
+    localeCount: 2,
+    serveEnabledLocaleCount: 2,
+    domainCount: 3,
+    verifiedDomainCount: 1,
+  };
+}
+
+function createDashboardE2eMockSite(siteId: string) {
+  const now = new Date().toISOString();
+  return {
+    id: siteId,
+    accountId: DASHBOARD_E2E_MOCK_ACCOUNT_ID,
+    sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+    status: "active" as const,
+    servingMode: "strict" as const,
+    maxLocales: null,
+    siteProfile: null,
+    locales: [
+      { sourceLang: "en", targetLang: "fr", alias: null, serveEnabled: true },
+      { sourceLang: "en", targetLang: "ja", alias: null, serveEnabled: true },
+    ],
+    routeConfig: {
+      sourceLang: "en",
+      sourceOrigin: DASHBOARD_E2E_MOCK_SOURCE_URL,
+      pattern: null,
+      locales: [
+        { lang: "fr", origin: "https://fr.example.test", routePrefix: "/fr" },
+        { lang: "ja", origin: "https://verify.example.test", routePrefix: "/ja" },
+      ],
+      clientRuntimeEnabled: true,
+      crawlCaptureMode: "template_plus_hydrated" as const,
+      translatableAttributes: null,
+      spaRefresh: {
+        enabled: false,
+        missingFallback: "baseline" as const,
+        errorFallback: "baseline" as const,
+        enableSectionScope: false,
+      },
+    },
+    domains: [
+      {
+        domain: "pending.example.test",
+        status: "pending" as const,
+        verificationToken: "pending-token",
+        verifiedAt: null,
+        lastCheckedAt: now,
+        dnsInstructions: {
+          type: "CNAME" as const,
+          name: "pending",
+          target: "weblingo.cfargotunnel.com",
+          notes: "Create this CNAME to start provisioning.",
+        },
+        cloudflare: null,
+      },
+      {
+        domain: "verify.example.test",
+        status: "pending" as const,
+        verificationToken: "verify-token",
+        verifiedAt: null,
+        lastCheckedAt: now,
+        dnsInstructions: null,
+        cloudflare: null,
+      },
+      {
+        domain: "fr.example.test",
+        status: "verified" as const,
+        verificationToken: "fr-token",
+        verifiedAt: now,
+        lastCheckedAt: now,
+        dnsInstructions: {
+          type: "CNAME" as const,
+          name: "fr",
+          target: "weblingo.cfargotunnel.com",
+          notes: "Verified in mock mode.",
+        },
+        cloudflare: {
+          customHostnameId: "cf-hostname-fr",
+          hostnameStatus: "active",
+          certStatus: "active",
+          lastSyncedAt: now,
+          errors: null,
+          errorMessages: null,
+        },
+      },
+    ],
+    latestCrawlRun: {
+      id: "crawl-run-latest",
+      sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+      trigger: "cron" as const,
+      status: "completed" as const,
+      pagesDiscovered: 30,
+      pagesEnqueued: 30,
+      selectedCount: 30,
+      skippedDueToLimitCount: 0,
+      crawlCaptureMode: "template_plus_hydrated" as const,
+      error: null,
+      startedAt: now,
+      finishedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    },
+  };
+}
+
+function createDashboardE2eMockDeployments(siteId: string) {
+  const now = new Date().toISOString();
+  const siteSlug = siteId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  return [
+    {
+      targetLang: "fr",
+      status: "active",
+      deploymentId: `dep-${siteSlug}-fr-current`,
+      activatedAt: now,
+      routePrefix: "/fr",
+      artifactManifest: { pages: ["/", "/pricing"], generatedAt: now },
+      activeDeploymentId: `dep-${siteSlug}-fr-current`,
+      domain: "fr.example.test",
+      domainStatus: "verified" as const,
+      serveEnabled: true,
+      servingStatus: "ready" as const,
+      translationRun: null,
+      completeness: {
+        discoveredPages: 30,
+        translatedPages: 30,
+        pendingPages: 0,
+        percentage: 100,
+        status: "complete" as const,
+      },
+    },
+    {
+      targetLang: "ja",
+      status: "pending",
+      deploymentId: null,
+      activatedAt: null,
+      routePrefix: "/ja",
+      artifactManifest: null,
+      activeDeploymentId: null,
+      domain: "verify.example.test",
+      domainStatus: "pending" as const,
+      serveEnabled: true,
+      servingStatus: "needs_domain" as const,
+      translationRun: null,
+      completeness: {
+        discoveredPages: 30,
+        translatedPages: 14,
+        pendingPages: 16,
+        percentage: 47,
+        status: "partial" as const,
+      },
+    },
+  ];
+}
+
+function createDashboardE2eMockPages(total = 30) {
+  const now = Date.now();
+  return Array.from({ length: total }, (_, index) => {
+    const pageNumber = index + 1;
+    const timestamp = new Date(now - index * 60_000).toISOString();
+    const nextCrawlAt = new Date(now + (index % 2 === 0 ? -1 : 1) * 3_600_000).toISOString();
+    return {
+      id: `page-${pageNumber}`,
+      sourcePath: pageNumber === 1 ? "/" : `/page-${pageNumber}`,
+      lastSeenAt: timestamp,
+      lastCrawledAt: timestamp,
+      lastSnapshotAt: timestamp,
+      nextCrawlAt,
+      lastVersionAt: timestamp,
+    };
+  });
+}
+
+function createDashboardE2eMockDeploymentHistory(limit: number) {
+  const now = Date.now();
+  const createEntries = (targetLang: "fr" | "ja") =>
+    Array.from({ length: Math.max(limit, 1) }, (_, index) => {
+      const createdAt = new Date(now - index * 3_600_000).toISOString();
+      return {
+        deploymentId: `dep-${targetLang}-${index + 1}`,
+        status: index === 0 ? "active" : "superseded",
+        createdAt,
+        activatedAt: createdAt,
+        routePrefix: `/${targetLang}`,
+        artifactManifest: {
+          pages: ["/", "/pricing"],
+          generatedAt: createdAt,
+        },
+      };
+    }).slice(0, limit);
+
+  return {
+    history: [
+      { targetLang: "fr", entries: createEntries("fr") },
+      { targetLang: "ja", entries: createEntries("ja") },
+    ],
+    perLocaleLimit: limit,
+  };
+}
+
+function createDashboardE2eMockDashboardPayload(siteId: string, searchParams: URLSearchParams) {
+  const includePages = searchParams.get("includePages") === "true";
+  const limitRaw = Number(searchParams.get("limit") ?? "25");
+  const offsetRaw = Number(searchParams.get("offset") ?? "0");
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 25;
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+  const allPages = createDashboardE2eMockPages(30);
+  const pages = allPages.slice(offset, offset + limit);
+  const payload: Record<string, unknown> = {
+    site: createDashboardE2eMockSite(siteId),
+    deployments: createDashboardE2eMockDeployments(siteId),
+    pagesSummary: {
+      lastCrawlStartedAt: new Date(Date.now() - 15 * 60_000).toISOString(),
+      lastCrawlFinishedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
+      pagesUpdated: 18,
+      pagesPending: 5,
+    },
+  };
+  if (includePages) {
+    payload.pages = pages;
+    payload.pagination = {
+      limit,
+      offset,
+      total: allPages.length,
+      hasMore: offset + pages.length < allPages.length,
+    };
+  }
+  return payload;
+}
+
+function resolveDashboardE2eMockPayload(input: {
+  path: string;
+  method: string;
+  body?: unknown;
+}): unknown | null {
+  const url = input.path.startsWith("http")
+    ? new URL(input.path)
+    : new URL(input.path, "https://mock.weblingo.local");
+  const method = input.method.toUpperCase();
+  const pathname = url.pathname;
+
+  if (method === "GET" && pathname === "/sites") {
+    return { sites: [createDashboardE2eMockSiteSummary(DASHBOARD_E2E_MOCK_SITE_ID)] };
+  }
+
+  if (method === "GET" && pathname === "/meta/languages") {
+    return { languages: FALLBACK_SUPPORTED_LANGUAGES.slice(0, 3) };
+  }
+
+  const siteMatch = pathname.match(/^\/sites\/([^/]+)$/);
+  if (siteMatch && method === "GET") {
+    return createDashboardE2eMockSite(siteMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID);
+  }
+  if (siteMatch && method === "PATCH") {
+    return createDashboardE2eMockSite(siteMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID);
+  }
+
+  const siteDashboardMatch = pathname.match(/^\/sites\/([^/]+)\/dashboard$/);
+  if (siteDashboardMatch && method === "GET") {
+    return createDashboardE2eMockDashboardPayload(
+      siteDashboardMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      url.searchParams,
+    );
+  }
+
+  const deploymentsMatch = pathname.match(/^\/sites\/([^/]+)\/deployments$/);
+  if (deploymentsMatch && method === "GET") {
+    return {
+      deployments: createDashboardE2eMockDeployments(
+        deploymentsMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      ),
+    };
+  }
+
+  const deploymentHistoryMatch = pathname.match(/^\/sites\/([^/]+)\/deployments\/history$/);
+  if (deploymentHistoryMatch && method === "GET") {
+    const limitRaw = Number(url.searchParams.get("limit") ?? "5");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 5;
+    return createDashboardE2eMockDeploymentHistory(limit);
+  }
+
+  const crawlMatch = pathname.match(/^\/sites\/([^/]+)\/crawl$/);
+  if (crawlMatch && method === "POST") {
+    return { enqueued: true };
+  }
+
+  const crawlTranslateMatch = pathname.match(/^\/sites\/([^/]+)\/crawl-translate$/);
+  if (crawlTranslateMatch && method === "POST") {
+    const payload =
+      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const targetLangs = Array.isArray(payload.targetLangs)
+      ? payload.targetLangs.filter((value): value is string => typeof value === "string")
+      : ["fr"];
+    return {
+      crawlId: "crawl-translate-smoke",
+      selectedCount: 2,
+      enqueuedCount: 2,
+      targetLangs,
+      force: payload.force === true,
+    };
+  }
+
+  const translateMatch = pathname.match(/^\/sites\/([^/]+)\/translate$/);
+  if (translateMatch && method === "POST") {
+    const payload =
+      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const targetLang = typeof payload.targetLang === "string" ? payload.targetLang : "fr";
+    const now = new Date().toISOString();
+    return {
+      run: {
+        id: `run-${targetLang}-smoke`,
+        siteId: translateMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+        targetLang,
+        status: "in_progress",
+        pagesTotal: 2,
+        pagesCompleted: 0,
+        pagesFailed: 0,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      enqueued: 2,
+      missingSnapshots: 0,
+      crawlEnqueued: false,
+    };
+  }
+
+  const pageCrawlMatch = pathname.match(/^\/sites\/([^/]+)\/pages\/([^/]+)\/crawl$/);
+  if (pageCrawlMatch && method === "POST") {
+    return { enqueued: true };
+  }
+
+  const serveToggleMatch = pathname.match(/^\/sites\/([^/]+)\/locales\/([^/]+)\/serve$/);
+  if (serveToggleMatch && method === "POST") {
+    const payload =
+      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const enabled = payload.enabled === true;
+    const targetLang = decodeURIComponent(serveToggleMatch[2] ?? "fr");
+    return {
+      targetLang,
+      serveEnabled: enabled,
+      servingStatus: enabled ? "ready" : "disabled",
+      activeDeploymentId: enabled ? `dep-${targetLang}-current` : null,
+    };
+  }
+
+  const domainMatch = pathname.match(
+    /^\/sites\/([^/]+)\/domains\/([^/]+)\/(verify|provision|refresh)$/,
+  );
+  if (domainMatch && method === "POST") {
+    const domain = decodeURIComponent(domainMatch[2] ?? "pending.example.test");
+    const action = domainMatch[3];
+    const now = new Date().toISOString();
+    const status =
+      action === "verify" || domain === "fr.example.test"
+        ? ("verified" as const)
+        : ("pending" as const);
+    return {
+      domain: {
+        domain,
+        status,
+        verificationToken: `${domain}-token`,
+        verifiedAt: status === "verified" ? now : null,
+        lastCheckedAt: now,
+        dnsInstructions:
+          domain === "verify.example.test"
+            ? null
+            : {
+                type: "CNAME" as const,
+                name: domain.split(".")[0] ?? "www",
+                target: "weblingo.cfargotunnel.com",
+                notes: "Mock DNS instructions",
+              },
+        cloudflare: null,
+      },
+    };
+  }
+
+  return null;
+}
+
 type RequestOptions<T> = {
   path: string;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -766,6 +1161,26 @@ async function request<T>({
     }
     console.info("[webhooks] timing", payload);
   };
+
+  if (isDashboardE2eMockEnabled()) {
+    const mockPayload = resolveDashboardE2eMockPayload({
+      path,
+      method,
+      body,
+    });
+    if (mockPayload === null) {
+      logTiming(500, false, "mock_missing_fixture");
+      throw new WebhooksApiError(`[mock] No fixture for ${method} ${path}`, 500);
+    }
+    const parsedMock = schema.safeParse(mockPayload);
+    if (!parsedMock.success) {
+      logTiming(500, false, "mock_schema_mismatch");
+      throw parsedMock.error;
+    }
+    logTiming(200, true, "mock");
+    return parsedMock.data;
+  }
+
   const resolvedAuth = normalizeAuth(auth);
   const token = resolvedAuth?.token;
   const url = path.startsWith("http")
