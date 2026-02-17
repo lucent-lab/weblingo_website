@@ -52,10 +52,12 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 3. Create site and locale/domain onboarding records:
    - `operationId`: `sites.create`
 4. Inspect site and deployments:
-   - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + `sites.deployments.list` when you need separate caching or independent refresh cadence.
+   - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + deployments endpoints when you need separate caching or independent refresh cadence.
+   - Deployment endpoint choice: use `sites.deployments.list` when you need the current active deployments for a site. Use `sites.deployments.history.list` when you need past deployment attempts and historical records.
    - `operationId`: `sites.dashboard.get`
    - `operationId`: `sites.get`
    - `operationId`: `sites.deployments.list`
+   - `operationId`: `sites.deployments.history.list`
 
 ## Playbook 2: Domain Verification and Serving Activation
 
@@ -98,11 +100,24 @@ Local/dev TXT verification flow:
 1. Read/update glossary terms:
    - `operationId`: `sites.glossary.get`
    - `operationId`: `sites.glossary.put`
-2. Apply manual override:
+2. List and manage canonical phrase memory entries:
+   - `operationId`: `sites.consistency.cpm.list`
+   - `operationId`: `sites.consistency.cpm.upsert`
+3. List and manage consistency blocks:
+   - `operationId`: `sites.consistency.blocks.list`
+   - `operationId`: `sites.consistency.blocks.update`
+4. Surface override hygiene warnings for context-scoped conflicts:
+   - `operationId`: `sites.consistency.overrideHygiene.list`
+5. Apply manual override:
    - `operationId`: `sites.overrides.create`
-3. Set translated slug path:
+6. Set translated slug path:
    - `operationId`: `sites.slugs.set`
-4. Toggle locale serve state if needed:
+7. Run consistency lint/fix for a locale (dry-run first, then apply if safe):
+   - `operationId`: `sites.consistency.fix.run`
+   - Request: `POST /api/sites/:siteId/consistency/fix` with boolean `dryRun` (`true` = preview/no writes, `false` = apply rewrites + enqueue render).
+   - Default: `dryRun=true` when omitted.
+   - Expected response signals: dry-run returns `rewritesPlanned`/samples without mutations; live apply returns `rewritesApplied` and `renderEnqueued`.
+8. Toggle locale serve state if needed:
    - `operationId`: `sites.locales.serve`
 
 ## Playbook 5: Previews and Notifications

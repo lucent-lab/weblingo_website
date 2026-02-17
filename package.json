@@ -20,6 +20,7 @@
     "test": "vitest run",
     "test:contracts": "vitest run internal/dashboard/webhooks.openapi-contract.test.ts tests/docs/docs-feature-coverage.test.ts tests/docs/docs-env-contract.test.ts",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "CI=1 DASHBOARD_E2E_MOCK=1 playwright test tests/smoke/dashboard.smoke.spec.ts",
     "docs:sync:tsc": "tsc --pretty false --noEmit false --skipLibCheck true --types node --module commonjs --moduleResolution node --target ES2022 --outDir .tmp/docs-sync scripts/docs-sync-shared.ts scripts/docs-sync-weblingo.ts scripts/docs-sync-check.ts",
     "docs:sync": "pnpm docs:sync:tsc && node .tmp/docs-sync/docs-sync-weblingo.js",
     "docs:sync:check": "pnpm docs:sync:tsc && node .tmp/docs-sync/docs-sync-check.js",

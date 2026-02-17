@@ -9,7 +9,7 @@ test("home page exposes the try form", async ({ page }) => {
 test("expansion landing page renders core sections", async ({ page }) => {
   await page.goto("/en/landing/expansion");
   await expect(
-    page.getByRole("heading", { name: "Turn international traffic into bookings and revenue." }),
+    page.getByRole("heading", { name: "Turn international traffic into conversions and revenue." }),
   ).toBeVisible();
   await expect(page.getByText("The cost of staying single-language")).toBeVisible();
 });

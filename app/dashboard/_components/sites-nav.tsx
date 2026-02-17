@@ -67,6 +67,7 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
   const subItems = [
     { href: baseHref, label: "Configuration" },
     { href: `${baseHref}/pages`, label: "Pages" },
+    { href: `${baseHref}/consistency`, label: "Consistency" },
     { href: `${baseHref}/overrides`, label: "Overrides" },
     { href: `${baseHref}/admin`, label: "Admin" },
   ];

@@ -59,6 +59,7 @@ function makeDashboardPayload(): SiteDashboardResponse {
 beforeEach(() => {
   (process.env as Record<string, string | undefined>).NODE_ENV = "test";
   delete process.env.VERCEL_ENV;
+  delete process.env.DASHBOARD_E2E_MOCK;
 });
 
 afterEach(() => {
@@ -67,6 +68,38 @@ afterEach(() => {
 });
 
 describe("dashboard data caches", () => {
+  it("bypasses cache I/O when dashboard e2e mock mode is enabled", async () => {
+    process.env.DASHBOARD_E2E_MOCK = "1";
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue("OK");
+    redisMock.sadd.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+
+    const payload = makeDashboardPayload();
+    const { fetchSiteDashboard } = await import("./webhooks");
+    const mockedFetchSiteDashboard = vi.mocked(fetchSiteDashboard);
+    mockedFetchSiteDashboard.mockResolvedValue(payload);
+    const auth = makeAuth();
+
+    const { getSiteDashboardCached } = await import("./data");
+    const result = await getSiteDashboardCached(auth, "site-1", {
+      includePages: true,
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(result).toEqual(payload);
+    expect(mockedFetchSiteDashboard).toHaveBeenCalledWith(auth, "site-1", {
+      includePages: true,
+      limit: 10,
+      offset: 20,
+    });
+    expect(redisMock.get).not.toHaveBeenCalled();
+    expect(redisMock.set).not.toHaveBeenCalled();
+    expect(redisMock.sadd).not.toHaveBeenCalled();
+    expect(redisMock.expire).not.toHaveBeenCalled();
+  });
+
   it("fetches and indexes site dashboard payload on cache miss", async () => {
     redisMock.get.mockResolvedValue(null);
     redisMock.set.mockResolvedValue("OK");

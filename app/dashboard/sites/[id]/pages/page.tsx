@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
 
@@ -17,6 +18,7 @@ import {
   type Deployment,
   type Site,
   type SitePageSummary,
+  type SitePagesSummary,
 } from "@internal/dashboard/webhooks";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
@@ -77,6 +79,14 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const pagesTitle = t("dashboard.pages.title");
   const pagesDescription = t("dashboard.pages.description");
   const pagesEmpty = t("dashboard.pages.empty");
+  const pagesSummaryTitle = t("dashboard.pages.summary.title");
+  const pagesSummaryDescription = t("dashboard.pages.summary.description");
+  const pagesSummaryLastCrawlStartedLabel = t("dashboard.pages.summary.lastCrawlStarted");
+  const pagesSummaryLastCrawlFinishedLabel = t("dashboard.pages.summary.lastCrawlFinished");
+  const pagesSummaryUpdatedLabel = t("dashboard.pages.summary.pagesUpdated");
+  const pagesSummaryPendingLabel = t("dashboard.pages.summary.pagesPendingCrawl");
+  const pagesSummaryRemainingLabel = t("dashboard.pages.summary.remainingPageCrawlsToday");
+  const pagesSummaryUnavailableLabel = t("dashboard.pages.summary.unavailable", "—");
   const pageColumnLabel = t("dashboard.pages.columns.page");
   const lastCrawlLabel = t("dashboard.pages.columns.lastCrawl");
   const lastChangeLabel = t("dashboard.pages.columns.lastChange");
@@ -104,6 +114,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let pageTotal = 0;
   let pageHasMore = false;
   let deployments: Deployment[] = [];
+  let pagesSummary: SitePagesSummary | null = null;
   let error: string | null = null;
 
   try {
@@ -117,6 +128,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     pageTotal = payload.pagination?.total ?? 0;
     pageHasMore = payload.pagination?.hasMore ?? false;
     deployments = payload.deployments ?? [];
+    pagesSummary = payload.pagesSummary ?? null;
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load site pages.";
     if (err instanceof WebhooksApiError) {
@@ -158,8 +170,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
 
   const dailyUsage = auth.account?.dailyCrawlUsage;
   const maxDailyPageCrawls = auth.account?.featureFlags.maxDailyPageRecrawls ?? null;
-  const pageCrawlLimitReached =
-    maxDailyPageCrawls !== null && (dailyUsage?.pageCrawls ?? 0) >= maxDailyPageCrawls;
+  const pageCrawlsUsed = dailyUsage?.pageCrawls ?? 0;
+  const pageCrawlsRemaining =
+    maxDailyPageCrawls === null ? null : Math.max(maxDailyPageCrawls - pageCrawlsUsed, 0);
+  const pageCrawlRemainingLabel =
+    maxDailyPageCrawls === null
+      ? t("dashboard.pages.summary.remainingUnlimited", "Unlimited")
+      : t("dashboard.pages.summary.remainingToday", "{remaining} remaining today", {
+          remaining: String(pageCrawlsRemaining ?? 0),
+        });
+  const pageCrawlLimitReached = maxDailyPageCrawls !== null && pageCrawlsUsed >= maxDailyPageCrawls;
   const crawlReady = site.status === "active";
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const deploymentsByLang = new Map(
@@ -213,6 +233,28 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
             errorLabel={crawlErrorLabel}
             statusLabels={crawlStatusLabels}
             triggerLabels={crawlTriggerLabels}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{pagesSummaryTitle}</CardTitle>
+          <CardDescription>{pagesSummaryDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PagesSummaryBlock
+            summary={pagesSummary}
+            remainingQuotaLabel={pageCrawlRemainingLabel}
+            labels={{
+              lastCrawlStarted: pagesSummaryLastCrawlStartedLabel,
+              lastCrawlFinished: pagesSummaryLastCrawlFinishedLabel,
+              pagesUpdated: pagesSummaryUpdatedLabel,
+              pagesPendingCrawl: pagesSummaryPendingLabel,
+              remainingPageCrawlsToday: pagesSummaryRemainingLabel,
+              unavailable: pagesSummaryUnavailableLabel,
+            }}
+            locale={i18nConfig.defaultLocale}
           />
         </CardContent>
       </Card>

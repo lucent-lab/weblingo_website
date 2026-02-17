@@ -98,6 +98,24 @@
       },
       "AgencyCustomer": {
         "additionalProperties": false,
+        "example": {
+          "activeSiteCount": 1,
+          "agencyAccountId": "string",
+          "customerAccountId": "string",
+          "customerPlan": "starter",
+          "planStatus": "active",
+          "status": "active"
+        },
+        "examples": [
+          {
+            "activeSiteCount": 1,
+            "agencyAccountId": "string",
+            "customerAccountId": "string",
+            "customerPlan": "starter",
+            "planStatus": "active",
+            "status": "active"
+          }
+        ],
         "properties": {
           "activeSiteCount": {
             "type": "number"
@@ -231,6 +249,14 @@
         ],
         "type": "object"
       },
+      "CanonicalPhraseStatus": {
+        "enum": [
+          "proposed",
+          "approved",
+          "frozen"
+        ],
+        "type": "string"
+      },
       "CloudflareHostnameState": {
         "additionalProperties": false,
         "properties": {
@@ -289,6 +315,619 @@
         ],
         "type": "object"
       },
+      "ConsistencyBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "blockSignature": {
+            "type": "string"
+          },
+          "blockType": {
+            "type": "string"
+          },
+          "familySignature": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyBlockMember"
+            },
+            "type": "array"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ConsistencyBlockMode"
+          },
+          "occurrencesCount": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConsistencyBlockStatus"
+          }
+        },
+        "required": [
+          "id",
+          "blockType",
+          "blockSignature",
+          "mode",
+          "status",
+          "occurrencesCount",
+          "members"
+        ],
+        "type": "object"
+      },
+      "ConsistencyBlockMember": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "contentId",
+          "position"
+        ],
+        "type": "object"
+      },
+      "ConsistencyBlockMode": {
+        "enum": [
+          "strict",
+          "prefer"
+        ],
+        "type": "string"
+      },
+      "ConsistencyBlocksListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyBlock"
+            },
+            "type": "array"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "statusFilter": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyBlockStatus"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "siteId",
+          "statusFilter",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "ConsistencyBlockStatus": {
+        "enum": [
+          "proposed",
+          "approved",
+          "frozen"
+        ],
+        "type": "string"
+      },
+      "ConsistencyBlockUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ConsistencyBlockMode"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConsistencyBlockStatus"
+          }
+        },
+        "type": "object"
+      },
+      "ConsistencyBlockUpdateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "block": {
+            "$ref": "#/components/schemas/ConsistencyBlock"
+          },
+          "siteId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "block"
+        ],
+        "type": "object"
+      },
+      "ConsistencyCpmEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurrencesCount": {
+            "type": "number"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CanonicalPhraseStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "targetText": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "contentId",
+          "sourceLang",
+          "targetLang",
+          "targetText",
+          "scope",
+          "status",
+          "occurrencesCount"
+        ],
+        "type": "object"
+      },
+      "ConsistencyCpmListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyCpmEntry"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "statusFilter": {
+            "items": {
+              "$ref": "#/components/schemas/CanonicalPhraseStatus"
+            },
+            "type": "array"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "sourceLang",
+          "targetLang",
+          "limit",
+          "offset",
+          "statusFilter",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "ConsistencyCpmUpsertItem": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CanonicalPhraseStatus"
+          },
+          "targetText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "targetText"
+        ],
+        "type": "object"
+      },
+      "ConsistencyCpmUpsertRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyCpmUpsertItem"
+            },
+            "type": "array"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "ConsistencyCpmUpsertResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "siteId": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "upserted": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyCpmEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "siteId",
+          "sourceLang",
+          "targetLang",
+          "upserted"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixLintTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "blockConflictCount": {
+            "type": "number"
+          },
+          "observationCount": {
+            "type": "number"
+          },
+          "phraseConflictCount": {
+            "type": "number"
+          },
+          "phraseGroupCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "observationCount",
+          "phraseGroupCount",
+          "phraseConflictCount",
+          "blockConflictCount"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixRewriteSample": {
+        "additionalProperties": false,
+        "properties": {
+          "blockId": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string"
+          },
+          "fromTargetText": {
+            "type": "string"
+          },
+          "pageVersionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "enum": [
+              "block_non_canonical",
+              "phrase_non_canonical"
+            ],
+            "type": "string"
+          },
+          "segmentId": {
+            "type": "string"
+          },
+          "toTargetText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "segmentId",
+          "fromTargetText",
+          "toTargetText",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "dryRun": {
+            "description": "Defaults to true. Set false to apply rewrites and enqueue renders.",
+            "type": "boolean"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixRunResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "affectedPageVersionCount": {
+            "type": "number"
+          },
+          "affectedPageVersionSample": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "fixTotals": {
+            "$ref": "#/components/schemas/ConsistencyFixTotals"
+          },
+          "lintTotals": {
+            "$ref": "#/components/schemas/ConsistencyFixLintTotals"
+          },
+          "renderEnqueued": {
+            "type": "number"
+          },
+          "rewriteSample": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyFixRewriteSample"
+            },
+            "type": "array"
+          },
+          "rewritesApplied": {
+            "type": "number"
+          },
+          "rewritesPlanned": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyFixSkipSample"
+            },
+            "type": "array"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "sourceLang",
+          "targetLang",
+          "dryRun",
+          "lintTotals",
+          "fixTotals",
+          "rewritesPlanned",
+          "rewritesApplied",
+          "affectedPageVersionCount",
+          "renderEnqueued",
+          "affectedPageVersionSample",
+          "rewriteSample",
+          "skipped"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixSkipSample": {
+        "additionalProperties": false,
+        "properties": {
+          "blockId": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string"
+          },
+          "reason": {
+            "const": "missing_canonical",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "blockId",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ConsistencyFixTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "contentIdsWithRewrites": {
+            "type": "number"
+          },
+          "rewriteCount": {
+            "type": "number"
+          },
+          "skippedCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "rewriteCount",
+          "skippedCount",
+          "contentIdsWithRewrites"
+        ],
+        "type": "object"
+      },
+      "ConsistencyOverrideHygieneResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "scopedOverrideCount": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "totalWarnings": {
+            "type": "number"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyOverrideHygieneWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "siteId",
+          "sourceLang",
+          "targetLang",
+          "limit",
+          "offset",
+          "hasMore",
+          "scopedOverrideCount",
+          "totalWarnings",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "ConsistencyOverrideHygieneWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "canonicalScope": {
+            "type": "string"
+          },
+          "canonicalStatus": {
+            "enum": [
+              "approved",
+              "frozen"
+            ],
+            "type": "string"
+          },
+          "canonicalTargetText": {
+            "type": "string"
+          },
+          "contentId": {
+            "type": "string"
+          },
+          "contextHashScope": {
+            "type": "string"
+          },
+          "overrideText": {
+            "type": "string"
+          },
+          "reason": {
+            "const": "context_override_global_exact_conflict",
+            "type": "string"
+          },
+          "segmentId": {
+            "type": "string"
+          },
+          "sourceText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "segmentId",
+          "contentId",
+          "sourceText",
+          "overrideText",
+          "canonicalTargetText",
+          "canonicalStatus",
+          "canonicalScope",
+          "contextHashScope",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CrawlCaptureMode": {
         "enum": [
           "template_plus_hydrated",
@@ -308,6 +947,9 @@
       "CrawlRunSummary": {
         "additionalProperties": false,
         "properties": {
+          "attemptedCount": {
+            "type": "number"
+          },
           "crawlCaptureMode": {
             "anyOf": [
               {
@@ -326,6 +968,12 @@
               "string",
               "null"
             ]
+          },
+          "failedCount": {
+            "type": "number"
+          },
+          "fetchedSuccessCount": {
+            "type": "number"
           },
           "finishedAt": {
             "type": [
@@ -348,6 +996,9 @@
           "skippedDueToLimitCount": {
             "type": "number"
           },
+          "snapshotNewCount": {
+            "type": "number"
+          },
           "sourceUrl": {
             "type": "string"
           },
@@ -363,6 +1014,9 @@
           "trigger": {
             "$ref": "#/components/schemas/CrawlRunTrigger"
           },
+          "unchangedCount": {
+            "type": "number"
+          },
           "updatedAt": {
             "type": "string"
           }
@@ -375,6 +1029,11 @@
           "pagesDiscovered",
           "pagesEnqueued",
           "selectedCount",
+          "attemptedCount",
+          "fetchedSuccessCount",
+          "snapshotNewCount",
+          "unchangedCount",
+          "failedCount",
           "skippedDueToLimitCount"
         ],
         "type": "object"
@@ -801,6 +1460,9 @@
               "null"
             ]
           },
+          "completeness": {
+            "$ref": "#/components/schemas/DeploymentCompleteness"
+          },
           "deploymentId": {
             "type": [
               "string",
@@ -858,7 +1520,120 @@
           "targetLang",
           "status",
           "serveEnabled",
-          "servingStatus"
+          "servingStatus",
+          "completeness"
+        ],
+        "type": "object"
+      },
+      "DeploymentCompleteness": {
+        "additionalProperties": false,
+        "example": {
+          "discoveredPages": 10,
+          "pendingPages": 3,
+          "percentage": 70,
+          "status": "partial",
+          "translatedPages": 7
+        },
+        "examples": [
+          {
+            "discoveredPages": 10,
+            "pendingPages": 3,
+            "percentage": 70,
+            "status": "partial",
+            "translatedPages": 7
+          }
+        ],
+        "properties": {
+          "discoveredPages": {
+            "type": "number"
+          },
+          "pendingPages": {
+            "type": "number"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentCompletenessStatus"
+          },
+          "translatedPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "discoveredPages",
+          "translatedPages",
+          "pendingPages",
+          "percentage",
+          "status"
+        ],
+        "type": "object"
+      },
+      "DeploymentCompletenessStatus": {
+        "enum": [
+          "not_started",
+          "partial",
+          "complete",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "DeploymentHistoryByLocale": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentHistoryEntry"
+            },
+            "type": "array"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "DeploymentHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "activatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artifactManifest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "status"
         ],
         "type": "object"
       },
@@ -1422,6 +2197,25 @@
         "required": [
           "customers",
           "summary"
+        ],
+        "type": "object"
+      },
+      "ListDeploymentHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentHistoryByLocale"
+            },
+            "type": "array"
+          },
+          "perLocaleLimit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "history",
+          "perLocaleLimit"
         ],
         "type": "object"
       },
@@ -2321,6 +3115,9 @@
             },
             "type": "array"
           },
+          "pagesSummary": {
+            "$ref": "#/components/schemas/SitePagesSummary"
+          },
           "pagination": {
             "additionalProperties": false,
             "properties": {
@@ -2435,6 +3232,34 @@
           "sourceLang",
           "targetLang",
           "serveEnabled"
+        ],
+        "type": "object"
+      },
+      "SitePagesSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "lastCrawlFinishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCrawlStartedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pagesPending": {
+            "type": "number"
+          },
+          "pagesUpdated": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pagesUpdated",
+          "pagesPending"
         ],
         "type": "object"
       },
@@ -3686,6 +4511,7 @@
                         "agencyAccountId": "string",
                         "customerAccountId": "string",
                         "customerPlan": "starter",
+                        "planStatus": "active",
                         "status": "active"
                       }
                     ],
@@ -4489,6 +5315,760 @@
         ]
       }
     },
+    "/sites/{siteId}/consistency/blocks": {
+      "get": {
+        "operationId": "sites.consistency.blocks.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional block status filter (repeat or comma-separate values from `proposed`, `approved`, `frozen`).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "blocks": [
+                    {
+                      "blockSignature": "string",
+                      "blockType": "string",
+                      "id": "string",
+                      "members": [
+                        {
+                          "contentId": "string",
+                          "id": "string",
+                          "position": 1
+                        }
+                      ],
+                      "mode": "strict",
+                      "occurrencesCount": 1,
+                      "status": "proposed"
+                    }
+                  ],
+                  "siteId": "string",
+                  "statusFilter": [
+                    "proposed"
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyBlocksListResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List consistency blocks and their members",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/consistency/blocks/{blockId}": {
+      "put": {
+        "operationId": "sites.consistency.blocks.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "blockId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "mode": "strict",
+                "status": "approved"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyBlockUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "block": {
+                    "blockSignature": "string",
+                    "blockType": "string",
+                    "id": "string",
+                    "members": [
+                      {
+                        "contentId": "string",
+                        "id": "string",
+                        "position": 1
+                      }
+                    ],
+                    "mode": "strict",
+                    "occurrencesCount": 1,
+                    "status": "proposed"
+                  },
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyBlockUpdateResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update consistency block status/mode/members",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/consistency/cpm": {
+      "get": {
+        "operationId": "sites.consistency.cpm.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target locale to inspect (for example `fr`).",
+            "in": "query",
+            "name": "targetLang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional source locale filter. Defaults to the site's source locale for targetLang.",
+            "in": "query",
+            "name": "sourceLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional status filter (repeat or comma-separate values from `proposed`, `approved`, `frozen`).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum entries to return (1-500). Defaults to 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of entries to skip before returning results. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "entries": [
+                    {
+                      "contentId": "string",
+                      "id": "string",
+                      "occurrencesCount": 1,
+                      "scope": "string",
+                      "sourceLang": "string",
+                      "status": "proposed",
+                      "targetLang": "string",
+                      "targetText": "string"
+                    }
+                  ],
+                  "limit": 1,
+                  "offset": 1,
+                  "siteId": "string",
+                  "sourceLang": "string",
+                  "statusFilter": [
+                    "proposed"
+                  ],
+                  "targetLang": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyCpmListResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List canonical phrase memory entries for a locale",
+        "tags": [
+          "Sites"
+        ]
+      },
+      "put": {
+        "operationId": "sites.consistency.cpm.upsert",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "entries": [
+                  {
+                    "contentId": "f9d8f7ca5d95d7a8ca2ee4b07b2f15a6e2e8debfbb12f1c9e575348f1dfe4e98",
+                    "scope": "site",
+                    "status": "approved",
+                    "targetText": "Contactez-nous"
+                  }
+                ],
+                "targetLang": "fr"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyCpmUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "siteId": "string",
+                  "sourceLang": "string",
+                  "targetLang": "string",
+                  "upserted": [
+                    {
+                      "contentId": "string",
+                      "id": "string",
+                      "occurrencesCount": 1,
+                      "scope": "string",
+                      "sourceLang": "string",
+                      "status": "proposed",
+                      "targetLang": "string",
+                      "targetText": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyCpmUpsertResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upsert canonical phrase memory entries for a locale",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/consistency/fix": {
+      "post": {
+        "operationId": "sites.consistency.fix.run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "dryRun": true,
+                "targetLang": "fr"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyFixRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "affectedPageVersionCount": 1,
+                  "affectedPageVersionSample": [
+                    "string"
+                  ],
+                  "dryRun": true,
+                  "fixTotals": {
+                    "contentIdsWithRewrites": 1,
+                    "rewriteCount": 1,
+                    "skippedCount": 1
+                  },
+                  "lintTotals": {
+                    "blockConflictCount": 1,
+                    "observationCount": 1,
+                    "phraseConflictCount": 1,
+                    "phraseGroupCount": 1
+                  },
+                  "renderEnqueued": 1,
+                  "rewriteSample": [
+                    {
+                      "contentId": "string",
+                      "fromTargetText": "string",
+                      "reason": "block_non_canonical",
+                      "segmentId": "string",
+                      "toTargetText": "string"
+                    }
+                  ],
+                  "rewritesApplied": 1,
+                  "rewritesPlanned": 1,
+                  "siteId": "string",
+                  "skipped": [
+                    {
+                      "blockId": "string",
+                      "contentId": "string",
+                      "reason": "missing_canonical"
+                    }
+                  ],
+                  "sourceLang": "string",
+                  "targetLang": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyFixRunResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Run consistency lint/fix for a locale",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/consistency/override-hygiene": {
+      "get": {
+        "operationId": "sites.consistency.overrideHygiene.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target locale to inspect (for example `fr`).",
+            "in": "query",
+            "name": "targetLang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional source locale filter. Defaults to the site's source locale for targetLang.",
+            "in": "query",
+            "name": "sourceLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum warnings to return (1-500). Defaults to 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of warnings to skip before returning results. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "hasMore": true,
+                  "limit": 1,
+                  "offset": 1,
+                  "scopedOverrideCount": 1,
+                  "siteId": "string",
+                  "sourceLang": "string",
+                  "targetLang": "string",
+                  "totalWarnings": 1,
+                  "warnings": [
+                    {
+                      "canonicalScope": "string",
+                      "canonicalStatus": "approved",
+                      "canonicalTargetText": "string",
+                      "contentId": "string",
+                      "contextHashScope": "string",
+                      "overrideText": "string",
+                      "reason": "context_override_global_exact_conflict",
+                      "segmentId": "string",
+                      "sourceText": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyOverrideHygieneResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List context-scoped override conflicts for Global-Exact phrases",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
     "/sites/{siteId}/crawl": {
       "post": {
         "operationId": "sites.crawl.trigger",
@@ -4737,6 +6317,13 @@
                 "example": {
                   "deployments": [
                     {
+                      "completeness": {
+                        "discoveredPages": 10,
+                        "pendingPages": 3,
+                        "percentage": 70,
+                        "status": "partial",
+                        "translatedPages": 7
+                      },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
                       "status": "string",
@@ -4845,6 +6432,13 @@
                 "example": {
                   "deployments": [
                     {
+                      "completeness": {
+                        "discoveredPages": 10,
+                        "pendingPages": 3,
+                        "percentage": 70,
+                        "status": "partial",
+                        "translatedPages": 7
+                      },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
                       "status": "string",
@@ -4906,6 +6500,118 @@
           }
         ],
         "summary": "List deployments per locale",
+        "tags": [
+          "Sites",
+          "Deployments"
+        ]
+      }
+    },
+    "/sites/{siteId}/deployments/history": {
+      "get": {
+        "operationId": "sites.deployments.history.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional locale filter for deployment history (for example `fr`).",
+            "in": "query",
+            "name": "targetLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum entries per locale to include (1-50). Defaults to 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "history": [
+                    {
+                      "entries": [
+                        {
+                          "deploymentId": "string",
+                          "status": "string"
+                        }
+                      ],
+                      "targetLang": "string"
+                    }
+                  ],
+                  "perLocaleLimit": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDeploymentHistoryResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List deployment history grouped by locale",
         "tags": [
           "Sites",
           "Deployments"

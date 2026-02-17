@@ -267,6 +267,162 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.consistency.blocks.list",
+        "path": "/sites/:siteId/consistency/blocks"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.blocks.list",
+      "name": "List consistency blocks and their members",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.blocks.list"
+      ],
+      "stability": "GA",
+      "summary": "List consistency blocks and their members",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PUT",
+        "operationId": "sites.consistency.blocks.update",
+        "path": "/sites/:siteId/consistency/blocks/:blockId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.blocks.update",
+      "name": "Update consistency block status/mode/members",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.blocks.update"
+      ],
+      "stability": "GA",
+      "summary": "Update consistency block status/mode/members",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.consistency.cpm.list",
+        "path": "/sites/:siteId/consistency/cpm"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.cpm.list",
+      "name": "List canonical phrase memory entries for a locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.cpm.list"
+      ],
+      "stability": "GA",
+      "summary": "List canonical phrase memory entries for a locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PUT",
+        "operationId": "sites.consistency.cpm.upsert",
+        "path": "/sites/:siteId/consistency/cpm"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.cpm.upsert",
+      "name": "Upsert canonical phrase memory entries for a locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.cpm.upsert"
+      ],
+      "stability": "GA",
+      "summary": "Upsert canonical phrase memory entries for a locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.consistency.fix.run",
+        "path": "/sites/:siteId/consistency/fix"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.fix.run",
+      "name": "Run consistency lint/fix for a locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.fix.run"
+      ],
+      "stability": "GA",
+      "summary": "Run consistency lint/fix for a locale",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.consistency.overrideHygiene.list",
+        "path": "/sites/:siteId/consistency/override-hygiene"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.consistency",
+      "id": "api.sites.consistency.overrideHygiene.list",
+      "name": "List context-scoped override conflicts for Global-Exact phrases",
+      "playbooks": [
+        {
+          "anchor": "playbook-4-translation-quality-and-content-controls",
+          "id": "playbook-4",
+          "title": "Playbook 4: Translation Quality and Content Controls"
+        }
+      ],
+      "routeIds": [
+        "sites.consistency.overrideHygiene.list"
+      ],
+      "stability": "GA",
+      "summary": "List context-scoped override conflicts for Global-Exact phrases",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "sites.crawl_translate.trigger",
         "path": "/sites/:siteId/crawl-translate"
@@ -382,6 +538,32 @@
       ],
       "stability": "GA",
       "summary": "Returns a consolidated dashboard payload (site + deployments) and optional paginated pages when `includePages=true`.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.deployments.history.list",
+        "path": "/sites/:siteId/deployments/history"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.deployments",
+      "id": "api.sites.deployments.history.list",
+      "name": "List deployment history grouped by locale",
+      "playbooks": [
+        {
+          "anchor": "playbook-1-dashboard-bootstrap-and-site-setup",
+          "id": "playbook-1",
+          "title": "Playbook 1: Dashboard Bootstrap and Site Setup"
+        }
+      ],
+      "routeIds": [
+        "sites.deployments.history.list"
+      ],
+      "stability": "GA",
+      "summary": "List deployment history grouped by locale",
       "userFacing": true
     },
     {

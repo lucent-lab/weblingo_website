@@ -215,6 +215,54 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(10_000);
   });
 
+  it("requests deployment history with optional filters", async () => {
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      expect(url).toContain("/sites/site-1/deployments/history");
+      expect(url).toContain("targetLang=fr");
+      expect(url).toContain("limit=3");
+
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer token");
+      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
+
+      return new Response(
+        JSON.stringify({
+          history: [
+            {
+              targetLang: "fr",
+              entries: [
+                {
+                  deploymentId: "dep-1",
+                  status: "active",
+                  activatedAt: "2026-02-17T00:00:00Z",
+                  createdAt: "2026-02-17T00:00:00Z",
+                  routePrefix: "/fr",
+                  artifactManifest: "manifest-1",
+                },
+              ],
+            },
+          ],
+          perLocaleLimit: 3,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+
+    vi.resetModules();
+    const { fetchDeploymentHistory } = await import("./webhooks");
+    const payload = await fetchDeploymentHistory("token", "site-1", {
+      targetLang: "fr",
+      limit: 3,
+    });
+
+    expect(payload.perLocaleLimit).toBe(3);
+    expect(payload.history).toHaveLength(1);
+    expect(payload.history[0]?.entries[0]?.deploymentId).toBe("dep-1");
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
   it("calls crawl-translate, digest, summary, and switcher endpoints with expected payloads", async () => {
     const fetchSpy = vi
       .fn()
