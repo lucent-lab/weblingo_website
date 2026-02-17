@@ -20,9 +20,23 @@ This document guides contributors working inside the WebLingo marketing + dashbo
 - `docs/` — Updated guidance and runbooks.
 - `tests/` — Vitest + Playwright coverage.
 
+## Start Here (Codex Quick Lookup)
+
+- Env source of truth: `internal/core/env.ts` (client) and `internal/core/env-server.ts` (server).
+- Dashboard capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`.
+- Backend bridge pointer and execution report:
+  - `weblingo/docs/backend/DASHBOARD_SPECS.md`
+  - `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
+- Cross-repo docs sync commands:
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
+- Minimal validation set:
+  - `corepack pnpm test:contracts`
+  - `corepack pnpm check`
+
 ## Environment Variables
 
-Define these in `.env.local` (source of truth: `internal/core/env.ts`).
+Define these in `.env.local` (source of truth: `internal/core/env.ts` + `internal/core/env-server.ts`).
 
 Client (`NEXT_PUBLIC_*`):
 
@@ -33,6 +47,7 @@ Client (`NEXT_PUBLIC_*`):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_WEBHOOKS_API_BASE` (Webhooks worker base including `/api`, e.g. `https://api.weblingo.app/api`)
+- `NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS`
 
 Server only:
 
@@ -64,6 +79,7 @@ Server only:
 - `WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS`
 - Redis (required):
 - `UPSTASH_REDIS__KV_REST_API_URL` + `UPSTASH_REDIS__KV_REST_API_TOKEN`
+- No legacy alias fallback names are supported in docs/CI; only canonical schema-backed Redis env names are valid.
 
 ## Development Principles
 
@@ -123,8 +139,9 @@ For backend↔website capability alignment work (M6.5 and follow-ups), use these
 - Synced backend artifacts consumed by docs: `content/docs/_generated/*`
 - Backend bridge pointer (in backend repo): `weblingo/docs/backend/DASHBOARD_SPECS.md`
 - Alignment plan/report (in backend repo): `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
+- Ownership model: roles stay split between website and backend maintainers, but one maintainer currently fulfills both roles.
 
 Operational commands:
 
-- Refresh backend docs snapshots: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync`
-- Verify freshness + contracts: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts`
+- Refresh backend docs snapshots: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
+- Verify freshness + contracts: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`

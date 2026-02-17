@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HOME_PAGE_VARIANT: expansion
-      KV_REST_API_TOKEN: dummy
-      KV_REST_API_URL: https://example.com
       UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
       UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
@@ -48,25 +46,25 @@ jobs:
           cache: "pnpm"
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile
 
       - name: Audit dependencies (high+)
-        run: pnpm audit --audit-level=high --ignore-registry-errors
+        run: corepack pnpm audit --audit-level=high --ignore-registry-errors
 
       - name: License check (prod)
         run: |
           LICENSES_JSON="$(mktemp)"
-          pnpm licenses list --prod --json > "$LICENSES_JSON"
+          corepack pnpm licenses list --prod --json > "$LICENSES_JSON"
           node scripts/check-licenses.mjs "$LICENSES_JSON"
 
       - name: Unit tests
-        run: pnpm test
+        run: corepack pnpm test
 
       - name: Check (lint/format/types)
-        run: pnpm check
+        run: corepack pnpm check
 
       - name: Build
-        run: pnpm build
+        run: corepack pnpm build
 
   docs-sync-token-check:
     runs-on: ubuntu-latest
@@ -90,8 +88,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HOME_PAGE_VARIANT: expansion
-      KV_REST_API_TOKEN: dummy
-      KV_REST_API_URL: https://example.com
       UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
       UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
@@ -135,13 +131,13 @@ jobs:
           cache: "pnpm"
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: corepack pnpm install --frozen-lockfile
 
       - name: Docs sync freshness check
-        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" pnpm docs:sync:check
+        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check
 
       - name: Contract and docs coverage tests
-        run: pnpm test:contracts
+        run: corepack pnpm test:contracts
 
   docs-sync-fallback-guidance:
     needs: docs-sync-token-check
@@ -152,4 +148,4 @@ jobs:
         run: |
           echo "CROSS_REPO_CHECKOUT_TOKEN is not set."
           echo "Run fallback checks locally before merge:"
-          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo pnpm docs:sync:check && pnpm test:contracts"
+          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts"

@@ -22,7 +22,7 @@ function main(): void {
   }
 
   if (stalePaths.length > 0) {
-    const refreshCommand = `WEBLINGO_REPO_PATH=${quoteCommandPath(sourceRepoPath)} pnpm docs:sync`;
+    const refreshCommand = `WEBLINGO_REPO_PATH=${quoteCommandPath(sourceRepoPath)} corepack pnpm docs:sync`;
     throw new Error(
       `[docs:sync:check] Stale or missing synced docs artifacts:\n${stalePaths
         .sort((left, right) => left.localeCompare(right))
