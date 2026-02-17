@@ -7,6 +7,8 @@ import {
   createSite,
   deactivateSite,
   cancelTranslationRun,
+  upsertConsistencyCpm,
+  updateConsistencyBlock,
   fetchSwitcherSnippets,
   listTranslationSummaries,
   provisionDomain,
@@ -68,6 +70,8 @@ const translationSummaryFrequencies = new Set<TranslationSummaryFrequency>([
   "weekly",
   "off",
 ]);
+const consistencyStatuses = new Set(["proposed", "approved", "frozen"]);
+const consistencyBlockModes = new Set(["strict", "prefer"]);
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
   const isDev = process.env.NODE_ENV !== "production";
@@ -1036,6 +1040,95 @@ export async function updateGlossaryAction(
       return failed(error.message);
     }
     return failed("Unable to save glossary.");
+  }
+}
+
+export async function upsertConsistencyCpmEntryAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const sourceLangRaw = formData.get("sourceLang")?.toString().trim();
+  const targetLang = formData.get("targetLang")?.toString().trim();
+  const contentId = formData.get("contentId")?.toString().trim();
+  const targetText = formData.get("targetText")?.toString().trim();
+  const status = formData.get("status")?.toString().trim().toLowerCase();
+  const scope = formData.get("scope")?.toString().trim();
+
+  if (!siteId || !targetLang || !contentId || !targetText || !status) {
+    return failed("Canonical phrase update is missing required fields.");
+  }
+  if (!consistencyStatuses.has(status)) {
+    return failed("Status must be one of proposed, approved, or frozen.");
+  }
+
+  try {
+    await withWebhooksAuth(async (auth) => {
+      await upsertConsistencyCpm(auth, siteId, {
+        targetLang,
+        sourceLang: sourceLangRaw || undefined,
+        entries: [
+          {
+            contentId,
+            targetText,
+            status: status as "proposed" | "approved" | "frozen",
+            scope: scope || undefined,
+          },
+        ],
+      });
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+    });
+    revalidatePath(`/dashboard/sites/${siteId}/consistency`);
+    return succeeded("Canonical phrase updated.");
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    return failed(toFriendlyDashboardActionError(error, "Unable to update canonical phrase."));
+  }
+}
+
+export async function updateConsistencyBlockAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const blockId = formData.get("blockId")?.toString().trim();
+  const status = formData.get("status")?.toString().trim().toLowerCase();
+  const mode = formData.get("mode")?.toString().trim().toLowerCase();
+  const membersCsv = formData.get("membersCsv")?.toString() ?? "";
+
+  if (!siteId || !blockId || !status || !mode) {
+    return failed("Block update is missing required fields.");
+  }
+  if (!consistencyStatuses.has(status)) {
+    return failed("Status must be one of proposed, approved, or frozen.");
+  }
+  if (!consistencyBlockModes.has(mode)) {
+    return failed("Mode must be strict or prefer.");
+  }
+
+  const members = membersCsv
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  try {
+    await withWebhooksAuth(async (auth) => {
+      await updateConsistencyBlock(auth, siteId, blockId, {
+        status: status as "proposed" | "approved" | "frozen",
+        mode: mode as "strict" | "prefer",
+        members: members.length ? members : undefined,
+      });
+      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+    });
+    revalidatePath(`/dashboard/sites/${siteId}/consistency`);
+    return succeeded("Consistency block updated.");
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    return failed(toFriendlyDashboardActionError(error, "Unable to update consistency block."));
   }
 }
 

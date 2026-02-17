@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-02-17T13:31:28+09:00",
+  "generatedAt": "2026-02-17T17:06:49+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
-      "bytes": 58000,
-      "sha256": "6f3400ff4ee9b3c3690422a330127513abd10f58b62a5bc39aec93ac69f1643f"
+      "bytes": 62898,
+      "sha256": "7ecfaf5c86418cd0ebb2e2ad68eb30e5ca25fdaa0b3746792440a700fae876f8"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 185929,
-      "sha256": "760e58e035c0d6a3c5b5fed7a92c3a0dad0752fb062efc20e0f088cbe46fb0fb"
+      "bytes": 222754,
+      "sha256": "86f4df618a1f0afe205e2dfe775d200a0c9012de938561067c270e71b2b4f4e5"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
-      "bytes": 4825,
-      "sha256": "9ba647b79ba7059ed6938f8926f59c6b261a7268d43f15140d08e3e552bddbfc"
+      "bytes": 5595,
+      "sha256": "9d549b6c26de4aa8152807c8665fcab5c1a857442fec4dbada221b05230d911d"
     }
   },
   "requiredEnv": [
@@ -20,19 +20,19 @@
   "schemaVersion": 1,
   "sourceFiles": {
     "docs/reference/API_PLAYBOOKS.md": {
-      "bytes": 4825,
-      "sha256": "9ba647b79ba7059ed6938f8926f59c6b261a7268d43f15140d08e3e552bddbfc"
+      "bytes": 5595,
+      "sha256": "9d549b6c26de4aa8152807c8665fcab5c1a857442fec4dbada221b05230d911d"
     },
     "docs/reference/feature-catalog.generated.json": {
-      "bytes": 53184,
-      "sha256": "e5a215c949d9479e5d4c9414d07a609463d040ed7af16ae0936567a81e5fe4fb"
+      "bytes": 57986,
+      "sha256": "1f96385e682082543fd047188349cceeec7972138c960de7f522169e472ee6d5"
     },
     "docs/reference/openapi.json": {
-      "bytes": 140651,
-      "sha256": "a6b9e6c3b2b476de1148d801995dc0b24d6743029ac2ea20db067d2da044f7b7"
+      "bytes": 170206,
+      "sha256": "4f6015af022a6915800876db14f776b1c6dd9e002798aa1fa58bc551981765d4"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-02-17T13:31:28+09:00",
+  "sourceRepoCommitTimestamp": "2026-02-17T17:06:49+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo",
-  "sourceRepoSha": "93133370580ecb22d57661f2021c45faabb1ec8b"
+  "sourceRepoSha": "1f321a0664b1aae698a7c83af1aaf724f782b181"
 }

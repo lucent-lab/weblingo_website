@@ -81,7 +81,7 @@ describe("SitesNav", () => {
       />,
     );
 
-    for (const label of ["Configuration", "Pages", "Overrides", "Admin"]) {
+    for (const label of ["Configuration", "Pages", "Consistency", "Overrides", "Admin"]) {
       const link = screen.getByRole("link", { name: label });
       expect(link.getAttribute("data-prefetch")).toBe("false");
     }

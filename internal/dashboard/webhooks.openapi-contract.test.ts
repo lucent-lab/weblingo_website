@@ -377,6 +377,11 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}/domains/{domain}/refresh", method: "post" },
       { path: "/sites/{siteId}/deployments", method: "get" },
       { path: "/sites/{siteId}/deployments/history", method: "get" },
+      { path: "/sites/{siteId}/consistency/cpm", method: "get" },
+      { path: "/sites/{siteId}/consistency/cpm", method: "put" },
+      { path: "/sites/{siteId}/consistency/blocks", method: "get" },
+      { path: "/sites/{siteId}/consistency/blocks/{blockId}", method: "put" },
+      { path: "/sites/{siteId}/consistency/override-hygiene", method: "get" },
       { path: "/sites/{siteId}/pages", method: "get" },
       { path: "/sites/{siteId}/glossary", method: "get" },
       { path: "/sites/{siteId}/glossary", method: "put" },
@@ -452,6 +457,26 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "ListDeploymentHistoryResponse",
         schema: __webhooksZodContracts.listDeploymentHistoryResponseSchema,
+      },
+      {
+        name: "ConsistencyCpmListResponse",
+        schema: __webhooksZodContracts.consistencyCpmListResponseSchema,
+      },
+      {
+        name: "ConsistencyCpmUpsertResponse",
+        schema: __webhooksZodContracts.consistencyCpmUpsertResponseSchema,
+      },
+      {
+        name: "ConsistencyBlocksListResponse",
+        schema: __webhooksZodContracts.consistencyBlocksListResponseSchema,
+      },
+      {
+        name: "ConsistencyBlockUpdateResponse",
+        schema: __webhooksZodContracts.consistencyBlockUpdateResponseSchema,
+      },
+      {
+        name: "ConsistencyOverrideHygieneResponse",
+        schema: __webhooksZodContracts.consistencyOverrideHygieneResponseSchema,
       },
       {
         name: "ListTranslationSummariesResponse",

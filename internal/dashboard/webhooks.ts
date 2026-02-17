@@ -420,6 +420,112 @@ const glossaryEntrySchema = z.object({
 
 const glossaryResponseSchema = z.object({ entries: z.array(glossaryEntrySchema) });
 
+const consistencyStatusSchema = z.enum(["proposed", "approved", "frozen"]);
+const consistencyBlockModeSchema = z.enum(["strict", "prefer"]);
+
+const consistencyCpmEntrySchema = z
+  .object({
+    id: z.string(),
+    contentId: z.string(),
+    sourceLang: z.string(),
+    targetLang: z.string(),
+    targetText: z.string(),
+    scope: z.string(),
+    status: consistencyStatusSchema,
+    occurrencesCount: z.number().int().nonnegative(),
+    lastUsedAt: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const consistencyCpmListResponseSchema = z
+  .object({
+    siteId: z.string(),
+    sourceLang: z.string(),
+    targetLang: z.string(),
+    limit: z.number().int().positive(),
+    offset: z.number().int().nonnegative(),
+    statusFilter: z.array(consistencyStatusSchema),
+    entries: z.array(consistencyCpmEntrySchema),
+  })
+  .strict();
+
+const consistencyCpmUpsertResponseSchema = z
+  .object({
+    siteId: z.string(),
+    sourceLang: z.string(),
+    targetLang: z.string(),
+    upserted: z.array(consistencyCpmEntrySchema),
+  })
+  .strict();
+
+const consistencyBlockMemberSchema = z
+  .object({
+    id: z.string(),
+    contentId: z.string(),
+    position: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const consistencyBlockSchema = z
+  .object({
+    id: z.string(),
+    blockType: z.string(),
+    blockSignature: z.string(),
+    familySignature: z.string().nullable().optional(),
+    mode: consistencyBlockModeSchema,
+    status: consistencyStatusSchema,
+    occurrencesCount: z.number().int().nonnegative(),
+    firstSeenAt: z.string().nullable().optional(),
+    lastSeenAt: z.string().nullable().optional(),
+    members: z.array(consistencyBlockMemberSchema),
+  })
+  .strict();
+
+const consistencyBlocksListResponseSchema = z
+  .object({
+    siteId: z.string(),
+    statusFilter: z.array(consistencyStatusSchema),
+    blocks: z.array(consistencyBlockSchema),
+  })
+  .strict();
+
+const consistencyBlockUpdateResponseSchema = z
+  .object({
+    siteId: z.string(),
+    block: consistencyBlockSchema,
+  })
+  .strict();
+
+const consistencyOverrideHygieneWarningSchema = z
+  .object({
+    segmentId: z.string(),
+    contentId: z.string(),
+    sourceText: z.string(),
+    overrideText: z.string(),
+    canonicalTargetText: z.string(),
+    canonicalStatus: z.enum(["approved", "frozen"]),
+    canonicalScope: z.string(),
+    contextHashScope: z.string(),
+    reason: z.literal("context_override_global_exact_conflict"),
+  })
+  .strict();
+
+const consistencyOverrideHygieneResponseSchema = z
+  .object({
+    siteId: z.string(),
+    sourceLang: z.string(),
+    targetLang: z.string(),
+    limit: z.number().int().positive(),
+    offset: z.number().int().nonnegative(),
+    hasMore: z.boolean(),
+    scopedOverrideCount: z.number().int().nonnegative(),
+    totalWarnings: z.number().int().nonnegative(),
+    warnings: z.array(consistencyOverrideHygieneWarningSchema),
+  })
+  .strict();
+
 const authResponseSchema = z.object({
   token: z.string().min(1),
   expiresAt: z.string(),
@@ -615,6 +721,19 @@ export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.sha
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
+export type ConsistencyStatus = z.infer<typeof consistencyStatusSchema>;
+export type ConsistencyBlockMode = z.infer<typeof consistencyBlockModeSchema>;
+export type ConsistencyCpmEntry = z.infer<typeof consistencyCpmEntrySchema>;
+export type ConsistencyCpmListResponse = z.infer<typeof consistencyCpmListResponseSchema>;
+export type ConsistencyBlockMember = z.infer<typeof consistencyBlockMemberSchema>;
+export type ConsistencyBlock = z.infer<typeof consistencyBlockSchema>;
+export type ConsistencyBlocksListResponse = z.infer<typeof consistencyBlocksListResponseSchema>;
+export type ConsistencyOverrideHygieneWarning = z.infer<
+  typeof consistencyOverrideHygieneWarningSchema
+>;
+export type ConsistencyOverrideHygieneResponse = z.infer<
+  typeof consistencyOverrideHygieneResponseSchema
+>;
 export type DigestFrequency = z.infer<typeof digestFrequencySchema>;
 export type DigestSubscription = z.infer<typeof digestSubscriptionSchema>;
 export type CrawlTranslateResponse = z.infer<typeof crawlTranslateResponseSchema>;
@@ -660,6 +779,11 @@ export const __webhooksZodContracts = {
   setTranslationSummaryPreferenceResponseSchema,
   listTranslationSummariesResponseSchema,
   languageSwitcherSnippetsResponseSchema,
+  consistencyCpmListResponseSchema,
+  consistencyCpmUpsertResponseSchema,
+  consistencyBlocksListResponseSchema,
+  consistencyBlockUpdateResponseSchema,
+  consistencyOverrideHygieneResponseSchema,
   glossaryResponseSchema,
   upsertGlossaryResponseSchema,
   createOverrideResponseSchema,
@@ -1008,6 +1132,168 @@ function resolveDashboardE2eMockPayload(input: {
     const limitRaw = Number(url.searchParams.get("limit") ?? "5");
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 5;
     return createDashboardE2eMockDeploymentHistory(limit);
+  }
+
+  const consistencyCpmMatch = pathname.match(/^\/sites\/([^/]+)\/consistency\/cpm$/);
+  if (consistencyCpmMatch && method === "GET") {
+    const targetLang = url.searchParams.get("targetLang") ?? "fr";
+    const limitRaw = Number(url.searchParams.get("limit") ?? "100");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 100;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    return {
+      siteId: consistencyCpmMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      sourceLang: "en",
+      targetLang,
+      limit,
+      offset,
+      statusFilter: [] as const,
+      entries: [
+        {
+          id: "cpm-1",
+          contentId: "cid_demo_contact",
+          sourceLang: "en",
+          targetLang,
+          targetText: "Contactez-nous",
+          scope: "site",
+          status: "approved" as const,
+          occurrencesCount: 12,
+          lastUsedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
+  if (consistencyCpmMatch && method === "PUT") {
+    const payload =
+      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const entries = Array.isArray(payload.entries)
+      ? payload.entries.filter((value): value is Record<string, unknown> => Boolean(value))
+      : [];
+    const first = entries[0] ?? {};
+    const targetLang = typeof payload.targetLang === "string" ? payload.targetLang : "fr";
+    return {
+      siteId: consistencyCpmMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      sourceLang: typeof payload.sourceLang === "string" ? payload.sourceLang : "en",
+      targetLang,
+      upserted: [
+        {
+          id: "cpm-upserted",
+          contentId: typeof first.contentId === "string" ? first.contentId : "cid_demo_contact",
+          sourceLang: "en",
+          targetLang,
+          targetText: typeof first.targetText === "string" ? first.targetText : "Contactez-nous",
+          scope: typeof first.scope === "string" ? first.scope : "site",
+          status:
+            first.status === "approved" || first.status === "frozen" || first.status === "proposed"
+              ? first.status
+              : ("proposed" as const),
+          occurrencesCount: 0,
+          lastUsedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
+  const consistencyBlocksListMatch = pathname.match(/^\/sites\/([^/]+)\/consistency\/blocks$/);
+  if (consistencyBlocksListMatch && method === "GET") {
+    return {
+      siteId: consistencyBlocksListMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      statusFilter: [] as const,
+      blocks: [
+        {
+          id: "block-nav",
+          blockType: "nav",
+          blockSignature: "nav-signature",
+          familySignature: "nav-family",
+          mode: "strict" as const,
+          status: "approved" as const,
+          occurrencesCount: 8,
+          firstSeenAt: new Date(Date.now() - 86_400_000).toISOString(),
+          lastSeenAt: new Date().toISOString(),
+          members: [
+            { id: "member-1", contentId: "cid_demo_home", position: 0 },
+            { id: "member-2", contentId: "cid_demo_pricing", position: 1 },
+          ],
+        },
+      ],
+    };
+  }
+
+  const consistencyBlockUpdateMatch = pathname.match(
+    /^\/sites\/([^/]+)\/consistency\/blocks\/([^/]+)$/,
+  );
+  if (consistencyBlockUpdateMatch && method === "PUT") {
+    const payload =
+      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const members = Array.isArray(payload.members)
+      ? payload.members
+          .filter((value): value is string => typeof value === "string")
+          .map((contentId, index) => ({
+            id: `member-${index + 1}`,
+            contentId,
+            position: index,
+          }))
+      : [
+          { id: "member-1", contentId: "cid_demo_home", position: 0 },
+          { id: "member-2", contentId: "cid_demo_pricing", position: 1 },
+        ];
+    return {
+      siteId: consistencyBlockUpdateMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      block: {
+        id: decodeURIComponent(consistencyBlockUpdateMatch[2] ?? "block-nav"),
+        blockType: "nav",
+        blockSignature: "nav-signature",
+        familySignature: "nav-family",
+        mode: payload.mode === "prefer" ? "prefer" : "strict",
+        status:
+          payload.status === "approved" ||
+          payload.status === "frozen" ||
+          payload.status === "proposed"
+            ? payload.status
+            : "proposed",
+        occurrencesCount: 8,
+        firstSeenAt: new Date(Date.now() - 86_400_000).toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        members,
+      },
+    };
+  }
+
+  const overrideHygieneMatch = pathname.match(/^\/sites\/([^/]+)\/consistency\/override-hygiene$/);
+  if (overrideHygieneMatch && method === "GET") {
+    const targetLang = url.searchParams.get("targetLang") ?? "fr";
+    const limitRaw = Number(url.searchParams.get("limit") ?? "100");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 100;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    return {
+      siteId: overrideHygieneMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      sourceLang: "en",
+      targetLang,
+      limit,
+      offset,
+      hasMore: false,
+      scopedOverrideCount: 1,
+      totalWarnings: 1,
+      warnings: [
+        {
+          segmentId: "seg-demo-contact",
+          contentId: "cid_demo_contact",
+          sourceText: "Contact us",
+          overrideText: "Parlez-nous",
+          canonicalTargetText: "Contactez-nous",
+          canonicalStatus: "approved" as const,
+          canonicalScope: "site",
+          contextHashScope: "ctx-demo",
+          reason: "context_override_global_exact_conflict" as const,
+        },
+      ],
+    };
   }
 
   const crawlMatch = pathname.match(/^\/sites\/([^/]+)\/crawl$/);
@@ -1745,6 +2031,132 @@ export async function fetchSitePages(
   });
 
   return data;
+}
+
+export async function fetchConsistencyCpm(
+  auth: AuthInput,
+  siteId: string,
+  options: {
+    targetLang: string;
+    sourceLang?: string;
+    status?: ConsistencyStatus[];
+    limit?: number;
+    offset?: number;
+  },
+): Promise<ConsistencyCpmListResponse> {
+  const qs = new URLSearchParams();
+  qs.set("targetLang", options.targetLang);
+  if (options.sourceLang) {
+    qs.set("sourceLang", options.sourceLang);
+  }
+  for (const status of options.status ?? []) {
+    qs.append("status", status);
+  }
+  if (typeof options.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+
+  return request({
+    path: `/sites/${siteId}/consistency/cpm?${qs.toString()}`,
+    auth,
+    schema: consistencyCpmListResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function upsertConsistencyCpm(
+  auth: AuthInput,
+  siteId: string,
+  payload: {
+    targetLang: string;
+    sourceLang?: string;
+    entries: Array<{
+      contentId: string;
+      targetText: string;
+      status?: ConsistencyStatus;
+      scope?: string;
+    }>;
+  },
+) {
+  return request({
+    path: `/sites/${siteId}/consistency/cpm`,
+    method: "PUT",
+    auth,
+    body: payload,
+    schema: consistencyCpmUpsertResponseSchema,
+  });
+}
+
+export async function fetchConsistencyBlocks(
+  auth: AuthInput,
+  siteId: string,
+  options?: { status?: ConsistencyStatus[] },
+): Promise<ConsistencyBlocksListResponse> {
+  const qs = new URLSearchParams();
+  for (const status of options?.status ?? []) {
+    qs.append("status", status);
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/consistency/blocks?${qs.toString()}`
+    : `/sites/${siteId}/consistency/blocks`;
+  return request({
+    path,
+    auth,
+    schema: consistencyBlocksListResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function updateConsistencyBlock(
+  auth: AuthInput,
+  siteId: string,
+  blockId: string,
+  payload: {
+    status?: ConsistencyStatus;
+    mode?: ConsistencyBlockMode;
+    members?: string[];
+  },
+) {
+  return request({
+    path: `/sites/${siteId}/consistency/blocks/${encodeURIComponent(blockId)}`,
+    method: "PUT",
+    auth,
+    body: payload,
+    schema: consistencyBlockUpdateResponseSchema,
+  });
+}
+
+export async function fetchConsistencyOverrideHygiene(
+  auth: AuthInput,
+  siteId: string,
+  options: {
+    targetLang: string;
+    sourceLang?: string;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<ConsistencyOverrideHygieneResponse> {
+  const qs = new URLSearchParams();
+  qs.set("targetLang", options.targetLang);
+  if (options.sourceLang) {
+    qs.set("sourceLang", options.sourceLang);
+  }
+  if (typeof options.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+
+  return request({
+    path: `/sites/${siteId}/consistency/override-hygiene?${qs.toString()}`,
+    auth,
+    schema: consistencyOverrideHygieneResponseSchema,
+    timeoutProfile: "detail",
+  });
 }
 
 export async function fetchGlossary(auth: AuthInput, siteId: string): Promise<GlossaryEntry[]> {
