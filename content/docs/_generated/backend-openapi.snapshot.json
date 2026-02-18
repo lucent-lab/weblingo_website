@@ -1637,6 +1637,102 @@
         ],
         "type": "object"
       },
+      "DeploymentCompleteness": {
+        "additionalProperties": false,
+        "properties": {
+          "discoveredPages": {
+            "type": "number"
+          },
+          "pendingPages": {
+            "type": "number"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentCompletenessStatus"
+          },
+          "translatedPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "discoveredPages",
+          "translatedPages",
+          "pendingPages",
+          "percentage",
+          "status"
+        ],
+        "type": "object"
+      },
+      "DeploymentCompletenessStatus": {
+        "enum": [
+          "not_started",
+          "partial",
+          "complete",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "DeploymentHistoryByLocale": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentHistoryEntry"
+            },
+            "type": "array"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "DeploymentHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "activatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artifactManifest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "status"
+        ],
+        "type": "object"
+      },
       "DeploymentServingStatus": {
         "enum": [
           "inactive",
