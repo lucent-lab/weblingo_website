@@ -47,8 +47,14 @@
           "planType": {
             "$ref": "#/components/schemas/AccountPlanType"
           },
+          "quotaLimits": {
+            "$ref": "#/components/schemas/AccountQuotaLimits"
+          },
           "quotas": {
             "$ref": "#/components/schemas/AccountQuotas"
+          },
+          "usageCounters": {
+            "$ref": "#/components/schemas/AccountUsageCounters"
           }
         },
         "required": [
@@ -57,6 +63,8 @@
           "planStatus",
           "featureFlags",
           "dailyCrawlUsage",
+          "usageCounters",
+          "quotaLimits",
           "quotas"
         ],
         "type": "object"
@@ -67,22 +75,39 @@
       "AccountPlanType": {
         "$ref": "#/components/schemas/PlanType"
       },
-      "AccountQuotas": {
+      "AccountQuotaLimits": {
         "additionalProperties": false,
         "properties": {
+          "dailyPageCrawls": {
+            "description": "Effective daily page-crawl cap from resolved feature flags.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dailySiteCrawls": {
+            "description": "Effective daily site-crawl cap from resolved feature flags.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "maxSites": {
+            "description": "Effective max-sites limit used for enforcement/UI (resolved from account + plan defaults).",
             "type": [
               "number",
               "null"
             ]
           },
-          "proQuota": {
+          "previewRequests": {
+            "description": "Effective preview-request cap (null when unlimited/not configured).",
             "type": [
               "number",
               "null"
             ]
           },
-          "starterQuota": {
+          "translationChars": {
+            "description": "Effective translation character cap for the active plan.",
             "type": [
               "number",
               "null"
@@ -91,8 +116,93 @@
         },
         "required": [
           "maxSites",
+          "translationChars",
+          "dailySiteCrawls",
+          "dailyPageCrawls",
+          "previewRequests"
+        ],
+        "type": "object"
+      },
+      "AccountQuotas": {
+        "additionalProperties": false,
+        "properties": {
+          "freeQuota": {
+            "description": "Account-configured free-plan translation cap (`accounts.free_quota`).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxSites": {
+            "description": "Account-configured max sites entitlement (`accounts.max_sites`).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "proQuota": {
+            "description": "Account-configured pro/agency translation cap (`accounts.pro_quota`).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "starterQuota": {
+            "description": "Account-configured starter-plan translation cap (`accounts.starter_quota`).",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "maxSites",
+          "freeQuota",
           "starterQuota",
           "proQuota"
+        ],
+        "type": "object"
+      },
+      "AccountUsageCounters": {
+        "additionalProperties": false,
+        "properties": {
+          "charsTranslated": {
+            "description": "Total translated characters during `[periodStart, periodEnd]`.",
+            "type": "number"
+          },
+          "dailyPageCrawls": {
+            "description": "Mirrors current-day `dailyCrawlUsage.pageCrawls` for dashboard convenience.",
+            "type": "number"
+          },
+          "dailySiteCrawls": {
+            "description": "Mirrors current-day `dailyCrawlUsage.siteCrawls` for dashboard convenience.",
+            "type": "number"
+          },
+          "pagesPublished": {
+            "description": "Total pages published during `[periodStart, periodEnd]`.",
+            "type": "number"
+          },
+          "periodEnd": {
+            "description": "Inclusive end date for the usage counter period (`YYYY-MM-DD`).",
+            "type": "string"
+          },
+          "periodStart": {
+            "description": "Inclusive start date for the usage counter period (`YYYY-MM-DD`).",
+            "type": "string"
+          },
+          "rebuildsTriggered": {
+            "description": "Total rebuild actions during `[periodStart, periodEnd]`.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "periodStart",
+          "periodEnd",
+          "pagesPublished",
+          "charsTranslated",
+          "rebuildsTriggered",
+          "dailySiteCrawls",
+          "dailyPageCrawls"
         ],
         "type": "object"
       },
@@ -1366,12 +1476,15 @@
         "additionalProperties": false,
         "properties": {
           "date": {
+            "description": "UTC date (`YYYY-MM-DD`) for single-day crawl counters.",
             "type": "string"
           },
           "pageCrawls": {
+            "description": "Page-level crawl count for `date` only.",
             "type": "number"
           },
           "siteCrawls": {
+            "description": "Site-level crawl count for `date` only.",
             "type": "number"
           }
         },
@@ -1543,102 +1656,6 @@
             "translatedPages": 7
           }
         ],
-        "properties": {
-          "discoveredPages": {
-            "type": "number"
-          },
-          "pendingPages": {
-            "type": "number"
-          },
-          "percentage": {
-            "type": "number"
-          },
-          "status": {
-            "$ref": "#/components/schemas/DeploymentCompletenessStatus"
-          },
-          "translatedPages": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "discoveredPages",
-          "translatedPages",
-          "pendingPages",
-          "percentage",
-          "status"
-        ],
-        "type": "object"
-      },
-      "DeploymentCompletenessStatus": {
-        "enum": [
-          "not_started",
-          "partial",
-          "complete",
-          "unknown"
-        ],
-        "type": "string"
-      },
-      "DeploymentHistoryByLocale": {
-        "additionalProperties": false,
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/DeploymentHistoryEntry"
-            },
-            "type": "array"
-          },
-          "targetLang": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "targetLang",
-          "entries"
-        ],
-        "type": "object"
-      },
-      "DeploymentHistoryEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "activatedAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "artifactManifest": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "createdAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "deploymentId": {
-            "type": "string"
-          },
-          "routePrefix": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "deploymentId",
-          "status"
-        ],
-        "type": "object"
-      },
-      "DeploymentCompleteness": {
-        "additionalProperties": false,
         "properties": {
           "discoveredPages": {
             "type": "number"
@@ -4164,6 +4181,7 @@
     },
     "/accounts/me": {
       "get": {
+        "description": "Returns resolved limits and counters for dashboard usage. `dailyCrawlUsage` is the single-day snapshot for `date`; `usageCounters` provides period totals (`periodStart`/`periodEnd`) and also mirrors the current-day crawl counters for convenience. `quotaLimits` are the effective enforcement limits, while `quotas` exposes raw account-configured quota fields.",
         "operationId": "accounts.me",
         "responses": {
           "200": {
@@ -4207,10 +4225,27 @@
                   },
                   "planStatus": "active",
                   "planType": "free",
+                  "quotaLimits": {
+                    "dailyPageCrawls": 1,
+                    "dailySiteCrawls": 1,
+                    "maxSites": 1,
+                    "previewRequests": 1,
+                    "translationChars": 1
+                  },
                   "quotas": {
+                    "freeQuota": 1,
                     "maxSites": 1,
                     "proQuota": 1,
                     "starterQuota": 1
+                  },
+                  "usageCounters": {
+                    "charsTranslated": 1,
+                    "dailyPageCrawls": 1,
+                    "dailySiteCrawls": 1,
+                    "pagesPublished": 1,
+                    "periodEnd": "string",
+                    "periodStart": "string",
+                    "rebuildsTriggered": 1
                   }
                 },
                 "schema": {
@@ -4593,10 +4628,27 @@
                     },
                     "planStatus": "active",
                     "planType": "free",
+                    "quotaLimits": {
+                      "dailyPageCrawls": 1,
+                      "dailySiteCrawls": 1,
+                      "maxSites": 1,
+                      "previewRequests": 1,
+                      "translationChars": 1
+                    },
                     "quotas": {
+                      "freeQuota": 1,
                       "maxSites": 1,
                       "proQuota": 1,
                       "starterQuota": 1
+                    },
+                    "usageCounters": {
+                      "charsTranslated": 1,
+                      "dailyPageCrawls": 1,
+                      "dailySiteCrawls": 1,
+                      "pagesPublished": 1,
+                      "periodEnd": "string",
+                      "periodStart": "string",
+                      "rebuildsTriggered": 1
                     }
                   },
                   "actorAccountId": "string",

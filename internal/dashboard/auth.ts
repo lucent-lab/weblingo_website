@@ -87,6 +87,7 @@ const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
 
 const FALLBACK_QUOTAS: AccountMe["quotas"] = {
   maxSites: null,
+  freeQuota: null,
   starterQuota: null,
   proQuota: null,
 };
@@ -112,15 +113,32 @@ type BootstrapOptions = {
 const bootstrapInflight = new Map<string, Promise<BootstrapCacheEntry>>();
 
 function buildFallbackAccount(accountId: string, entitlements: TokenEntitlements): AccountMe {
+  const today = new Date().toISOString().slice(0, 10);
   return {
     accountId,
     planType: entitlements.planType,
     planStatus: entitlements.planStatus,
     featureFlags: FALLBACK_FEATURE_FLAGS,
     dailyCrawlUsage: {
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       siteCrawls: 0,
       pageCrawls: 0,
+    },
+    usageCounters: {
+      periodStart: today,
+      periodEnd: today,
+      pagesPublished: 0,
+      charsTranslated: 0,
+      rebuildsTriggered: 0,
+      dailySiteCrawls: 0,
+      dailyPageCrawls: 0,
+    },
+    quotaLimits: {
+      maxSites: null,
+      translationChars: null,
+      dailySiteCrawls: null,
+      dailyPageCrawls: null,
+      previewRequests: null,
     },
     quotas: FALLBACK_QUOTAS,
   };
@@ -181,6 +199,7 @@ function buildWebhooksAuthContext(
 }
 
 function buildDashboardE2eMockAuth(): DashboardAuth {
+  const today = new Date().toISOString().slice(0, 10);
   const account: AccountMe = {
     accountId: DASHBOARD_E2E_ACCOUNT_ID,
     planType: "starter",
@@ -213,12 +232,29 @@ function buildDashboardE2eMockAuth(): DashboardAuth {
       featurePreview: [],
     },
     dailyCrawlUsage: {
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       siteCrawls: 1,
       pageCrawls: 3,
     },
+    usageCounters: {
+      periodStart: today,
+      periodEnd: today,
+      pagesPublished: 2,
+      charsTranslated: 500,
+      rebuildsTriggered: 1,
+      dailySiteCrawls: 1,
+      dailyPageCrawls: 3,
+    },
+    quotaLimits: {
+      maxSites: 10,
+      translationChars: 10_000,
+      dailySiteCrawls: 20,
+      dailyPageCrawls: 200,
+      previewRequests: null,
+    },
     quotas: {
       maxSites: 10,
+      freeQuota: 1,
       starterQuota: 10,
       proQuota: 50,
     },
