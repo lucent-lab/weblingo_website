@@ -18,6 +18,13 @@ These routes are deterministic CSP/hydration fixtures used by `weblingo` M16.B o
 
 - Every fixture response sets:
   - `x-weblingo-csp-fixture: 1`
+- Scenario responses (`200`) set:
   - `x-weblingo-csp-scenario: <scenarioId>`
-  - explicit `content-security-policy` header
+  - `content-type: text/html; charset=utf-8`
+  - explicit `content-security-policy` header for that scenario
+- Unknown scenarios (`404`) set:
+  - `x-weblingo-csp-scenario: unknown`
+  - `content-type: text/plain; charset=utf-8`
+  - `content-security-policy: default-src 'none'; base-uri 'none';`
+  - fixed body `Unknown CSP fixture scenario.` (no reflected input)
 - Keep scenario IDs and selectors stable. If behavior changes, update this file and the corresponding live checks in `weblingo` in the same change window.

@@ -59,12 +59,19 @@ describe("CSP fixture scenarios", () => {
   });
 
   it("returns 404 for unknown fixture scenario", async () => {
+    const payload = '<img src=x onerror=alert(1)>';
     const response = await GET(requestFor("/fixtures/csp/unknown"), {
-      params: Promise.resolve({ scenario: "unknown" }),
+      params: Promise.resolve({ scenario: payload }),
     });
 
+    const body = await response.text();
     expect(response.status).toBe(404);
     expect(response.headers.get("x-weblingo-csp-fixture")).toBe("1");
-    expect(await response.text()).toContain("Unknown CSP fixture scenario");
+    expect(response.headers.get("x-weblingo-csp-scenario")).toBe("unknown");
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("content-security-policy")).toBe("default-src 'none'; base-uri 'none';");
+    expect(body).toBe("Unknown CSP fixture scenario.");
+    expect(body).not.toContain(payload);
+    expect(body).not.toContain("<img");
   });
 });

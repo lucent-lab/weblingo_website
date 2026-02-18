@@ -101,7 +101,6 @@ const SCENARIOS: Record<ScenarioId, ScenarioPayload> = {
 };
 
 const RESPONSE_HEADERS = {
-  "content-type": "text/html; charset=utf-8",
   "cache-control": "public, max-age=60",
   "x-weblingo-csp-fixture": "1",
 };
@@ -117,10 +116,13 @@ export async function GET(
   const { scenario } = await context.params;
 
   if (!isScenarioId(scenario)) {
-    return new Response(`Unknown CSP fixture scenario: ${scenario}`, {
+    return new Response("Unknown CSP fixture scenario.", {
       status: 404,
       headers: {
         ...RESPONSE_HEADERS,
+        "content-type": "text/plain; charset=utf-8",
+        "content-security-policy": "default-src 'none'; base-uri 'none';",
+        "x-weblingo-csp-scenario": "unknown",
       },
     });
   }
@@ -130,6 +132,7 @@ export async function GET(
     status: 200,
     headers: {
       ...RESPONSE_HEADERS,
+      "content-type": "text/html; charset=utf-8",
       "content-security-policy": payload.csp,
       "x-weblingo-csp-scenario": scenario,
     },
