@@ -596,9 +596,32 @@ const dailyCrawlUsageSchema = z
   })
   .strict();
 
+const usageCountersSchema = z
+  .object({
+    periodStart: z.string(),
+    periodEnd: z.string(),
+    pagesPublished: z.number().int().nonnegative(),
+    charsTranslated: z.number().int().nonnegative(),
+    rebuildsTriggered: z.number().int().nonnegative(),
+    dailySiteCrawls: z.number().int().nonnegative(),
+    dailyPageCrawls: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const quotaLimitsSchema = z
+  .object({
+    maxSites: z.number().int().nonnegative().nullable(),
+    translationChars: z.number().int().nonnegative().nullable(),
+    dailySiteCrawls: z.number().int().nonnegative().nullable(),
+    dailyPageCrawls: z.number().int().nonnegative().nullable(),
+    previewRequests: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+
 const quotasSchema = z
   .object({
     maxSites: z.number().int().nonnegative().nullable(),
+    freeQuota: z.number().int().nonnegative().nullable(),
     starterQuota: z.number().int().nonnegative().nullable(),
     proQuota: z.number().int().nonnegative().nullable(),
   })
@@ -611,6 +634,8 @@ const accountMeSchema = z
     planStatus: planStatusSchema,
     featureFlags: featureFlagsSchema,
     dailyCrawlUsage: dailyCrawlUsageSchema,
+    usageCounters: usageCountersSchema,
+    quotaLimits: quotaLimitsSchema,
     quotas: quotasSchema,
   })
   .strict();

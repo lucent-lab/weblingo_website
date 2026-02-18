@@ -49,7 +49,7 @@
         "accounts.me"
       ],
       "stability": "GA",
-      "summary": "Get current account entitlements and quotas",
+      "summary": "Returns resolved limits and counters for dashboard usage. `dailyCrawlUsage` is the single-day snapshot for `date`; `usageCounters` provides period totals (`periodStart`/`periodEnd`) and also mirrors the current-day crawl counters for convenience. `quotaLimits` are the effective enforcement limits, while `quotas` exposes raw account-configured quota fields.",
       "userFacing": true
     },
     {
