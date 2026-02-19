@@ -28,3 +28,11 @@ These routes are deterministic CSP/hydration fixtures used by `weblingo` M16.B o
   - `content-security-policy: default-src 'none'; base-uri 'none';`
   - fixed body `Unknown CSP fixture scenario.` (no reflected input)
 - Keep scenario IDs and selectors stable. If behavior changes, update this file and the corresponding live checks in `weblingo` in the same change window.
+
+## Origin-Derived Expectations (WebLingo M16.B)
+
+When these fixtures are served through WebLingo preview/proxy origin-derived modes, expected behavior is:
+
+- `origin-derived`: source CSP intent is adapted for translated-origin `'self'` semantics without adding `'unsafe-eval'`.
+- `origin-derived-compat`: origin-derived adaptation runs first, then eval compatibility may add `'unsafe-eval'`.
+- If `content-security-policy-report-only` is present, it should remain directive-valid and auditable independently of enforcing-header outcomes.
