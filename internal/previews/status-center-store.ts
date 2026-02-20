@@ -14,6 +14,7 @@ export const PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-jobs:v2";
 export const LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-status-center:v1";
 export const LEGACY_PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-preview:v1";
 export const DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS = 5_000;
+const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;
 const STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -132,23 +133,55 @@ function normalizeEmailForRequestKey(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
+function decodeRequestKeyPart(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function buildPreviewStatusCenterRequestKey(input: {
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
   email?: string | null;
 }): string {
-  return [
+  const parts = [
     input.sourceUrl.trim(),
     normalizeLangTagForRequestKey(input.sourceLang),
     normalizeLangTagForRequestKey(input.targetLang),
     normalizeEmailForRequestKey(input.email),
-  ].join("|");
+  ];
+  return `${PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX}${parts
+    .map((part) => encodeURIComponent(part))
+    .join("|")}`;
 }
 
 export function parsePreviewStatusCenterRequestKey(
   requestKey: string,
 ): ParsedPreviewStatusCenterRequestKey | null {
+  if (requestKey.startsWith(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX)) {
+    const encoded = requestKey.slice(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX.length);
+    const [sourceUrl, sourceLang, targetLang, email, ...rest] = encoded.split("|");
+    if (!sourceUrl || !sourceLang || !targetLang || rest.length > 0) {
+      return null;
+    }
+    const decodedSourceUrl = decodeRequestKeyPart(sourceUrl);
+    const decodedSourceLang = decodeRequestKeyPart(sourceLang);
+    const decodedTargetLang = decodeRequestKeyPart(targetLang);
+    const decodedEmail = decodeRequestKeyPart(email ?? "");
+    if (!decodedSourceUrl || !decodedSourceLang || !decodedTargetLang) {
+      return null;
+    }
+    return {
+      sourceUrl: decodedSourceUrl,
+      sourceLang: decodedSourceLang,
+      targetLang: decodedTargetLang,
+      email: decodedEmail,
+    };
+  }
+
   const [sourceUrl, sourceLang, targetLang, ...rest] = requestKey.split("|");
   if (!sourceUrl || !sourceLang || !targetLang) {
     return null;
@@ -159,6 +192,24 @@ export function parsePreviewStatusCenterRequestKey(
     targetLang,
     email: rest.join("|"),
   };
+}
+
+function resolveCanonicalRequestKey(
+  requestKey: string | null | undefined,
+  fallback: {
+    sourceUrl: string;
+    sourceLang: string;
+    targetLang: string;
+    email?: string | null;
+  },
+): string {
+  const parsed = requestKey ? parsePreviewStatusCenterRequestKey(requestKey) : null;
+  return buildPreviewStatusCenterRequestKey({
+    sourceUrl: parsed?.sourceUrl ?? fallback.sourceUrl,
+    sourceLang: parsed?.sourceLang ?? fallback.sourceLang,
+    targetLang: parsed?.targetLang ?? fallback.targetLang,
+    email: parsed?.email ?? fallback.email,
+  });
 }
 
 function parseOptionalPreviewErrorCode(value: unknown): PreviewErrorCode | null {
@@ -201,13 +252,14 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   }
 
   const status = value.status;
-  const requestKey = isString(value.requestKey)
-    ? value.requestKey
-    : buildPreviewStatusCenterRequestKey({
-        sourceUrl: value.sourceUrl,
-        sourceLang: value.sourceLang,
-        targetLang: value.targetLang,
-      });
+  const requestKey = resolveCanonicalRequestKey(
+    isString(value.requestKey) ? value.requestKey : null,
+    {
+      sourceUrl: value.sourceUrl,
+      sourceLang: value.sourceLang,
+      targetLang: value.targetLang,
+    },
+  );
   const stage = parseOptionalPreviewStage(value.stage);
   const errorStage = parseOptionalPreviewStage(value.errorStage);
 
@@ -393,13 +445,19 @@ function migrateLegacyJobsFromStorage(now: number): PreviewStatusCenterJob[] {
 
   const existingIndex = jobs.findIndex((job) => job.previewId === pending.previewId);
   const parsedRequestKey = parsePreviewStatusCenterRequestKey(pending.requestKey);
+  const canonicalRequestKey = resolveCanonicalRequestKey(pending.requestKey, {
+    sourceUrl: parsedRequestKey?.sourceUrl ?? "",
+    sourceLang: parsedRequestKey?.sourceLang ?? "",
+    targetLang: parsedRequestKey?.targetLang ?? "",
+    email: parsedRequestKey?.email ?? "",
+  });
 
   if (existingIndex >= 0) {
     const existing = jobs[existingIndex];
     const terminal = isPreviewStatusCenterJobTerminal(existing.status);
     jobs[existingIndex] = normalizeJob({
       ...existing,
-      requestKey: pending.requestKey,
+      requestKey: canonicalRequestKey,
       statusToken: pending.statusToken,
       sourceUrl: parsedRequestKey?.sourceUrl ?? existing.sourceUrl,
       sourceLang: parsedRequestKey?.sourceLang ?? existing.sourceLang,
@@ -414,7 +472,7 @@ function migrateLegacyJobsFromStorage(now: number): PreviewStatusCenterJob[] {
     jobs.push(
       normalizeJob({
         previewId: pending.previewId,
-        requestKey: pending.requestKey,
+        requestKey: canonicalRequestKey,
         statusToken: pending.statusToken,
         sourceUrl: parsedRequestKey?.sourceUrl ?? "",
         sourceLang: parsedRequestKey?.sourceLang ?? "",

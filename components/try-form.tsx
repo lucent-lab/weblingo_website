@@ -145,9 +145,7 @@ export function TryForm({
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning = isCreating || isPreviewRunningJob(trackedJob);
   const showGeneratingState = isSameRequest && isPreviewRunning;
-  const trackedStatusForLock = isCreating ? "creating" : trackedJob?.status ?? "idle";
-  const isRequestLocked =
-    isSameRequest && trackedStatusForLock !== "idle" && trackedStatusForLock !== "failed";
+  const isRequestLocked = isSameRequest && isPreviewRunning;
   const isSameLanguage =
     Boolean(normalizedSourceLang) &&
     Boolean(normalizedTargetLang) &&

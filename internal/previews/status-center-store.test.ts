@@ -10,6 +10,7 @@ import {
   LEGACY_PENDING_PREVIEW_STORAGE_KEY,
   LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY,
   markPreviewStatusCenterJobTerminal,
+  parsePreviewStatusCenterRequestKey,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   removePreviewStatusCenterJob,
   resetPreviewStatusCenterJobRetry,
@@ -162,7 +163,14 @@ describe("status-center-store", () => {
     const snapshot = getPreviewStatusCenterSnapshot();
     expect(snapshot.jobs).toHaveLength(1);
     expect(snapshot.jobs[0].statusToken).toBe("pending-token");
-    expect(snapshot.jobs[0].requestKey).toBe("https://legacy.example.com|en|fr|hello@example.com");
+    expect(snapshot.jobs[0].requestKey).toBe(
+      buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://legacy.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "hello@example.com",
+      }),
+    );
     expect(snapshot.jobs[0].status).toBe("processing");
 
     expect(window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)).toBeTruthy();
@@ -194,5 +202,33 @@ describe("status-center-store", () => {
 
     const selected = selectLatestJobByRequestKey(requestKey);
     expect(selected?.previewId).toBe("44444444-4444-4444-4444-444444444444");
+  });
+
+  it("round-trips v2 request keys when URL and email contain pipes", () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://example.com/a|b?mode=test",
+      sourceLang: "EN",
+      targetLang: "fr",
+      email: "hello|team@example.com",
+    });
+    const parsed = parsePreviewStatusCenterRequestKey(requestKey);
+
+    expect(parsed).toEqual({
+      sourceUrl: "https://example.com/a|b?mode=test",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "hello|team@example.com",
+    });
+  });
+
+  it("keeps parsing legacy delimiter request keys", () => {
+    const parsed = parsePreviewStatusCenterRequestKey("https://legacy.example.com|en|fr|old@example.com");
+
+    expect(parsed).toEqual({
+      sourceUrl: "https://legacy.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "old@example.com",
+    });
   });
 });

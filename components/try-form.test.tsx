@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TryForm } from "./try-form";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import {
+  buildPreviewStatusCenterRequestKey,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
 } from "@internal/previews/status-center-store";
@@ -328,6 +329,70 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Translating")).toBeTruthy();
+    });
+  });
+
+  it("allows resubmission when restored job is expired", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://expired.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "66666666-6666-6666-6666-666666666666",
+          requestKey,
+          statusToken: "expired-token",
+          sourceUrl: "https://expired.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "expired",
+          stage: null,
+          previewUrl: null,
+          error: "Preview expired",
+          errorCode: "preview_expired",
+          errorStage: "generating_preview",
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: now - 1_000,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "77777777-7777-7777-7777-777777777777",
+          statusToken: "next-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("https://expired.example.com")).toBeTruthy();
+    });
+
+    const button = screen.getByRole("button", { name: "Generate preview" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews",
+        expect.objectContaining({ method: "POST" }),
+      );
     });
   });
 });
