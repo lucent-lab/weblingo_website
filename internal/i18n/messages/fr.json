@@ -584,6 +584,8 @@
   "try.status.pendingEmailHint": "Vous pouvez fermer cet onglet.",
   "try.status.timedOutNoEmail": "Le traitement prend plus de temps que prévu.",
   "try.status.stillProcessing": "Traitement en cours...",
+  "try.center.dismiss": "Fermer",
+  "try.center.retryHint": "Relancez depuis le formulaire d'aperçu.",
   "try.action.checkStatus": "Vérifier le statut",
   "try.action.checkingStatus": "Vérification..."
 }

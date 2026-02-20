@@ -24,6 +24,11 @@ import {
   type PreviewErrorCode,
   type PreviewStage,
 } from "@internal/previews/preview-sse";
+import {
+  markPreviewStatusCenterJobTerminal,
+  upsertPreviewStatusCenterJob,
+  updatePreviewStatusCenterJob,
+} from "@internal/previews/status-center-store";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { z } from "zod";
 
@@ -41,6 +46,12 @@ type PendingPreviewState = {
   statusToken: string;
   requestKey: string;
   updatedAt: number;
+};
+
+type ResolvedPreviewError = {
+  code: PreviewErrorCode | null;
+  stage: PreviewStage | null;
+  message: string;
 };
 
 const emailSchema = z.email();
@@ -308,6 +319,35 @@ export function TryForm({
     return t("try.error.default");
   }
 
+  function resolveErrorFromPayload(data: Record<string, unknown>, fallback?: string): ResolvedPreviewError {
+    const details =
+      data.details && typeof data.details === "object"
+        ? (data.details as Record<string, unknown>)
+        : null;
+    const code = isPreviewErrorCode(data.errorCode)
+      ? data.errorCode
+      : details && isPreviewErrorCode(details.errorCode)
+        ? details.errorCode
+        : null;
+    const stage = isPreviewStage(data.errorStage)
+      ? data.errorStage
+      : details && isPreviewStage(details.errorStage)
+        ? details.errorStage
+        : lastStageRef.current;
+    const message = resolveErrorMessage(
+      code,
+      (data.error as string | undefined) ??
+        (data.message as string | undefined) ??
+        fallback ??
+        null,
+    );
+    return {
+      code,
+      stage: stage ?? null,
+      message,
+    };
+  }
+
   function applyStageFromPayload(data: Record<string, unknown>) {
     if (isPreviewStage(data.stage)) {
       lastStageRef.current = data.stage;
@@ -329,31 +369,44 @@ export function TryForm({
   }
 
   function applyErrorFromPayload(data: Record<string, unknown>, fallback?: string) {
-    const details =
-      data.details && typeof data.details === "object"
-        ? (data.details as Record<string, unknown>)
-        : null;
-    const code = isPreviewErrorCode(data.errorCode)
-      ? data.errorCode
-      : details && isPreviewErrorCode(details.errorCode)
-        ? details.errorCode
-        : null;
-    const stage = isPreviewStage(data.errorStage)
-      ? data.errorStage
-      : details && isPreviewStage(details.errorStage)
-        ? details.errorStage
-        : lastStageRef.current;
-    setErrorCode(code);
-    setErrorStage(stage ?? null);
-    setError(
-      resolveErrorMessage(
-        code,
-        (data.error as string | undefined) ??
-          (data.message as string | undefined) ??
-          fallback ??
-          null,
-      ),
-    );
+    const resolved = resolveErrorFromPayload(data, fallback);
+    setErrorCode(resolved.code);
+    setErrorStage(resolved.stage);
+    setError(resolved.message);
+    return resolved;
+  }
+
+  function syncStatusCenterActiveState(
+    previewId: string,
+    status: "pending" | "processing",
+    stage: PreviewStage | null,
+  ) {
+    updatePreviewStatusCenterJob(previewId, {
+      status,
+      error: null,
+      errorCode: null,
+      errorStage: stage,
+      previewUrl: null,
+      retryCount: 0,
+    });
+  }
+
+  function syncStatusCenterTerminalState(
+    previewId: string,
+    status: "ready" | "failed" | "expired",
+    options: {
+      previewUrl?: string | null;
+      error?: string | null;
+      errorCode?: PreviewErrorCode | null;
+      errorStage?: PreviewStage | null;
+    } = {},
+  ) {
+    markPreviewStatusCenterJobTerminal(previewId, status, {
+      previewUrl: options.previewUrl,
+      error: options.error,
+      errorCode: options.errorCode,
+      errorStage: options.errorStage,
+    });
   }
 
   function closeEventSource() {
@@ -377,8 +430,13 @@ export function TryForm({
     if (!id || checkingStatus) return null;
     const statusToken = statusTokenRef.current;
     if (!statusToken) {
-      setError(t("try.error.default") || "Preview status token missing. Please try again.");
+      const message = t("try.error.default") || "Preview status token missing. Please try again.";
+      setError(message);
       setStatus("failed");
+      syncStatusCenterTerminalState(id, "failed", {
+        error: message,
+        errorCode: "unknown",
+      });
       return true;
     }
     if (previewId) {
@@ -401,13 +459,20 @@ export function TryForm({
         const decision = resolveStatusCheckFailure(response.status, payload);
         if (decision === "processing") {
           setProgress(t("try.status.stillProcessing"));
+          syncStatusCenterActiveState(id, "processing", null);
           return false;
         }
         const reason =
           (payload && typeof payload.error === "string" ? payload.error : "") ||
           (payload && typeof payload.message === "string" ? payload.message : "") ||
           t("try.error.default");
-        applyErrorFromPayload(payload ?? {}, reason);
+        const resolved = applyErrorFromPayload(payload ?? {}, reason);
+        const terminalStatus = resolved.code === "preview_expired" ? "expired" : "failed";
+        syncStatusCenterTerminalState(id, terminalStatus, {
+          error: resolved.message,
+          errorCode: resolved.code,
+          errorStage: resolved.stage,
+        });
         setStatus("failed");
         setTimedOut(false);
         setTimedOutWithEmail(false);
@@ -415,6 +480,7 @@ export function TryForm({
       }
       if (!payload || typeof payload !== "object") {
         setProgress(t("try.status.stillProcessing"));
+        syncStatusCenterActiveState(id, "processing", null);
         return false;
       }
       const data = payload as Record<string, unknown>;
@@ -422,13 +488,24 @@ export function TryForm({
       if (data.status === "ready") {
         if (typeof data.previewUrl === "string") {
           setPreviewUrl(data.previewUrl);
+          syncStatusCenterTerminalState(id, "ready", {
+            previewUrl: data.previewUrl,
+          });
+        } else {
+          syncStatusCenterTerminalState(id, "ready");
         }
         setStatus("ready");
         setTimedOut(false);
         setTimedOutWithEmail(false);
         return true;
       } else if (data.status === "failed") {
-        applyErrorFromPayload(data, t("try.error.default"));
+        const resolved = applyErrorFromPayload(data, t("try.error.default"));
+        const terminalStatus = resolved.code === "preview_expired" ? "expired" : "failed";
+        syncStatusCenterTerminalState(id, terminalStatus, {
+          error: resolved.message,
+          errorCode: resolved.code,
+          errorStage: resolved.stage,
+        });
         setStatus("failed");
         setTimedOut(false);
         setTimedOutWithEmail(false);
@@ -438,10 +515,12 @@ export function TryForm({
         const stage = isPreviewStage(data.stage) ? data.stage : null;
         const stageMessage = stage ? resolveStageMessage(stage) : null;
         setProgress(stageMessage || t("try.status.stillProcessing"));
+        syncStatusCenterActiveState(id, data.status === "pending" ? "pending" : "processing", stage);
         return false;
       }
     } catch {
       setProgress(t("try.status.stillProcessing"));
+      syncStatusCenterActiveState(id, "processing", null);
       return false;
     } finally {
       setCheckingStatus(false);
@@ -453,6 +532,7 @@ export function TryForm({
     setStatus("processing");
     setProgress(t("try.status.processing"));
     statusPollStartedAtRef.current = Date.now();
+    syncStatusCenterActiveState(id, "processing", null);
 
     const poll = async () => {
       const terminal = await handleCheckStatus(id);
@@ -489,6 +569,7 @@ export function TryForm({
   function connectSSE(id: string, statusToken: string) {
     closeEventSource();
     setStatus("processing");
+    syncStatusCenterActiveState(id, "processing", null);
 
     const es = new EventSource(
       `/api/previews/${id}/stream?token=${encodeURIComponent(statusToken)}`,
@@ -535,24 +616,37 @@ export function TryForm({
         setPreviewUrl(data.previewUrl);
       }
       applyStageFromPayload(data);
+      const stage = isPreviewStage(data.stage) ? data.stage : null;
 
       if (data.status === "ready") {
         setStatus("ready");
         setProgress(null);
+        syncStatusCenterTerminalState(id, "ready", {
+          previewUrl: typeof data.previewUrl === "string" ? data.previewUrl : null,
+        });
         closeEventSource();
         return;
       }
 
       if (data.status === "failed") {
-        applyErrorFromPayload(data);
+        const resolved = applyErrorFromPayload(data);
         setStatus("failed");
         setProgress(null);
+        const terminalStatus = resolved.code === "preview_expired" ? "expired" : "failed";
+        syncStatusCenterTerminalState(id, terminalStatus, {
+          error: resolved.message,
+          errorCode: resolved.code,
+          errorStage: resolved.stage,
+        });
         closeEventSource();
         return;
       }
 
       if (isPreviewStatus(data.status)) {
         setStatus(data.status);
+        if (data.status === "pending" || data.status === "processing") {
+          syncStatusCenterActiveState(id, data.status, stage);
+        }
       }
     };
 
@@ -595,11 +689,21 @@ export function TryForm({
         const payload = JSON.parse((event as MessageEvent).data ?? "{}");
         if (payload && typeof payload.previewUrl === "string") {
           setPreviewUrl(payload.previewUrl);
+          syncStatusCenterTerminalState(id, "ready", {
+            previewUrl: payload.previewUrl,
+          });
+        } else {
+          syncStatusCenterTerminalState(id, "ready");
         }
         setStatus("ready");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to parse preview response.");
+        const message = err instanceof Error ? err.message : "Failed to parse preview response.";
+        setError(message);
         setStatus("failed");
+        syncStatusCenterTerminalState(id, "failed", {
+          error: message,
+          errorCode: "unknown",
+        });
       } finally {
         setProgress(null);
         closeEventSource();
@@ -618,9 +722,15 @@ export function TryForm({
         try {
           const payload = JSON.parse(rawData) as Record<string, unknown>;
           if (hasExplicitFailure(payload)) {
-            applyErrorFromPayload(payload, t("try.error.default"));
+            const resolved = applyErrorFromPayload(payload, t("try.error.default"));
             setProgress(null);
             setStatus("failed");
+            const terminalStatus = resolved.code === "preview_expired" ? "expired" : "failed";
+            syncStatusCenterTerminalState(id, terminalStatus, {
+              error: resolved.message,
+              errorCode: resolved.code,
+              errorStage: resolved.stage,
+            });
             closeEventSource();
             return;
           }
@@ -647,6 +757,7 @@ export function TryForm({
           setTimedOut(true);
           setTimedOutWithEmail(true);
           setProgress(null);
+          syncStatusCenterActiveState(id, "processing", null);
           closeEventSource();
           return;
         }
@@ -657,6 +768,7 @@ export function TryForm({
         setTimedOut(true);
         setTimedOutWithEmail(false);
         setProgress(null);
+        syncStatusCenterActiveState(id, "processing", null);
         closeEventSource();
       };
 
@@ -674,12 +786,14 @@ export function TryForm({
         setTimedOutWithEmail(true);
         setLastPreviewId(id);
         // Keep status as "processing" - don't set to failed
+        syncStatusCenterActiveState(id, "processing", null);
       } else {
         // No email fallback - show timeout with check status option
         setTimedOut(true);
         setTimedOutWithEmail(false);
         setLastPreviewId(id);
         // Keep status as "processing" to allow check status
+        syncStatusCenterActiveState(id, "processing", null);
       }
     });
   }
@@ -697,6 +811,19 @@ export function TryForm({
     setLastPreviewId(id);
     statusTokenRef.current = statusToken;
     persistPendingPreview(id, statusToken, requestKey);
+    upsertPreviewStatusCenterJob({
+      previewId: id,
+      statusToken,
+      sourceUrl: trimmedUrl,
+      sourceLang: normalizedSourceLang,
+      targetLang: normalizedTargetLang,
+      status: "pending",
+      error: null,
+      errorCode: null,
+      errorStage: null,
+      previewUrl: null,
+      retryCount: 0,
+    });
 
     if (typeof window === "undefined" || typeof window.EventSource !== "function") {
       startPollingFallback(id);
@@ -821,15 +948,47 @@ export function TryForm({
 
         applyStageFromPayload(payload ?? {});
 
+        if (id && statusToken) {
+          upsertPreviewStatusCenterJob({
+            previewId: id,
+            statusToken,
+            sourceUrl: trimmedUrl,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
+            status:
+              payload?.status === "pending" || payload?.status === "processing"
+                ? payload.status
+                : "pending",
+            previewUrl: typeof immediatePreview === "string" ? immediatePreview : null,
+            error: null,
+            errorCode: null,
+            errorStage: isPreviewStage(payload?.stage) ? payload.stage : null,
+            retryCount: 0,
+          });
+        }
+
         if (payload?.status === "failed") {
-          applyErrorFromPayload(payload);
+          const resolved = applyErrorFromPayload(payload);
           setStatus("failed");
+          if (id) {
+            const terminalStatus = resolved.code === "preview_expired" ? "expired" : "failed";
+            syncStatusCenterTerminalState(id, terminalStatus, {
+              error: resolved.message,
+              errorCode: resolved.code,
+              errorStage: resolved.stage,
+            });
+          }
           return;
         }
 
         if (payload?.status === "ready" && immediatePreview) {
           setPreviewUrl(immediatePreview);
           setStatus("ready");
+          if (id) {
+            syncStatusCenterTerminalState(id, "ready", {
+              previewUrl: immediatePreview,
+            });
+          }
           return;
         }
 

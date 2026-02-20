@@ -141,6 +141,8 @@
   "try.status.pendingEmailHint": "You can close this tab.",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
   "try.status.stillProcessing": "Still processing...",
+  "try.center.dismiss": "Dismiss",
+  "try.center.retryHint": "Retry from the Try form.",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking...",
   "docs.title": "Getting started",
