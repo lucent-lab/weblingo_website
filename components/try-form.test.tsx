@@ -1,8 +1,12 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TryForm } from "./try-form";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import {
+  PREVIEW_STATUS_CENTER_STORAGE_KEY,
+  resetPreviewStatusCenterStoreForTests,
+} from "@internal/previews/status-center-store";
 
 vi.mock("next/dynamic", async () => {
   const React = await import("react");
@@ -30,8 +34,6 @@ vi.mock("next/dynamic", async () => {
   };
 });
 
-const PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-preview:v1";
-
 const supportedLanguages = [
   { tag: "en", englishName: "English", direction: "ltr" },
   { tag: "fr", englishName: "French", direction: "ltr" },
@@ -44,10 +46,10 @@ const messages = {
   "try.form.sourceLabel": "Source language",
   "try.form.targetLabel": "Target language",
   "try.form.sameLanguage": "Pick a different target language",
+  "try.status.creating": "Creating preview...",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing preview...",
   "try.status.processingHint": "Processing hint",
-  "try.status.stillProcessing": "Still processing",
   "try.status.ready": "Ready",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
   "try.action.checkStatus": "Check status",
@@ -58,6 +60,9 @@ const messages = {
   "try.preview.copied": "Copied",
   "try.error.default": "Preview failed.",
   "try.error.stageLabel": "Failed during {stage}",
+  "try.error.preview_expired": "Preview expired",
+  "try.error.preview_not_found": "Preview not found",
+  "try.error.unknown": "Unknown error",
   "try.stage.fetching_page": "Fetching page",
   "try.stage.analyzing_content": "Analyzing content",
   "try.stage.translating": "Translating",
@@ -120,30 +125,26 @@ function renderTryForm() {
   );
 }
 
-async function flushPromises() {
-  await Promise.resolve();
-  await Promise.resolve();
-}
-
 const originalEventSource = globalThis.EventSource;
 
 beforeEach(() => {
+  resetPreviewStatusCenterStoreForTests();
+  window.localStorage.clear();
   MockEventSource.instances = [];
   globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
-  window.localStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  vi.useRealTimers();
   window.localStorage.clear();
+  resetPreviewStatusCenterStoreForTests();
   globalThis.EventSource = originalEventSource;
 });
 
 describe("TryForm preview status", () => {
-  it("persists pending preview state and clears it when SSE reaches ready", async () => {
+  it("persists preview jobs in v2 storage and marks ready from SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/api/previews") {
@@ -168,58 +169,61 @@ describe("TryForm preview status", () => {
       expect(MockEventSource.instances).toHaveLength(1);
     });
 
-    const storedRaw = window.localStorage.getItem(PENDING_PREVIEW_STORAGE_KEY);
+    const storedRaw = window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY);
     expect(storedRaw).toBeTruthy();
-    const stored = JSON.parse(String(storedRaw)) as Record<string, unknown>;
-    expect(stored.previewId).toBe("11111111-1111-1111-1111-111111111111");
-    expect(stored.statusToken).toBe("status-token");
+    const storedJobs = JSON.parse(String(storedRaw)) as Array<Record<string, unknown>>;
+    expect(storedJobs[0].previewId).toBe("11111111-1111-1111-1111-111111111111");
 
-    const stream = MockEventSource.instances[0];
-    stream.emit("status", {
+    MockEventSource.instances[0].emit("status", {
       status: "ready",
       previewUrl: "https://preview.test/p/abc",
     });
 
     await waitFor(() => {
       expect(screen.getByText("Ready")).toBeTruthy();
-      expect(window.localStorage.getItem(PENDING_PREVIEW_STORAGE_KEY)).toBeNull();
+      expect(screen.getByDisplayValue("https://preview.test/p/abc")).toBeTruthy();
     });
   });
 
-  it("resumes a persisted preview status stream on load", async () => {
+  it("restores persisted v2 jobs on mount without reopening SSE", async () => {
     window.localStorage.setItem(
-      PENDING_PREVIEW_STORAGE_KEY,
-      JSON.stringify({
-        previewId: "22222222-2222-2222-2222-222222222222",
-        statusToken: "resume-token",
-        requestKey: "resume-key",
-        updatedAt: Date.now(),
-      }),
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "22222222-2222-2222-2222-222222222222",
+          requestKey: "https://restore.example.com|en|fr|",
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: Date.now() - 1_000,
+          updatedAt: Date.now() - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Date.now() + 5_000,
+        },
+      ]),
     );
+
     const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
     vi.stubGlobal("fetch", fetchMock);
 
     renderTryForm();
 
     await waitFor(() => {
-      expect(MockEventSource.instances).toHaveLength(1);
+      expect(screen.getByText("Translating")).toBeTruthy();
+      expect(screen.getByDisplayValue("https://restore.example.com")).toBeTruthy();
     });
-    expect(MockEventSource.instances[0]?.url).toContain(
-      "/api/previews/22222222-2222-2222-2222-222222222222/stream?token=resume-token",
-    );
-
-    MockEventSource.instances[0]?.emit("status", {
-      status: "ready",
-      previewUrl: "https://preview.test/p/resumed",
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Ready")).toBeTruthy();
-      expect(window.localStorage.getItem(PENDING_PREVIEW_STORAGE_KEY)).toBeNull();
-    });
+    expect(MockEventSource.instances).toHaveLength(0);
   });
 
-  it("falls back to polling when EventSource is unavailable", async () => {
+  it("falls back to status polling when EventSource is unavailable", async () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -254,21 +258,20 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("surfaces timeout UI when polling fallback exceeds timeout", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal("EventSource", undefined);
+  it("closes SSE and uses a single status check when stream errors", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/api/previews") {
         return jsonResponse({
           previewId: "44444444-4444-4444-4444-444444444444",
-          statusToken: "timeout-token",
+          statusToken: "sse-token",
           status: "pending",
         });
       }
-      return jsonResponse({
-        status: "processing",
-      });
+      if (url === "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token") {
+        return jsonResponse({ status: "processing" });
+      }
+      return jsonResponse({ status: "processing" });
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -278,17 +281,53 @@ describe("TryForm preview status", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
 
-    await act(async () => {
-      await flushPromises();
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(61_000);
-      await flushPromises();
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
     });
 
-    expect(screen.getByText("Processing is taking longer than expected.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
+    const stream = MockEventSource.instances[0];
+    stream.emit("error");
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token",
+      );
+    });
+    expect(stream.closed).toBe(true);
+    expect(MockEventSource.instances).toHaveLength(1);
+  });
+
+  it("uses stage copy from the shared resolver", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "55555555-5555-5555-5555-555555555555",
+          statusToken: "stage-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("progress", {
+      status: "processing",
+      stage: "translating",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Translating")).toBeTruthy();
+    });
   });
 });
