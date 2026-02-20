@@ -49,7 +49,7 @@
     "sonner": "^2.0.7",
     "stripe": "^19.2.0",
     "styled-components": "6",
-    "tailwind-merge": "^2.5.4",
+    "tailwind-merge": "^3.4.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {
