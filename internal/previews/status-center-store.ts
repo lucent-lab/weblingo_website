@@ -247,20 +247,8 @@ function normalizeSortableString(value: string | null | undefined): string {
   return isString(value) ? value : "";
 }
 
-function resolveDeterministicPreviewJobIdentity(job: PreviewStatusCenterJob): string {
-  const previewId = job.previewId.trim();
-  if (previewId.length > 0) {
-    return previewId;
-  }
-  return [
-    job.requestKey,
-    job.statusToken,
-    job.sourceUrl,
-    job.sourceLang,
-    job.targetLang,
-    String(job.createdAt),
-    String(job.updatedAt),
-  ].join("|");
+function normalizePreviewId(value: string): string {
+  return value.trim();
 }
 
 export function comparePreviewStatusCenterJobs(
@@ -285,11 +273,9 @@ export function comparePreviewStatusCenterJobs(
     return createdB - createdA;
   }
 
-  const identityA = resolveDeterministicPreviewJobIdentity(a);
-  const identityB = resolveDeterministicPreviewJobIdentity(b);
-  const identityDiff = identityA.localeCompare(identityB);
-  if (identityDiff !== 0) {
-    return identityDiff;
+  const previewIdDiff = normalizePreviewId(a.previewId).localeCompare(normalizePreviewId(b.previewId));
+  if (previewIdDiff !== 0) {
+    return previewIdDiff;
   }
 
   const requestKeyDiff = normalizeSortableString(a.requestKey).localeCompare(
@@ -299,7 +285,8 @@ export function comparePreviewStatusCenterJobs(
     return requestKeyDiff;
   }
 
-  return normalizeSortableString(a.statusToken).localeCompare(normalizeSortableString(b.statusToken));
+  // Full collisions preserve existing persisted order via stable sort / first-match selectors.
+  return 0;
 }
 
 function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {

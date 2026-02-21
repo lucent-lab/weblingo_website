@@ -17,6 +17,7 @@ import {
   resetPreviewStatusCenterJobRetry,
   resetPreviewStatusCenterStoreForTests,
   selectPreferredPreviewStatusCenterJob,
+  selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   setPreviewStatusCenterJobRetry,
   upsertPreviewStatusCenterJob,
@@ -268,8 +269,84 @@ describe("status-center-store", () => {
       createdAt: Number.NaN,
     };
 
-    expect(comparePreviewStatusCenterJobs(a, b)).toBeGreaterThan(0);
-    expect(comparePreviewStatusCenterJobs(b, a)).toBeLessThan(0);
+    expect(comparePreviewStatusCenterJobs(a, b)).toBe(0);
+    expect(comparePreviewStatusCenterJobs(b, a)).toBe(0);
+  });
+
+  it("selects deterministically for mixed request keys with equal timestamps", () => {
+    const requestKeyA = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://a.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    const requestKeyB = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://b.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-02-20T12:00:00.000Z"));
+      upsertPreviewStatusCenterJob(
+        buildJob({
+          previewId: "aaaa0000-0000-0000-0000-000000000000",
+          requestKey: requestKeyA,
+          sourceUrl: "https://a.example.com",
+        }),
+      );
+      upsertPreviewStatusCenterJob(
+        buildJob({
+          previewId: "bbbb0000-0000-0000-0000-000000000000",
+          requestKey: requestKeyB,
+          sourceUrl: "https://b.example.com",
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(selectLatestJobByRequestKey(requestKeyA)?.sourceUrl).toBe("https://a.example.com");
+    expect(selectLatestJobByRequestKey(requestKeyB)?.sourceUrl).toBe("https://b.example.com");
+  });
+
+  it("uses persisted order as stable tie-breaker across selectors when primary fields collide", () => {
+    const now = Date.now();
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://stable.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...buildJob({
+            previewId: "",
+            requestKey,
+            statusToken: "first-token",
+            sourceUrl: "https://first.example.com",
+          }),
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          ...buildJob({
+            previewId: "",
+            requestKey,
+            statusToken: "second-token",
+            sourceUrl: "https://second.example.com",
+          }),
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]),
+    );
+
+    hydratePreviewStatusCenterStore();
+    expect(selectPreferredPreviewStatusCenterJob()?.statusToken).toBe("first-token");
+    expect(selectLatestActivePreviewStatusCenterJob()?.statusToken).toBe("first-token");
+    expect(selectLatestJobByRequestKey(requestKey)?.statusToken).toBe("first-token");
   });
 
   it("drops unknown phases from storage and warns once per hydration pass", () => {
