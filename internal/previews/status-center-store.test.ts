@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
+  comparePreviewStatusCenterJobs,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   getPreviewStatusCenterServerSnapshot,
@@ -15,9 +16,11 @@ import {
   removePreviewStatusCenterJob,
   resetPreviewStatusCenterJobRetry,
   resetPreviewStatusCenterStoreForTests,
+  selectPreferredPreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   setPreviewStatusCenterJobRetry,
   upsertPreviewStatusCenterJob,
+  type PreviewStatusCenterJob,
 } from "./status-center-store";
 
 function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenterJob>[0]> = {}) {
@@ -185,23 +188,121 @@ describe("status-center-store", () => {
       targetLang: "fr",
     });
 
-    upsertPreviewStatusCenterJob(
-      buildJob({
-        previewId: "33333333-3333-3333-3333-333333333333",
-        requestKey,
-        statusToken: "first-token",
-      }),
-    );
-    upsertPreviewStatusCenterJob(
-      buildJob({
-        previewId: "44444444-4444-4444-4444-444444444444",
-        requestKey,
-        statusToken: "second-token",
-      }),
-    );
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-02-20T12:00:00.000Z"));
+      upsertPreviewStatusCenterJob(
+        buildJob({
+          previewId: "33333333-3333-3333-3333-333333333333",
+          requestKey,
+          statusToken: "first-token",
+        }),
+      );
+      vi.setSystemTime(new Date("2026-02-20T12:00:01.000Z"));
+      upsertPreviewStatusCenterJob(
+        buildJob({
+          previewId: "44444444-4444-4444-4444-444444444444",
+          requestKey,
+          statusToken: "second-token",
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
 
     const selected = selectLatestJobByRequestKey(requestKey);
     expect(selected?.previewId).toBe("44444444-4444-4444-4444-444444444444");
+  });
+
+  it("prefers active jobs over terminal jobs when selecting preferred job", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        previewId: "77777777-7777-7777-7777-777777777777",
+        status: "ready",
+      }),
+    );
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        previewId: "88888888-8888-8888-8888-888888888888",
+        status: "processing",
+      }),
+    );
+
+    const selected = selectPreferredPreviewStatusCenterJob();
+    expect(selected?.previewId).toBe("88888888-8888-8888-8888-888888888888");
+  });
+
+  it("uses deterministic comparator for ties and malformed metadata", () => {
+    const a: PreviewStatusCenterJob = {
+      ...buildJob({
+        previewId: "",
+        requestKey: "",
+        statusToken: "b",
+      }),
+      stage: null,
+      previewUrl: null,
+      error: null,
+      errorCode: null,
+      errorStage: null,
+      expiresAt: null,
+      retryCount: 0,
+      nextPollAt: Number.POSITIVE_INFINITY,
+      updatedAt: Number.NaN,
+      createdAt: Number.NaN,
+    };
+    const b: PreviewStatusCenterJob = {
+      ...buildJob({
+        previewId: "",
+        requestKey: "",
+        statusToken: "a",
+      }),
+      stage: null,
+      previewUrl: null,
+      error: null,
+      errorCode: null,
+      errorStage: null,
+      expiresAt: null,
+      retryCount: 0,
+      nextPollAt: Number.POSITIVE_INFINITY,
+      updatedAt: Number.NaN,
+      createdAt: Number.NaN,
+    };
+
+    expect(comparePreviewStatusCenterJobs(a, b)).toBeGreaterThan(0);
+    expect(comparePreviewStatusCenterJobs(b, a)).toBeLessThan(0);
+  });
+
+  it("drops unknown phases from storage and warns once per hydration pass", () => {
+    const now = Date.now();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...buildJob({
+            previewId: "99999999-9999-9999-9999-999999999999",
+            status: "processing",
+          }),
+          createdAt: now - 1_000,
+          updatedAt: now - 500,
+        },
+        {
+          ...buildJob({
+            previewId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          }),
+          status: "queued",
+          createdAt: now - 2_000,
+          updatedAt: now - 1_500,
+        },
+      ]),
+    );
+
+    hydratePreviewStatusCenterStore();
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0].status).toBe("processing");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain("Dropped preview jobs with unknown phase");
   });
 
   it("round-trips v2 request keys when URL and email contain pipes", () => {

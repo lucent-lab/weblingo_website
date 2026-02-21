@@ -39,6 +39,7 @@ import {
   parsePreviewStatusCenterRequestKey,
   selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
+  selectPreferredPreviewStatusCenterJob,
   subscribePreviewStatusCenterStore,
   upsertPreviewStatusCenterJob,
   updatePreviewStatusCenterJob,
@@ -71,10 +72,38 @@ type ResolvedPreviewError = {
 };
 
 const emailSchema = z.email();
-function isPreviewRunningJob(
-  job: PreviewStatusCenterJob | null,
-): job is PreviewStatusCenterJob & { status: "pending" | "processing" } {
-  return Boolean(job && (job.status === "pending" || job.status === "processing"));
+
+export type TryFormMode =
+  | "idle"
+  | "creating"
+  | "running_pending"
+  | "running_processing"
+  | "terminal_ready"
+  | "terminal_failed"
+  | "terminal_expired";
+
+export function resolveTryFormMode(
+  isCreating: boolean,
+  trackedJob: PreviewStatusCenterJob | null,
+): TryFormMode {
+  if (trackedJob) {
+    switch (trackedJob.status) {
+      case "pending":
+        return "running_pending";
+      case "processing":
+        return "running_processing";
+      case "ready":
+        return "terminal_ready";
+      case "failed":
+        return "terminal_failed";
+      case "expired":
+        return "terminal_expired";
+    }
+  }
+  if (isCreating) {
+    return "creating";
+  }
+  return "idle";
 }
 
 export function TryForm({
@@ -104,6 +133,7 @@ export function TryForm({
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
   const timedOutRef = useRef(false);
   const submittedEmailRef = useRef("");
   const restoreAttemptedRef = useRef(false);
@@ -141,11 +171,13 @@ export function TryForm({
     () => selectLatestJobByRequestKey(lastRequestKey, jobs),
     [jobs, lastRequestKey],
   );
+  const mode = useMemo(() => resolveTryFormMode(isCreating, trackedJob), [isCreating, trackedJob]);
 
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
-  const isPreviewRunning = isCreating || isPreviewRunningJob(trackedJob);
-  const showGeneratingState = isSameRequest && isPreviewRunning;
-  const isRequestLocked = isSameRequest && isPreviewRunning;
+  const isPreviewRunning =
+    mode === "creating" || mode === "running_pending" || mode === "running_processing";
+  const showEditableControls = !isPreviewRunning;
+  const showGeneratingState = isSameRequest && mode === "creating";
   const isSameLanguage =
     Boolean(normalizedSourceLang) &&
     Boolean(normalizedTargetLang) &&
@@ -155,21 +187,22 @@ export function TryForm({
     inputsDisabled ||
     !trimmedUrl ||
     (showEmailField && !trimmedEmail) ||
-    isRequestLocked ||
     isSameLanguage;
 
   const statusMessage = useMemo(() => {
-    if (isCreating) {
-      return t("try.status.creating") || "Creating preview...";
+    switch (mode) {
+      case "creating":
+        return t("try.status.creating") || "Creating preview...";
+      case "running_pending":
+      case "running_processing":
+        return trackedJob ? resolvePreviewStatusCenterMessage(trackedJob, t) : null;
+      case "idle":
+      case "terminal_ready":
+      case "terminal_failed":
+      case "terminal_expired":
+        return null;
     }
-    if (!trackedJob) {
-      return null;
-    }
-    if (trackedJob.status !== "pending" && trackedJob.status !== "processing") {
-      return null;
-    }
-    return resolvePreviewStatusCenterMessage(trackedJob, t);
-  }, [isCreating, trackedJob, t]);
+  }, [mode, trackedJob, t]);
 
   const resolvedError = useMemo(() => {
     if (submissionError) {
@@ -201,7 +234,8 @@ export function TryForm({
     }
     restoreAttemptedRef.current = true;
 
-    const restoredJob = selectLatestActivePreviewStatusCenterJob(jobs) ?? jobs[0] ?? null;
+    const restoredJob =
+      selectLatestActivePreviewStatusCenterJob(jobs) ?? selectPreferredPreviewStatusCenterJob(jobs);
     if (!restoredJob) {
       return;
     }
@@ -236,6 +270,7 @@ export function TryForm({
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -385,6 +420,9 @@ export function TryForm({
       return null;
     }
 
+    if (!mountedRef.current) {
+      return null;
+    }
     setCheckingStatus(true);
     try {
       const response = await fetch(`/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`);
@@ -470,7 +508,9 @@ export function TryForm({
       syncStatusCenterActiveState(previewId, "processing", null);
       return false;
     } finally {
-      setCheckingStatus(false);
+      if (mountedRef.current) {
+        setCheckingStatus(false);
+      }
     }
   }
 
@@ -607,6 +647,9 @@ export function TryForm({
       const handleDisconnect = async () => {
         const terminal = await handleCheckStatus(previewId, statusToken);
         if (terminal) {
+          return;
+        }
+        if (!mountedRef.current) {
           return;
         }
 
@@ -841,60 +884,62 @@ export function TryForm({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="flex flex-1 flex-col gap-2">
-            <Input
-              value={url}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                setUrl(value);
-                if (urlError) {
-                  setUrlError(validateUrl(value));
-                }
-              }}
-              onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
-              placeholder={t("try.form.placeholder")}
-              type="url"
-              pattern="https?://.*"
-              required
-              disabled={inputsDisabled}
-              aria-invalid={urlError ? "true" : "false"}
-            />
-            {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
+      {showEditableControls ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-1 flex-col gap-2">
+              <Input
+                value={url}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setUrl(value);
+                  if (urlError) {
+                    setUrlError(validateUrl(value));
+                  }
+                }}
+                onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
+                placeholder={t("try.form.placeholder")}
+                type="url"
+                pattern="https?://.*"
+                required
+                disabled={inputsDisabled}
+                aria-invalid={urlError ? "true" : "false"}
+              />
+              {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
+            </div>
+            <Button onClick={handleGenerate} disabled={isGenerateDisabled}>
+              {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
+            </Button>
           </div>
-          <Button onClick={handleGenerate} disabled={isGenerateDisabled}>
-            {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
-          </Button>
-        </div>
 
-        {showEmailField ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">{t("try.form.emailLabel")}</span>
-            <Input
-              value={email}
-              onChange={(event) => {
-                const value = event.currentTarget.value;
-                setEmail(value);
-                if (emailError) {
-                  setEmailError(validateEmail(value));
-                }
-              }}
-              onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
-              placeholder={t("try.form.emailPlaceholder")}
-              aria-label={t("try.form.emailLabel")}
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              required
-              disabled={inputsDisabled}
-              aria-invalid={emailError ? "true" : "false"}
-            />
-            <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
-            {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
-          </div>
-        ) : null}
-      </div>
+          {showEmailField ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-foreground">{t("try.form.emailLabel")}</span>
+              <Input
+                value={email}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setEmail(value);
+                  if (emailError) {
+                    setEmailError(validateEmail(value));
+                  }
+                }}
+                onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
+                placeholder={t("try.form.emailPlaceholder")}
+                aria-label={t("try.form.emailLabel")}
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                disabled={inputsDisabled}
+                aria-invalid={emailError ? "true" : "false"}
+              />
+              <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
+              {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {statusMessage && !timedOut ? (
         <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
@@ -943,7 +988,7 @@ export function TryForm({
         </div>
       ) : null}
 
-      {trackedJob?.status === "ready" ? (
+      {mode === "terminal_ready" && trackedJob ? (
         <div className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -977,33 +1022,37 @@ export function TryForm({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="flex flex-1 flex-col gap-2 text-sm">
-          <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
-          <LanguageTagCombobox
-            value={sourceLang}
-            onValueChange={setSourceLang}
-            supportedLanguages={supportedLanguages}
-            displayLocale={locale}
-            disabled={inputsDisabled}
-            placeholder="en"
-          />
-        </label>
+      {showEditableControls ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="flex flex-1 flex-col gap-2 text-sm">
+            <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
+            <LanguageTagCombobox
+              value={sourceLang}
+              onValueChange={setSourceLang}
+              supportedLanguages={supportedLanguages}
+              displayLocale={locale}
+              disabled={inputsDisabled}
+              placeholder="en"
+            />
+          </label>
 
-        <label className="flex flex-1 flex-col gap-2 text-sm">
-          <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
-          <LanguageTagCombobox
-            value={targetLang}
-            onValueChange={setTargetLang}
-            supportedLanguages={supportedLanguages}
-            displayLocale={locale}
-            disabled={inputsDisabled}
-            placeholder={locale}
-          />
-        </label>
-      </div>
+          <label className="flex flex-1 flex-col gap-2 text-sm">
+            <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
+            <LanguageTagCombobox
+              value={targetLang}
+              onValueChange={setTargetLang}
+              supportedLanguages={supportedLanguages}
+              displayLocale={locale}
+              disabled={inputsDisabled}
+              placeholder={locale}
+            />
+          </label>
+        </div>
+      ) : null}
 
-      {isSameLanguage ? <div className="text-sm text-destructive">{t("try.form.sameLanguage")}</div> : null}
+      {showEditableControls && isSameLanguage ? (
+        <div className="text-sm text-destructive">{t("try.form.sameLanguage")}</div>
+      ) : null}
     </div>
   );
 }

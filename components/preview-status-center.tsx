@@ -15,7 +15,6 @@ import {
   selectJobsForStatusCenter,
   subscribePreviewStatusCenterStore,
 } from "@internal/previews/status-center-store";
-import { usePreviewStatusRuntime } from "@internal/previews/use-preview-status-runtime";
 
 type PreviewStatusCenterProps = {
   messages: ClientMessages;
@@ -31,7 +30,6 @@ function resolveHost(url: string): string {
 
 export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
-  usePreviewStatusRuntime();
 
   const jobsSnapshot = useSyncExternalStore(
     subscribePreviewStatusCenterStore,

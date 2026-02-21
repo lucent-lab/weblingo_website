@@ -80,6 +80,7 @@ type LegacyPendingPreviewState = {
 type ReadJobsResult = {
   jobs: PreviewStatusCenterJob[];
   migratedFromLegacy: boolean;
+  unknownPhaseDrops: number;
 };
 
 const listeners = new Set<Listener>();
@@ -234,6 +235,73 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
   };
 }
 
+function isActiveStatus(status: PreviewStatusCenterJobStatus): boolean {
+  return status === "pending" || status === "processing";
+}
+
+function normalizeTimestamp(value: number): number {
+  return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+}
+
+function normalizeSortableString(value: string | null | undefined): string {
+  return isString(value) ? value : "";
+}
+
+function resolveDeterministicPreviewJobIdentity(job: PreviewStatusCenterJob): string {
+  const previewId = job.previewId.trim();
+  if (previewId.length > 0) {
+    return previewId;
+  }
+  return [
+    job.requestKey,
+    job.statusToken,
+    job.sourceUrl,
+    job.sourceLang,
+    job.targetLang,
+    String(job.createdAt),
+    String(job.updatedAt),
+  ].join("|");
+}
+
+export function comparePreviewStatusCenterJobs(
+  a: PreviewStatusCenterJob,
+  b: PreviewStatusCenterJob,
+): number {
+  const activeA = isActiveStatus(a.status);
+  const activeB = isActiveStatus(b.status);
+  if (activeA !== activeB) {
+    return activeA ? -1 : 1;
+  }
+
+  const updatedA = normalizeTimestamp(a.updatedAt);
+  const updatedB = normalizeTimestamp(b.updatedAt);
+  if (updatedA !== updatedB) {
+    return updatedB - updatedA;
+  }
+
+  const createdA = normalizeTimestamp(a.createdAt);
+  const createdB = normalizeTimestamp(b.createdAt);
+  if (createdA !== createdB) {
+    return createdB - createdA;
+  }
+
+  const identityA = resolveDeterministicPreviewJobIdentity(a);
+  const identityB = resolveDeterministicPreviewJobIdentity(b);
+  const identityDiff = identityA.localeCompare(identityB);
+  if (identityDiff !== 0) {
+    return identityDiff;
+  }
+
+  const requestKeyDiff = normalizeSortableString(a.requestKey).localeCompare(
+    normalizeSortableString(b.requestKey),
+  );
+  if (requestKeyDiff !== 0) {
+    return requestKeyDiff;
+  }
+
+  return normalizeSortableString(a.statusToken).localeCompare(normalizeSortableString(b.statusToken));
+}
+
 function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   if (!isRecord(value)) {
     return null;
@@ -356,7 +424,7 @@ function parseLegacyPendingPreview(value: unknown): LegacyPendingPreviewState | 
 function pruneJobs(jobs: PreviewStatusCenterJob[], now = Date.now()): PreviewStatusCenterJob[] {
   return jobs
     .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
-    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .sort(comparePreviewStatusCenterJobs)
     .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS);
 }
 
@@ -391,39 +459,100 @@ function commitJobs(nextJobs: PreviewStatusCenterJob[]) {
   emit();
 }
 
-function readV2JobsFromStorage(): PreviewStatusCenterJob[] | null {
+function resolveUnknownPhase(entry: unknown): string | null {
+  if (!isRecord(entry)) {
+    return null;
+  }
+  if (!isString(entry.status)) {
+    return null;
+  }
+  return isJobStatus(entry.status) ? null : entry.status;
+}
+
+function readV2JobsFromStorage():
+  | {
+      jobs: PreviewStatusCenterJob[];
+      unknownPhaseDrops: number;
+    }
+  | {
+      jobs: null;
+      unknownPhaseDrops: number;
+    } {
   if (!canUseStorage()) {
-    return [];
+    return {
+      jobs: [],
+      unknownPhaseDrops: 0,
+    };
   }
   const raw = window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY);
   if (raw === null) {
-    return null;
+    return {
+      jobs: null,
+      unknownPhaseDrops: 0,
+    };
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
-      return [];
+      return {
+        jobs: [],
+        unknownPhaseDrops: 0,
+      };
     }
-    return pruneJobs(parsed.map((entry) => parseStoredV2Job(entry)).filter((entry) => entry !== null));
+
+    let unknownPhaseDrops = 0;
+    const jobs: PreviewStatusCenterJob[] = [];
+    for (const entry of parsed) {
+      if (resolveUnknownPhase(entry)) {
+        unknownPhaseDrops += 1;
+      }
+      const parsedJob = parseStoredV2Job(entry);
+      if (parsedJob) {
+        jobs.push(parsedJob);
+      }
+    }
+
+    return {
+      jobs: pruneJobs(jobs),
+      unknownPhaseDrops,
+    };
   } catch {
-    return [];
+    return {
+      jobs: [],
+      unknownPhaseDrops: 0,
+    };
   }
 }
 
-function migrateLegacyJobsFromStorage(now: number): PreviewStatusCenterJob[] {
+function migrateLegacyJobsFromStorage(now: number): {
+  jobs: PreviewStatusCenterJob[];
+  unknownPhaseDrops: number;
+} {
   if (!canUseStorage()) {
-    return [];
+    return {
+      jobs: [],
+      unknownPhaseDrops: 0,
+    };
   }
 
   const legacyJobsRaw = window.localStorage.getItem(LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY);
   const pendingRaw = window.localStorage.getItem(LEGACY_PENDING_PREVIEW_STORAGE_KEY);
 
   const jobs: PreviewStatusCenterJob[] = [];
+  let unknownPhaseDrops = 0;
   if (legacyJobsRaw) {
     try {
       const parsedLegacy = JSON.parse(legacyJobsRaw) as unknown;
       if (Array.isArray(parsedLegacy)) {
-        jobs.push(...parsedLegacy.map((entry) => parseStoredLegacyV1Job(entry)).filter((entry) => entry !== null));
+        for (const entry of parsedLegacy) {
+          if (resolveUnknownPhase(entry)) {
+            unknownPhaseDrops += 1;
+          }
+          const parsedJob = parseStoredLegacyV1Job(entry);
+          if (parsedJob) {
+            jobs.push(parsedJob);
+          }
+        }
       }
     } catch {
       // Ignore malformed legacy payloads.
@@ -440,7 +569,10 @@ function migrateLegacyJobsFromStorage(now: number): PreviewStatusCenterJob[] {
   }
 
   if (!pending) {
-    return pruneJobs(jobs, now);
+    return {
+      jobs: pruneJobs(jobs, now),
+      unknownPhaseDrops,
+    };
   }
 
   const existingIndex = jobs.findIndex((job) => job.previewId === pending.previewId);
@@ -492,20 +624,26 @@ function migrateLegacyJobsFromStorage(now: number): PreviewStatusCenterJob[] {
     );
   }
 
-  return pruneJobs(jobs, now);
+  return {
+    jobs: pruneJobs(jobs, now),
+    unknownPhaseDrops,
+  };
 }
 
 function readJobsFromStorage(): ReadJobsResult {
-  const v2Jobs = readV2JobsFromStorage();
-  if (v2Jobs !== null) {
+  const v2Result = readV2JobsFromStorage();
+  if (v2Result.jobs !== null) {
     return {
-      jobs: v2Jobs,
+      jobs: v2Result.jobs,
       migratedFromLegacy: false,
+      unknownPhaseDrops: v2Result.unknownPhaseDrops,
     };
   }
+  const migrated = migrateLegacyJobsFromStorage(Date.now());
   return {
-    jobs: migrateLegacyJobsFromStorage(Date.now()),
+    jobs: migrated.jobs,
     migratedFromLegacy: true,
+    unknownPhaseDrops: migrated.unknownPhaseDrops,
   };
 }
 
@@ -515,7 +653,7 @@ function ensureHydrated() {
   }
   hydrated = true;
 
-  const { jobs, migratedFromLegacy } = readJobsFromStorage();
+  const { jobs, migratedFromLegacy, unknownPhaseDrops } = readJobsFromStorage();
   state = {
     jobs,
   };
@@ -524,6 +662,16 @@ function ensureHydrated() {
     persistJobs(state.jobs);
   }
   clearLegacyStorageKeys();
+
+  if (unknownPhaseDrops > 0) {
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        message: "Dropped preview jobs with unknown phase during hydration",
+        dropped_jobs: unknownPhaseDrops,
+      }),
+    );
+  }
 }
 
 function applyPreviewJobEvent(previewId: string, event: PreviewJobEvent) {
@@ -596,7 +744,28 @@ export function selectJobsForStatusCenter(
 export function selectLatestActivePreviewStatusCenterJob(
   jobs: PreviewStatusCenterJob[] = state.jobs,
 ): PreviewStatusCenterJob | null {
-  return jobs.find((job) => !isPreviewStatusCenterJobTerminal(job.status)) ?? null;
+  let best: PreviewStatusCenterJob | null = null;
+  for (const job of jobs) {
+    if (isPreviewStatusCenterJobTerminal(job.status)) {
+      continue;
+    }
+    if (!best || comparePreviewStatusCenterJobs(job, best) < 0) {
+      best = job;
+    }
+  }
+  return best;
+}
+
+export function selectPreferredPreviewStatusCenterJob(
+  jobs: PreviewStatusCenterJob[] = state.jobs,
+): PreviewStatusCenterJob | null {
+  let best: PreviewStatusCenterJob | null = null;
+  for (const job of jobs) {
+    if (!best || comparePreviewStatusCenterJobs(job, best) < 0) {
+      best = job;
+    }
+  }
+  return best;
 }
 
 export function selectLatestJobByRequestKey(
@@ -606,7 +775,16 @@ export function selectLatestJobByRequestKey(
   if (!requestKey) {
     return null;
   }
-  return jobs.find((job) => job.requestKey === requestKey) ?? null;
+  let best: PreviewStatusCenterJob | null = null;
+  for (const job of jobs) {
+    if (job.requestKey !== requestKey) {
+      continue;
+    }
+    if (!best || comparePreviewStatusCenterJobs(job, best) < 0) {
+      best = job;
+    }
+  }
+  return best;
 }
 
 export function dispatchPreviewStatusCenterEvent(event: PreviewStatusCenterStoreEvent) {

@@ -26,6 +26,11 @@ import {
 } from "./status-center-store";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
+let previewStatusRuntimeOwner: symbol | null = null;
+
+export function resetPreviewStatusRuntimeOwnerForTests() {
+  previewStatusRuntimeOwner = null;
+}
 
 function resolveErrorPayload(
   payload: Record<string, unknown> | null,
@@ -69,15 +74,49 @@ export function usePreviewStatusRuntime() {
     getPreviewStatusCenterJobsSnapshot,
     getPreviewStatusCenterServerJobsSnapshot,
   );
+  const ownerIdRef = useRef(Symbol("preview-status-runtime-owner"));
+  const isOwnerRef = useRef(false);
   const inFlightRef = useRef(new Set<string>());
 
   useEffect(() => {
+    if (previewStatusRuntimeOwner === null || previewStatusRuntimeOwner === ownerIdRef.current) {
+      previewStatusRuntimeOwner = ownerIdRef.current;
+      isOwnerRef.current = true;
+      return () => {
+        if (previewStatusRuntimeOwner === ownerIdRef.current) {
+          previewStatusRuntimeOwner = null;
+        }
+        isOwnerRef.current = false;
+      };
+    }
+
+    isOwnerRef.current = false;
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        message: "Preview status runtime mounted without ownership",
+      }),
+    );
+    return () => {
+      isOwnerRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOwnerRef.current) {
+      return;
+    }
     hydratePreviewStatusCenterStore();
     cleanupPreviewStatusCenterJobs();
   }, []);
 
   useEffect(() => {
-    if (jobs.length === 0) {
+    if (!isOwnerRef.current) {
+      return;
+    }
+
+    const hasActiveJobs = jobs.some((job) => isPreviewStatusCenterJobActive(job));
+    if (!hasActiveJobs) {
       return;
     }
 
