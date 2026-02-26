@@ -1,0 +1,240 @@
+.root {
+  position: relative;
+  overflow-x: clip;
+}
+
+.gridBg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, hsl(258 60% 60% / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(258 60% 60% / 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: v35-grid 8s linear infinite;
+}
+
+@keyframes v35-grid {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 48px 48px;
+  }
+}
+
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: hsl(258 60% 60% / 0.4);
+  animation: v35-float 20s linear infinite;
+}
+
+.p1 {
+  left: 10%;
+  top: 20%;
+  animation-delay: 0s;
+  animation-duration: 18s;
+}
+.p2 {
+  left: 30%;
+  top: 60%;
+  animation-delay: -4s;
+  animation-duration: 22s;
+}
+.p3 {
+  left: 55%;
+  top: 15%;
+  animation-delay: -8s;
+  animation-duration: 20s;
+}
+.p4 {
+  left: 75%;
+  top: 45%;
+  animation-delay: -2s;
+  animation-duration: 24s;
+}
+.p5 {
+  left: 90%;
+  top: 70%;
+  animation-delay: -10s;
+  animation-duration: 19s;
+}
+.p6 {
+  left: 45%;
+  top: 80%;
+  animation-delay: -6s;
+  animation-duration: 21s;
+}
+
+@keyframes v35-float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(30px);
+    opacity: 0;
+  }
+}
+
+.gradientText {
+  background: linear-gradient(
+    135deg,
+    hsl(258 60% 50%),
+    hsl(258 60% 60%),
+    hsl(220 70% 55%),
+    hsl(258 60% 50%)
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: v35-gradient 6s ease-in-out infinite;
+}
+
+@keyframes v35-gradient {
+  0% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
+}
+
+.enter {
+  animation: v35-enter 750ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes v35-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.scaleCard {
+  transition:
+    transform 350ms cubic-bezier(0.22, 0.68, 0, 1),
+    box-shadow 350ms ease,
+    border-color 350ms ease;
+}
+
+.scaleCard:hover {
+  transform: scale(1.02);
+  border-color: hsl(258 60% 60% / 0.2);
+  box-shadow:
+    0 4px 16px hsl(258 60% 60% / 0.08),
+    0 12px 40px hsl(0 0% 0% / 0.05);
+}
+
+.formCard {
+  box-shadow:
+    0 2px 4px hsl(0 0% 0% / 0.03),
+    0 8px 24px hsl(258 60% 60% / 0.06),
+    0 20px 60px hsl(0 0% 0% / 0.04);
+  transition: box-shadow 400ms ease;
+}
+
+.formCard:hover {
+  box-shadow:
+    0 2px 4px hsl(0 0% 0% / 0.03),
+    0 12px 32px hsl(258 60% 60% / 0.1),
+    0 24px 72px hsl(0 0% 0% / 0.05);
+}
+
+.formPulse {
+  animation: v35-form-pulse 4s ease-in-out infinite;
+}
+
+@keyframes v35-form-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: blur(24px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(28px);
+  }
+}
+
+.stepCard {
+  transition:
+    transform 300ms cubic-bezier(0.22, 0.68, 0, 1),
+    border-color 300ms ease;
+}
+
+.stepCard:hover {
+  transform: translateX(4px);
+  border-color: hsl(258 60% 60% / 0.2);
+}
+
+.stepCard:hover .stepNum {
+  box-shadow: 0 4px 16px hsl(258 60% 60% / 0.25);
+}
+
+.stepNum {
+  transition: box-shadow 300ms ease;
+}
+
+.faqAccordion {
+  transition: border-color 300ms ease;
+}
+
+.faqAccordion:hover {
+  border-color: hsl(258 60% 60% / 0.15);
+}
+
+.ctaSection {
+  background: linear-gradient(180deg, transparent, hsl(258 60% 60% / 0.03), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gridBg,
+  .particle,
+  .p1,
+  .p2,
+  .p3,
+  .p4,
+  .p5,
+  .p6,
+  .gradientText,
+  .enter,
+  .formPulse {
+    animation: none !important;
+  }
+  .scaleCard,
+  .formCard,
+  .stepCard,
+  .faqAccordion {
+    transition: none !important;
+  }
+  .gradientText {
+    -webkit-text-fill-color: hsl(258 60% 60%);
+  }
+}

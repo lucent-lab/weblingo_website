@@ -1,0 +1,193 @@
+.root {
+  position: relative;
+  overflow-x: clip;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.018;
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.3) 0.5px, transparent 0.6px),
+    radial-gradient(circle at 70% 30%, rgba(0, 0, 0, 0.25) 0.5px, transparent 0.6px),
+    radial-gradient(circle at 40% 80%, rgba(0, 0, 0, 0.2) 0.5px, transparent 0.6px);
+  background-size: 16px 16px;
+}
+
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+}
+
+.orb1 {
+  composes: orb;
+  width: 500px;
+  height: 500px;
+  top: -150px;
+  left: -100px;
+  background: hsl(258 60% 60% / 0.1);
+  animation: v32-float 20s ease-in-out infinite alternate;
+}
+
+.orb2 {
+  composes: orb;
+  width: 400px;
+  height: 400px;
+  top: 30%;
+  right: -120px;
+  background: hsl(200 80% 55% / 0.07);
+  animation: v32-float 20s ease-in-out infinite alternate-reverse;
+}
+
+.orb3 {
+  composes: orb;
+  width: 350px;
+  height: 350px;
+  bottom: 10%;
+  left: 20%;
+  background: hsl(258 60% 60% / 0.06);
+  animation: v32-float 25s ease-in-out infinite alternate;
+}
+
+@keyframes v32-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(30px, 20px, 0) scale(1.08);
+  }
+}
+
+.heroGrid {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent);
+}
+
+.enter {
+  animation: v32-enter 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes v32-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.formCard {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.04),
+    0 8px 24px hsl(258 60% 60% / 0.06),
+    0 20px 60px hsl(0 0% 0% / 0.05);
+  transition:
+    box-shadow 400ms ease,
+    transform 400ms cubic-bezier(0.22, 0.68, 0, 1);
+}
+
+.formCard:hover {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.04),
+    0 12px 32px hsl(258 60% 60% / 0.1),
+    0 24px 72px hsl(0 0% 0% / 0.06);
+  transform: translateY(-2px);
+}
+
+.depthCard {
+  transition:
+    transform 350ms cubic-bezier(0.22, 0.68, 0, 1),
+    box-shadow 350ms ease,
+    border-color 350ms ease;
+  box-shadow:
+    0 1px 3px hsl(0 0% 0% / 0.04),
+    0 4px 12px hsl(0 0% 0% / 0.03);
+}
+
+.depthCard:hover {
+  transform: translateY(-4px);
+  border-color: hsl(258 60% 60% / 0.25);
+  box-shadow:
+    0 2px 4px hsl(0 0% 0% / 0.04),
+    0 12px 32px hsl(258 60% 60% / 0.08),
+    0 20px 50px hsl(0 0% 0% / 0.04);
+}
+
+.timeline {
+  position: relative;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    hsl(258 60% 60% / 0.2),
+    hsl(258 60% 60% / 0.08),
+    transparent
+  );
+}
+
+.timelineStep {
+  position: relative;
+}
+
+.timelineStep::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 18px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid hsl(258 60% 60% / 0.2);
+  background: hsl(var(--background));
+  z-index: 1;
+}
+
+.sectionFade {
+  position: relative;
+}
+
+.sectionFade::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, hsl(var(--background)), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .orb1,
+  .orb2,
+  .orb3 {
+    animation: none !important;
+  }
+  .enter {
+    animation: none !important;
+  }
+  .formCard,
+  .depthCard {
+    transition: none !important;
+  }
+}

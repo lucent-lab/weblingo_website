@@ -1,0 +1,121 @@
+.root {
+  --background: 270 30% 97%;
+  --foreground: 250 20% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 250 20% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 250 20% 16%;
+  --primary: 250 70% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 270 20% 93%;
+  --secondary-foreground: 250 20% 16%;
+  --muted: 270 16% 93%;
+  --muted-foreground: 250 10% 42%;
+  --accent: 340 65% 65%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 60% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 270 15% 86%;
+  --input: 270 15% 86%;
+  --ring: 250 70% 62%;
+  --radius: 1.8rem;
+
+  background:
+    radial-gradient(900px 500px at 10% 10%, rgba(167, 139, 250, 0.15), transparent 60%),
+    radial-gradient(700px 400px at 90% 20%, rgba(244, 114, 182, 0.12), transparent 60%),
+    radial-gradient(600px 350px at 50% 90%, rgba(129, 230, 217, 0.1), transparent 60%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  color: hsl(var(--foreground));
+  position: relative;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.body {
+  font-family: var(--font-sans);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 8px 32px rgba(167, 139, 250, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(20px);
+}
+
+.glassStrong {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 12px 40px rgba(167, 139, 250, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(24px);
+}
+
+.blob {
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(100px);
+  opacity: 0.25;
+  animation: v28-float 16s ease-in-out infinite alternate;
+}
+
+.blob1 {
+  composes: blob;
+  top: -100px;
+  left: -100px;
+  background: rgba(167, 139, 250, 0.5);
+}
+
+.blob2 {
+  composes: blob;
+  bottom: -100px;
+  right: -100px;
+  background: rgba(244, 114, 182, 0.4);
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes v28-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(40px, 30px, 0) scale(1.08);
+  }
+}
+
+.enter {
+  animation: v28-enter 800ms cubic-bezier(0.22, 0.68, 0, 1) both;
+}
+
+@keyframes v28-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .blob1,
+  .blob2 {
+    animation: none !important;
+  }
+  .enter {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,89 @@
+.root {
+  --background: 30 8% 8%;
+  --foreground: 36 20% 88%;
+  --card: 30 6% 11%;
+  --card-foreground: 36 20% 88%;
+  --popover: 30 6% 11%;
+  --popover-foreground: 36 20% 88%;
+  --primary: 42 70% 56%;
+  --primary-foreground: 30 8% 8%;
+  --secondary: 30 5% 15%;
+  --secondary-foreground: 36 20% 88%;
+  --muted: 30 5% 15%;
+  --muted-foreground: 36 8% 52%;
+  --accent: 42 50% 46%;
+  --accent-foreground: 30 8% 8%;
+  --destructive: 0 60% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 6% 20%;
+  --input: 30 6% 20%;
+  --ring: 42 70% 56%;
+  --radius: 0;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  position: relative;
+}
+
+.root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.body {
+  font-family: var(--font-sans);
+}
+
+.label {
+  font-family: var(--font-sans);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 500;
+  color: hsl(var(--primary) / 0.7);
+}
+
+.goldLine {
+  width: 40px;
+  height: 1px;
+  background: linear-gradient(90deg, hsl(var(--primary)), transparent);
+}
+
+.luxPanel {
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 100%);
+  border: 1px solid hsl(var(--border));
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.enter {
+  animation: v26-enter 900ms cubic-bezier(0.22, 0.68, 0, 1) both;
+}
+
+@keyframes v26-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none !important;
+  }
+}
