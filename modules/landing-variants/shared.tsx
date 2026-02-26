@@ -5,28 +5,9 @@ import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import type { Messages, Translator } from "@internal/i18n";
 import { landingContent } from "@modules/landing/content";
 
-export const LANDING_VARIANT_IDS = [
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "13",
-  "14",
-  "15",
-  "16",
-  "17",
-  "18",
-  "19",
-  "20",
-] as const;
+export const LANDING_VARIANT_IDS = Array.from({ length: 35 }, (_, i) => i + 1).map((i) =>
+  i.toString(),
+);
 export type LandingVariantId = (typeof LANDING_VARIANT_IDS)[number];
 
 export const LANDING_FAQ_ITEMS = [

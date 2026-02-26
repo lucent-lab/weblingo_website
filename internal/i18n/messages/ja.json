@@ -584,6 +584,8 @@
   "try.status.pendingEmailHint": "このタブを閉じても大丈夫です。",
   "try.status.timedOutNoEmail": "処理に時間がかかっています。",
   "try.status.stillProcessing": "処理中...",
+  "try.center.dismiss": "閉じる",
+  "try.center.retryHint": "プレビューフォームから再試行してください。",
   "try.action.checkStatus": "ステータスを確認",
   "try.action.checkingStatus": "確認中..."
 }

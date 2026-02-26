@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { LaunchBanner } from "@components/launch-banner";
+import { PreviewStatusCenter } from "@components/preview-status-center";
 import { SiteFooter } from "@components/site-footer";
 import { SiteHeader } from "@components/site-header";
 import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
+import { PREVIEW_STATUS_CENTER_MESSAGE_KEYS } from "@internal/previews/status-center-i18n";
 
 export default async function MarketingLayout({
   children,
@@ -19,7 +21,10 @@ export default async function MarketingLayout({
     notFound();
   }
 
-  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const statusCenterMessages = Object.fromEntries(
+    PREVIEW_STATUS_CENTER_MESSAGE_KEYS.map((key) => [key, messages[key] ?? key]),
+  );
   const bannerCopy = {
     badge: t("banner.badge"),
     title: t("banner.title"),
@@ -42,6 +47,7 @@ export default async function MarketingLayout({
         <SiteFooter locale={locale} t={t} />
       </div>
       <LaunchBanner copy={bannerCopy} />
+      <PreviewStatusCenter messages={statusCenterMessages} />
     </>
   );
 }

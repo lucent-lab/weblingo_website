@@ -1,0 +1,217 @@
+.root {
+  position: relative;
+  overflow-x: clip;
+}
+
+.ambientLight {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(120px);
+  opacity: 0.12;
+  background: radial-gradient(
+    circle,
+    hsl(258 60% 60% / 0.6),
+    hsl(220 80% 55% / 0.3),
+    transparent 70%
+  );
+  animation: v34-drift 30s linear infinite;
+}
+
+@keyframes v34-drift {
+  0% {
+    top: -200px;
+    left: -100px;
+  }
+  25% {
+    top: 20%;
+    left: 60%;
+  }
+  50% {
+    top: 50%;
+    left: 10%;
+  }
+  75% {
+    top: 30%;
+    left: 70%;
+  }
+  100% {
+    top: -200px;
+    left: -100px;
+  }
+}
+
+.heroGradient {
+  background:
+    radial-gradient(900px 500px at 30% 15%, hsl(258 60% 60% / 0.06), transparent 60%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size:
+    auto,
+    60px 60px,
+    60px 60px;
+}
+
+.enter {
+  animation: v34-enter 850ms cubic-bezier(0.22, 0.68, 0, 1) both;
+}
+
+@keyframes v34-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.spotlight {
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(ellipse at center, hsl(258 60% 60% / 0.06), transparent 70%);
+  pointer-events: none;
+}
+
+.formGlow {
+  position: relative;
+}
+
+.formGlow::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 1.5rem;
+  background: hsl(258 60% 60% / 0.08);
+  filter: blur(24px);
+  animation: v34-breathe 5s ease-in-out infinite;
+}
+
+@keyframes v34-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.glowCard {
+  transition:
+    box-shadow 400ms ease,
+    transform 350ms cubic-bezier(0.22, 0.68, 0, 1),
+    border-color 350ms ease;
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04);
+}
+
+.glowCard:hover {
+  transform: translateY(-3px);
+  border-color: hsl(258 60% 60% / 0.18);
+  box-shadow:
+    0 0 0 1px hsl(258 60% 60% / 0.06),
+    0 4px 16px hsl(258 60% 60% / 0.08),
+    0 12px 32px hsl(0 0% 0% / 0.04);
+}
+
+.statHighlight {
+  position: relative;
+  display: inline-block;
+}
+
+.statHighlight::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(258 60% 60% / 0.2),
+    hsl(258 60% 60% / 0.4),
+    hsl(258 60% 60% / 0.2)
+  );
+  transition:
+    left 300ms ease,
+    right 300ms ease,
+    background 300ms ease;
+}
+
+.statCard:hover .statHighlight::after {
+  left: 5%;
+  right: 5%;
+  background: linear-gradient(
+    90deg,
+    hsl(258 60% 60% / 0.3),
+    hsl(258 60% 60% / 0.6),
+    hsl(258 60% 60% / 0.3)
+  );
+}
+
+.statCard {
+  transition: transform 300ms cubic-bezier(0.22, 0.68, 0, 1);
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+}
+
+.premiumShadow {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.03),
+    0 4px 12px hsl(0 0% 0% / 0.03),
+    0 12px 32px hsl(258 60% 60% / 0.04);
+}
+
+.stepConnector {
+  position: relative;
+}
+
+.stepConnector::after {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 56px;
+  bottom: -24px;
+  width: 1px;
+  background: linear-gradient(to bottom, hsl(258 60% 60% / 0.15), transparent);
+}
+
+.stepConnectorLast::after {
+  display: none;
+}
+
+.ctaGradient {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    hsl(258 60% 60% / 0.02) 30%,
+    hsl(258 60% 60% / 0.04) 60%,
+    hsl(258 60% 60% / 0.02)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambientLight,
+  .formGlow::before,
+  .enter {
+    animation: none !important;
+  }
+  .glowCard,
+  .statCard {
+    transition: none !important;
+  }
+}

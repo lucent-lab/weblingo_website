@@ -1,0 +1,113 @@
+.root {
+  --background: 260 20% 6%;
+  --foreground: 0 0% 96%;
+  --card: 260 16% 10%;
+  --card-foreground: 0 0% 96%;
+  --popover: 260 16% 10%;
+  --popover-foreground: 0 0% 96%;
+  --primary: 330 100% 60%;
+  --primary-foreground: 260 20% 6%;
+  --secondary: 260 12% 14%;
+  --secondary-foreground: 0 0% 96%;
+  --muted: 260 12% 14%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 160 100% 50%;
+  --accent-foreground: 260 20% 6%;
+  --destructive: 0 80% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 260 14% 22%;
+  --input: 260 14% 22%;
+  --ring: 330 100% 60%;
+  --radius: 1.5rem;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  position: relative;
+  overflow-x: clip;
+}
+
+.neonGlow {
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  opacity: 0.35;
+  filter: blur(80px);
+  background-image:
+    radial-gradient(500px 400px at 20% 15%, rgba(255, 51, 153, 0.45), transparent),
+    radial-gradient(400px 350px at 80% 25%, rgba(0, 255, 170, 0.35), transparent),
+    radial-gradient(450px 300px at 50% 80%, rgba(100, 50, 255, 0.3), transparent);
+  animation: v27-glow 12s ease-in-out infinite alternate;
+}
+
+@keyframes v27-glow {
+  from {
+    transform: translate3d(-1%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1%, 1%, 0) scale(1.05);
+  }
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.neonCard {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 51, 153, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.neonCard:hover {
+  border-color: rgba(255, 51, 153, 0.3);
+  box-shadow:
+    0 0 0 1px rgba(255, 51, 153, 0.15),
+    0 0 30px rgba(255, 51, 153, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.neonPrimary {
+  text-shadow:
+    0 0 10px rgba(255, 51, 153, 0.5),
+    0 0 40px rgba(255, 51, 153, 0.2);
+}
+
+.neonAccent {
+  text-shadow:
+    0 0 10px rgba(0, 255, 170, 0.5),
+    0 0 40px rgba(0, 255, 170, 0.2);
+}
+
+.enter {
+  animation: v27-enter 750ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes v27-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neonGlow {
+    animation: none !important;
+  }
+  .enter {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,128 @@
+.root {
+  --background: 232 40% 5%;
+  --foreground: 210 20% 92%;
+  --card: 232 32% 8%;
+  --card-foreground: 210 20% 92%;
+  --popover: 232 32% 8%;
+  --popover-foreground: 210 20% 92%;
+  --primary: 172 80% 50%;
+  --primary-foreground: 232 40% 5%;
+  --secondary: 232 24% 12%;
+  --secondary-foreground: 210 20% 92%;
+  --muted: 232 24% 12%;
+  --muted-foreground: 210 10% 60%;
+  --accent: 280 72% 62%;
+  --accent-foreground: 232 40% 5%;
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 232 18% 18%;
+  --input: 232 18% 18%;
+  --ring: 172 80% 50%;
+  --radius: 1.1rem;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  position: relative;
+  overflow-x: clip;
+}
+
+.aurora {
+  position: fixed;
+  inset: -40%;
+  pointer-events: none;
+  opacity: 0.45;
+  filter: blur(100px) saturate(150%);
+  background-image:
+    radial-gradient(ellipse 600px 400px at 15% 10%, rgba(45, 212, 191, 0.5), transparent),
+    radial-gradient(ellipse 500px 350px at 75% 15%, rgba(168, 85, 247, 0.4), transparent),
+    radial-gradient(ellipse 400px 300px at 50% 80%, rgba(56, 189, 248, 0.3), transparent),
+    radial-gradient(ellipse 300px 200px at 85% 70%, rgba(236, 72, 153, 0.25), transparent);
+  animation: v22-aurora 20s ease-in-out infinite alternate;
+}
+
+@keyframes v22-aurora {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate3d(3%, -2%, 0) rotate(1deg) scale(1.04);
+  }
+  66% {
+    transform: translate3d(-2%, 1%, 0) rotate(-1deg) scale(1.02);
+  }
+  100% {
+    transform: translate3d(1%, 2%, 0) rotate(0.5deg) scale(1.06);
+  }
+}
+
+.stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.8) 0.5px, transparent 0.6px),
+    radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.6) 0.4px, transparent 0.5px),
+    radial-gradient(circle at 70% 15%, rgba(255, 255, 255, 0.7) 0.5px, transparent 0.6px),
+    radial-gradient(circle at 90% 60%, rgba(255, 255, 255, 0.5) 0.4px, transparent 0.5px),
+    radial-gradient(circle at 25% 75%, rgba(255, 255, 255, 0.6) 0.3px, transparent 0.4px),
+    radial-gradient(circle at 60% 85%, rgba(255, 255, 255, 0.5) 0.4px, transparent 0.5px);
+  background-size:
+    200px 200px,
+    150px 150px,
+    180px 180px,
+    220px 220px,
+    170px 170px,
+    190px 190px;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.glassPanel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 1px rgba(45, 212, 191, 0.15),
+    0 32px 80px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+}
+
+.glowRing {
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.2),
+    0 0 30px rgba(45, 212, 191, 0.08);
+}
+
+.enter {
+  animation: v22-enter 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes v22-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora {
+    animation: none !important;
+  }
+  .enter {
+    animation: none !important;
+  }
+}
