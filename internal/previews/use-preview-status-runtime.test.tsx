@@ -31,34 +31,35 @@ describe("usePreviewStatusRuntime", () => {
 
     const realSetInterval = window.setInterval.bind(window);
     const realClearInterval = window.clearInterval.bind(window);
-    vi.spyOn(window, "setInterval").mockImplementation(
-      ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
-        if (timeout === DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS) {
-          const id = nextIntervalId++;
-          activeIntervals.add(id);
-          void handler;
-          void args;
-          return id;
-        }
-        return realSetInterval(handler, timeout, ...(args as []));
-      }) as typeof window.setInterval,
-    );
-    vi.spyOn(window, "clearInterval").mockImplementation(
-      ((id: number) => {
-        if (activeIntervals.has(id)) {
-          activeIntervals.delete(id);
-          return;
-        }
-        realClearInterval(id);
-      }) as typeof window.clearInterval,
-    );
+    vi.spyOn(window, "setInterval").mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number,
+      ...args: unknown[]
+    ) => {
+      if (timeout === DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS) {
+        const id = nextIntervalId++;
+        activeIntervals.add(id);
+        void handler;
+        void args;
+        return id;
+      }
+      return realSetInterval(handler, timeout, ...(args as []));
+    }) as typeof window.setInterval);
+    vi.spyOn(window, "clearInterval").mockImplementation(((id: number) => {
+      if (activeIntervals.has(id)) {
+        activeIntervals.delete(id);
+        return;
+      }
+      realClearInterval(id);
+    }) as typeof window.clearInterval);
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ status: "processing" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ status: "processing" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
       ),
     );
   });

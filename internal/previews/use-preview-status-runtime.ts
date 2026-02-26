@@ -32,9 +32,7 @@ export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
 }
 
-function resolveErrorPayload(
-  payload: Record<string, unknown> | null,
-): {
+function resolveErrorPayload(payload: Record<string, unknown> | null): {
   code: PreviewErrorCode | null;
   stage: PreviewStage | null;
   message: string;
@@ -248,7 +246,9 @@ export function usePreviewStatusRuntime() {
 
     const tick = async () => {
       const now = Date.now();
-      const dueJobs = jobs.filter((job) => isPreviewStatusCenterJobActive(job) && now >= job.nextPollAt);
+      const dueJobs = jobs.filter(
+        (job) => isPreviewStatusCenterJobActive(job) && now >= job.nextPollAt,
+      );
 
       await Promise.all(
         dueJobs.map(async (job) => {

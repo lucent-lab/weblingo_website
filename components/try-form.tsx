@@ -184,10 +184,7 @@ export function TryForm({
     normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase();
   const inputsDisabled = disabled;
   const isGenerateDisabled =
-    inputsDisabled ||
-    !trimmedUrl ||
-    (showEmailField && !trimmedEmail) ||
-    isSameLanguage;
+    inputsDisabled || !trimmedUrl || (showEmailField && !trimmedEmail) || isSameLanguage;
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -261,7 +258,12 @@ export function TryForm({
   }, [jobs, showEmailField]);
 
   useEffect(() => {
-    if (trackedJob && (trackedJob.status === "ready" || trackedJob.status === "failed" || trackedJob.status === "expired")) {
+    if (
+      trackedJob &&
+      (trackedJob.status === "ready" ||
+        trackedJob.status === "failed" ||
+        trackedJob.status === "expired")
+    ) {
       timedOutRef.current = false;
       setTimedOut(false);
       setTimedOutWithEmail(false);
@@ -348,7 +350,10 @@ export function TryForm({
     return t("try.error.default");
   }
 
-  function resolveErrorFromPayload(data: Record<string, unknown>, fallback?: string): ResolvedPreviewError {
+  function resolveErrorFromPayload(
+    data: Record<string, unknown>,
+    fallback?: string,
+  ): ResolvedPreviewError {
     const details =
       data.details && typeof data.details === "object"
         ? (data.details as Record<string, unknown>)
@@ -425,7 +430,9 @@ export function TryForm({
     }
     setCheckingStatus(true);
     try {
-      const response = await fetch(`/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`);
+      const response = await fetch(
+        `/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`,
+      );
       const bodyText = await response.text();
       let payload: Record<string, unknown> | null = null;
       if (bodyText) {
@@ -517,7 +524,9 @@ export function TryForm({
   function connectSSE(previewId: string, statusToken: string) {
     closeEventSource();
 
-    const es = new EventSource(`/api/previews/${previewId}/stream?token=${encodeURIComponent(statusToken)}`);
+    const es = new EventSource(
+      `/api/previews/${previewId}/stream?token=${encodeURIComponent(statusToken)}`,
+    );
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -782,7 +791,8 @@ export function TryForm({
         const payload = await response.json();
         const previewId = typeof payload?.previewId === "string" ? payload.previewId : null;
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
-        const immediatePreview = typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
+        const immediatePreview =
+          typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
 
         if (payload?.status === "failed") {
           const resolved = resolveErrorFromPayload(payload);
@@ -914,7 +924,9 @@ export function TryForm({
 
           {showEmailField ? (
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-foreground">{t("try.form.emailLabel")}</span>
+              <span className="text-sm font-medium text-foreground">
+                {t("try.form.emailLabel")}
+              </span>
               <Input
                 value={email}
                 onChange={(event) => {
@@ -1004,7 +1016,9 @@ export function TryForm({
 
             {trackedJob.previewUrl ? (
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-primary/80">{t("try.preview.linkLabel")}</span>
+                <span className="text-xs font-medium text-primary/80">
+                  {t("try.preview.linkLabel")}
+                </span>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input
                     value={trackedJob.previewUrl}

@@ -444,7 +444,12 @@ describe("TryForm preview status", () => {
         status: phase.status,
         stage: phase.stage,
         error: phase.status === "failed" ? "Preview failed." : null,
-        errorCode: phase.status === "failed" ? "unknown" : phase.status === "expired" ? "preview_expired" : null,
+        errorCode:
+          phase.status === "failed"
+            ? "unknown"
+            : phase.status === "expired"
+              ? "preview_expired"
+              : null,
         errorStage: phase.status === "failed" ? "generating_preview" : null,
       });
 
@@ -473,7 +478,11 @@ describe("TryForm preview status", () => {
           previewUrl: null,
           error: phase.status === "failed" ? "Preview failed." : null,
           errorCode:
-            phase.status === "failed" ? "unknown" : phase.status === "expired" ? "preview_expired" : null,
+            phase.status === "failed"
+              ? "unknown"
+              : phase.status === "expired"
+                ? "preview_expired"
+                : null,
           errorStage: phase.status === "failed" ? "generating_preview" : null,
           createdAt: 1,
           updatedAt: 1,

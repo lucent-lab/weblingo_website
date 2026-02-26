@@ -400,7 +400,9 @@ describe("status-center-store", () => {
   });
 
   it("keeps parsing legacy delimiter request keys", () => {
-    const parsed = parsePreviewStatusCenterRequestKey("https://legacy.example.com|en|fr|old@example.com");
+    const parsed = parsePreviewStatusCenterRequestKey(
+      "https://legacy.example.com|en|fr|old@example.com",
+    );
 
     expect(parsed).toEqual({
       sourceUrl: "https://legacy.example.com",

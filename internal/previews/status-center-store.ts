@@ -8,7 +8,12 @@ import {
   type PreviewJobPhase,
   type PreviewJobUpsertInput,
 } from "./preview-job-machine";
-import { isPreviewErrorCode, isPreviewStage, type PreviewErrorCode, type PreviewStage } from "./preview-sse";
+import {
+  isPreviewErrorCode,
+  isPreviewStage,
+  type PreviewErrorCode,
+  type PreviewStage,
+} from "./preview-sse";
 
 export const PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-jobs:v2";
 export const LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-status-center:v1";
@@ -273,7 +278,9 @@ export function comparePreviewStatusCenterJobs(
     return createdB - createdA;
   }
 
-  const previewIdDiff = normalizePreviewId(a.previewId).localeCompare(normalizePreviewId(b.previewId));
+  const previewIdDiff = normalizePreviewId(a.previewId).localeCompare(
+    normalizePreviewId(b.previewId),
+  );
   if (previewIdDiff !== 0) {
     return previewIdDiff;
   }
@@ -581,10 +588,14 @@ function migrateLegacyJobsFromStorage(now: number): {
       sourceUrl: parsedRequestKey?.sourceUrl ?? existing.sourceUrl,
       sourceLang: parsedRequestKey?.sourceLang ?? existing.sourceLang,
       targetLang: parsedRequestKey?.targetLang ?? existing.targetLang,
-      status: terminal ? existing.status : resolveNextPreviewJobPhase(existing.status, "processing"),
+      status: terminal
+        ? existing.status
+        : resolveNextPreviewJobPhase(existing.status, "processing"),
       stage: terminal ? null : existing.stage,
       updatedAt: Math.max(existing.updatedAt, pending.updatedAt),
-      nextPollAt: terminal ? Number.POSITIVE_INFINITY : now + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+      nextPollAt: terminal
+        ? Number.POSITIVE_INFINITY
+        : now + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
     });
   } else {
     const status: PreviewStatusCenterJobStatus = "processing";
@@ -678,9 +689,7 @@ function applyPreviewJobEvent(previewId: string, event: PreviewJobEvent) {
     return;
   }
 
-  commitJobs(
-    state.jobs.map((job, jobIndex) => (jobIndex === index ? normalizeJob(next) : job)),
-  );
+  commitJobs(state.jobs.map((job, jobIndex) => (jobIndex === index ? normalizeJob(next) : job)));
 }
 
 export function hydratePreviewStatusCenterStore() {
@@ -834,7 +843,10 @@ export function upsertPreviewStatusCenterJob(input: PreviewStatusCenterJobInput)
   });
 }
 
-export function updatePreviewStatusCenterJob(previewId: string, patch: PreviewStatusCenterJobPatch) {
+export function updatePreviewStatusCenterJob(
+  previewId: string,
+  patch: PreviewStatusCenterJobPatch,
+) {
   dispatchPreviewStatusCenterEvent({
     type: "patch_job",
     previewId,
@@ -862,7 +874,11 @@ export function removePreviewStatusCenterJob(previewId: string) {
   });
 }
 
-export function setPreviewStatusCenterJobRetry(previewId: string, retryCount: number, delayMs: number) {
+export function setPreviewStatusCenterJobRetry(
+  previewId: string,
+  retryCount: number,
+  delayMs: number,
+) {
   dispatchPreviewStatusCenterEvent({
     type: "set_retry",
     previewId,

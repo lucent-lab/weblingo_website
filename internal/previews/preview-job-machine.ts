@@ -209,7 +209,11 @@ function reduceUpsert(
   };
 }
 
-function reducePatch(existing: PreviewJob, patch: PreviewJobPatch, context: ReducePreviewJobContext): PreviewJob {
+function reducePatch(
+  existing: PreviewJob,
+  patch: PreviewJobPatch,
+  context: ReducePreviewJobContext,
+): PreviewJob {
   const status =
     patch.status === undefined
       ? existing.status

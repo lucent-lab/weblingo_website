@@ -2,10 +2,9 @@ import { execSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 function listTrackedTryFormMounts(): string[] {
-  const output = execSync(
-    'git grep -l -E "<TryForm|TryForm\\(" -- app modules',
-    { encoding: "utf8" },
-  );
+  const output = execSync('git grep -l -E "<TryForm|TryForm\\(" -- app modules', {
+    encoding: "utf8",
+  });
   return output
     .split("\n")
     .map((line) => line.trim())
