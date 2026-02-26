@@ -77,11 +77,13 @@ export function usePreviewStatusRuntime() {
   const inFlightRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (previewStatusRuntimeOwner === null || previewStatusRuntimeOwner === ownerIdRef.current) {
-      previewStatusRuntimeOwner = ownerIdRef.current;
+    const ownerId = ownerIdRef.current;
+
+    if (previewStatusRuntimeOwner === null || previewStatusRuntimeOwner === ownerId) {
+      previewStatusRuntimeOwner = ownerId;
       isOwnerRef.current = true;
       return () => {
-        if (previewStatusRuntimeOwner === ownerIdRef.current) {
+        if (previewStatusRuntimeOwner === ownerId) {
           previewStatusRuntimeOwner = null;
         }
         isOwnerRef.current = false;
