@@ -1158,7 +1158,10 @@ export function TryForm({
                   <li
                     key={step.id}
                     aria-current={step.state === "current" ? "step" : undefined}
-                    className="relative flex gap-2.5"
+                    className={cn(
+                      "relative flex gap-2.5",
+                      step.state === "current" && "-ml-2 rounded-lg bg-primary/8 px-2 py-2",
+                    )}
                   >
                     {!isLast ? (
                       <span
@@ -1174,10 +1177,16 @@ export function TryForm({
                       className={cn(
                         "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background",
                         step.state === "complete" && "border-primary bg-primary text-primary-foreground",
-                        step.state === "current" && "border-primary text-primary",
+                        step.state === "current" && "border-primary bg-background text-primary shadow-[0_0_0_3px_rgba(124,92,218,0.12)]",
                         step.state === "upcoming" && "border-border text-muted-foreground",
                       )}
                     >
+                      {step.state === "current" ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0 rounded-full border border-primary/35 animate-pulse"
+                        />
+                      ) : null}
                       {step.state === "complete" ? (
                         <Check className="h-3 w-3" />
                       ) : step.state === "current" ? (
@@ -1321,13 +1330,26 @@ export function TryForm({
       ) : null}
 
       {resolvedError && !isCreating ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <div>{resolvedError}</div>
-          {errorStageMessage ? (
-            <div className="text-xs text-destructive/80">
-              {t("try.error.stageLabel", undefined, { stage: errorStageMessage })}
-            </div>
-          ) : null}
+        <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+          <div className="space-y-1">
+            <div className="font-medium">{resolvedError}</div>
+            {errorStageMessage ? (
+              <div className="text-xs text-destructive/80">
+                {t("try.error.stageLabel", undefined, { stage: errorStageMessage })}
+              </div>
+            ) : null}
+          </div>
+          <Button
+            onClick={() => {
+              void handleGenerate();
+            }}
+            disabled={isGenerateDisabled || isCreating}
+            variant="outline"
+            size="sm"
+            className="w-fit border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/5 hover:text-destructive"
+          >
+            {t("try.action.retry")}
+          </Button>
         </div>
       ) : null}
 

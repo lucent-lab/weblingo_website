@@ -606,6 +606,7 @@
   "try.status.stillProcessing": "処理中...",
   "try.center.dismiss": "閉じる",
   "try.center.retryHint": "プレビューフォームから再試行してください。",
+  "try.action.retry": "プレビューを再試行",
   "try.action.checkStatus": "ステータスを確認",
   "try.action.checkingStatus": "確認中...",
   "try.pending.emailPrompt": "プレビューの準備ができたら通知を受け取る",

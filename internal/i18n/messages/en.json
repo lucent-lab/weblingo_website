@@ -152,6 +152,7 @@
   "try.status.stillProcessing": "Still processing...",
   "try.center.dismiss": "Dismiss",
   "try.center.retryHint": "Retry from the Try form.",
+  "try.action.retry": "Retry preview",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking...",
   "try.pending.emailPrompt": "Get notified when your preview is ready",

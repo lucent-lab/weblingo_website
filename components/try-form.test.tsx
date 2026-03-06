@@ -67,6 +67,7 @@ const messages = {
   "try.progress.rendering": "Rendering preview",
   "try.progress.ready": "Ready",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
+  "try.action.retry": "Retry preview",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
   "try.pending.emailPrompt": "Get notified when your preview is ready",
@@ -389,6 +390,7 @@ describe("TryForm preview status", () => {
     renderTryForm();
     await waitFor(() => {
       expect(screen.getByText("Unknown error")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
     });
@@ -905,7 +907,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByDisplayValue("https://expired.example.com")).toBeTruthy();
     });
 
-    const button = screen.getByRole("button", { name: "Generate preview" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: "Retry preview" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
 
     fireEvent.click(button);

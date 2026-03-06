@@ -606,6 +606,7 @@
   "try.status.stillProcessing": "Traitement en cours...",
   "try.center.dismiss": "Fermer",
   "try.center.retryHint": "Relancez depuis le formulaire d'aperçu.",
+  "try.action.retry": "Relancer l'aperçu",
   "try.action.checkStatus": "Vérifier le statut",
   "try.action.checkingStatus": "Vérification...",
   "try.pending.emailPrompt": "Recevez une notification quand votre aperçu est prêt",
