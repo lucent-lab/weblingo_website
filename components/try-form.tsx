@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   createClientTranslator,
+  createLanguageNameResolver,
   getBaseLangTag,
   normalizeLangTag,
   type ClientMessages,
@@ -170,6 +171,7 @@ export function TryForm({
   fieldLayout = "legacy",
 }: TryFormProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
+  const resolveLanguageName = useMemo(() => createLanguageNameResolver(locale), [locale]);
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -206,6 +208,13 @@ export function TryForm({
     () => normalizeLangTag(targetLang) ?? targetLang.trim(),
     [targetLang],
   );
+  const supportedLanguageByTag = useMemo(() => {
+    const map = new Map<string, SupportedLanguage>();
+    for (const language of supportedLanguages) {
+      map.set(language.tag, language);
+    }
+    return map;
+  }, [supportedLanguages]);
 
   const jobs = useSyncExternalStore(
     subscribePreviewStatusCenterStore,
@@ -233,6 +242,7 @@ export function TryForm({
   const isPreviewRunning =
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
   const isRequestInFlight = isPreviewRunning;
+  const showInProgressCard = isPreviewRunning && !timedOut;
   const showGeneratingState = isSameRequest && mode === "creating";
   const showEditableControls = !isRequestInFlight;
   const isSameLanguage =
@@ -241,7 +251,6 @@ export function TryForm({
     normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase();
   const inputsDisabled = disabled;
   const isGenerateDisabled = inputsDisabled || !trimmedUrl || isSameLanguage;
-  const showRequestSummary = isRequestInFlight;
   const progressSteps = useMemo<PreviewProgressStep[]>(() => {
     const currentStepId = resolvePreviewProgressStepId(mode, trackedJob);
     const currentStepIndex = PREVIEW_PROGRESS_STEP_ORDER.indexOf(currentStepId);
@@ -270,6 +279,41 @@ export function TryForm({
       };
     });
   }, [mode, trackedJob, t]);
+  const compactSourceUrl = useMemo(() => {
+    if (!trimmedUrl) {
+      return "";
+    }
+
+    try {
+      const parsed = new URL(trimmedUrl);
+      const path = parsed.pathname === "/" ? "" : parsed.pathname;
+      return `${parsed.host}${path}`;
+    } catch {
+      return trimmedUrl;
+    }
+  }, [trimmedUrl]);
+  const sourceLanguageLabel = useMemo(() => {
+    const fallbackEnglishName =
+      supportedLanguageByTag.get(sourceLang)?.englishName ??
+      supportedLanguageByTag.get(normalizedSourceLang)?.englishName ??
+      null;
+    return resolveLanguageName(sourceLang, { fallbackEnglishName });
+  }, [normalizedSourceLang, resolveLanguageName, sourceLang, supportedLanguageByTag]);
+  const targetLanguageLabel = useMemo(() => {
+    const fallbackEnglishName =
+      supportedLanguageByTag.get(targetLang)?.englishName ??
+      supportedLanguageByTag.get(normalizedTargetLang)?.englishName ??
+      null;
+    return resolveLanguageName(targetLang, { fallbackEnglishName });
+  }, [normalizedTargetLang, resolveLanguageName, supportedLanguageByTag, targetLang]);
+  const requestSummary = useMemo(() => {
+    const sourceLabel = sourceLanguageLabel || sourceLang;
+    const targetLabel = targetLanguageLabel || targetLang;
+
+    return compactSourceUrl
+      ? `${compactSourceUrl} • ${sourceLabel} -> ${targetLabel}`
+      : `${sourceLabel} -> ${targetLabel}`;
+  }, [compactSourceUrl, sourceLang, sourceLanguageLabel, targetLang, targetLanguageLabel]);
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -1100,125 +1144,119 @@ export function TryForm({
         </div>
       ) : null}
 
-      {showRequestSummary ? (
-        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-          <p className="text-xs font-medium text-primary/80">{t("try.form.requestSummaryTitle")}</p>
-          <dl className="mt-2 grid gap-1 text-sm">
-            <div className="flex flex-wrap gap-1">
-              <dt className="font-medium text-primary/90">{t("try.form.urlLabel")}</dt>
-              <dd className="break-all font-normal text-foreground">{trimmedUrl}</dd>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <dt className="font-medium text-primary/90">{t("try.form.languageTitle")}</dt>
-              <dd className="font-normal text-foreground">
-                {sourceLang}
-                {" -> "}
-                {targetLang}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      ) : null}
-
-      {statusMessage && isPreviewRunning && !timedOut ? (
-        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-4 text-primary">
+      {statusMessage && showInProgressCard ? (
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-4 text-primary shadow-sm sm:px-5">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{statusMessage}</span>
-            <span className="text-xs text-primary/80">{t("try.status.processingHint")}</span>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary/70">
+              {t("try.form.requestSummaryTitle")}
+            </p>
+            <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
           </div>
-          <ol aria-label={t("try.progress.label")} className="mt-4 space-y-3">
-            {progressSteps.map((step, index) => {
-              const isLast = index === progressSteps.length - 1;
-              return (
-                <li
-                  key={step.id}
-                  aria-current={step.state === "current" ? "step" : undefined}
-                  className="relative flex gap-3"
-                >
-                  {!isLast ? (
+
+          <div className="mt-4 grid gap-5 md:grid-cols-[9.5rem_minmax(0,1fr)] md:items-start">
+            <ol aria-label={t("try.progress.label")} className="space-y-3 md:pr-2">
+              {progressSteps.map((step, index) => {
+                const isLast = index === progressSteps.length - 1;
+                return (
+                  <li
+                    key={step.id}
+                    aria-current={step.state === "current" ? "step" : undefined}
+                    className="relative flex gap-3"
+                  >
+                    {!isLast ? (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute left-[0.6875rem] top-6 h-[calc(100%+0.35rem)] w-px",
+                          step.state === "complete" ? "bg-primary/35" : "bg-border/80",
+                        )}
+                      />
+                    ) : null}
+
                     <span
-                      aria-hidden
                       className={cn(
-                        "absolute left-[0.6875rem] top-6 h-[calc(100%+0.25rem)] w-px",
-                        step.state === "complete" ? "bg-primary/35" : "bg-border/80",
+                        "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background",
+                        step.state === "complete" && "border-primary bg-primary text-primary-foreground",
+                        step.state === "current" && "border-primary text-primary",
+                        step.state === "upcoming" && "border-border text-muted-foreground",
                       )}
-                    />
-                  ) : null}
+                    >
+                      {step.state === "complete" ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : step.state === "current" ? (
+                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                      )}
+                    </span>
 
-                  <span
-                    className={cn(
-                      "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background",
-                      step.state === "complete" && "border-primary bg-primary text-primary-foreground",
-                      step.state === "current" && "border-primary text-primary",
-                      step.state === "upcoming" && "border-border text-muted-foreground",
-                    )}
-                  >
-                    {step.state === "complete" ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : step.state === "current" ? (
-                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <span className="h-2 w-2 rounded-full bg-current opacity-60" />
-                    )}
-                  </span>
+                    <span
+                      className={cn(
+                        "pt-0.5 text-sm",
+                        step.state === "current" && "font-medium text-primary",
+                        step.state === "complete" && "text-foreground",
+                        step.state === "upcoming" && "text-muted-foreground",
+                      )}
+                    >
+                      {step.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
 
-                  <span
-                    className={cn(
-                      "pt-0.5 text-sm",
-                      step.state === "current" && "font-medium text-primary",
-                      step.state === "complete" && "text-foreground",
-                      step.state === "upcoming" && "text-muted-foreground",
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ) : null}
+            <div className="space-y-4">
+              <div className="rounded-lg border border-primary/15 bg-background/80 p-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-semibold text-foreground">{statusMessage}</span>
+                  <span className="text-sm text-muted-foreground">{t("try.status.processingHint")}</span>
+                </div>
+              </div>
 
-      {showEmailField && isPreviewRunning && !timedOut && pendingEmailStatus !== "saved" ? (
-        <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-4 py-3">
-          <p className="mb-2 text-sm text-muted-foreground">{t("try.pending.emailPrompt")}</p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <Input
-              value={pendingEmail}
-              onChange={(event) => setPendingEmail(event.currentTarget.value)}
-              placeholder={t("try.form.emailPlaceholder")}
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              disabled={pendingEmailStatus === "submitting"}
-              className="h-9 text-sm"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={
-                pendingEmailStatus === "submitting" ||
-                !pendingEmail.trim() ||
-                !isValidEmail(pendingEmail)
-              }
-              onClick={() => void handleSubmitPendingEmail()}
-              className="shrink-0"
-            >
-              {pendingEmailStatus === "submitting"
-                ? t("try.pending.emailSubmitting")
-                : t("try.pending.emailSubmit")}
-            </Button>
+              {showEmailField ? (
+                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                  {pendingEmailStatus === "saved" ? (
+                    <p className="text-sm font-medium text-foreground">{t("try.pending.emailSaved")}</p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm font-medium text-foreground">{t("try.pending.emailPrompt")}</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input
+                          value={pendingEmail}
+                          onChange={(event) => setPendingEmail(event.currentTarget.value)}
+                          placeholder={t("try.form.emailPlaceholder")}
+                          type="email"
+                          autoComplete="email"
+                          inputMode="email"
+                          disabled={pendingEmailStatus === "submitting"}
+                          className="h-9 text-sm"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            pendingEmailStatus === "submitting" ||
+                            !pendingEmail.trim() ||
+                            !isValidEmail(pendingEmail)
+                          }
+                          onClick={() => void handleSubmitPendingEmail()}
+                          className="shrink-0"
+                        >
+                          {pendingEmailStatus === "submitting"
+                            ? t("try.pending.emailSubmitting")
+                            : t("try.pending.emailSubmit")}
+                        </Button>
+                      </div>
+                      {pendingEmailStatus === "error" ? (
+                        <p className="text-xs text-destructive">{t("try.pending.emailError")}</p>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
-          {pendingEmailStatus === "error" ? (
-            <p className="mt-1 text-xs text-destructive">{t("try.pending.emailError")}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showEmailField && isPreviewRunning && !timedOut && pendingEmailStatus === "saved" ? (
-        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-          {t("try.pending.emailSaved")}
         </div>
       ) : null}
 

@@ -356,8 +356,7 @@ describe("TryForm preview status", () => {
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("Submitted request")).toBeTruthy();
-      expect(screen.getByText("URL")).toBeTruthy();
-      expect(screen.getByText("https://restore.example.com")).toBeTruthy();
+      expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
   });
 
@@ -611,7 +610,7 @@ describe("TryForm preview status", () => {
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("Submitted request")).toBeTruthy();
-      expect(screen.getByText("https://restore.example.com")).toBeTruthy();
+      expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
   });
@@ -651,10 +650,8 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByText("Pending")).toBeTruthy();
       expect(screen.getByText("Submitted request")).toBeTruthy();
-      expect(screen.getByText("Languages")).toBeTruthy();
-      expect(screen.getByText("en -> fr")).toBeTruthy();
+      expect(screen.getByText("summary.example.com • English -> French")).toBeTruthy();
     });
-    expect(screen.getByText("https://summary.example.com")).toBeTruthy();
   });
 
   it("renders a compact progress stepper for running previews", async () => {
@@ -695,6 +692,7 @@ describe("TryForm preview status", () => {
 
     const progressList = screen.getByRole("list", { name: "Preview progress" });
     expect(progressList).toBeTruthy();
+    expect(screen.getByText("stepper.example.com • English -> French")).toBeTruthy();
     expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Translating");
     expect(screen.getByText("Queued")).toBeTruthy();
     expect(screen.getByText("Fetching page")).toBeTruthy();
