@@ -1147,27 +1147,25 @@ export function TryForm({
       {statusMessage && showInProgressCard ? (
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-4 text-primary shadow-sm sm:px-5">
           <div className="flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary/70">
-              {t("try.form.requestSummaryTitle")}
-            </p>
+            <p className="text-[11px] font-medium text-primary/60">{t("try.form.requestSummaryTitle")}</p>
             <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
           </div>
 
-          <div className="mt-4 grid gap-5 md:grid-cols-[9.5rem_minmax(0,1fr)] md:items-start">
-            <ol aria-label={t("try.progress.label")} className="space-y-3 md:pr-2">
+          <div className="mt-4 grid gap-5 md:grid-cols-[8.5rem_minmax(0,1fr)] md:items-start">
+            <ol aria-label={t("try.progress.label")} className="space-y-2.5 md:pr-2">
               {progressSteps.map((step, index) => {
                 const isLast = index === progressSteps.length - 1;
                 return (
                   <li
                     key={step.id}
                     aria-current={step.state === "current" ? "step" : undefined}
-                    className="relative flex gap-3"
+                    className="relative flex gap-2.5"
                   >
                     {!isLast ? (
                       <span
                         aria-hidden
                         className={cn(
-                          "absolute left-[0.6875rem] top-6 h-[calc(100%+0.35rem)] w-px",
+                          "absolute left-[0.5625rem] top-5 h-[calc(100%+0.3rem)] w-px",
                           step.state === "complete" ? "bg-primary/35" : "bg-border/80",
                         )}
                       />
@@ -1175,27 +1173,27 @@ export function TryForm({
 
                     <span
                       className={cn(
-                        "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background",
+                        "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background",
                         step.state === "complete" && "border-primary bg-primary text-primary-foreground",
                         step.state === "current" && "border-primary text-primary",
                         step.state === "upcoming" && "border-border text-muted-foreground",
                       )}
                     >
                       {step.state === "complete" ? (
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-3 w-3" />
                       ) : step.state === "current" ? (
-                        <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                        <LoaderCircle className="h-3 w-3 animate-spin" />
                       ) : (
-                        <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
                       )}
                     </span>
 
                     <span
                       className={cn(
-                        "pt-0.5 text-sm",
+                        "pt-0.5 text-sm leading-5",
                         step.state === "current" && "font-medium text-primary",
-                        step.state === "complete" && "text-foreground",
-                        step.state === "upcoming" && "text-muted-foreground",
+                        step.state === "complete" && "text-foreground/90",
+                        step.state === "upcoming" && "text-muted-foreground/80",
                       )}
                     >
                       {step.label}
@@ -1206,48 +1204,46 @@ export function TryForm({
             </ol>
 
             <div className="space-y-4">
-              <div className="rounded-lg border border-primary/15 bg-background/80 p-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-base font-semibold text-foreground">{statusMessage}</span>
-                  <span className="text-sm text-muted-foreground">{t("try.status.processingHint")}</span>
-                </div>
+              <div className="space-y-1">
+                <span className="text-2xl font-semibold tracking-tight text-foreground">{statusMessage}</span>
+                <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                  {t("try.status.processingHint")}
+                </p>
               </div>
 
               {showEmailField ? (
-                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                <div className="max-w-sm border-t border-border/70 pt-4">
                   {pendingEmailStatus === "saved" ? (
                     <p className="text-sm font-medium text-foreground">{t("try.pending.emailSaved")}</p>
                   ) : (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm font-medium text-foreground">{t("try.pending.emailPrompt")}</p>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Input
-                          value={pendingEmail}
-                          onChange={(event) => setPendingEmail(event.currentTarget.value)}
-                          placeholder={t("try.form.emailPlaceholder")}
-                          type="email"
-                          autoComplete="email"
-                          inputMode="email"
-                          disabled={pendingEmailStatus === "submitting"}
-                          className="h-9 text-sm"
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            pendingEmailStatus === "submitting" ||
-                            !pendingEmail.trim() ||
-                            !isValidEmail(pendingEmail)
-                          }
-                          onClick={() => void handleSubmitPendingEmail()}
-                          className="shrink-0"
-                        >
-                          {pendingEmailStatus === "submitting"
-                            ? t("try.pending.emailSubmitting")
-                            : t("try.pending.emailSubmit")}
-                        </Button>
-                      </div>
+                      <Input
+                        value={pendingEmail}
+                        onChange={(event) => setPendingEmail(event.currentTarget.value)}
+                        placeholder={t("try.form.emailPlaceholder")}
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        disabled={pendingEmailStatus === "submitting"}
+                        className="h-9 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          pendingEmailStatus === "submitting" ||
+                          !pendingEmail.trim() ||
+                          !isValidEmail(pendingEmail)
+                        }
+                        onClick={() => void handleSubmitPendingEmail()}
+                        className="w-fit"
+                      >
+                        {pendingEmailStatus === "submitting"
+                          ? t("try.pending.emailSubmitting")
+                          : t("try.pending.emailSubmit")}
+                      </Button>
                       {pendingEmailStatus === "error" ? (
                         <p className="text-xs text-destructive">{t("try.pending.emailError")}</p>
                       ) : null}
