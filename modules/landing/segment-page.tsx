@@ -3,23 +3,39 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
+import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
+import { HowStepsTimeline } from "./components/how-steps-timeline";
+import { InViewCountUp } from "./components/in-view-count-up";
 import { landingContent, type LandingSegment } from "@modules/landing/content";
+import styles from "./segment-page.module.css";
+
+type TryFormFieldLayout = "legacy" | "funnel";
 
 export async function LandingSegmentPage({
   locale,
   segment,
+  tryFormFieldLayout = "legacy",
 }: {
   locale: string;
   segment: LandingSegment;
+  tryFormFieldLayout?: TryFormFieldLayout;
 }) {
   const content = landingContent[segment];
   const { messages, t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);
   const supportedLanguages = SUPPORTED_LANGUAGES_STATIC;
+  const shouldRotateHeroTitle = segment === "expansion";
+  const heroOutcomes = content.hero.rotatorOutcomeKeys.map((outcomeKey) => t(outcomeKey));
+  const howSteps = content.how.items.map((item) => ({
+    title: t(item.titleKey),
+    body: t(item.bodyKey),
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,7 +48,15 @@ export async function LandingSegmentPage({
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
               <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
-                {t(content.hero.titleKey)}
+                {shouldRotateHeroTitle ? (
+                  <HeroOutcomeRotator
+                    className={styles.heroTitleRotator}
+                    outcomes={heroOutcomes}
+                    prefix={t(content.hero.rotatorPrefixKey)}
+                  />
+                ) : (
+                  t(content.hero.titleKey)
+                )}
               </h1>
               <p className="mb-5 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t(content.hero.subtitleKey)}
@@ -42,36 +66,61 @@ export async function LandingSegmentPage({
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
-              <div className="relative rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur lg:max-w-md">
+              <div className="relative rounded-2xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     {t("try.header.tagline")}
                   </span>
                 </div>
-                <h2 className="mb-2 text-lg font-semibold text-foreground">
-                  {t("try.header.title")}
-                </h2>
-                <p className="mb-6 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                <TryPanelHeader messages={messages} />
                 <TryForm
                   locale={locale}
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
                   showEmailField
+                  showInlineStatusText={false}
+                  fieldLayout={tryFormFieldLayout}
+                  primaryButtonClassName={styles.buttonMicro}
                 />
               </div>
             </div>
           </div>
           <div className="mt-12 grid gap-6 text-center sm:grid-cols-3">
-            {content.stats.map((stat) => (
-              <div
-                key={stat.valueKey}
-                className="rounded-2xl border border-border bg-card/80 px-6 py-5 shadow-sm"
-              >
-                <p className="text-3xl font-semibold text-foreground">{t(stat.valueKey)}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{t(stat.labelKey)}</p>
-              </div>
-            ))}
+            {content.stats.map((stat, index) => {
+              const rawStatValue = t(stat.valueKey);
+              const parsedStatValue = Number.parseInt(rawStatValue.replace(/[^0-9]/g, ""), 10);
+              const statSuffix = rawStatValue.replace(/[0-9]/g, "").trim();
+              const shouldCountUp =
+                index === 0 && Number.isFinite(parsedStatValue) && parsedStatValue > 0;
+
+              return (
+                <div
+                  key={stat.valueKey}
+                  className={cn(
+                    "rounded-2xl border border-border bg-card/80 px-6 py-5 shadow-sm",
+                    styles.statCard,
+                  )}
+                  style={{
+                    animationDelay: `${index * 110}ms`,
+                  }}
+                >
+                  <p className="text-3xl font-semibold text-foreground">
+                    {shouldCountUp ? (
+                      <InViewCountUp
+                        ariaLabel={`${rawStatValue} ${t(stat.labelKey)}`}
+                        delayMs={index * 90}
+                        suffix={statSuffix}
+                        target={parsedStatValue}
+                      />
+                    ) : (
+                      rawStatValue
+                    )}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{t(stat.labelKey)}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -89,7 +138,38 @@ export async function LandingSegmentPage({
                   {t(content.pain.costTitleKey)}
                 </p>
                 <p className="mt-2 text-base text-primary">{t(content.pain.costBodyKey)}</p>
-                <p className="mt-3 text-xs text-primary/80">{t("landing.cost.stat")}</p>
+                <div className={styles.socialProofCallout} data-testid="social-proof-callout">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
+                    {t("landing.cost.callout.title")}
+                  </p>
+                  <div className={styles.socialProofStatGrid}>
+                    <article className={styles.socialProofChip}>
+                      <span className={styles.socialProofChipValue}>
+                        <InViewCountUp
+                          ariaLabel={t("landing.cost.callout.stat.1.value")}
+                          suffix="%"
+                          target={76}
+                        />
+                      </span>
+                      <span className={styles.socialProofChipLabel}>
+                        {t("landing.cost.callout.stat.1.label")}
+                      </span>
+                    </article>
+                    <article className={styles.socialProofChip}>
+                      <span className={styles.socialProofChipValue}>
+                        <InViewCountUp
+                          ariaLabel={t("landing.cost.callout.stat.2.value")}
+                          suffix="%"
+                          target={40}
+                        />
+                      </span>
+                      <span className={styles.socialProofChipLabel}>
+                        {t("landing.cost.callout.stat.2.label")}
+                      </span>
+                    </article>
+                  </div>
+                  <p className={styles.socialProofSource}>{t("landing.cost.callout.source")}</p>
+                </div>
               </div>
             </div>
             <div className="grid gap-6">
@@ -145,19 +225,7 @@ export async function LandingSegmentPage({
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground sm:text-4xl">
             {t(content.how.titleKey)}
           </h2>
-          <div className="space-y-8">
-            {content.how.items.map((item, index) => (
-              <div key={item.titleKey} className="flex gap-6">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
-                  {index + 1}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">{t(item.titleKey)}</h3>
-                  <p className="mt-1 text-muted-foreground">{t(item.bodyKey)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <HowStepsTimeline steps={howSteps} />
           <p className="mt-10 text-center text-sm text-muted-foreground">
             {t("landing.expansion.how.risk")}
           </p>
@@ -212,7 +280,11 @@ export async function LandingSegmentPage({
           </h2>
           <p className="mb-10 text-lg text-muted-foreground">{t(content.cta.subtitleKey)}</p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+            <Button
+              asChild
+              size="lg"
+              className={cn("bg-primary hover:bg-primary/90", styles.buttonMicro)}
+            >
               <Link href={`/${locale}#try`}>
                 {t(content.cta.primaryKey)}
                 <ArrowRight className="ml-2 h-4 w-4" />

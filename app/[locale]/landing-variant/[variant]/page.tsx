@@ -23,6 +23,7 @@ const variants = [
   "18",
   "19",
   "20",
+  "37",
 ] as const;
 type LandingVariantId = (typeof variants)[number];
 

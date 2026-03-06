@@ -1,147 +1,79 @@
-# AGENTS.md — WebLingo Marketing Site
+# AGENTS.md — WebLingo Website
 
-This document guides contributors working inside the WebLingo marketing + dashboard site. The goal is to run a single SaaS website today, but structure code so modules can later move into shared packages when new products launch.
+Use this file as the entrypoint for the marketing site and dashboard repo. Keep it focused on task routing, constraints, and validation. Read deeper docs only when the task requires them.
+
+## Start Here
+
+Primary lookup points:
+
+1. `README.md` and `docs/README.md` for local setup and doc map.
+2. `internal/core/env.ts` and `internal/core/env-server.ts` for env contracts.
+3. `docs/backend/DASHBOARD_SPECS.md` for the canonical dashboard capability matrix.
+4. `docs/DEVELOPMENT_GUIDE.md` and `docs/ARCHITECTURE.md` for app structure and architecture.
+5. `content/docs/_generated/*` plus backend bridge docs when working on backend↔website alignment.
+
+Cross-repo docs sync commands:
+
+- `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
+- `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
+
+Minimal validation:
+
+- `corepack pnpm test:contracts`
+- `corepack pnpm check`
 
 ## Project Scope
 
-- Marketing site (home, pricing, legal, contact, checkout flows).
-- Lightweight dashboard surfaces for site onboarding/configuration (Supabase auth + Webhooks worker API).
-- Try-Now previews: create a preview, stream status via SSE, and open the rendered preview URL once ready.
-- Stripe Checkout for subscriptions; webhook to capture lifecycle events.
+- Marketing pages, pricing, legal, contact, and checkout flows.
+- Lightweight dashboard surfaces for onboarding and configuration.
+- Try-Now previews, including create, status, SSE stream, and rendered preview handoff.
+- Stripe Checkout and Stripe webhook lifecycle handling.
 
-## Directory Layout
+## Hard Invariants
 
-- `app/` — Next.js App Router entry points and API routes.
-- `components/` — UI components that stay within this app.
-- `content/` — MDX content (docs + blog) and indexes.
-- `internal/` — Proto-packages (core env parsing, billing, i18n, future auth/db/etc.).
-- `modules/` — Feature modules (pricing tiers, future account/dashboard logic).
-- `styles/` — Tailwind globals.
-- `docs/` — Updated guidance and runbooks.
-- `tests/` — Vitest + Playwright coverage.
+- Keep client and server env handling centralized in `internal/core/env.ts` and `internal/core/env-server.ts`.
+- Localize UI copy via `@internal/i18n`; do not hardcode page or component strings.
+- Preview proxy routes must stay aligned with backend preview contracts:
+  - `POST /api/previews`
+  - `GET /api/previews/:id`
+  - `GET /api/previews/:id/stream`
+- Preview `errorCode` and `stage` enums must stay consistent with backend `webhooks-worker` responses.
+- Stripe routes must verify signatures and preserve metadata needed to associate subscriptions with sites.
+- Logging follows the one-wide-event rule from `docs/LOGGING_POLICY.md`.
+- Do not introduce silent env fallbacks or legacy alias names.
+- Use `https://weblingo.app` for public product links.
 
-## Start Here (Codex Quick Lookup)
-
-- Env source of truth: `internal/core/env.ts` (client) and `internal/core/env-server.ts` (server).
-- Dashboard capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`.
-- Backend bridge pointer and execution report:
-  - `weblingo/docs/backend/DASHBOARD_SPECS.md`
-  - `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
-- Cross-repo docs sync commands:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
-- Minimal validation set:
-  - `corepack pnpm test:contracts`
-  - `corepack pnpm check`
-
-## Environment Variables
-
-Define these in `.env.local` (source of truth: `internal/core/env.ts` + `internal/core/env-server.ts`).
-
-Client (`NEXT_PUBLIC_*`):
-
-- `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_POSTHOG_KEY`
-- `NEXT_PUBLIC_POSTHOG_HOST`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_WEBHOOKS_API_BASE` (Webhooks worker base including `/api`, e.g. `https://api.weblingo.app/api`)
-- `NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS`
-
-Server only:
-
-- `HOME_PAGE_VARIANT` (`classic` | `expansion`, defaults to `expansion`)
-- `PUBLIC_PORTAL_MODE` (`enabled` | `disabled`)
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICING_TABLE_ID` (optional)
-- `STRIPE_PRICING_TABLE_ID_EN` (optional)
-- `STRIPE_PRICING_TABLE_ID_FR` (optional)
-- `STRIPE_PRICING_TABLE_ID_JA` (optional)
-- `SUPABASE_SECRET_KEY`
-- `TRY_NOW_TOKEN` (optional; required to enable server-side preview proxy routes under `app/api/previews/*`)
-- Public form abuse controls:
-- `WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS`
-- `WEBSITE_WAITLIST_MAX_PER_WINDOW`
-- `WEBSITE_WAITLIST_MAX_BODY_BYTES`
-- `WEBSITE_CONTACT_RATE_LIMIT_WINDOW_MS`
-- `WEBSITE_CONTACT_MAX_PER_WINDOW`
-- Preview abuse controls (required when `TRY_NOW_TOKEN` is set):
-- `WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS`
-- `WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW`
-- `WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW`
-- `WEBSITE_PREVIEW_STATUS_MAX_PER_WINDOW`
-- `WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW`
-- `WEBSITE_PREVIEW_MAX_BODY_BYTES`
-- `WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS`
-- `WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS`
-- `WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS`
-- Redis (required):
-- `UPSTASH_REDIS__KV_REST_API_URL` + `UPSTASH_REDIS__KV_REST_API_TOKEN`
-- No legacy alias fallback names are supported in docs/CI; only canonical schema-backed Redis env names are valid.
-
-## Development Principles
-
-- YAGNI: ship the minimal scope for the current milestone.
-- DRY: centralize shared utilities/config; avoid duplication.
-- SOLID: maintain cohesive modules and clear interfaces that are easy to test and evolve.
-- Offensive programming with defensive boundaries: assert invariants internally and fail fast; validate inputs at boundaries and surface clear, friendly errors.
-- Cohesion & readability: small modules with clear responsibilities; prefer early returns.
-- Tests with code changes where practical; keep fixtures tiny.
-- Logging is part of the acceptance criteria: produce exactly one wide event per request/job with correlation IDs, business context, outcome, duration, and a structured error object on failure. Avoid step-by-step log spam. See `docs/LOGGING_POLICY.md`.
-
-### Abstraction Policy (no premature abstractions)
-
-- Add an abstraction only when it delivers a clear, immediate, and objective benefit (e.g., removes duplication that already hurts, enables a necessary variation point, or fixes a documented pain).
-- If the benefit is not obvious right now, do not add the abstraction; keep the code simple.
-- Remove/avoid speculative layers, unused helpers, or indirection without current value.
-
-## Coding Conventions
+## Development Rules
 
 - TypeScript strict mode.
-- Server components by default; client components when required (`"use client"`).
-- Keep files small and focused; avoid one-letter variables.
-- Update docs when behavior, APIs, or env vars change.
-- Use path aliases (`@internal/*`, `@modules/*`, `@components/*`).
-- Localize UI copy via `@internal/i18n` helpers; never hardcode strings in pages/components.
+- Prefer server components; use client components only when required.
+- Keep files small and focused. Prefer descriptive names and early returns.
+- Use path aliases: `@internal/*`, `@modules/*`, `@components/*`.
+- Add abstractions only when they provide immediate value and remove current pain.
+- Update docs when contracts, API behavior, env surfaces, or dashboard capabilities change.
+- Keep tests close to the changed behavior with small fixtures.
 
-## Stripe Integration Contract
+## Common Commands
 
-- `POST /api/stripe/create-checkout-session` creates a subscription Checkout session for a pricing tier. Metadata includes `siteId` so multiple SaaS projects can share one Stripe account.
-- `POST /api/stripe/webhook` verifies signature, logs checkout and subscription lifecycle events.
+- `corepack pnpm test:contracts`
+- `corepack pnpm check`
+- `corepack pnpm test`
+- `corepack pnpm lint`
 
-## Preview Integration Contract
+## Where To Look
 
-- Website server routes proxy to the Webhooks worker using `TRY_NOW_TOKEN`:
-- `POST /api/previews` → `POST {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews` (adds `x-preview-token`)
-- `GET /api/previews/:id` → `GET {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews/:id`
-- `GET /api/previews/:id/stream` → `GET {NEXT_PUBLIC_WEBHOOKS_API_BASE}/previews/:id/stream` (SSE)
-- Preview `errorCode` and `stage` enums must stay consistent with the backend `webhooks-worker` preview endpoints.
+- Env contracts: `internal/core/env.ts`, `internal/core/env-server.ts`
+- Website architecture: `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT_GUIDE.md`
+- Dashboard capability matrix: `docs/backend/DASHBOARD_SPECS.md`
+- Backend bridge pointer and sync context in the backend repo:
+  - `weblingo/docs/backend/DASHBOARD_SPECS.md`
+  - `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
+- Generated backend snapshots used by docs and contracts: `content/docs/_generated/*`
+- Preview runtime and state machine: `internal/previews/*`
+- Dashboard API integration: `internal/dashboard/*`
 
-## Extraction Path (When New Sites Arrive)
+## Editing Notes
 
-1. Move `internal/*` folders into `/packages/<name>` with `tsup` or similar build step.
-2. Promote `modules/*` to feature packages as needed.
-3. Switch imports from `@internal/*` to package-scoped aliases (e.g., `@acme/core`).
-4. Use Next.js `transpilePackages` to share code across sites.
-
-## Pull Request Notes
-
-- Follow `.github/pull_request_template.md` when opening/updating PRs; keep Summary/Testing aligned with commands actually run.
-- If `gh pr edit` fails with `GraphQL: Projects (classic) ... projectCards`, patch via REST instead: `BODY="$(cat /tmp/pr_body.md)" && gh api repos/<owner>/<repo>/pulls/<number> -X PATCH --raw-field title='...' --raw-field body="$BODY"`, then verify with `gh pr view <number> --json title,body`.
-
-## Cross-Repo Capability Ownership & Discoverability
-
-For backend↔website capability alignment work (M6.5 and follow-ups), use these as first lookups:
-
-- Canonical website capability matrix/spec: `docs/backend/DASHBOARD_SPECS.md`
-- Synced backend artifacts consumed by docs: `content/docs/_generated/*`
-- Backend bridge pointer (in backend repo): `weblingo/docs/backend/DASHBOARD_SPECS.md`
-- Alignment plan/report (in backend repo): `weblingo/docs/reports/backend-dashboard-doc-sync-plan-2026-02-16.md`
-- Ownership model: roles stay split between website and backend maintainers, but one maintainer currently fulfills both roles.
-
-Operational commands:
-
-- Refresh backend docs snapshots: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync`
-- Verify freshness + contracts: `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
+- Keep `internal/*` as proto-packages until there is a concrete extraction need.
+- Preserve dashboard and preview contracts when changing website UI flows.
+- If a task is primarily backend behavior, change the backend repo first and sync docs or contracts back into this repo afterward.

@@ -47,6 +47,10 @@ const supportedLanguages = [
 const messages = {
   "try.form.button": "Generate preview",
   "try.form.placeholder": "https://example.com",
+  "try.form.urlLabel": "URL",
+  "try.form.requestSummaryTitle": "Submitted request",
+  "try.form.languageTitle": "Languages",
+  "try.form.emailPlaceholder": "you@example.com",
   "try.form.invalidUrl": "Invalid URL",
   "try.form.sourceLabel": "Source language",
   "try.form.targetLabel": "Target language",
@@ -56,9 +60,21 @@ const messages = {
   "try.status.processing": "Processing preview...",
   "try.status.processingHint": "Processing hint",
   "try.status.ready": "Ready",
+  "try.progress.label": "Preview progress",
+  "try.progress.queued": "Queued",
+  "try.progress.fetching": "Fetching page",
+  "try.progress.translating": "Translating",
+  "try.progress.rendering": "Rendering preview",
+  "try.progress.ready": "Ready",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
+  "try.action.retry": "Retry preview",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
+  "try.pending.emailPrompt": "Get notified when your preview is ready",
+  "try.pending.emailSubmit": "Notify me",
+  "try.pending.emailSubmitting": "Saving...",
+  "try.pending.emailSaved": "We'll email you when it's ready.",
+  "try.pending.emailError": "Could not save email. Try again.",
   "try.preview.linkLabel": "Preview link",
   "try.preview.open": "Open preview",
   "try.preview.copy": "Copy link",
@@ -287,7 +303,22 @@ describe("TryForm preview status", () => {
     expect(screen.getAllByTestId("mock-language-combobox")).toHaveLength(2);
   });
 
-  it("hides editable controls while restoring a running job", async () => {
+  it("applies custom primary button classes when provided", () => {
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        primaryButtonClassName="landing-button-micro"
+        supportedLanguages={supportedLanguages}
+        showEmailField={false}
+      />,
+    );
+
+    const generateButton = screen.getByRole("button", { name: "Generate preview" });
+    expect(generateButton.className.includes("landing-button-micro")).toBe(true);
+  });
+
+  it("shows summary while restoring a running job", async () => {
     const now = Date.now();
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -321,10 +352,11 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByText("Translating")).toBeTruthy();
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
+      expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
   });
 
@@ -358,6 +390,7 @@ describe("TryForm preview status", () => {
     renderTryForm();
     await waitFor(() => {
       expect(screen.getByText("Unknown error")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
     });
@@ -398,7 +431,8 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Creating preview...")).toBeTruthy();
-      expect(screen.queryByText("Ready")).toBeNull();
+      expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Queued");
+      expect(screen.queryByRole("button", { name: "Open preview" })).toBeNull();
     });
 
     resolveCreate(
@@ -572,11 +606,146 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByText("Translating")).toBeTruthy();
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
+      expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
+      expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
+  });
+
+  it("shows a basic request summary while a request is in flight", async () => {
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "summary5555-5555-5555-5555-555555555555",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://summary.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
+          statusToken: "summary-token",
+          sourceUrl: "https://summary.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "pending",
+          stage: null,
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: Date.now() - 1_000,
+          updatedAt: Date.now() - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Date.now() + 5_000,
+        },
+      ]),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Pending")).toBeTruthy();
+      expect(screen.getByText("summary.example.com • English -> French")).toBeTruthy();
+    });
+  });
+
+  it("renders a compact progress stepper for running previews", async () => {
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "stepper555-5555-5555-5555-555555555555",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://stepper.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
+          statusToken: "stepper-token",
+          sourceUrl: "https://stepper.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: Date.now() - 1_000,
+          updatedAt: Date.now() - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Date.now() + 5_000,
+        },
+      ]),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+    });
+
+    const progressList = screen.getByRole("list", { name: "Preview progress" });
+    expect(progressList).toBeTruthy();
+    expect(screen.getByText("stepper.example.com • English -> French")).toBeTruthy();
+    expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Translating");
+    expect(screen.getByText("Queued")).toBeTruthy();
+    expect(screen.getByText("Fetching page")).toBeTruthy();
+    expect(screen.getAllByText("Ready").length).toBeGreaterThan(0);
+  });
+
+  it("submits a pending preview email while the preview is running", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "pending-email-5555-5555-5555-555555555555",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://summary.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "summary-token",
+      sourceUrl: "https://summary.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+      stage: "translating",
+    });
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Get notified when your preview is ready")).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Notify me" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/pending-email-5555-5555-5555-555555555555?token=summary-token",
+        expect.objectContaining({
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "owner@example.com" }),
+        }),
+      );
+      expect(screen.getByText("We'll email you when it's ready.")).toBeTruthy();
+    });
   });
 
   it("falls back to status polling when EventSource is unavailable", async () => {
@@ -738,7 +907,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByDisplayValue("https://expired.example.com")).toBeTruthy();
     });
 
-    const button = screen.getByRole("button", { name: "Generate preview" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: "Retry preview" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
 
     fireEvent.click(button);

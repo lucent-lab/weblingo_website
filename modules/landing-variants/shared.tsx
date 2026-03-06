@@ -5,9 +5,10 @@ import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import type { Messages, Translator } from "@internal/i18n";
 import { landingContent } from "@modules/landing/content";
 
-export const LANDING_VARIANT_IDS = Array.from({ length: 35 }, (_, i) => i + 1).map((i) =>
-  i.toString(),
-);
+export const LANDING_VARIANT_IDS = [
+  ...Array.from({ length: 35 }, (_, i) => (i + 1).toString()),
+  "37",
+] as const;
 export type LandingVariantId = (typeof LANDING_VARIANT_IDS)[number];
 
 export const LANDING_FAQ_ITEMS = [
@@ -28,6 +29,8 @@ export type LandingVariantProps = {
   content: LandingVariantContent;
   supportedLanguages: SupportedLanguage[];
   hasPreviewConfig: boolean;
+  tryFormFieldLayout?: "legacy" | "funnel";
+  variantSwitcherCurrent?: string;
 };
 
 export function VariantSwitcher({

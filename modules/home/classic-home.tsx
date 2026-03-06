@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
+import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
@@ -85,22 +86,20 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
-              <div className="relative rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur lg:max-w-md">
+              <div className="relative rounded-2xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     {t("try.header.tagline")}
                   </span>
                 </div>
-                <h2 className="mb-2 text-lg font-semibold text-foreground">
-                  {t("try.header.title")}
-                </h2>
-                <p className="mb-6 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                <TryPanelHeader messages={messages} />
                 <TryForm
                   locale={locale}
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
                   showEmailField
+                  showInlineStatusText={false}
                 />
               </div>
             </div>
