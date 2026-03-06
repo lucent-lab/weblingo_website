@@ -238,23 +238,24 @@ export function LandingVariant36({
 
           <div className={styles.useCaseGrid}>
             {/* Featured card — first use case, large */}
-            {content.useCases.items[0] && (() => {
-              const featured = content.useCases.items[0];
-              const FeaturedIcon = featured.icon;
-              return (
-                <div className={styles.useCaseFeatured}>
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <FeaturedIcon className="h-7 w-7" />
+            {content.useCases.items[0] &&
+              (() => {
+                const featured = content.useCases.items[0];
+                const FeaturedIcon = featured.icon;
+                return (
+                  <div className={styles.useCaseFeatured}>
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <FeaturedIcon className="h-7 w-7" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">
+                      {t(featured.titleKey)}
+                    </h3>
+                    <p className="mt-3 text-muted-foreground leading-relaxed">
+                      {t(featured.bodyKey)}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    {t(featured.titleKey)}
-                  </h3>
-                  <p className="mt-3 text-muted-foreground leading-relaxed">
-                    {t(featured.bodyKey)}
-                  </p>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
             {/* Smaller stacked cards */}
             {content.useCases.items.slice(1).map((item) => (
@@ -328,9 +329,7 @@ export function LandingVariant36({
                 {initials}
               </span>
             ))}
-            <span className="ml-3 text-sm text-muted-foreground">
-              50+ teams already testing
-            </span>
+            <span className="ml-3 text-sm text-muted-foreground">50+ teams already testing</span>
           </div>
 
           <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">

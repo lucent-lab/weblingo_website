@@ -17,7 +17,7 @@ Below are 12 targeted suggestions grouped by section. Each one is scoped to be i
 
 **What:** Replace the static subtitle copy with a small interactive before/after visual — e.g. a miniature browser-chrome frame showing a snippet of a page in English on the left and the same snippet in French on the right, with a subtle sliding divider or tab toggle.
 
-**Narrative:** The hero currently asks visitors to *imagine* what a localized page looks like. A concrete visual shortcut ("oh, that's what my site would look like in French") is more persuasive than any sentence. It also pre-loads the mental model for the try-form result.
+**Narrative:** The hero currently asks visitors to _imagine_ what a localized page looks like. A concrete visual shortcut ("oh, that's what my site would look like in French") is more persuasive than any sentence. It also pre-loads the mental model for the try-form result.
 
 **shadcn approach:** Use the `Card` component as the browser-chrome wrapper. shadcn `Tabs` (install: `npx shadcn@latest add tabs`) for a simple EN / FR toggle, or a pure CSS `resize` divider for the slider approach.
 
@@ -27,7 +27,7 @@ Below are 12 targeted suggestions grouped by section. Each one is scoped to be i
 
 **What:** Give the rotating outcome word (`conversions`, `bookings`, …) a distinct visual treatment — gradient text fill using the primary-to-accent palette, or an animated underline/highlight swoosh.
 
-**Narrative:** Right now the rotating word is the same colour as the rest of the heading. The eye doesn't know *where* to look during the transition. A colour or decoration difference creates a visual anchor: the user's gaze locks onto the changing word and absorbs each outcome variant, which reinforces the "this works for multiple goals" message.
+**Narrative:** Right now the rotating word is the same colour as the rest of the heading. The eye doesn't know _where_ to look during the transition. A colour or decoration difference creates a visual anchor: the user's gaze locks onto the changing word and absorbs each outcome variant, which reinforces the "this works for multiple goals" message.
 
 **shadcn approach:** Pure Tailwind: `bg-gradient-to-r from-primary to-accent-foreground bg-clip-text text-transparent` on the rotating `<span>`. Combine with the existing CSS keyframe animation.
 
@@ -116,6 +116,7 @@ Below are 12 targeted suggestions grouped by section. Each one is scoped to be i
 ## 11. Global — Break visual monotony with alternating layouts
 
 **What:** Instead of every section being centered text + card grid, alternate the layout rhythm:
+
 - Pain section: already has left-text/right-cards (good)
 - Use cases: shift to a staggered layout — one featured card large on the left, two smaller cards stacked on the right
 - CTA: add a subtle diagonal or wave SVG separator above it
@@ -138,20 +139,20 @@ Below are 12 targeted suggestions grouped by section. Each one is scoped to be i
 
 ## Priority ranking
 
-| # | Suggestion | Impact | Effort |
-|---|-----------|--------|--------|
-| 8 | FAQ accordion | High | Low |
-| 12 | Mobile menu | High | Low |
-| 2 | Rotating word highlight | Medium | Low |
-| 10 | Section entrance animations | Medium | Low |
-| 3 | Trust bar (compact stats) | Medium | Low |
-| 5 | Before/after pain comparison | High | Medium |
-| 11 | Alternating layouts | Medium | Medium |
-| 4 | Animated progress bars for stats | Medium | Medium |
-| 1 | Hero before/after preview | High | Medium |
-| 9 | CTA social proof + urgency | Medium | Medium |
-| 7 | How-it-works visual artefacts | Medium | Medium |
-| 6 | Use case hover/expand detail | Medium | Medium |
+| #   | Suggestion                       | Impact | Effort |
+| --- | -------------------------------- | ------ | ------ |
+| 8   | FAQ accordion                    | High   | Low    |
+| 12  | Mobile menu                      | High   | Low    |
+| 2   | Rotating word highlight          | Medium | Low    |
+| 10  | Section entrance animations      | Medium | Low    |
+| 3   | Trust bar (compact stats)        | Medium | Low    |
+| 5   | Before/after pain comparison     | High   | Medium |
+| 11  | Alternating layouts              | Medium | Medium |
+| 4   | Animated progress bars for stats | Medium | Medium |
+| 1   | Hero before/after preview        | High   | Medium |
+| 9   | CTA social proof + urgency       | Medium | Medium |
+| 7   | How-it-works visual artefacts    | Medium | Medium |
+| 6   | Use case hover/expand detail     | Medium | Medium |
 
 ---
 

@@ -6,14 +6,14 @@
 
 ## What works well
 
-| Aspect | Detail |
-|---|---|
-| **Progressive disclosure** | Language selectors only appear after URL entry, reducing initial cognitive load |
-| **SSE real-time updates** | `EventSource` streams preview progress with heartbeat timeout detection and manual status-check fallback — robust two-layer approach |
-| **Session persistence** | `localStorage`-backed `PreviewStatusCenterStore` lets users navigate away and still see job status on return |
-| **Error resolution helpers** | `resolveUserFriendlyError` maps raw API codes to actionable copy with `t()` keys |
-| **Same-language guard** | Client-side validation prevents wasting a preview when source === target |
-| **Accessible combobox** | `LanguageTagCombobox` supports keyboard navigation, ARIA attributes, and focus-on-open via `requestAnimationFrame` |
+| Aspect                       | Detail                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Progressive disclosure**   | Language selectors only appear after URL entry, reducing initial cognitive load                                                      |
+| **SSE real-time updates**    | `EventSource` streams preview progress with heartbeat timeout detection and manual status-check fallback — robust two-layer approach |
+| **Session persistence**      | `localStorage`-backed `PreviewStatusCenterStore` lets users navigate away and still see job status on return                         |
+| **Error resolution helpers** | `resolveUserFriendlyError` maps raw API codes to actionable copy with `t()` keys                                                     |
+| **Same-language guard**      | Client-side validation prevents wasting a preview when source === target                                                             |
+| **Accessible combobox**      | `LanguageTagCombobox` supports keyboard navigation, ARIA attributes, and focus-on-open via `requestAnimationFrame`                   |
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### 1. Field ordering is backwards
 
-The form presents **URL → Email → Source language → Target language**. Users think "I want to translate *this site* from *X* to *Y*" — the mental model is URL → languages → action. Email appearing between URL and languages interrupts the task flow.
+The form presents **URL → Email → Source language → Target language**. Users think "I want to translate _this site_ from _X_ to _Y_" — the mental model is URL → languages → action. Email appearing between URL and languages interrupts the task flow.
 
 ### 2. Email field feels secondary but is required
 
@@ -69,7 +69,7 @@ This follows the user's natural thought process. Email moves to the end as the f
 
 ### B. Inline email with contextual justification
 
-Replace the floating email input with an inline field that includes micro-copy: _"We'll email you when your preview is ready"_. This explains *why* email is needed at the moment it's requested.
+Replace the floating email input with an inline field that includes micro-copy: _"We'll email you when your preview is ready"_. This explains _why_ email is needed at the moment it's requested.
 
 **Priority:** High · **Effort:** Low
 
@@ -93,6 +93,7 @@ Instead of hiding the form, collapse it into a read-only summary row: `example.c
 ### E. Celebrate the "ready" state
 
 When status hits `ready`:
+
 - Confetti burst or subtle check-mark animation (use `canvas-confetti` or CSS keyframes)
 - Primary-colored card border pulse
 - Larger, more prominent "Open preview" CTA
@@ -123,11 +124,11 @@ Use `sonner` (already a shadcn dependency) to show a brief toast: _"Preview URL 
 
 ## Priority matrix
 
-| Priority | Suggestions |
-|---|---|
+| Priority     | Suggestions                                                       |
+| ------------ | ----------------------------------------------------------------- |
 | **Do first** | A (reorder fields), B (email justification), C (progress stepper) |
-| **Do next** | D (read-only summary), E (celebrate ready) |
-| **Polish** | F (skeleton), G (autofocus), H (copy toast) |
+| **Do next**  | D (read-only summary), E (celebrate ready)                        |
+| **Polish**   | F (skeleton), G (autofocus), H (copy toast)                       |
 
 ---
 
@@ -135,12 +136,12 @@ Use `sonner` (already a shadcn dependency) to show a brief toast: _"Preview URL 
 
 ### Current fields (4)
 
-| # | Field | Required | Visible by default |
-|---|---|---|---|
-| 1 | Website URL | Yes | Yes |
-| 2 | Email | Yes (when `showEmailField`) | After URL entry |
-| 3 | Source language | Yes | After URL entry |
-| 4 | Target language | Yes | After URL entry |
+| #   | Field           | Required                    | Visible by default |
+| --- | --------------- | --------------------------- | ------------------ |
+| 1   | Website URL     | Yes                         | Yes                |
+| 2   | Email           | Yes (when `showEmailField`) | After URL entry    |
+| 3   | Source language | Yes                         | After URL entry    |
+| 4   | Target language | Yes                         | After URL entry    |
 
 ### Verdict: 4 fields is acceptable — but just barely
 
@@ -152,11 +153,11 @@ Use `sonner` (already a shadcn dependency) to show a brief toast: _"Preview URL 
 
 3. **Industry benchmarks support this count.** The "3-field rule" for lead-gen forms targets email-only signups. Tool/demo forms that require configuration (Vercel's deploy form, Netlify's site import, Figma's share dialog) routinely use 3–5 fields without conversion issues because each field is clearly purposeful.
 
-4. **The fields map 1:1 to the user's mental model.** "Translate *this URL* from *X* to *Y*, notify me at *email*" — no field feels arbitrary.
+4. **The fields map 1:1 to the user's mental model.** "Translate _this URL_ from _X_ to _Y_, notify me at _email_" — no field feels arbitrary.
 
 **Where to be cautious:**
 
-1. **Email is the weakest link.** It's the only field that serves the *system's* need (async notification) rather than the *user's* task definition. If previews ever become fast enough to return synchronously (< 15 s), email should become optional or deferred to a "notify me later" flow.
+1. **Email is the weakest link.** It's the only field that serves the _system's_ need (async notification) rather than the _user's_ task definition. If previews ever become fast enough to return synchronously (< 15 s), email should become optional or deferred to a "notify me later" flow.
 
 2. **Source language could be auto-detected.** Running a lightweight `Accept-Language` or HTML `lang` detection on the submitted URL could pre-fill source language, effectively reducing perceived fields to 3. This is the single highest-impact field reduction.
 

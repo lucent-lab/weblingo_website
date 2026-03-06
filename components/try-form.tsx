@@ -269,11 +269,7 @@ export function TryForm({
                 ? "try.progress.rendering"
                 : "try.progress.ready";
       const state =
-        index < currentStepIndex
-          ? "complete"
-          : index === currentStepIndex
-            ? "current"
-            : "upcoming";
+        index < currentStepIndex ? "complete" : index === currentStepIndex ? "current" : "upcoming";
       return {
         id: stepId,
         label: t(labelKey),
@@ -1150,7 +1146,6 @@ export function TryForm({
                   />
                 </label>
               </div>
-
             </>
           )}
         </div>
@@ -1172,55 +1167,57 @@ export function TryForm({
                 style={{ height: `calc((100% - 1.25rem) * ${progressLineFillPercentage / 100})` }}
               />
               <ol aria-label={t("try.progress.label")} className="space-y-4">
-              {progressSteps.map((step, index) => {
-                return (
-                  <li
-                    key={step.id}
-                    aria-current={step.state === "current" ? "step" : undefined}
-                    className="relative flex items-start gap-3"
-                  >
-                    <span
-                      className={cn(
-                        "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background",
-                        step.state === "complete" && "border-primary bg-primary text-primary-foreground",
-                        step.state === "current" && "border-primary bg-background text-primary shadow-[0_0_0_3px_rgba(124,92,218,0.12)]",
-                        step.state === "upcoming" && "border-border text-muted-foreground",
-                      )}
+                {progressSteps.map((step) => {
+                  return (
+                    <li
+                      key={step.id}
+                      aria-current={step.state === "current" ? "step" : undefined}
+                      className="relative flex items-start gap-3"
                     >
-                      {step.state === "current" ? (
-                        <span
-                          aria-hidden
-                          className="absolute inset-0 rounded-full border border-primary/35 animate-pulse"
-                        />
-                      ) : null}
-                      {step.state === "complete" ? (
-                        <Check className="h-3 w-3" />
-                      ) : step.state === "current" ? (
-                        <LoaderCircle className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
-                      )}
-                    </span>
+                      <span
+                        className={cn(
+                          "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background",
+                          step.state === "complete" &&
+                            "border-primary bg-primary text-primary-foreground",
+                          step.state === "current" &&
+                            "border-primary bg-background text-primary shadow-[0_0_0_3px_rgba(124,92,218,0.12)]",
+                          step.state === "upcoming" && "border-border text-muted-foreground",
+                        )}
+                      >
+                        {step.state === "current" ? (
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 rounded-full border border-primary/35 animate-pulse"
+                          />
+                        ) : null}
+                        {step.state === "complete" ? (
+                          <Check className="h-3 w-3" />
+                        ) : step.state === "current" ? (
+                          <LoaderCircle className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+                        )}
+                      </span>
 
-                    <span
-                      className={cn(
-                        "pt-0.5 text-sm leading-6",
-                        step.state === "current" && "font-semibold text-primary",
-                        step.state === "complete" && "text-foreground/90",
-                        step.state === "upcoming" && "text-muted-foreground/55",
-                      )}
-                    >
-                      {step.state === "current" ? (
-                        <span className="inline-flex rounded-full bg-primary/12 px-2.5 py-0.5">
-                          {step.label}
-                        </span>
-                      ) : (
-                        step.label
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
+                      <span
+                        className={cn(
+                          "pt-0.5 text-sm leading-6",
+                          step.state === "current" && "font-semibold text-primary",
+                          step.state === "complete" && "text-foreground/90",
+                          step.state === "upcoming" && "text-muted-foreground/55",
+                        )}
+                      >
+                        {step.state === "current" ? (
+                          <span className="inline-flex rounded-full bg-primary/12 px-2.5 py-0.5">
+                            {step.label}
+                          </span>
+                        ) : (
+                          step.label
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
 
@@ -1237,10 +1234,14 @@ export function TryForm({
               {showEmailField ? (
                 <div className="max-w-sm space-y-3 border-t border-border/65 pt-4">
                   {pendingEmailStatus === "saved" ? (
-                    <p className="text-sm font-medium text-foreground">{t("try.pending.emailSaved")}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {t("try.pending.emailSaved")}
+                    </p>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      <p className="text-sm font-medium text-foreground">{t("try.pending.emailPrompt")}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {t("try.pending.emailPrompt")}
+                      </p>
                       <Input
                         value={pendingEmail}
                         onChange={(event) => setPendingEmail(event.currentTarget.value)}

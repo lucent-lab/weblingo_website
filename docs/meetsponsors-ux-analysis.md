@@ -96,9 +96,9 @@ Padding scales from `px-2` (8px on mobile) to `px-8` (32px on desktop), maximizi
 
 ## Priority matrix
 
-| Priority | Patterns |
-|---|---|
-| **Quick wins** | #6 Press-in scale, #4 Monospace for data, #8 Scroll-margin-top |
-| **Medium effort** | #1 Narrow max-width, #2 Section overlap, #3 Contrarian framing |
-| **Architecture** | #7 Separate landing tokens, #9 Type scale audit, #10 Mobile padding |
-| **Future** | #5 Ultra-slow carousel (when trust logos exist) |
+| Priority          | Patterns                                                            |
+| ----------------- | ------------------------------------------------------------------- |
+| **Quick wins**    | #6 Press-in scale, #4 Monospace for data, #8 Scroll-margin-top      |
+| **Medium effort** | #1 Narrow max-width, #2 Section overlap, #3 Contrarian framing      |
+| **Architecture**  | #7 Separate landing tokens, #9 Type scale audit, #10 Mobile padding |
+| **Future**        | #5 Ultra-slow carousel (when trust logos exist)                     |
