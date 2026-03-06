@@ -36,7 +36,7 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
   return (
     <>
       <h2 className="mb-2 text-lg font-semibold text-foreground">{title}</h2>
-      <p className="mb-6 text-sm text-muted-foreground">{description}</p>
+      <p className="mb-6 text-xs leading-5 text-muted-foreground/90">{description}</p>
     </>
   );
 }

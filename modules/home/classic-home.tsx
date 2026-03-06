@@ -86,7 +86,7 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
-              <div className="relative rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur lg:max-w-md">
+              <div className="relative rounded-2xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     {t("try.header.tagline")}

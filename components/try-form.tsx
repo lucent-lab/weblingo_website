@@ -316,6 +316,16 @@ export function TryForm({
       ? `${compactSourceUrl} • ${sourceLabel} -> ${targetLabel}`
       : `${sourceLabel} -> ${targetLabel}`;
   }, [compactSourceUrl, sourceLang, sourceLanguageLabel, targetLang, targetLanguageLabel]);
+  const currentProgressStepIndex = useMemo(
+    () => progressSteps.findIndex((step) => step.state === "current"),
+    [progressSteps],
+  );
+  const progressLineFillPercentage = useMemo(() => {
+    if (progressSteps.length <= 1 || currentProgressStepIndex < 0) {
+      return 0;
+    }
+    return (currentProgressStepIndex / (progressSteps.length - 1)) * 100;
+  }, [currentProgressStepIndex, progressSteps.length]);
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -1151,28 +1161,24 @@ export function TryForm({
           <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
 
           <div className="grid gap-5 md:grid-cols-[8.5rem_minmax(0,1fr)] md:items-start">
-            <ol aria-label={t("try.progress.label")} className="space-y-2.5 md:pr-2">
+            <div className="relative md:pr-2">
+              <span
+                aria-hidden
+                className="absolute left-[0.625rem] top-[0.625rem] bottom-[0.625rem] w-px bg-border/80"
+              />
+              <span
+                aria-hidden
+                className="absolute left-[0.625rem] top-[0.625rem] w-px bg-primary/35 transition-[height] duration-300 ease-out"
+                style={{ height: `calc((100% - 1.25rem) * ${progressLineFillPercentage / 100})` }}
+              />
+              <ol aria-label={t("try.progress.label")} className="space-y-4">
               {progressSteps.map((step, index) => {
-                const isLast = index === progressSteps.length - 1;
                 return (
                   <li
                     key={step.id}
                     aria-current={step.state === "current" ? "step" : undefined}
-                    className={cn(
-                      "relative flex gap-2.5",
-                      step.state === "current" && "-ml-2 rounded-lg bg-primary/8 px-2 py-2",
-                    )}
+                    className="relative flex items-start gap-3"
                   >
-                    {!isLast ? (
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "absolute left-[0.5625rem] top-5 h-[calc(100%+0.3rem)] w-px",
-                          step.state === "complete" ? "bg-primary/35" : "bg-border/80",
-                        )}
-                      />
-                    ) : null}
-
                     <span
                       className={cn(
                         "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background",
@@ -1198,31 +1204,38 @@ export function TryForm({
 
                     <span
                       className={cn(
-                        "pt-0.5 text-sm leading-5",
-                        step.state === "current" && "font-medium text-primary",
+                        "pt-0.5 text-sm leading-6",
+                        step.state === "current" && "font-semibold text-primary",
                         step.state === "complete" && "text-foreground/90",
-                        step.state === "upcoming" && "text-muted-foreground/80",
+                        step.state === "upcoming" && "text-muted-foreground/55",
                       )}
                     >
-                      {step.label}
+                      {step.state === "current" ? (
+                        <span className="inline-flex rounded-full bg-primary/12 px-2.5 py-0.5">
+                          {step.label}
+                        </span>
+                      ) : (
+                        step.label
+                      )}
                     </span>
                   </li>
                 );
               })}
-            </ol>
+              </ol>
+            </div>
 
             <div className="space-y-4">
               {showInlineStatusText ? (
                 <div className="space-y-1">
                   <span className="text-lg font-semibold text-foreground">{statusMessage}</span>
-                  <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                  <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
                     {t("try.status.processingHint")}
                   </p>
                 </div>
               ) : null}
 
               {showEmailField ? (
-                <div className="max-w-sm space-y-3 pt-2">
+                <div className="max-w-sm space-y-3 border-t border-border/65 pt-4">
                   {pendingEmailStatus === "saved" ? (
                     <p className="text-sm font-medium text-foreground">{t("try.pending.emailSaved")}</p>
                   ) : (
