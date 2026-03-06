@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
+import { Check, LoaderCircle } from "lucide-react";
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
 const LanguageTagCombobox = dynamic(
@@ -10,6 +11,7 @@ const LanguageTagCombobox = dynamic(
 );
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   createClientTranslator,
   getBaseLangTag,
@@ -85,6 +87,54 @@ export type TryFormMode =
   | "terminal_ready"
   | "terminal_failed"
   | "terminal_expired";
+
+type PreviewProgressStepId = "queued" | "fetching" | "translating" | "rendering" | "ready";
+
+type PreviewProgressStepState = "complete" | "current" | "upcoming";
+
+type PreviewProgressStep = {
+  id: PreviewProgressStepId;
+  label: string;
+  state: PreviewProgressStepState;
+};
+
+const PREVIEW_PROGRESS_STEP_ORDER: PreviewProgressStepId[] = [
+  "queued",
+  "fetching",
+  "translating",
+  "rendering",
+  "ready",
+];
+
+function resolvePreviewProgressStepId(
+  mode: TryFormMode,
+  trackedJob: PreviewStatusCenterJob | null,
+): PreviewProgressStepId {
+  if (mode === "terminal_ready") {
+    return "ready";
+  }
+  if (mode === "creating") {
+    return "queued";
+  }
+
+  if (!trackedJob) {
+    return "queued";
+  }
+
+  if (trackedJob.stage === "fetching_page" || trackedJob.stage === "analyzing_content") {
+    return "fetching";
+  }
+  if (trackedJob.stage === "translating") {
+    return "translating";
+  }
+  if (trackedJob.stage === "generating_preview" || trackedJob.stage === "saving") {
+    return "rendering";
+  }
+  if (trackedJob.status === "processing") {
+    return "translating";
+  }
+  return "queued";
+}
 
 export function resolveTryFormMode(
   isCreating: boolean,
@@ -192,6 +242,34 @@ export function TryForm({
   const inputsDisabled = disabled;
   const isGenerateDisabled = inputsDisabled || !trimmedUrl || isSameLanguage;
   const showRequestSummary = isRequestInFlight;
+  const progressSteps = useMemo<PreviewProgressStep[]>(() => {
+    const currentStepId = resolvePreviewProgressStepId(mode, trackedJob);
+    const currentStepIndex = PREVIEW_PROGRESS_STEP_ORDER.indexOf(currentStepId);
+
+    return PREVIEW_PROGRESS_STEP_ORDER.map((stepId, index) => {
+      const labelKey =
+        stepId === "queued"
+          ? "try.progress.queued"
+          : stepId === "fetching"
+            ? "try.progress.fetching"
+            : stepId === "translating"
+              ? "try.progress.translating"
+              : stepId === "rendering"
+                ? "try.progress.rendering"
+                : "try.progress.ready";
+      const state =
+        index < currentStepIndex
+          ? "complete"
+          : index === currentStepIndex
+            ? "current"
+            : "upcoming";
+      return {
+        id: stepId,
+        label: t(labelKey),
+        state,
+      };
+    });
+  }, [mode, trackedJob, t]);
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -1042,15 +1120,62 @@ export function TryForm({
         </div>
       ) : null}
 
-      {statusMessage && !timedOut ? (
-        <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      {statusMessage && isPreviewRunning && !timedOut ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-4 text-primary">
           <div className="flex flex-col gap-1">
-            <span>{statusMessage}</span>
-            {isPreviewRunning ? (
-              <span className="text-xs text-primary/80">{t("try.status.processingHint")}</span>
-            ) : null}
+            <span className="text-sm font-medium">{statusMessage}</span>
+            <span className="text-xs text-primary/80">{t("try.status.processingHint")}</span>
           </div>
+          <ol aria-label={t("try.progress.label")} className="mt-4 space-y-3">
+            {progressSteps.map((step, index) => {
+              const isLast = index === progressSteps.length - 1;
+              return (
+                <li
+                  key={step.id}
+                  aria-current={step.state === "current" ? "step" : undefined}
+                  className="relative flex gap-3"
+                >
+                  {!isLast ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-[0.6875rem] top-6 h-[calc(100%+0.25rem)] w-px",
+                        step.state === "complete" ? "bg-primary/35" : "bg-border/80",
+                      )}
+                    />
+                  ) : null}
+
+                  <span
+                    className={cn(
+                      "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background",
+                      step.state === "complete" && "border-primary bg-primary text-primary-foreground",
+                      step.state === "current" && "border-primary text-primary",
+                      step.state === "upcoming" && "border-border text-muted-foreground",
+                    )}
+                  >
+                    {step.state === "complete" ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : step.state === "current" ? (
+                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                    )}
+                  </span>
+
+                  <span
+                    className={cn(
+                      "pt-0.5 text-sm",
+                      step.state === "current" && "font-medium text-primary",
+                      step.state === "complete" && "text-foreground",
+                      step.state === "upcoming" && "text-muted-foreground",
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       ) : null}
 

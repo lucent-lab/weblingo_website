@@ -60,6 +60,12 @@ const messages = {
   "try.status.processing": "Processing preview...",
   "try.status.processingHint": "Processing hint",
   "try.status.ready": "Ready",
+  "try.progress.label": "Preview progress",
+  "try.progress.queued": "Queued",
+  "try.progress.fetching": "Fetching page",
+  "try.progress.translating": "Translating",
+  "try.progress.rendering": "Rendering preview",
+  "try.progress.ready": "Ready",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
@@ -345,7 +351,7 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByText("Translating")).toBeTruthy();
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
@@ -425,7 +431,8 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Creating preview...")).toBeTruthy();
-      expect(screen.queryByText("Ready")).toBeNull();
+      expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Queued");
+      expect(screen.queryByRole("button", { name: "Open preview" })).toBeNull();
     });
 
     resolveCreate(
@@ -599,7 +606,7 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByText("Translating")).toBeTruthy();
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
@@ -648,6 +655,50 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("en -> fr")).toBeTruthy();
     });
     expect(screen.getByText("https://summary.example.com")).toBeTruthy();
+  });
+
+  it("renders a compact progress stepper for running previews", async () => {
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "stepper555-5555-5555-5555-555555555555",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://stepper.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
+          statusToken: "stepper-token",
+          sourceUrl: "https://stepper.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: Date.now() - 1_000,
+          updatedAt: Date.now() - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Date.now() + 5_000,
+        },
+      ]),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+    });
+
+    const progressList = screen.getByRole("list", { name: "Preview progress" });
+    expect(progressList).toBeTruthy();
+    expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Translating");
+    expect(screen.getByText("Queued")).toBeTruthy();
+    expect(screen.getByText("Fetching page")).toBeTruthy();
+    expect(screen.getAllByText("Ready").length).toBeGreaterThan(0);
   });
 
   it("submits a pending preview email while the preview is running", async () => {
