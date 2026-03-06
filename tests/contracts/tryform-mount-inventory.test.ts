@@ -46,6 +46,7 @@ describe("TryForm mount inventory", () => {
       "modules/landing-variants/variant-33.tsx",
       "modules/landing-variants/variant-34.tsx",
       "modules/landing-variants/variant-35.tsx",
+      "modules/landing-variants/variant-36.tsx",
       "modules/landing-variants/variant-4.tsx",
       "modules/landing-variants/variant-5.tsx",
       "modules/landing-variants/variant-6.tsx",
