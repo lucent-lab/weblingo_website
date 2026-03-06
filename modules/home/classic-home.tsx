@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
+import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
@@ -91,16 +92,14 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
                     {t("try.header.tagline")}
                   </span>
                 </div>
-                <h2 className="mb-2 text-lg font-semibold text-foreground">
-                  {t("try.header.title")}
-                </h2>
-                <p className="mb-6 text-sm text-muted-foreground">{t("try.header.description")}</p>
+                <TryPanelHeader messages={messages} />
                 <TryForm
                   locale={locale}
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
                   showEmailField
+                  showInlineStatusText={false}
                 />
               </div>
             </div>

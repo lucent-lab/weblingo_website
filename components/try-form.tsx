@@ -59,6 +59,7 @@ type TryFormProps = {
   disabled?: boolean;
   supportedLanguages: SupportedLanguage[];
   showEmailField?: boolean;
+  showInlineStatusText?: boolean;
   primaryButtonClassName?: string;
   fieldLayout?: TryFormFieldLayout;
 };
@@ -167,6 +168,7 @@ export function TryForm({
   disabled = false,
   supportedLanguages,
   showEmailField = false,
+  showInlineStatusText = true,
   primaryButtonClassName,
   fieldLayout = "legacy",
 }: TryFormProps) {
@@ -1201,12 +1203,14 @@ export function TryForm({
             </ol>
 
             <div className="space-y-4">
-              <div className="space-y-1">
-                <span className="text-lg font-semibold text-foreground">{statusMessage}</span>
-                <p className="max-w-md text-sm leading-6 text-muted-foreground">
-                  {t("try.status.processingHint")}
-                </p>
-              </div>
+              {showInlineStatusText ? (
+                <div className="space-y-1">
+                  <span className="text-lg font-semibold text-foreground">{statusMessage}</span>
+                  <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                    {t("try.status.processingHint")}
+                  </p>
+                </div>
+              ) : null}
 
               {showEmailField ? (
                 <div className="max-w-sm space-y-3 pt-2">
