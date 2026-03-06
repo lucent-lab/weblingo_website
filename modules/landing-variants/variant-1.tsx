@@ -30,6 +30,8 @@ export function LandingVariant1({
   content,
   supportedLanguages,
   hasPreviewConfig,
+  tryFormFieldLayout,
+  variantSwitcherCurrent = "1",
 }: LandingVariantProps) {
   return (
     <div className={cn(styles.root, fraunces.variable, splineSans.variable, "min-h-screen")}>
@@ -152,6 +154,7 @@ export function LandingVariant1({
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
                   showEmailField
+                  fieldLayout={tryFormFieldLayout}
                 />
               </div>
             </div>
@@ -374,7 +377,7 @@ export function LandingVariant1({
         </div>
       </section>
 
-      <VariantSwitcher current="1" />
+      <VariantSwitcher current={variantSwitcherCurrent} />
     </div>
   );
 }

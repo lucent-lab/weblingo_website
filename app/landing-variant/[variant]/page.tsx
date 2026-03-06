@@ -24,6 +24,7 @@ import { LandingVariant17 } from "@modules/landing-variants/variant-17";
 import { LandingVariant18 } from "@modules/landing-variants/variant-18";
 import { LandingVariant19 } from "@modules/landing-variants/variant-19";
 import { LandingVariant20 } from "@modules/landing-variants/variant-20";
+import { LandingVariant37 } from "@modules/landing-variants/variant-37";
 
 export const dynamicParams = false;
 
@@ -48,6 +49,7 @@ const variants = [
   "18",
   "19",
   "20",
+  "37",
 ] as const;
 type LandingVariantId = (typeof variants)[number];
 
@@ -125,6 +127,8 @@ export default async function LandingVariantPage({
       return <LandingVariant19 {...common} />;
     case "20":
       return <LandingVariant20 {...common} />;
+    case "37":
+      return <LandingVariant37 />;
   }
 }
 

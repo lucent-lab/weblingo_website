@@ -1,0 +1,329 @@
+/* ──────────────────────────────────────────────────────────────
+   Variant 36 — Expansion landing page with UX improvements
+   Base: segment-page.module.css (kept for HeroOutcomeRotator,
+   HowStepsTimeline, InViewCountUp which import it directly).
+   This file adds only the delta styles for recommendations.
+   ────────────────────────────────────────────────────────────── */
+
+/* ── #2: Gradient accent on the hero title ── */
+.heroGradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--foreground)),
+    hsl(258 60% 55%),
+    hsl(220 70% 50%),
+    hsl(var(--foreground))
+  );
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: v36-hero-gradient 8s ease-in-out infinite;
+}
+
+@keyframes v36-hero-gradient {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+/* ── #3: Compact trust bar (replaces stat card grid) ── */
+.trustBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .trustBar {
+    justify-content: flex-start;
+  }
+}
+
+.trustChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card) / 0.8);
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  animation: v36-fade-up 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.trustChipValue {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+/* ── #5: Before/After comparison cards ── */
+.comparisonGrid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .comparisonGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.comparisonCard {
+  border-radius: calc(var(--radius) + 0.5rem);
+  padding: 1.5rem;
+  border: 1px solid;
+}
+
+.comparisonBefore {
+  border-color: hsl(var(--destructive) / 0.2);
+  background: hsl(var(--destructive) / 0.03);
+}
+
+.comparisonAfter {
+  border-color: hsl(var(--primary) / 0.2);
+  background: hsl(var(--primary) / 0.03);
+}
+
+.comparisonLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.comparisonLabelBefore {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+.comparisonLabelAfter {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.comparisonItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
+}
+
+.comparisonItem + .comparisonItem {
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.comparisonIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* ── #8: FAQ accordion (native details/summary) ── */
+.faqItem {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 0.5rem);
+  background: hsl(var(--card));
+  overflow: hidden;
+  transition: border-color 300ms ease;
+}
+
+.faqItem:hover {
+  border-color: hsl(var(--primary) / 0.15);
+}
+
+.faqItem[open] {
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.faqSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  list-style: none;
+  user-select: none;
+}
+
+.faqSummary::-webkit-details-marker {
+  display: none;
+}
+
+.faqSummary::marker {
+  display: none;
+  content: "";
+}
+
+.faqChevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+  transition: transform 250ms ease;
+}
+
+.faqItem[open] .faqChevron {
+  transform: rotate(180deg);
+}
+
+.faqAnswer {
+  padding: 0 1.5rem 1.25rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.65;
+}
+
+/* ── #9: CTA social proof avatar stack ── */
+.ctaSection {
+  background: linear-gradient(180deg, transparent, hsl(var(--primary) / 0.03), transparent);
+}
+
+.ctaAvatarStack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctaAvatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--background));
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.ctaAvatar + .ctaAvatar {
+  margin-left: -0.5rem;
+}
+
+/* ── #10: Section entrance fade-up ── */
+.sectionEntrance {
+  animation: v36-fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes v36-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── #11: Staggered use-case grid ── */
+.useCaseGrid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .useCaseGrid {
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: auto auto;
+  }
+}
+
+.useCaseFeatured {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 0.5rem);
+  background: hsl(var(--card));
+  padding: 2rem;
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.useCaseFeatured:hover {
+  border-color: hsl(var(--primary) / 0.2);
+  box-shadow: 0 4px 16px hsl(var(--primary) / 0.06);
+}
+
+@media (min-width: 768px) {
+  .useCaseFeatured {
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+.useCaseSmall {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 0.5rem);
+  background: hsl(var(--card));
+  padding: 1.5rem;
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.useCaseSmall:hover {
+  border-color: hsl(var(--primary) / 0.15);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.04);
+}
+
+/* ── #11: Wave separator ── */
+.waveSeparator {
+  display: block;
+  width: 100%;
+  height: 48px;
+  color: hsl(var(--secondary) / 0.5);
+}
+
+/* ── Shared: button micro-interaction (from original) ── */
+.buttonMicro {
+  transition:
+    transform 180ms ease,
+    box-shadow 220ms ease;
+}
+
+.buttonMicro:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 26px hsl(var(--primary) / 0.24);
+}
+
+.buttonMicro:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .heroGradient,
+  .trustChip,
+  .sectionEntrance {
+    animation: none !important;
+  }
+  .heroGradient {
+    -webkit-text-fill-color: hsl(var(--foreground));
+  }
+  .faqChevron,
+  .useCaseFeatured,
+  .useCaseSmall,
+  .faqItem,
+  .buttonMicro {
+    transition: none !important;
+  }
+}

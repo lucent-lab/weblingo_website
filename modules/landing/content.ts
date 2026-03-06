@@ -17,6 +17,8 @@ type LandingContent = {
     taglineKey: string;
     titleKey: string;
     subtitleKey: string;
+    rotatorPrefixKey: string;
+    rotatorOutcomeKeys: [string, string, string, string];
   };
   stats: StatItem[];
   pain: {
@@ -147,6 +149,13 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
       taglineKey: "landing.expansion.tagline",
       titleKey: "landing.expansion.title",
       subtitleKey: "landing.expansion.subtitle",
+      rotatorPrefixKey: "landing.expansion.hero.rotator.prefix",
+      rotatorOutcomeKeys: [
+        "landing.expansion.hero.rotator.outcome.1",
+        "landing.expansion.hero.rotator.outcome.2",
+        "landing.expansion.hero.rotator.outcome.3",
+        "landing.expansion.hero.rotator.outcome.4",
+      ],
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -166,6 +175,13 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
       taglineKey: "landing.saas.tagline",
       titleKey: "landing.saas.title",
       subtitleKey: "landing.saas.subtitle",
+      rotatorPrefixKey: "landing.expansion.hero.rotator.prefix",
+      rotatorOutcomeKeys: [
+        "landing.expansion.hero.rotator.outcome.1",
+        "landing.expansion.hero.rotator.outcome.2",
+        "landing.expansion.hero.rotator.outcome.3",
+        "landing.expansion.hero.rotator.outcome.4",
+      ],
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -185,6 +201,13 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
       taglineKey: "landing.tourism.tagline",
       titleKey: "landing.tourism.title",
       subtitleKey: "landing.tourism.subtitle",
+      rotatorPrefixKey: "landing.expansion.hero.rotator.prefix",
+      rotatorOutcomeKeys: [
+        "landing.expansion.hero.rotator.outcome.1",
+        "landing.expansion.hero.rotator.outcome.2",
+        "landing.expansion.hero.rotator.outcome.3",
+        "landing.expansion.hero.rotator.outcome.4",
+      ],
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -204,6 +227,13 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
       taglineKey: "landing.agency.tagline",
       titleKey: "landing.agency.title",
       subtitleKey: "landing.agency.subtitle",
+      rotatorPrefixKey: "landing.expansion.hero.rotator.prefix",
+      rotatorOutcomeKeys: [
+        "landing.expansion.hero.rotator.outcome.1",
+        "landing.expansion.hero.rotator.outcome.2",
+        "landing.expansion.hero.rotator.outcome.3",
+        "landing.expansion.hero.rotator.outcome.4",
+      ],
     },
     stats: sharedStats,
     pain: sharedPain,
