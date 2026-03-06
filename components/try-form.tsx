@@ -1145,13 +1145,10 @@ export function TryForm({
       ) : null}
 
       {statusMessage && showInProgressCard ? (
-        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-4 text-primary shadow-sm sm:px-5">
-          <div className="flex flex-col gap-1">
-            <p className="text-[11px] font-medium text-primary/60">{t("try.form.requestSummaryTitle")}</p>
-            <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
-          </div>
+        <div className="space-y-4 pt-1">
+          <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
 
-          <div className="mt-4 grid gap-5 md:grid-cols-[8.5rem_minmax(0,1fr)] md:items-start">
+          <div className="grid gap-5 md:grid-cols-[8.5rem_minmax(0,1fr)] md:items-start">
             <ol aria-label={t("try.progress.label")} className="space-y-2.5 md:pr-2">
               {progressSteps.map((step, index) => {
                 const isLast = index === progressSteps.length - 1;
@@ -1205,14 +1202,14 @@ export function TryForm({
 
             <div className="space-y-4">
               <div className="space-y-1">
-                <span className="text-2xl font-semibold tracking-tight text-foreground">{statusMessage}</span>
+                <span className="text-lg font-semibold text-foreground">{statusMessage}</span>
                 <p className="max-w-md text-sm leading-6 text-muted-foreground">
                   {t("try.status.processingHint")}
                 </p>
               </div>
 
               {showEmailField ? (
-                <div className="max-w-sm border-t border-border/70 pt-4">
+                <div className="max-w-sm space-y-3 pt-2">
                   {pendingEmailStatus === "saved" ? (
                     <p className="text-sm font-medium text-foreground">{t("try.pending.emailSaved")}</p>
                   ) : (

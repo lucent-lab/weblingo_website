@@ -355,7 +355,6 @@ describe("TryForm preview status", () => {
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
-      expect(screen.getByText("Submitted request")).toBeTruthy();
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
   });
@@ -609,7 +608,6 @@ describe("TryForm preview status", () => {
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
-      expect(screen.getByText("Submitted request")).toBeTruthy();
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
@@ -649,7 +647,6 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Pending")).toBeTruthy();
-      expect(screen.getByText("Submitted request")).toBeTruthy();
       expect(screen.getByText("summary.example.com • English -> French")).toBeTruthy();
     });
   });
