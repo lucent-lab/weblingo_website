@@ -48,12 +48,16 @@ import {
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { z } from "zod";
 
+type TryFormFieldLayout = "legacy" | "funnel";
+
 type TryFormProps = {
   locale: string;
   messages: ClientMessages;
   disabled?: boolean;
   supportedLanguages: SupportedLanguage[];
   showEmailField?: boolean;
+  primaryButtonClassName?: string;
+  fieldLayout?: TryFormFieldLayout;
 };
 
 type ConnectStatusUpdatesOptions = {
@@ -112,12 +116,12 @@ export function TryForm({
   disabled = false,
   supportedLanguages,
   showEmailField = false,
+  primaryButtonClassName,
+  fieldLayout = "legacy",
 }: TryFormProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [url, setUrl] = useState("");
-  const [email, setEmail] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
@@ -125,6 +129,10 @@ export function TryForm({
   const [timedOutWithEmail, setTimedOutWithEmail] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingEmailStatus, setPendingEmailStatus] = useState<
+    "idle" | "submitting" | "saved" | "error"
+  >("idle");
   const baseLocale = getBaseLangTag(locale) ?? locale.trim().toLowerCase();
   const defaultTargetLang = baseLocale === "en" ? "fr" : "en";
   const [sourceLang, setSourceLang] = useState<string>(locale);
@@ -139,8 +147,7 @@ export function TryForm({
   const restoreAttemptedRef = useRef(false);
 
   const trimmedUrl = url.trim();
-  const trimmedEmail = email.trim();
-  const submittedEmail = submittedEmailRef.current || trimmedEmail;
+  const submittedEmail = submittedEmailRef.current;
   const normalizedSourceLang = useMemo(
     () => normalizeLangTag(sourceLang) ?? sourceLang.trim(),
     [sourceLang],
@@ -162,9 +169,8 @@ export function TryForm({
         sourceUrl: trimmedUrl,
         sourceLang,
         targetLang,
-        email: trimmedEmail,
       }),
-    [trimmedUrl, sourceLang, targetLang, trimmedEmail],
+    [trimmedUrl, sourceLang, targetLang],
   );
 
   const trackedJob = useMemo(
@@ -176,15 +182,16 @@ export function TryForm({
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning =
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
-  const showEditableControls = !isPreviewRunning;
+  const isRequestInFlight = isPreviewRunning;
   const showGeneratingState = isSameRequest && mode === "creating";
+  const showEditableControls = !isRequestInFlight;
   const isSameLanguage =
     Boolean(normalizedSourceLang) &&
     Boolean(normalizedTargetLang) &&
     normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase();
   const inputsDisabled = disabled;
-  const isGenerateDisabled =
-    inputsDisabled || !trimmedUrl || (showEmailField && !trimmedEmail) || isSameLanguage;
+  const isGenerateDisabled = inputsDisabled || !trimmedUrl || isSameLanguage;
+  const showRequestSummary = isRequestInFlight;
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -251,11 +258,7 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-    if (showEmailField && parsedRequest.email) {
-      setEmail((current) => (current ? current : parsedRequest.email));
-      submittedEmailRef.current = parsedRequest.email;
-    }
-  }, [jobs, showEmailField]);
+  }, [jobs]);
 
   useEffect(() => {
     if (
@@ -322,20 +325,6 @@ export function TryForm({
   function validateUrl(value: string): string | null {
     if (!value.trim() || !isValidHttpUrl(value)) {
       return t("try.form.invalidUrl");
-    }
-    return null;
-  }
-
-  function validateEmail(value: string): string | null {
-    if (!showEmailField) {
-      return null;
-    }
-    const valueTrimmed = value.trim();
-    if (!valueTrimmed) {
-      return t("try.form.emailRequired");
-    }
-    if (!isValidEmail(valueTrimmed)) {
-      return t("try.form.emailInvalid");
     }
     return null;
   }
@@ -545,7 +534,7 @@ export function TryForm({
 
       timedOutRef.current = true;
       setTimedOut(true);
-      if (showEmailField && submittedEmailRef.current) {
+      if (submittedEmailRef.current) {
         setTimedOutWithEmail(true);
       } else {
         setTimedOutWithEmail(false);
@@ -664,7 +653,7 @@ export function TryForm({
 
         timedOutRef.current = true;
         setTimedOut(true);
-        if (showEmailField && submittedEmailRef.current) {
+        if (submittedEmailRef.current) {
           setTimedOutWithEmail(true);
         } else {
           setTimedOutWithEmail(false);
@@ -719,19 +708,6 @@ export function TryForm({
         throw new Error(message);
       }
 
-      if (showEmailField) {
-        if (!trimmedEmail) {
-          const message = t("try.form.emailRequired");
-          setEmailError(message);
-          throw new Error(message);
-        }
-        if (!isValidEmail(trimmedEmail)) {
-          const message = t("try.form.emailInvalid");
-          setEmailError(message);
-          throw new Error(message);
-        }
-      }
-
       if (!normalizedSourceLang || !normalizedTargetLang) {
         throw new Error("Source and target languages are required.");
       }
@@ -740,13 +716,13 @@ export function TryForm({
       }
 
       setUrlError(null);
-      setEmailError(null);
       setSubmissionError(null);
       setIsCreating(true);
       setTimedOut(false);
       setTimedOutWithEmail(false);
       timedOutRef.current = false;
-      submittedEmailRef.current = trimmedEmail;
+      setPendingEmailStatus("idle");
+      setPendingEmail("");
 
       closeEventSource();
 
@@ -754,7 +730,6 @@ export function TryForm({
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,
-        email: trimmedEmail,
       });
       setLastRequestKey(requestKey);
 
@@ -775,7 +750,6 @@ export function TryForm({
             sourceLang: normalizedSourceLang,
             targetLang: normalizedTargetLang,
             locale,
-            ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
           }),
           signal: controller.signal,
         });
@@ -892,64 +866,179 @@ export function TryForm({
     }
   }
 
+  async function handleSubmitPendingEmail() {
+    const trimmedPendingEmail = pendingEmail.trim();
+    if (!trimmedPendingEmail || !isValidEmail(trimmedPendingEmail)) {
+      return;
+    }
+    const previewId = trackedJob?.previewId;
+    const statusToken = trackedJob?.statusToken;
+    if (!previewId || !statusToken) {
+      return;
+    }
+    setPendingEmailStatus("submitting");
+    try {
+      const response = await fetch(
+        `/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmedPendingEmail }),
+        },
+      );
+      if (!response.ok) {
+        setPendingEmailStatus("error");
+        return;
+      }
+      submittedEmailRef.current = trimmedPendingEmail;
+      setPendingEmailStatus("saved");
+    } catch {
+      setPendingEmailStatus("error");
+    }
+  }
+
+  const isFunnelFieldLayout = fieldLayout === "funnel";
+
   return (
     <div className="space-y-6">
       {showEditableControls ? (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="flex flex-1 flex-col gap-2">
-              <Input
-                value={url}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  setUrl(value);
-                  if (urlError) {
-                    setUrlError(validateUrl(value));
-                  }
-                }}
-                onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
-                placeholder={t("try.form.placeholder")}
-                type="url"
-                pattern="https?://.*"
-                required
-                disabled={inputsDisabled}
-                aria-invalid={urlError ? "true" : "false"}
-              />
-              {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
-            </div>
-            <Button onClick={handleGenerate} disabled={isGenerateDisabled}>
-              {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
-            </Button>
-          </div>
+          {isFunnelFieldLayout ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <Input
+                  value={url}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setUrl(value);
+                    if (urlError) {
+                      setUrlError(validateUrl(value));
+                    }
+                  }}
+                  onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
+                  placeholder={t("try.form.placeholder")}
+                  type="url"
+                  pattern="https?://.*"
+                  required
+                  disabled={inputsDisabled}
+                  aria-invalid={urlError ? "true" : "false"}
+                />
+                {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
+              </div>
 
-          {showEmailField ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-foreground">
-                {t("try.form.emailLabel")}
-              </span>
-              <Input
-                value={email}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  setEmail(value);
-                  if (emailError) {
-                    setEmailError(validateEmail(value));
-                  }
-                }}
-                onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
-                placeholder={t("try.form.emailPlaceholder")}
-                aria-label={t("try.form.emailLabel")}
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                required
-                disabled={inputsDisabled}
-                aria-invalid={emailError ? "true" : "false"}
-              />
-              <div className="text-xs text-muted-foreground">{t("try.form.emailHelper")}</div>
-              {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex flex-1 flex-col gap-2 text-sm">
+                  <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
+                  <LanguageTagCombobox
+                    value={sourceLang}
+                    onValueChange={setSourceLang}
+                    supportedLanguages={supportedLanguages}
+                    displayLocale={locale}
+                    disabled={inputsDisabled}
+                    placeholder="en"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-2 text-sm">
+                  <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
+                  <LanguageTagCombobox
+                    value={targetLang}
+                    onValueChange={setTargetLang}
+                    supportedLanguages={supportedLanguages}
+                    displayLocale={locale}
+                    disabled={inputsDisabled}
+                    placeholder={locale}
+                  />
+                </label>
+              </div>
+
+              <Button
+                className={primaryButtonClassName}
+                onClick={handleGenerate}
+                disabled={isGenerateDisabled}
+              >
+                {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="flex flex-1 flex-col gap-2">
+                  <Input
+                    value={url}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setUrl(value);
+                      if (urlError) {
+                        setUrlError(validateUrl(value));
+                      }
+                    }}
+                    onBlur={(event) => setUrlError(validateUrl(event.currentTarget.value))}
+                    placeholder={t("try.form.placeholder")}
+                    type="url"
+                    pattern="https?://.*"
+                    required
+                    disabled={inputsDisabled}
+                    aria-invalid={urlError ? "true" : "false"}
+                  />
+                  {urlError ? <div className="text-sm text-destructive">{urlError}</div> : null}
+                </div>
+                <Button
+                  className={primaryButtonClassName}
+                  onClick={handleGenerate}
+                  disabled={isGenerateDisabled}
+                >
+                  {showGeneratingState ? `${t("try.form.button")}…` : t("try.form.button")}
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex flex-1 flex-col gap-2 text-sm">
+                  <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
+                  <LanguageTagCombobox
+                    value={sourceLang}
+                    onValueChange={setSourceLang}
+                    supportedLanguages={supportedLanguages}
+                    displayLocale={locale}
+                    disabled={inputsDisabled}
+                    placeholder="en"
+                  />
+                </label>
+
+                <label className="flex flex-1 flex-col gap-2 text-sm">
+                  <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
+                  <LanguageTagCombobox
+                    value={targetLang}
+                    onValueChange={setTargetLang}
+                    supportedLanguages={supportedLanguages}
+                    displayLocale={locale}
+                    disabled={inputsDisabled}
+                    placeholder={locale}
+                  />
+                </label>
+              </div>
+
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {showRequestSummary ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+          <p className="text-xs font-medium text-primary/80">{t("try.form.requestSummaryTitle")}</p>
+          <dl className="mt-2 grid gap-1 text-sm">
+            <div className="flex flex-wrap gap-1">
+              <dt className="font-medium text-primary/90">{t("try.form.urlLabel")}</dt>
+              <dd className="break-all font-normal text-foreground">{trimmedUrl}</dd>
             </div>
-          ) : null}
+            <div className="flex flex-wrap gap-1">
+              <dt className="font-medium text-primary/90">{t("try.form.languageTitle")}</dt>
+              <dd className="font-normal text-foreground">
+                {sourceLang}
+                {" -> "}
+                {targetLang}
+              </dd>
+            </div>
+          </dl>
         </div>
       ) : null}
 
@@ -965,6 +1054,49 @@ export function TryForm({
         </div>
       ) : null}
 
+      {showEmailField && isPreviewRunning && !timedOut && pendingEmailStatus !== "saved" ? (
+        <div className="rounded-md border border-muted-foreground/20 bg-muted/50 px-4 py-3">
+          <p className="mb-2 text-sm text-muted-foreground">{t("try.pending.emailPrompt")}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <Input
+              value={pendingEmail}
+              onChange={(event) => setPendingEmail(event.currentTarget.value)}
+              placeholder={t("try.form.emailPlaceholder")}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              disabled={pendingEmailStatus === "submitting"}
+              className="h-9 text-sm"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={
+                pendingEmailStatus === "submitting" ||
+                !pendingEmail.trim() ||
+                !isValidEmail(pendingEmail)
+              }
+              onClick={() => void handleSubmitPendingEmail()}
+              className="shrink-0"
+            >
+              {pendingEmailStatus === "submitting"
+                ? t("try.pending.emailSubmitting")
+                : t("try.pending.emailSubmit")}
+            </Button>
+          </div>
+          {pendingEmailStatus === "error" ? (
+            <p className="mt-1 text-xs text-destructive">{t("try.pending.emailError")}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showEmailField && isPreviewRunning && !timedOut && pendingEmailStatus === "saved" ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+          {t("try.pending.emailSaved")}
+        </div>
+      ) : null}
+
       {timedOut && timedOutWithEmail ? (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <p>{t("try.status.pendingEmail", undefined, { email: submittedEmail })}</p>
@@ -975,6 +1107,45 @@ export function TryForm({
       {timedOut && !timedOutWithEmail ? (
         <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <p>{t("try.status.timedOutNoEmail")}</p>
+          {showEmailField && pendingEmailStatus !== "saved" ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs">{t("try.pending.emailPrompt")}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <Input
+                  value={pendingEmail}
+                  onChange={(event) => setPendingEmail(event.currentTarget.value)}
+                  placeholder={t("try.form.emailPlaceholder")}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  disabled={pendingEmailStatus === "submitting"}
+                  className="h-9 text-sm"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    pendingEmailStatus === "submitting" ||
+                    !pendingEmail.trim() ||
+                    !isValidEmail(pendingEmail)
+                  }
+                  onClick={() => void handleSubmitPendingEmail()}
+                  className="shrink-0"
+                >
+                  {pendingEmailStatus === "submitting"
+                    ? t("try.pending.emailSubmitting")
+                    : t("try.pending.emailSubmit")}
+                </Button>
+              </div>
+              {pendingEmailStatus === "error" ? (
+                <p className="text-xs text-destructive">{t("try.pending.emailError")}</p>
+              ) : null}
+            </div>
+          ) : null}
+          {showEmailField && pendingEmailStatus === "saved" ? (
+            <p className="text-xs text-primary">{t("try.pending.emailSaved")}</p>
+          ) : null}
           <Button
             onClick={() => {
               void handleCheckStatus();
@@ -1036,35 +1207,7 @@ export function TryForm({
         </div>
       ) : null}
 
-      {showEditableControls ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="flex flex-1 flex-col gap-2 text-sm">
-            <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
-            <LanguageTagCombobox
-              value={sourceLang}
-              onValueChange={setSourceLang}
-              supportedLanguages={supportedLanguages}
-              displayLocale={locale}
-              disabled={inputsDisabled}
-              placeholder="en"
-            />
-          </label>
-
-          <label className="flex flex-1 flex-col gap-2 text-sm">
-            <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
-            <LanguageTagCombobox
-              value={targetLang}
-              onValueChange={setTargetLang}
-              supportedLanguages={supportedLanguages}
-              displayLocale={locale}
-              disabled={inputsDisabled}
-              placeholder={locale}
-            />
-          </label>
-        </div>
-      ) : null}
-
-      {showEditableControls && isSameLanguage ? (
+      {!isRequestInFlight && isSameLanguage ? (
         <div className="text-sm text-destructive">{t("try.form.sameLanguage")}</div>
       ) : null}
     </div>

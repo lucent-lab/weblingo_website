@@ -243,6 +243,54 @@ describe("/api/previews proxy routes", () => {
     expect(fetchWithTimeout).not.toHaveBeenCalled();
   });
 
+  test("PATCH /api/previews/:id forwards preview email updates upstream", async () => {
+    const { PATCH } = await import("./[id]/route");
+
+    rateLimitFixedWindow.mockResolvedValueOnce({
+      allowed: true,
+      limit: 60,
+      remaining: 59,
+      resetAtMs: Date.now() + 1000,
+      current: 1,
+      key: "k",
+    });
+
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const id = "11111111-1111-1111-1111-111111111111";
+    const request = buildNextRequest(`http://localhost/api/previews/${id}?token=status-token`, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ email: "owner@example.com" }),
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id }) });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      `https://api.example.com/api/previews/${id}`,
+      expect.objectContaining({
+        method: "PATCH",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "x-preview-token": "preview_token",
+          "x-preview-status-token": "status-token",
+        }),
+        body: JSON.stringify({ email: "owner@example.com" }),
+      }),
+      expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
+    );
+  });
+
   test("GET /api/previews/:id/stream returns 504 when upstream connect times out", async () => {
     const { GET } = await import("./[id]/stream/route");
 
