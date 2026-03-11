@@ -10,7 +10,8 @@ Primary lookup points:
 2. `internal/core/env.ts` and `internal/core/env-server.ts` for env contracts.
 3. `docs/backend/DASHBOARD_SPECS.md` for the canonical dashboard capability matrix.
 4. `docs/DEVELOPMENT_GUIDE.md` and `docs/ARCHITECTURE.md` for app structure and architecture.
-5. `content/docs/_generated/*` plus backend bridge docs when working on backend↔website alignment.
+5. `docs/TESTING_POLICY.md` for normative test-quality rules.
+6. `content/docs/_generated/*` plus backend bridge docs when working on backend↔website alignment.
 
 Cross-repo docs sync commands:
 
@@ -51,7 +52,7 @@ Minimal validation:
 - Use path aliases: `@internal/*`, `@modules/*`, `@components/*`.
 - Add abstractions only when they provide immediate value and remove current pain.
 - Update docs when contracts, API behavior, env surfaces, or dashboard capabilities change.
-- Keep tests close to the changed behavior with small fixtures.
+- Keep tests close to the changed behavior with small fixtures. Follow `docs/TESTING_POLICY.md`.
 
 ## Common Commands
 
@@ -64,6 +65,7 @@ Minimal validation:
 
 - Env contracts: `internal/core/env.ts`, `internal/core/env-server.ts`
 - Website architecture: `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT_GUIDE.md`
+- Testing policy: `docs/TESTING_POLICY.md`
 - Dashboard capability matrix: `docs/backend/DASHBOARD_SPECS.md`
 - Backend bridge pointer and sync context in the backend repo:
   - `weblingo/docs/backend/DASHBOARD_SPECS.md`
