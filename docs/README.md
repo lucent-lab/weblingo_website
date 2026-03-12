@@ -1,6 +1,7 @@
 # Documentation Index
 
 - Implementation Plan — `docs/next-multidomain-saas-plan.md`
+- Testing Strategy Alignment Plan (2026-03-12) — `docs/plans/testing-strategy-alignment-plan-2026-03-12.md`
 - Development Guide — `docs/DEVELOPMENT_GUIDE.md`
 - Architecture Overview — `docs/ARCHITECTURE.md`
 - Testing Policy — `docs/TESTING_POLICY.md`
