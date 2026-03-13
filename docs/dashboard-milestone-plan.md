@@ -44,6 +44,7 @@ Working plan to implement the customer-facing dashboard described in `docs/DASHB
 11. **Developer tools page** — Display current webhooks JWT + expiry, API base URL, and links to docs; provide token copy button with warnings.
 12. **Error/empty/loading states** — Shared components for toasts/inline errors, skeletons, empty prompts with next steps; ensure accessible focus behavior.
 13. **Testing & QA** — Unit tests for validation helpers and API client, smoke tests for onboarding and site edit flows, and doc updates for new env vars/runbook.
+14. **Testing strategy alignment** — Analyze and implement the website-specific layered testing strategy in `docs/plans/testing-strategy-alignment-plan-2026-03-12.md`, including command and CI contract alignment, selective preview or dashboard invariant coverage, and docs updates that keep local guidance consistent with CI.
 
 - **Plan/locale caps (new)** — Add `maxLocales` field and serving-mode selection to create/edit flows; reflect `maxLocales` from GET responses; proactively block add-target UI when at cap; gate glossary/override/slug UI using `/accounts/me` feature flags with an upgrade prompt; handle 400 cap errors and 403 feature gates with user-friendly copy.
 

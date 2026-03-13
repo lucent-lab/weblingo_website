@@ -31,6 +31,126 @@
       },
       "AccountMeResponse": {
         "additionalProperties": false,
+        "example": {
+          "accountId": "00000000-0000-4000-8000-000000000001",
+          "dailyCrawlUsage": {
+            "date": "2026-03-09",
+            "pageCrawls": 0,
+            "siteCrawls": 0
+          },
+          "featureFlags": {
+            "agencyActionsEnabled": false,
+            "clientRuntimeToggleEnabled": true,
+            "crawlCaptureModeEnabled": true,
+            "crawlTriggerEnabled": true,
+            "demoMode": false,
+            "domainVerifyEnabled": true,
+            "editEnabled": true,
+            "featurePreview": [],
+            "glossaryEnabled": true,
+            "internalOpsEnabled": false,
+            "localeUpdateEnabled": false,
+            "maxDailyPageRecrawls": 1,
+            "maxDailyRecrawls": 1,
+            "maxGlossarySources": 5,
+            "maxLocales": 1,
+            "maxSites": 1,
+            "overridesEnabled": false,
+            "pipelineAllowed": true,
+            "publishEnabled": true,
+            "renderEnabled": true,
+            "serveAllowed": true,
+            "siteCreateEnabled": true,
+            "slugEditEnabled": true,
+            "tmWriteEnabled": false,
+            "translatableAttributesEnabled": true
+          },
+          "planStatus": "active",
+          "planType": "free",
+          "quotaLimits": {
+            "dailyPageCrawls": 1,
+            "dailySiteCrawls": 1,
+            "maxSites": 1,
+            "previewRequests": null,
+            "translationChars": 75000
+          },
+          "quotas": {
+            "freeQuota": 75000,
+            "maxSites": 1,
+            "proQuota": null,
+            "starterQuota": null
+          },
+          "usageCounters": {
+            "charsTranslated": 0,
+            "dailyPageCrawls": 0,
+            "dailySiteCrawls": 0,
+            "pagesPublished": 0,
+            "periodEnd": "2026-03-31",
+            "periodStart": "2026-03-01",
+            "rebuildsTriggered": 0
+          }
+        },
+        "examples": [
+          {
+            "accountId": "00000000-0000-4000-8000-000000000001",
+            "dailyCrawlUsage": {
+              "date": "2026-03-09",
+              "pageCrawls": 0,
+              "siteCrawls": 0
+            },
+            "featureFlags": {
+              "agencyActionsEnabled": false,
+              "clientRuntimeToggleEnabled": true,
+              "crawlCaptureModeEnabled": true,
+              "crawlTriggerEnabled": true,
+              "demoMode": false,
+              "domainVerifyEnabled": true,
+              "editEnabled": true,
+              "featurePreview": [],
+              "glossaryEnabled": true,
+              "internalOpsEnabled": false,
+              "localeUpdateEnabled": false,
+              "maxDailyPageRecrawls": 1,
+              "maxDailyRecrawls": 1,
+              "maxGlossarySources": 5,
+              "maxLocales": 1,
+              "maxSites": 1,
+              "overridesEnabled": false,
+              "pipelineAllowed": true,
+              "publishEnabled": true,
+              "renderEnabled": true,
+              "serveAllowed": true,
+              "siteCreateEnabled": true,
+              "slugEditEnabled": true,
+              "tmWriteEnabled": false,
+              "translatableAttributesEnabled": true
+            },
+            "planStatus": "active",
+            "planType": "free",
+            "quotaLimits": {
+              "dailyPageCrawls": 1,
+              "dailySiteCrawls": 1,
+              "maxSites": 1,
+              "previewRequests": null,
+              "translationChars": 75000
+            },
+            "quotas": {
+              "freeQuota": 75000,
+              "maxSites": 1,
+              "proQuota": null,
+              "starterQuota": null
+            },
+            "usageCounters": {
+              "charsTranslated": 0,
+              "dailyPageCrawls": 0,
+              "dailySiteCrawls": 0,
+              "pagesPublished": 0,
+              "periodEnd": "2026-03-31",
+              "periodStart": "2026-03-01",
+              "rebuildsTriggered": 0
+            }
+          }
+        ],
         "properties": {
           "accountId": {
             "type": "string"
@@ -107,7 +227,7 @@
             ]
           },
           "translationChars": {
-            "description": "Effective translation character cap for the active plan.",
+            "description": "Effective fresh-MT input character cap for the active plan.",
             "type": [
               "number",
               "null"
@@ -167,7 +287,7 @@
         "additionalProperties": false,
         "properties": {
           "charsTranslated": {
-            "description": "Total translated characters during `[periodStart, periodEnd]`.",
+            "description": "Total fresh-MT input characters charged during `[periodStart, periodEnd]`.",
             "type": "number"
           },
           "dailyPageCrawls": {
@@ -1391,11 +1511,22 @@
             },
             "type": "object"
           },
+          "maxDepth": {
+            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
+          },
           "maxLocales": {
             "type": [
               "number",
               "null"
             ]
+          },
+          "previewCspMode": {
+            "$ref": "#/components/schemas/PreviewCspMode"
+          },
+          "proxyCspOverrideMode": {
+            "$ref": "#/components/schemas/ProxyCspOverrideMode"
           },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
@@ -1612,6 +1743,9 @@
           "servingStatus": {
             "$ref": "#/components/schemas/DeploymentServingStatus"
           },
+          "stateDrift": {
+            "$ref": "#/components/schemas/DeploymentStateDriftSignal"
+          },
           "status": {
             "type": "string"
           },
@@ -1634,6 +1768,7 @@
           "status",
           "serveEnabled",
           "servingStatus",
+          "stateDrift",
           "completeness"
         ],
         "type": "object"
@@ -1756,9 +1891,64 @@
           "disabled",
           "needs_domain",
           "ready",
-          "serving"
+          "serving",
+          "degraded"
         ],
         "type": "string"
+      },
+      "DeploymentStateDriftClass": {
+        "enum": [
+          "active_pointer_without_db_manifest",
+          "active_pointer_present_while_serving_disabled",
+          "missing_active_pointer_for_latest_manifest",
+          "active_pointer_mismatch_latest_manifest",
+          "active_pointer_manifest_probe_error",
+          "active_pointer_manifest_missing",
+          "active_pointer_manifest_invalid"
+        ],
+        "type": "string"
+      },
+      "DeploymentStateDriftSignal": {
+        "additionalProperties": false,
+        "example": {
+          "classes": [
+            "active_pointer_manifest_missing"
+          ],
+          "drifted": true,
+          "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+        },
+        "examples": [
+          {
+            "classes": [
+              "active_pointer_manifest_missing"
+            ],
+            "drifted": true,
+            "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+          }
+        ],
+        "properties": {
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentStateDriftClass"
+            },
+            "type": "array"
+          },
+          "drifted": {
+            "type": "boolean"
+          },
+          "runbook": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "drifted",
+          "classes",
+          "runbook"
+        ],
+        "type": "object"
       },
       "DigestSubscription": {
         "additionalProperties": false,
@@ -2527,6 +2717,15 @@
         ],
         "type": "string"
       },
+      "PreviewCspMode": {
+        "enum": [
+          "strict",
+          "compat",
+          "origin-derived",
+          "origin-derived-compat"
+        ],
+        "type": "string"
+      },
       "PreviewRequest": {
         "additionalProperties": false,
         "example": {
@@ -2720,6 +2919,30 @@
         ],
         "type": "object"
       },
+      "PreviewUpdateEmailRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "PreviewUpdateEmailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
       "ProvisionDomainResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2731,6 +2954,15 @@
           "domain"
         ],
         "type": "object"
+      },
+      "ProxyCspOverrideMode": {
+        "enum": [
+          "off",
+          "compat",
+          "origin-derived",
+          "origin-derived-compat"
+        ],
+        "type": "string"
       },
       "RefreshDomainResponse": {
         "additionalProperties": false,
@@ -2931,11 +3163,24 @@
             },
             "type": "array"
           },
+          "maxDepth": {
+            "description": "Default: 0 (unlimited). Positive integers cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
+          },
           "pattern": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "previewCspMode": {
+            "$ref": "#/components/schemas/PreviewCspMode",
+            "description": "Default: origin-derived"
+          },
+          "proxyCspOverrideMode": {
+            "$ref": "#/components/schemas/ProxyCspOverrideMode",
+            "description": "Default: off"
           },
           "sourceLang": {
             "type": "string"
@@ -3030,6 +3275,9 @@
           "servingStatus": {
             "$ref": "#/components/schemas/DeploymentServingStatus"
           },
+          "stateDrift": {
+            "$ref": "#/components/schemas/DeploymentStateDriftSignal"
+          },
           "targetLang": {
             "type": "string"
           }
@@ -3037,7 +3285,8 @@
         "required": [
           "targetLang",
           "serveEnabled",
-          "servingStatus"
+          "servingStatus",
+          "stateDrift"
         ],
         "type": "object"
       },
@@ -3955,11 +4204,22 @@
             },
             "type": "object"
           },
+          "maxDepth": {
+            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
+          },
           "maxLocales": {
             "type": [
               "number",
               "null"
             ]
+          },
+          "previewCspMode": {
+            "$ref": "#/components/schemas/PreviewCspMode"
+          },
+          "proxyCspOverrideMode": {
+            "$ref": "#/components/schemas/ProxyCspOverrideMode"
           },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
@@ -4188,39 +4448,37 @@
             "content": {
               "application/json": {
                 "example": {
-                  "accountId": "string",
+                  "accountId": "00000000-0000-4000-8000-000000000001",
                   "dailyCrawlUsage": {
-                    "date": "string",
-                    "pageCrawls": 1,
-                    "siteCrawls": 1
+                    "date": "2026-03-09",
+                    "pageCrawls": 0,
+                    "siteCrawls": 0
                   },
                   "featureFlags": {
-                    "agencyActionsEnabled": true,
+                    "agencyActionsEnabled": false,
                     "clientRuntimeToggleEnabled": true,
                     "crawlCaptureModeEnabled": true,
                     "crawlTriggerEnabled": true,
-                    "demoMode": true,
+                    "demoMode": false,
                     "domainVerifyEnabled": true,
                     "editEnabled": true,
-                    "featurePreview": [
-                      "string"
-                    ],
+                    "featurePreview": [],
                     "glossaryEnabled": true,
-                    "internalOpsEnabled": true,
-                    "localeUpdateEnabled": true,
+                    "internalOpsEnabled": false,
+                    "localeUpdateEnabled": false,
                     "maxDailyPageRecrawls": 1,
                     "maxDailyRecrawls": 1,
-                    "maxGlossarySources": 1,
+                    "maxGlossarySources": 5,
                     "maxLocales": 1,
                     "maxSites": 1,
-                    "overridesEnabled": true,
+                    "overridesEnabled": false,
                     "pipelineAllowed": true,
                     "publishEnabled": true,
                     "renderEnabled": true,
                     "serveAllowed": true,
                     "siteCreateEnabled": true,
                     "slugEditEnabled": true,
-                    "tmWriteEnabled": true,
+                    "tmWriteEnabled": false,
                     "translatableAttributesEnabled": true
                   },
                   "planStatus": "active",
@@ -4229,23 +4487,23 @@
                     "dailyPageCrawls": 1,
                     "dailySiteCrawls": 1,
                     "maxSites": 1,
-                    "previewRequests": 1,
-                    "translationChars": 1
+                    "previewRequests": null,
+                    "translationChars": 75000
                   },
                   "quotas": {
-                    "freeQuota": 1,
+                    "freeQuota": 75000,
                     "maxSites": 1,
-                    "proQuota": 1,
-                    "starterQuota": 1
+                    "proQuota": null,
+                    "starterQuota": null
                   },
                   "usageCounters": {
-                    "charsTranslated": 1,
-                    "dailyPageCrawls": 1,
-                    "dailySiteCrawls": 1,
-                    "pagesPublished": 1,
-                    "periodEnd": "string",
-                    "periodStart": "string",
-                    "rebuildsTriggered": 1
+                    "charsTranslated": 0,
+                    "dailyPageCrawls": 0,
+                    "dailySiteCrawls": 0,
+                    "pagesPublished": 0,
+                    "periodEnd": "2026-03-31",
+                    "periodStart": "2026-03-01",
+                    "rebuildsTriggered": 0
                   }
                 },
                 "schema": {
@@ -4591,39 +4849,37 @@
               "application/json": {
                 "example": {
                   "account": {
-                    "accountId": "string",
+                    "accountId": "00000000-0000-4000-8000-000000000001",
                     "dailyCrawlUsage": {
-                      "date": "string",
-                      "pageCrawls": 1,
-                      "siteCrawls": 1
+                      "date": "2026-03-09",
+                      "pageCrawls": 0,
+                      "siteCrawls": 0
                     },
                     "featureFlags": {
-                      "agencyActionsEnabled": true,
+                      "agencyActionsEnabled": false,
                       "clientRuntimeToggleEnabled": true,
                       "crawlCaptureModeEnabled": true,
                       "crawlTriggerEnabled": true,
-                      "demoMode": true,
+                      "demoMode": false,
                       "domainVerifyEnabled": true,
                       "editEnabled": true,
-                      "featurePreview": [
-                        "string"
-                      ],
+                      "featurePreview": [],
                       "glossaryEnabled": true,
-                      "internalOpsEnabled": true,
-                      "localeUpdateEnabled": true,
+                      "internalOpsEnabled": false,
+                      "localeUpdateEnabled": false,
                       "maxDailyPageRecrawls": 1,
                       "maxDailyRecrawls": 1,
-                      "maxGlossarySources": 1,
+                      "maxGlossarySources": 5,
                       "maxLocales": 1,
                       "maxSites": 1,
-                      "overridesEnabled": true,
+                      "overridesEnabled": false,
                       "pipelineAllowed": true,
                       "publishEnabled": true,
                       "renderEnabled": true,
                       "serveAllowed": true,
                       "siteCreateEnabled": true,
                       "slugEditEnabled": true,
-                      "tmWriteEnabled": true,
+                      "tmWriteEnabled": false,
                       "translatableAttributesEnabled": true
                     },
                     "planStatus": "active",
@@ -4632,23 +4888,23 @@
                       "dailyPageCrawls": 1,
                       "dailySiteCrawls": 1,
                       "maxSites": 1,
-                      "previewRequests": 1,
-                      "translationChars": 1
+                      "previewRequests": null,
+                      "translationChars": 75000
                     },
                     "quotas": {
-                      "freeQuota": 1,
+                      "freeQuota": 75000,
                       "maxSites": 1,
-                      "proQuota": 1,
-                      "starterQuota": 1
+                      "proQuota": null,
+                      "starterQuota": null
                     },
                     "usageCounters": {
-                      "charsTranslated": 1,
-                      "dailyPageCrawls": 1,
-                      "dailySiteCrawls": 1,
-                      "pagesPublished": 1,
-                      "periodEnd": "string",
-                      "periodStart": "string",
-                      "rebuildsTriggered": 1
+                      "charsTranslated": 0,
+                      "dailyPageCrawls": 0,
+                      "dailySiteCrawls": 0,
+                      "pagesPublished": 0,
+                      "periodEnd": "2026-03-31",
+                      "periodStart": "2026-03-01",
+                      "rebuildsTriggered": 0
                     }
                   },
                   "actorAccountId": "string",
@@ -5048,6 +5304,97 @@
           }
         ],
         "summary": "Get preview status",
+        "tags": [
+          "Previews"
+        ]
+      },
+      "patch": {
+        "description": "Sets the notification email on a pending or processing preview. Requires the same status token used for polling.",
+        "operationId": "previews.updateEmail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "previewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "owner@example.com"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PreviewUpdateEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "ok": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewUpdateEmailResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewStatusToken": []
+          }
+        ],
+        "summary": "Attach email to an in-flight preview",
         "tags": [
           "Previews"
         ]
@@ -6474,6 +6821,13 @@
                       },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
+                      "stateDrift": {
+                        "classes": [
+                          "active_pointer_manifest_missing"
+                        ],
+                        "drifted": true,
+                        "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+                      },
                       "status": "string",
                       "targetLang": "string"
                     }
@@ -6589,6 +6943,13 @@
                       },
                       "serveEnabled": true,
                       "servingStatus": "inactive",
+                      "stateDrift": {
+                        "classes": [
+                          "active_pointer_manifest_missing"
+                        ],
+                        "drifted": true,
+                        "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+                      },
                       "status": "string",
                       "targetLang": "string"
                     }
@@ -7483,6 +7844,13 @@
                 "example": {
                   "serveEnabled": true,
                   "servingStatus": "inactive",
+                  "stateDrift": {
+                    "classes": [
+                      "active_pointer_manifest_missing"
+                    ],
+                    "drifted": true,
+                    "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+                  },
                   "targetLang": "string"
                 },
                 "schema": {

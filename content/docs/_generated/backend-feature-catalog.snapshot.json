@@ -266,6 +266,32 @@
     },
     {
       "endpoint": {
+        "auth": "previewStatusToken",
+        "method": "PATCH",
+        "operationId": "previews.updateEmail",
+        "path": "/previews/:previewId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "previews",
+      "id": "api.previews.updateEmail",
+      "name": "Attach email to an in-flight preview",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "previews.updateEmail"
+      ],
+      "stability": "Beta",
+      "summary": "Sets the notification email on a pending or processing preview. Requires the same status token used for polling.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
         "auth": "bearer",
         "method": "GET",
         "operationId": "sites.consistency.blocks.list",
@@ -1630,7 +1656,7 @@
     {
       "defaultsByPlan": {
         "agency": true,
-        "free": false,
+        "free": true,
         "pro": true,
         "starter": false
       },
@@ -2057,6 +2083,26 @@
             "name": "enqueued_at_ms",
             "optional": true,
             "type": "number"
+          },
+          {
+            "name": "csp_mode_override",
+            "optional": true,
+            "type": "\"strict\" | \"compat\" | \"origin-derived\" | \"origin-derived-compat\""
+          },
+          {
+            "name": "csp_eval_blocked",
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "recovery_triggered",
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "recovery_outcome",
+            "optional": true,
+            "type": "string"
           }
         ],
         "interfaceName": "PreviewQueuePayload",
