@@ -430,8 +430,12 @@ const glossaryRetranslateLocaleStatusSchema = z
   .object({
     targetLang: z.string(),
     status: z.enum(["started", "noop", "skipped"]),
+    enqueued: z.number().int().nonnegative().nullable().optional(),
     impactedSegmentCount: z.number().int().nonnegative(),
     impactedPageCount: z.number().int().nonnegative(),
+    reason: z
+      .enum(["no_glossary_change", "no_impacted_segments", "no_latest_page_versions", "active_run"])
+      .optional(),
     runId: z.string().nullable().optional(),
   })
   .strict();
