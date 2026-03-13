@@ -18,7 +18,9 @@ export async function fetchWithTimeout(
   }
 
   const controller = new AbortController();
+  const timeoutState = { timedOut: false };
   const timer = setTimeout(() => {
+    timeoutState.timedOut = true;
     controller.abort();
   }, timeoutMs);
 
@@ -34,7 +36,7 @@ export async function fetchWithTimeout(
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
-    if (controller.signal.aborted && callerSignal?.aborted !== true) {
+    if (timeoutState.timedOut) {
       throw new FetchTimeoutError();
     }
     throw error;
