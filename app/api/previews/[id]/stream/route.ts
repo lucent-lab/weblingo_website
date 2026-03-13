@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
 import { envServer } from "@internal/core/env-server";
 import { buildErrorLogFields } from "@internal/core/error-log";

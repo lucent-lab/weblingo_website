@@ -39,6 +39,14 @@ const errorResponseSchema = z.object({
   details: z.unknown().optional(),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getBodyRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
 const planTypeSchema = z.enum(["free", "starter", "pro", "agency"]);
 const planStatusSchema = z.enum(["active", "past_due", "cancelled"]);
 
@@ -1129,26 +1137,21 @@ function resolveDashboardE2eMockPayload(input: {
 
   const siteMatch = pathname.match(/^\/sites\/([^/]+)$/);
   if (siteMatch && method === "GET") {
-    return createDashboardE2eMockSite(siteMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID);
+    return createDashboardE2eMockSite(siteMatch[1]);
   }
   if (siteMatch && method === "PATCH") {
-    return createDashboardE2eMockSite(siteMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID);
+    return createDashboardE2eMockSite(siteMatch[1]);
   }
 
   const siteDashboardMatch = pathname.match(/^\/sites\/([^/]+)\/dashboard$/);
   if (siteDashboardMatch && method === "GET") {
-    return createDashboardE2eMockDashboardPayload(
-      siteDashboardMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
-      url.searchParams,
-    );
+    return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
   }
 
   const deploymentsMatch = pathname.match(/^\/sites\/([^/]+)\/deployments$/);
   if (deploymentsMatch && method === "GET") {
     return {
-      deployments: createDashboardE2eMockDeployments(
-        deploymentsMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
-      ),
+      deployments: createDashboardE2eMockDeployments(deploymentsMatch[1]),
     };
   }
 
@@ -1167,7 +1170,7 @@ function resolveDashboardE2eMockPayload(input: {
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 100;
     const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
     return {
-      siteId: consistencyCpmMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      siteId: consistencyCpmMatch[1],
       sourceLang: "en",
       targetLang,
       limit,
@@ -1192,15 +1195,14 @@ function resolveDashboardE2eMockPayload(input: {
   }
 
   if (consistencyCpmMatch && method === "PUT") {
-    const payload =
-      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const payload = getBodyRecord(input.body);
     const entries = Array.isArray(payload.entries)
-      ? payload.entries.filter((value): value is Record<string, unknown> => Boolean(value))
+      ? payload.entries.filter((value): value is Record<string, unknown> => isRecord(value))
       : [];
     const first = entries[0] ?? {};
     const targetLang = typeof payload.targetLang === "string" ? payload.targetLang : "fr";
     return {
-      siteId: consistencyCpmMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      siteId: consistencyCpmMatch[1],
       sourceLang: typeof payload.sourceLang === "string" ? payload.sourceLang : "en",
       targetLang,
       upserted: [
@@ -1227,7 +1229,7 @@ function resolveDashboardE2eMockPayload(input: {
   const consistencyBlocksListMatch = pathname.match(/^\/sites\/([^/]+)\/consistency\/blocks$/);
   if (consistencyBlocksListMatch && method === "GET") {
     return {
-      siteId: consistencyBlocksListMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      siteId: consistencyBlocksListMatch[1],
       statusFilter: [] as const,
       blocks: [
         {
@@ -1253,8 +1255,7 @@ function resolveDashboardE2eMockPayload(input: {
     /^\/sites\/([^/]+)\/consistency\/blocks\/([^/]+)$/,
   );
   if (consistencyBlockUpdateMatch && method === "PUT") {
-    const payload =
-      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const payload = getBodyRecord(input.body);
     const members = Array.isArray(payload.members)
       ? payload.members
           .filter((value): value is string => typeof value === "string")
@@ -1268,9 +1269,9 @@ function resolveDashboardE2eMockPayload(input: {
           { id: "member-2", contentId: "cid_demo_pricing", position: 1 },
         ];
     return {
-      siteId: consistencyBlockUpdateMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      siteId: consistencyBlockUpdateMatch[1],
       block: {
-        id: decodeURIComponent(consistencyBlockUpdateMatch[2] ?? "block-nav"),
+        id: decodeURIComponent(consistencyBlockUpdateMatch[2]),
         blockType: "nav",
         blockSignature: "nav-signature",
         familySignature: "nav-family",
@@ -1297,7 +1298,7 @@ function resolveDashboardE2eMockPayload(input: {
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 100;
     const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
     return {
-      siteId: overrideHygieneMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+      siteId: overrideHygieneMatch[1],
       sourceLang: "en",
       targetLang,
       limit,
@@ -1328,8 +1329,7 @@ function resolveDashboardE2eMockPayload(input: {
 
   const crawlTranslateMatch = pathname.match(/^\/sites\/([^/]+)\/crawl-translate$/);
   if (crawlTranslateMatch && method === "POST") {
-    const payload =
-      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const payload = getBodyRecord(input.body);
     const targetLangs = Array.isArray(payload.targetLangs)
       ? payload.targetLangs.filter((value): value is string => typeof value === "string")
       : ["fr"];
@@ -1344,14 +1344,13 @@ function resolveDashboardE2eMockPayload(input: {
 
   const translateMatch = pathname.match(/^\/sites\/([^/]+)\/translate$/);
   if (translateMatch && method === "POST") {
-    const payload =
-      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const payload = getBodyRecord(input.body);
     const targetLang = typeof payload.targetLang === "string" ? payload.targetLang : "fr";
     const now = new Date().toISOString();
     return {
       run: {
         id: `run-${targetLang}-smoke`,
-        siteId: translateMatch[1] ?? DASHBOARD_E2E_MOCK_SITE_ID,
+        siteId: translateMatch[1],
         targetLang,
         status: "in_progress",
         pagesTotal: 2,
@@ -1375,10 +1374,9 @@ function resolveDashboardE2eMockPayload(input: {
 
   const serveToggleMatch = pathname.match(/^\/sites\/([^/]+)\/locales\/([^/]+)\/serve$/);
   if (serveToggleMatch && method === "POST") {
-    const payload =
-      input.body && typeof input.body === "object" ? (input.body as Record<string, unknown>) : {};
+    const payload = getBodyRecord(input.body);
     const enabled = payload.enabled === true;
-    const targetLang = decodeURIComponent(serveToggleMatch[2] ?? "fr");
+    const targetLang = decodeURIComponent(serveToggleMatch[2]);
     return {
       targetLang,
       serveEnabled: enabled,
@@ -1391,7 +1389,7 @@ function resolveDashboardE2eMockPayload(input: {
     /^\/sites\/([^/]+)\/domains\/([^/]+)\/(verify|provision|refresh)$/,
   );
   if (domainMatch && method === "POST") {
-    const domain = decodeURIComponent(domainMatch[2] ?? "pending.example.test");
+    const domain = decodeURIComponent(domainMatch[2]);
     const action = domainMatch[3];
     const now = new Date().toISOString();
     const status =
@@ -1451,6 +1449,7 @@ async function request<T>({
   let loggedTiming = false;
   const traceId = inputTraceId ?? buildDashboardTraceId();
   const timeoutMs = REQUEST_TIMEOUT_MS[timeoutProfile];
+  const hasBody = body !== undefined;
   const logTiming = (status: number, ok: boolean, note?: string) => {
     if (loggedTiming) {
       return;
@@ -1505,11 +1504,11 @@ async function request<T>({
       method,
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(hasBody ? { "Content-Type": "application/json" } : {}),
         "x-dashboard-trace-id": traceId,
         ...headers,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: hasBody ? JSON.stringify(body) : undefined,
       cache: "no-store",
       signal: controller.signal,
     });
@@ -1553,12 +1552,12 @@ async function request<T>({
       }
     }
     logTiming(response.status, false);
-    const parsedError = parsed ? errorResponseSchema.safeParse(parsed) : null;
+    const parsedError = parsed === undefined ? null : errorResponseSchema.safeParse(parsed);
     const message =
-      parsedError?.success && parsedError.data.error
+      parsedError?.success === true
         ? parsedError.data.error
         : `Request failed with status ${response.status}`;
-    const details = parsedError?.success ? parsedError.data.details : (parsed ?? undefined);
+    const details = parsedError?.success === true ? parsedError.data.details : parsed;
     throw new WebhooksApiError(message, response.status, details);
   }
 
@@ -1586,7 +1585,7 @@ async function request<T>({
   return result.data;
 }
 
-function safeParseJson(input: string) {
+function safeParseJson(input: string): unknown | undefined {
   try {
     return JSON.parse(input);
   } catch {
@@ -1595,7 +1594,7 @@ function safeParseJson(input: string) {
 }
 
 function normalizeAuth(auth?: AuthInput): WebhooksAuth | null {
-  if (!auth) {
+  if (auth == null) {
     return null;
   }
   if (typeof auth === "string") {
@@ -1637,11 +1636,16 @@ export async function fetchDashboardBootstrap(
   supabaseAccessToken: string,
   payload?: { subjectAccountId?: string | null; includeAgencyCustomers?: boolean },
 ): Promise<DashboardBootstrapResponse> {
+  const subjectAccountId =
+    typeof payload?.subjectAccountId === "string" && payload.subjectAccountId.length > 0
+      ? payload.subjectAccountId
+      : undefined;
+  const includeAgencyCustomers = payload?.includeAgencyCustomers === true;
   const body =
-    payload && (payload.subjectAccountId || payload.includeAgencyCustomers)
+    subjectAccountId !== undefined || includeAgencyCustomers
       ? {
-          subjectAccountId: payload.subjectAccountId ?? undefined,
-          includeAgencyCustomers: payload.includeAgencyCustomers ?? undefined,
+          subjectAccountId,
+          includeAgencyCustomers: includeAgencyCustomers ? true : undefined,
         }
       : undefined;
   return request({
@@ -1807,7 +1811,7 @@ export async function triggerCrawl(
     path: `/sites/${siteId}/crawl${searchParams.toString() ? `?${searchParams}` : ""}`,
     method: "POST",
     auth,
-    body: options?.force ? { force: true } : undefined,
+    body: options?.force === true ? { force: true } : undefined,
     schema: crawlStatusSchema,
   });
 }

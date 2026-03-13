@@ -41,14 +41,12 @@ export async function readJsonBodyLimited(
   let text = "";
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) {
         break;
       }
-      if (!value) {
-        continue;
-      }
+      const value = chunk.value;
 
       total += value.byteLength;
       if (total > options.maxBytes) {

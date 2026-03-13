@@ -45,12 +45,16 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let inFlightToken = 0;
     setIsPolling(true);
+    const isInactive = () => active === false;
 
     const tick = async () => {
+      if (isInactive()) {
+        return;
+      }
       const token = (inFlightToken += 1);
       try {
         const nextValue = await fetcherRef.current();
-        if (!active || token !== inFlightToken) {
+        if (isInactive() || token !== inFlightToken) {
           return;
         }
         setValue(nextValue);
@@ -60,17 +64,16 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
           return;
         }
       } catch (err) {
-        if (!active || token !== inFlightToken) {
+        if (isInactive() || token !== inFlightToken) {
           return;
         }
         const nextError = err instanceof Error ? err : new Error("Unable to refresh status.");
         setError(nextError);
         console.error("[dashboard] usePoll fetch failed:", err);
       }
-      if (!active) {
-        return;
-      }
-      timeoutId = setTimeout(tick, intervalMs);
+      timeoutId = setTimeout(() => {
+        void tick();
+      }, intervalMs);
     };
 
     void tick();

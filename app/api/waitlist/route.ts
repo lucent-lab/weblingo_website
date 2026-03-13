@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -137,5 +137,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unable to save signup right now" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, signupId: data?.id, createdAt: data?.created_at });
+  return NextResponse.json({ ok: true, signupId: data.id, createdAt: data.created_at });
 }

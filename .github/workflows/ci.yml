@@ -60,8 +60,8 @@ jobs:
       - name: Unit tests
         run: corepack pnpm test
 
-      - name: Check (lint/format/types)
-        run: corepack pnpm check
+      - name: CI validation (lint/format/types/contracts)
+        run: corepack pnpm check:ci
 
       - name: Build
         run: corepack pnpm build
@@ -139,11 +139,8 @@ jobs:
       - name: Install deps
         run: corepack pnpm install --frozen-lockfile
 
-      - name: Docs sync freshness check
-        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check
-
-      - name: Contract and docs coverage tests
-        run: corepack pnpm test:contracts
+      - name: Cross-repo validation
+        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm check:ci
 
   docs-sync-fallback-guidance:
     needs: docs-sync-token-check
@@ -154,4 +151,4 @@ jobs:
         run: |
           echo "CROSS_REPO_CHECKOUT_TOKEN is not set."
           echo "Run fallback checks locally before merge:"
-          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts"
+          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm check:ci"

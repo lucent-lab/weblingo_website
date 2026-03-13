@@ -25,6 +25,7 @@
     "docs:sync": "pnpm docs:sync:tsc && node .tmp/docs-sync/docs-sync-weblingo.js",
     "docs:sync:check": "pnpm docs:sync:tsc && node .tmp/docs-sync/docs-sync-check.js",
     "check": "pnpm run lint && pnpm run format && pnpm run type",
+    "check:ci": "pnpm run lint && pnpm run format && pnpm run type && pnpm run test:contracts && node scripts/check-ci.mjs",
     "supabase:types": "supabase gen types typescript --schema public --project-id \"$SUPABASE_PROJECT_ID\" > types/database.ts"
   },
   "dependencies": {
@@ -68,6 +69,7 @@
     "prettier": "^3.7.4",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
+    "typescript-eslint": "^8.46.3",
     "vitest": "^4.0.18"
   },
   "pnpm": {

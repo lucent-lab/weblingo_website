@@ -79,8 +79,8 @@ export type Translator = (key: string, fallback?: string, vars?: Record<string, 
 
 export function createTranslator(messages: Messages): Translator {
   return (key, fallback, vars) => {
-    const template = messages[key] ?? fallback ?? key;
-    if (!vars) return template;
+    const template = key in messages ? messages[key] : (fallback ?? key);
+    if (vars == null) return template;
     return Object.entries(vars).reduce(
       (acc, [varKey, value]) => acc.replace(new RegExp(`{${varKey}}`, "g"), value),
       template,

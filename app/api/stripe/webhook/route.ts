@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import { NextResponse, type NextRequest } from "next/server";
+import type Stripe from "stripe";
 
 import { createServiceRoleClient, fetchUserByEmail } from "@/lib/supabase/admin";
 import { verifyStripeSignature } from "@internal/billing";
@@ -290,7 +290,7 @@ function extractCustomerEmail(session: Stripe.Checkout.Session) {
   }
 
   if (
-    session.customer &&
+    session.customer != null &&
     typeof session.customer === "object" &&
     !isDeletedCustomer(session.customer)
   ) {

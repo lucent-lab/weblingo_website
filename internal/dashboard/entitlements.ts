@@ -105,7 +105,7 @@ export function check(
 
   if ("feature" in requirement) {
     const key = FEATURE_FLAG_BY_FEATURE[requirement.feature];
-    return account.featureFlags[key]
+    return account.featureFlags[key] === true
       ? ({ ok: true } as const)
       : ({ ok: false, reason: { kind: "feature", feature: requirement.feature } } as const);
   }
