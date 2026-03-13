@@ -71,6 +71,9 @@ export function usePoll<T>(options: UsePollOptions<T>): PollState<T> {
         setError(nextError);
         console.error("[dashboard] usePoll fetch failed:", err);
       }
+      if (isInactive()) {
+        return;
+      }
       timeoutId = setTimeout(() => {
         void tick();
       }, intervalMs);
