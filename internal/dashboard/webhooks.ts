@@ -450,6 +450,7 @@ const glossaryRetranslateStatusSchema = z
 const glossaryResponseSchema = z
   .object({
     entries: z.array(glossaryEntrySchema),
+    crawlStatus: crawlStatusSchema.nullable().optional(),
     retranslateStatus: glossaryRetranslateStatusSchema.nullable().optional(),
   })
   .strict();

@@ -139,8 +139,11 @@ jobs:
       - name: Install deps
         run: corepack pnpm install --frozen-lockfile
 
-      - name: Cross-repo validation
-        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm check:ci
+      - name: Docs sync freshness check
+        run: WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check
+
+      - name: Contract and docs coverage tests
+        run: corepack pnpm test:contracts
 
   docs-sync-fallback-guidance:
     needs: docs-sync-token-check

@@ -136,7 +136,8 @@ Website API docs use backend-synced snapshots under `content/docs/_generated`.
 CI behavior:
 
 - When `CROSS_REPO_CHECKOUT_TOKEN` is available, `.github/workflows/ci.yml` checks out backend HEAD and runs:
-  - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm check:ci`
+  - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check`
+  - `corepack pnpm test:contracts`
 - When token access is unavailable, run this fallback locally before opening/updating a PR:
   - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm check:ci`
 
