@@ -2364,10 +2364,90 @@
               "$ref": "#/components/schemas/GlossaryEntry"
             },
             "type": "array"
+          },
+          "retranslateStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GlossaryRetranslateStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "entries"
+        ],
+        "type": "object"
+      },
+      "GlossaryRetranslateLocaleStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "enqueued": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "impactedPageCount": {
+            "type": "number"
+          },
+          "impactedSegmentCount": {
+            "type": "number"
+          },
+          "reason": {
+            "enum": [
+              "no_glossary_change",
+              "no_impacted_segments",
+              "no_latest_page_versions",
+              "active_run"
+            ],
+            "type": "string"
+          },
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "started",
+              "noop",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "status",
+          "impactedSegmentCount",
+          "impactedPageCount"
+        ],
+        "type": "object"
+      },
+      "GlossaryRetranslateStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "locales": {
+            "items": {
+              "$ref": "#/components/schemas/GlossaryRetranslateLocaleStatus"
+            },
+            "type": "array"
+          },
+          "mode": {
+            "const": "targeted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "locales"
         ],
         "type": "object"
       },
