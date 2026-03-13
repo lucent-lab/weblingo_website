@@ -126,11 +126,13 @@ Local/dev TXT verification flow:
    - `operationId`: `previews.create`
 2. Poll preview status:
    - `operationId`: `previews.status`
-3. Configure digest email subscription:
+3. Attach email to in-flight preview:
+   - `operationId`: `previews.updateEmail`
+4. Configure digest email subscription:
    - `operationId`: `digests.subscription.upsert`
-4. Configure per-locale translation summary frequency:
+5. Configure per-locale translation summary frequency:
    - `operationId`: `sites.locales.translationSummary.put`
-5. Read translation summary rollups:
+6. Read translation summary rollups:
    - `operationId`: `sites.translationSummaries.list`
 
 ## Playbook 6: Operations and Incident Response
