@@ -426,7 +426,29 @@ const glossaryEntrySchema = z.object({
   scope: z.enum(["segment", "in_segment"]).optional(),
 });
 
-const glossaryResponseSchema = z.object({ entries: z.array(glossaryEntrySchema) });
+const glossaryRetranslateLocaleStatusSchema = z
+  .object({
+    targetLang: z.string(),
+    status: z.enum(["started", "noop", "skipped"]),
+    impactedSegmentCount: z.number().int().nonnegative(),
+    impactedPageCount: z.number().int().nonnegative(),
+    runId: z.string().nullable().optional(),
+  })
+  .strict();
+
+const glossaryRetranslateStatusSchema = z
+  .object({
+    mode: z.literal("targeted"),
+    locales: z.array(glossaryRetranslateLocaleStatusSchema),
+  })
+  .strict();
+
+const glossaryResponseSchema = z
+  .object({
+    entries: z.array(glossaryEntrySchema),
+    retranslateStatus: glossaryRetranslateStatusSchema.nullable().optional(),
+  })
+  .strict();
 
 const consistencyStatusSchema = z.enum(["proposed", "approved", "frozen"]);
 const consistencyBlockModeSchema = z.enum(["strict", "prefer"]);
@@ -731,6 +753,7 @@ const upsertGlossaryResponseSchema = z
   .object({
     entries: z.array(glossaryEntrySchema),
     crawlStatus: crawlStatusSchema.nullable().optional(),
+    retranslateStatus: glossaryRetranslateStatusSchema.nullable().optional(),
   })
   .strict();
 
