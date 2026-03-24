@@ -738,7 +738,7 @@ const siteShowcaseResponseSchema = z
   .object({
     siteId: z.string(),
     customerServingStatus: deploymentServingStatusSchema,
-    showcaseServingStatus: deploymentServingStatusSchema.nullable(),
+    showcaseServingStatus: deploymentServingStatusSchema,
     showcase: siteShowcaseSchema,
   })
   .strict();

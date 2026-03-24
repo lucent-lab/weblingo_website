@@ -76,6 +76,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   let supportedLanguages: SupportedLanguage[] = [];
   let showcaseState: SiteShowcaseResponse | null = null;
   let showcaseError: string | null = null;
+  let showcaseMissingConfirmed = false;
   const canManageShowcase = hasActorInternalOps(auth);
 
   const [
@@ -129,6 +130,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     showcaseResult.reason.status === 404
   ) {
     showcaseState = null;
+    showcaseMissingConfirmed = true;
   } else if (showcaseResult.status === "rejected") {
     showcaseError =
       showcaseResult.reason instanceof Error
@@ -402,6 +404,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
           sourceUrl={site.sourceUrl}
           targetLangs={targetLangs}
           showcaseState={showcaseState}
+          showcaseMissingConfirmed={showcaseMissingConfirmed}
           fetchError={showcaseError}
         />
       ) : null}

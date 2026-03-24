@@ -37,6 +37,7 @@ import {
 import { invalidateSiteDashboardCache, invalidateSitesCache } from "@internal/dashboard/data";
 import {
   hasActorInternalOps,
+  invalidateDashboardBootstrapCache,
   requireDashboardAuth,
   type DashboardAuth,
   type WebhooksAuthContext,
@@ -206,20 +207,6 @@ async function invalidateDashboardCaches(
   if (options.invalidateSitesList) {
     await invalidateSitesCache(auth);
   }
-}
-
-async function requireInternalAdminActorAuth(): Promise<WebhooksAuthContext> {
-  const auth = await requireDashboardAuth();
-  if (!hasActorInternalOps(auth)) {
-    throw new Error("Internal admin access is required.");
-  }
-  return (
-    auth.actorWebhooksAuth ??
-    auth.webhooksAuth ??
-    (() => {
-      throw new Error("Unable to authenticate internal admin actions.");
-    })()
-  );
 }
 
 async function requireInternalAdminWorkspaceAuth(): Promise<WebhooksAuthContext> {
@@ -417,6 +404,7 @@ export async function createManagedDemoAction(
     .map((lang) => lang.toString().trim())
     .filter(Boolean);
   const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
+  const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
   const websitePath = formData.get("websitePath")?.toString().trim() ?? "";
   const defaultLangRaw = formData.get("defaultLang")?.toString().trim() ?? "";
 
@@ -437,15 +425,32 @@ export async function createManagedDemoAction(
   if (!defaultLang || !uniqueTargets.includes(defaultLang)) {
     return failed("Default showcase language must be one of the selected target languages.");
   }
+  const localeAliases = parseLocaleAliases(localeAliasesRaw, uniqueTargets);
+  if (typeof localeAliases === "string") {
+    return failed(localeAliases);
+  }
 
   try {
-    const auth = await requireInternalAdminActorAuth();
+    const dashboardAuth = await requireDashboardAuth();
+    if (!hasActorInternalOps(dashboardAuth)) {
+      throw new Error("Internal admin access is required.");
+    }
+    if (!dashboardAuth.session?.access_token) {
+      throw new Error("Unable to read the current dashboard session.");
+    }
+    const auth =
+      dashboardAuth.actorWebhooksAuth ??
+      dashboardAuth.webhooksAuth ??
+      (() => {
+        throw new Error("Unable to authenticate internal admin actions.");
+      })();
     const result = await createManagedDemo(auth, {
       site: {
         sourceUrl,
         sourceLang,
         targetLangs: uniqueTargets,
         subdomainPattern,
+        ...(localeAliases ? { localeAliases } : {}),
         servingMode: "strict",
         maxLocales: null,
       },
@@ -454,6 +459,7 @@ export async function createManagedDemoAction(
         defaultLang,
       },
     });
+    await invalidateDashboardBootstrapCache(dashboardAuth.session.access_token);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/agency");
     revalidatePath("/dashboard/agency/customers");

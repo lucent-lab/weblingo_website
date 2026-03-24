@@ -176,6 +176,10 @@ function getBootstrapCacheKey(
   return `${BOOTSTRAP_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
 }
 
+function shouldBypassBootstrapCache(): boolean {
+  return isDashboardE2eMockEnabled();
+}
+
 function getBootstrapCacheTtlSeconds(expiresAt: string): number | null {
   const parsed = Date.parse(expiresAt);
   if (!Number.isFinite(parsed)) {
@@ -318,14 +322,16 @@ async function getBootstrap({
 }: BootstrapOptions): Promise<BootstrapCacheEntry> {
   const cacheKey = getBootstrapCacheKey(supabaseAccessToken, subjectAccountId);
 
-  try {
-    const cached = await redis.get<BootstrapCacheEntry>(cacheKey);
-    if (cached) {
-      console.info("[dashboard] bootstrap cache hit");
-      return cached;
+  if (!shouldBypassBootstrapCache()) {
+    try {
+      const cached = await redis.get<BootstrapCacheEntry>(cacheKey);
+      if (cached) {
+        console.info("[dashboard] bootstrap cache hit");
+        return cached;
+      }
+    } catch (error) {
+      console.warn("[dashboard] bootstrap cache read failed:", error);
     }
-  } catch (error) {
-    console.warn("[dashboard] bootstrap cache read failed:", error);
   }
 
   console.info("[dashboard] bootstrap cache miss");
@@ -369,12 +375,14 @@ async function getBootstrap({
       }
     }
 
-    const ttlSeconds = getBootstrapCacheTtlSeconds(payload.expiresAt);
-    if (ttlSeconds) {
-      try {
-        await redis.set(cacheKey, payload, { ex: ttlSeconds });
-      } catch (error) {
-        console.warn("[dashboard] bootstrap cache write failed:", error);
+    if (!shouldBypassBootstrapCache()) {
+      const ttlSeconds = getBootstrapCacheTtlSeconds(payload.expiresAt);
+      if (ttlSeconds) {
+        try {
+          await redis.set(cacheKey, payload, { ex: ttlSeconds });
+        } catch (error) {
+          console.warn("[dashboard] bootstrap cache write failed:", error);
+        }
       }
     }
 
@@ -386,6 +394,22 @@ async function getBootstrap({
     return await promise;
   } finally {
     bootstrapInflight.delete(cacheKey);
+  }
+}
+
+export async function invalidateDashboardBootstrapCache(
+  supabaseAccessToken: string,
+  subjectAccountId?: string | null,
+): Promise<void> {
+  if (!supabaseAccessToken || shouldBypassBootstrapCache()) {
+    return;
+  }
+  const cacheKey = getBootstrapCacheKey(supabaseAccessToken, subjectAccountId);
+  bootstrapInflight.delete(cacheKey);
+  try {
+    await redis.del(cacheKey);
+  } catch (error) {
+    console.warn("[dashboard] bootstrap cache invalidate failed:", error);
   }
 }
 

@@ -24,6 +24,7 @@ type SiteShowcaseCardProps = {
   sourceUrl: string;
   targetLangs: string[];
   showcaseState: SiteShowcaseResponse | null;
+  showcaseMissingConfirmed: boolean;
   fetchError?: string | null;
 };
 
@@ -41,6 +42,7 @@ export function SiteShowcaseCard({
   sourceUrl,
   targetLangs,
   showcaseState,
+  showcaseMissingConfirmed,
   fetchError,
 }: SiteShowcaseCardProps) {
   const router = useRouter();
@@ -114,7 +116,7 @@ export function SiteShowcaseCard({
                 Customer serving {showcaseState.customerServingStatus}
               </Badge>
               <Badge variant="outline">
-                Showcase serving {showcaseState.showcaseServingStatus ?? "inactive"}
+                Showcase serving {showcaseState.showcaseServingStatus}
               </Badge>
             </div>
 
@@ -197,7 +199,7 @@ export function SiteShowcaseCard({
               </div>
             </form>
           </>
-        ) : (
+        ) : showcaseMissingConfirmed ? (
           <form action={createWithToast} className="space-y-4">
             <input name="siteId" type="hidden" value={siteId} />
             <div className="grid gap-4 md:grid-cols-2">
@@ -256,6 +258,11 @@ export function SiteShowcaseCard({
               </Button>
             </div>
           </form>
+        ) : (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Showcase state could not be confirmed. Reload this page before creating or updating the
+            namespace.
+          </div>
         )}
       </CardContent>
     </Card>

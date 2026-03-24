@@ -526,4 +526,17 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       }
     }
   });
+
+  it("keeps SiteShowcaseResponse.showcaseServingStatus required and non-null", async () => {
+    const spec = readOpenApiSpecFromEnv();
+    const openApiSchema = spec.components?.schemas?.SiteShowcaseResponse as
+      | {
+          required?: string[];
+          properties?: Record<string, { nullable?: boolean }>;
+        }
+      | undefined;
+    expect(openApiSchema).toBeTruthy();
+    expect(openApiSchema?.required).toContain("showcaseServingStatus");
+    expect(openApiSchema?.properties?.showcaseServingStatus?.nullable ?? false).toBe(false);
+  });
 });

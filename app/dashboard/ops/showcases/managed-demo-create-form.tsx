@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { createManagedDemoAction, type ActionResponse } from "../../actions";
 import { TargetLanguagePicker } from "../../sites/target-language-picker";
-import { parseSourceUrl, stripWwwPrefix } from "../../sites/site-form-utils";
+import { buildLocaleAliases, parseSourceUrl, stripWwwPrefix } from "../../sites/site-form-utils";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -45,6 +45,11 @@ export function ManagedDemoCreateForm({
   const derivedWebsitePath = sourceHost.toLowerCase();
   const effectiveWebsitePath = websitePath.trim() || derivedWebsitePath;
   const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
+  const localeAliases = useMemo(
+    () => buildLocaleAliases(targetLangs, aliasesByLang),
+    [aliasesByLang, targetLangs],
+  );
+  const localeAliasesJson = useMemo(() => JSON.stringify(localeAliases), [localeAliases]);
   const effectiveDefaultLang =
     defaultLang && targetLangs.includes(defaultLang) ? defaultLang : (targetLangs[0] ?? "");
   const subdomainPattern = useMemo(() => {
@@ -93,6 +98,7 @@ export function ManagedDemoCreateForm({
         <form action={submitWithToast} className="space-y-5">
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           <input name="defaultLang" type="hidden" value={effectiveDefaultLang} />
+          <input name="localeAliases" type="hidden" value={localeAliasesJson} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Field label="Source URL" htmlFor="managed-demo-source-url">
