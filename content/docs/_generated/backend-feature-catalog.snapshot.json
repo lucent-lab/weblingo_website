@@ -563,7 +563,7 @@
         "sites.dashboard.get"
       ],
       "stability": "GA",
-      "summary": "Returns a consolidated dashboard payload (site + deployments) and optional paginated pages when `includePages=true`.",
+      "summary": "Returns a consolidated dashboard payload (site + deployments) with pages summary, an operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
       "userFacing": true
     },
     {
