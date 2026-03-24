@@ -50,6 +50,13 @@ export type DashboardAuth = {
   has: (requirement: HasCheck) => boolean;
 };
 
+export function hasActorInternalOps(
+  auth: Pick<DashboardAuth, "actorAccount" | "account">,
+): boolean {
+  const actor = auth.actorAccount ?? auth.account;
+  return actor?.planType === "agency" && actor.featureFlags.internalOpsEnabled === true;
+}
+
 const BOOTSTRAP_CACHE_NAMESPACE = "dashboard:bootstrap";
 const BOOTSTRAP_CACHE_MAX_TTL_SECONDS = 300;
 const BOOTSTRAP_CACHE_MIN_TTL_SECONDS = 30;

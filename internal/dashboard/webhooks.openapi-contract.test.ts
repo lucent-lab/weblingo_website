@@ -68,30 +68,32 @@ function resolveOpenApiRef(
   definitionsIndex: Map<string, unknown>,
   schema: unknown,
 ): unknown {
-  if (!schema || typeof schema !== "object") {
-    return schema;
-  }
-  const ref = (schema as { $ref?: unknown }).$ref;
-  if (typeof ref !== "string") {
-    return schema;
+  let current = schema;
+  const seen = new Set<string>();
+
+  while (current && typeof current === "object") {
+    const ref = (current as { $ref?: unknown }).$ref;
+    if (typeof ref !== "string") {
+      return current;
+    }
+    if (seen.has(ref)) {
+      throw new Error(`[contracts] Cyclic OpenAPI $ref: ${ref}`);
+    }
+    seen.add(ref);
+
+    const match = ref.match(/^#\/components\/schemas\/(.+)$/);
+    if (!match) {
+      throw new Error(`[contracts] Unsupported OpenAPI $ref: ${ref}`);
+    }
+    const name = match[1];
+    const resolved = spec.components?.schemas?.[name] ?? definitionsIndex.get(name);
+    if (!resolved) {
+      throw new Error(`[contracts] OpenAPI ref not found: ${ref}`);
+    }
+    current = resolved;
   }
 
-  const match = ref.match(/^#\/components\/schemas\/(.+)$/);
-  if (!match) {
-    throw new Error(`[contracts] Unsupported OpenAPI $ref: ${ref}`);
-  }
-  const name = match[1];
-  const resolved = spec.components?.schemas?.[name];
-  if (resolved) {
-    return resolved;
-  }
-
-  const fromDefinitions = definitionsIndex.get(name);
-  if (fromDefinitions) {
-    return fromDefinitions;
-  }
-
-  throw new Error(`[contracts] OpenAPI ref not found: ${ref}`);
+  return current;
 }
 
 function normalizeOpenApiSchema(
@@ -355,12 +357,17 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/accounts/me", method: "get" },
       { path: "/agency/customers", method: "get" },
       { path: "/agency/customers", method: "post" },
+      { path: "/admin/managed-demos", method: "get" },
+      { path: "/admin/managed-demos", method: "post" },
       { path: "/digests/subscription", method: "put" },
       { path: "/sites", method: "get" },
       { path: "/sites", method: "post" },
       { path: "/sites/{siteId}", method: "get" },
       { path: "/sites/{siteId}", method: "patch" },
       { path: "/sites/{siteId}/dashboard", method: "get" },
+      { path: "/sites/{siteId}/showcase", method: "get" },
+      { path: "/sites/{siteId}/showcase", method: "post" },
+      { path: "/sites/{siteId}/showcase", method: "patch" },
       { path: "/sites/{siteId}/crawl", method: "post" },
       { path: "/sites/{siteId}/crawl-translate", method: "post" },
       { path: "/sites/{siteId}/translate", method: "post" },
@@ -413,6 +420,18 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "CreateAgencyCustomerResponse",
         schema: __webhooksZodContracts.createAgencyCustomerResponseSchema,
+      },
+      {
+        name: "ListManagedDemoSitesResponse",
+        schema: __webhooksZodContracts.listManagedDemoSitesResponseSchema,
+      },
+      {
+        name: "CreateManagedDemoSiteResponse",
+        schema: __webhooksZodContracts.createManagedDemoSiteResponseSchema,
+      },
+      {
+        name: "SiteShowcaseResponse",
+        schema: __webhooksZodContracts.siteShowcaseResponseSchema,
       },
       {
         name: "DigestSubscriptionResponse",

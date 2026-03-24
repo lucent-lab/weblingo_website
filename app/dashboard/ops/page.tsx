@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
 
 export const metadata = {
@@ -12,7 +14,7 @@ export const metadata = {
 
 export default async function OpsPage() {
   const auth = await requireDashboardAuth();
-  const canAccessOps = auth.has({ feature: "internal_ops" });
+  const canAccessOps = hasActorInternalOps(auth);
   if (!canAccessOps) {
     notFound();
   }
@@ -41,6 +43,26 @@ export default async function OpsPage() {
           <InfoBlock label="Total sites" value={`${sites.length}`} />
           <InfoBlock label="Active sites" value={`${activeSites}`} />
           <InfoBlock label="Inactive sites" value={`${sites.length - activeSites}`} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 bg-muted/20">
+        <CardHeader>
+          <CardTitle>Managed demos</CardTitle>
+          <CardDescription>
+            Use the dedicated showcase workspace to provision pre-sales demo sites and open their
+            managed customer workspaces.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showcase URLs stay public on{" "}
+            <span className="font-medium text-foreground">t2.weblingo.app</span>
+            while customer domains remain gated by verification.
+          </p>
+          <Button asChild variant="secondary">
+            <Link href="/dashboard/ops/showcases">Open managed demos</Link>
+          </Button>
         </CardContent>
       </Card>
 

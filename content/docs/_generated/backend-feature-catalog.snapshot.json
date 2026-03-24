@@ -56,6 +56,62 @@
       "endpoint": {
         "auth": "bearer",
         "method": "POST",
+        "operationId": "admin.managedDemos.create",
+        "path": "/admin/managed-demos"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.managedDemos.create",
+      "name": "Create a managed demo account, site, and showcase",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "admin.managedDemos.create"
+      ],
+      "stability": "Internal",
+      "summary": "Creates an internal managed demo account, links it to the authenticated internal admin actor, provisions the first site, and reserves its showcase namespace.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.managedDemos.list",
+        "path": "/admin/managed-demos"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.managedDemos.list",
+      "name": "List admin-managed demo sites",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "admin.managedDemos.list"
+      ],
+      "stability": "Internal",
+      "summary": "Returns showcase-backed demo sites owned by managed demo accounts linked to the authenticated internal admin actor.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
         "operationId": "agency.customers.create",
         "path": "/agency/customers"
       },
@@ -1036,6 +1092,84 @@
       "stability": "Internal",
       "summary": "Get pipeline status for a page version",
       "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.showcase.create",
+        "path": "/sites/:siteId/showcase"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.showcase",
+      "id": "api.sites.showcase.create",
+      "name": "Create site showcase namespace",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "sites.showcase.create"
+      ],
+      "stability": "GA",
+      "summary": "Reserves a showcase namespace on the managed showcase host for an existing site. Internal admin access required.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.showcase.get",
+        "path": "/sites/:siteId/showcase"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.showcase",
+      "id": "api.sites.showcase.get",
+      "name": "Get site showcase state",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "sites.showcase.get"
+      ],
+      "stability": "GA",
+      "summary": "Returns the showcase namespace and separate customer-live vs showcase serving status for an admin-managed site.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PATCH",
+        "operationId": "sites.showcase.update",
+        "path": "/sites/:siteId/showcase"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.showcase",
+      "id": "api.sites.showcase.update",
+      "name": "Update site showcase state",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "sites.showcase.update"
+      ],
+      "stability": "GA",
+      "summary": "Updates showcase default language or status for an existing site showcase. Internal admin access required.",
+      "userFacing": true
     },
     {
       "endpoint": {
