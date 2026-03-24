@@ -257,7 +257,7 @@ export function buildSiteSettingsUpdatePayload(
     payload.siteProfile = siteProfile;
   }
 
-  if (!Object.keys(payload).length) {
+  if (Object.keys(payload).length === 0) {
     return { ok: false, error: "No editable changes submitted." };
   }
 
@@ -267,7 +267,7 @@ export function buildSiteSettingsUpdatePayload(
 export function parseJsonObject(input: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(input);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
       return null;
     }
     if (Object.keys(parsed).length === 0) {
@@ -297,7 +297,7 @@ function parseSpaRefreshFallback(
   value: FormDataEntryValue | null,
   context: string,
 ): SpaRefreshFallback {
-  if (!value) {
+  if (value === null) {
     return "globalOnly";
   }
   const normalized = value.toString().trim();
@@ -308,7 +308,7 @@ function parseSpaRefreshFallback(
 }
 
 function parseSpaRefreshBoolean(value: FormDataEntryValue | null): boolean {
-  if (!value) {
+  if (value === null) {
     return false;
   }
   const normalized = value.toString().trim();
@@ -321,7 +321,7 @@ export function parseLocaleAliases(
   raw: string,
   targetLangs: string[],
 ): Record<string, string | null> | string | null {
-  if (!raw) {
+  if (raw.length === 0) {
     return null;
   }
   let parsed: unknown;
@@ -330,7 +330,7 @@ export function parseLocaleAliases(
   } catch {
     return "Locale aliases must be valid JSON.";
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return "Locale aliases must be an object.";
   }
   const targetSet = new Set(targetLangs);

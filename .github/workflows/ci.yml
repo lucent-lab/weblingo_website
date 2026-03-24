@@ -60,8 +60,8 @@ jobs:
       - name: Unit tests
         run: corepack pnpm test
 
-      - name: Check (lint/format/types)
-        run: corepack pnpm check
+      - name: CI validation (lint/format/types/contracts)
+        run: corepack pnpm check:ci
 
       - name: Build
         run: corepack pnpm build
@@ -154,4 +154,4 @@ jobs:
         run: |
           echo "CROSS_REPO_CHECKOUT_TOKEN is not set."
           echo "Run fallback checks locally before merge:"
-          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts"
+          echo "WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm check:ci"

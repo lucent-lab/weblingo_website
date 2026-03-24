@@ -1692,7 +1692,34 @@
               "null"
             ]
           },
+          "activeActivatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "activeDeploymentId": {
+            "description": "Active serving deployment id from the KV pointer / artifact manifest namespace.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentRowId": {
+            "description": "Durable deployment row id matching the active serving deployment id, when present.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentStatus": {
+            "description": "Durable deployment row status matching the active serving deployment id, when present.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeRoutePrefix": {
             "type": [
               "string",
               "null"
@@ -1708,6 +1735,7 @@
             "$ref": "#/components/schemas/DeploymentCompleteness"
           },
           "deploymentId": {
+            "description": "Latest deployment row id from the durable deployments table.",
             "type": [
               "string",
               "null"
@@ -1731,6 +1759,13 @@
               "null"
             ]
           },
+          "manifestDeploymentId": {
+            "description": "Manifest deployment id stored inside the latest deployment row's artifact manifest.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "routePrefix": {
             "type": [
               "string",
@@ -1747,6 +1782,7 @@
             "$ref": "#/components/schemas/DeploymentStateDriftSignal"
           },
           "status": {
+            "description": "Latest deployment row status from the durable deployments table.",
             "type": "string"
           },
           "targetLang": {
@@ -2604,6 +2640,66 @@
       },
       "ListDeploymentsResponse": {
         "additionalProperties": false,
+        "example": {
+          "deployments": [
+            {
+              "activeActivatedAt": "2024-01-01T00:00:00Z",
+              "activeDeploymentId": "dep-active",
+              "activeDeploymentRowId": "dep-row-active",
+              "activeDeploymentStatus": "active",
+              "activeRoutePrefix": null,
+              "completeness": {
+                "discoveredPages": 10,
+                "pendingPages": 3,
+                "percentage": 70,
+                "status": "partial",
+                "translatedPages": 7
+              },
+              "deploymentId": "dep-row-failed",
+              "manifestDeploymentId": "dep-failed-newer",
+              "serveEnabled": true,
+              "servingStatus": "serving",
+              "stateDrift": {
+                "classes": [],
+                "drifted": false,
+                "runbook": null
+              },
+              "status": "failed",
+              "targetLang": "fr"
+            }
+          ]
+        },
+        "examples": [
+          {
+            "deployments": [
+              {
+                "activeActivatedAt": "2024-01-01T00:00:00Z",
+                "activeDeploymentId": "dep-active",
+                "activeDeploymentRowId": "dep-row-active",
+                "activeDeploymentStatus": "active",
+                "activeRoutePrefix": null,
+                "completeness": {
+                  "discoveredPages": 10,
+                  "pendingPages": 3,
+                  "percentage": 70,
+                  "status": "partial",
+                  "translatedPages": 7
+                },
+                "deploymentId": "dep-row-failed",
+                "manifestDeploymentId": "dep-failed-newer",
+                "serveEnabled": true,
+                "servingStatus": "serving",
+                "stateDrift": {
+                  "classes": [],
+                  "drifted": false,
+                  "runbook": null
+                },
+                "status": "failed",
+                "targetLang": "fr"
+              }
+            ]
+          }
+        ],
         "properties": {
           "deployments": {
             "items": {
@@ -3551,6 +3647,9 @@
             },
             "type": "array"
           },
+          "operationalSummary": {
+            "$ref": "#/components/schemas/SiteOperationalSummary"
+          },
           "pages": {
             "items": {
               "$ref": "#/components/schemas/SitePageSummary"
@@ -3591,6 +3690,61 @@
         "required": [
           "site",
           "deployments"
+        ],
+        "type": "object"
+      },
+      "SiteDlqSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "invalidEntries": {
+            "type": "number"
+          },
+          "monitorPath": {
+            "type": "string"
+          },
+          "newest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oldest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "perWorker": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "replayPath": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "unreadableEntries": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "perWorker",
+          "truncated",
+          "complete",
+          "invalidEntries",
+          "unreadableEntries",
+          "monitorPath",
+          "replayPath"
         ],
         "type": "object"
       },
@@ -3651,6 +3805,43 @@
         ],
         "type": "object"
       },
+      "SiteHealthSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "heartbeatKey": {
+            "type": "string"
+          },
+          "readyPaths": {
+            "additionalProperties": false,
+            "properties": {
+              "ops": {
+                "type": "string"
+              },
+              "serve": {
+                "type": "string"
+              },
+              "webhooks": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "webhooks",
+              "serve",
+              "ops"
+            ],
+            "type": "object"
+          },
+          "runbookPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "readyPaths",
+          "heartbeatKey",
+          "runbookPath"
+        ],
+        "type": "object"
+      },
       "SiteLocale": {
         "additionalProperties": false,
         "properties": {
@@ -3674,6 +3865,40 @@
           "sourceLang",
           "targetLang",
           "serveEnabled"
+        ],
+        "type": "object"
+      },
+      "SiteOperationalSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "dlq": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiteDlqSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "health": {
+            "$ref": "#/components/schemas/SiteHealthSummary"
+          },
+          "retry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiteRetrySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "retry",
+          "dlq",
+          "health"
         ],
         "type": "object"
       },
@@ -3748,6 +3973,34 @@
         "required": [
           "id",
           "sourcePath"
+        ],
+        "type": "object"
+      },
+      "SiteRetrySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "activeRunCount": {
+            "type": "number"
+          },
+          "pagesCompleted": {
+            "type": "number"
+          },
+          "pagesFailed": {
+            "type": "number"
+          },
+          "pagesInProgress": {
+            "type": "number"
+          },
+          "pagesPending": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "activeRunCount",
+          "pagesCompleted",
+          "pagesPending",
+          "pagesInProgress",
+          "pagesFailed"
         ],
         "type": "object"
       },
@@ -6840,7 +7093,7 @@
     },
     "/sites/{siteId}/dashboard": {
       "get": {
-        "description": "Returns a consolidated dashboard payload (site + deployments) and optional paginated pages when `includePages=true`.",
+        "description": "Returns a consolidated dashboard payload (site + deployments) with pages summary, an operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
         "operationId": "sites.dashboard.get",
         "parameters": [
           {
@@ -7014,6 +7267,11 @@
                 "example": {
                   "deployments": [
                     {
+                      "activeActivatedAt": "2024-01-01T00:00:00Z",
+                      "activeDeploymentId": "dep-active",
+                      "activeDeploymentRowId": "dep-row-active",
+                      "activeDeploymentStatus": "active",
+                      "activeRoutePrefix": null,
                       "completeness": {
                         "discoveredPages": 10,
                         "pendingPages": 3,
@@ -7021,17 +7279,17 @@
                         "status": "partial",
                         "translatedPages": 7
                       },
+                      "deploymentId": "dep-row-failed",
+                      "manifestDeploymentId": "dep-failed-newer",
                       "serveEnabled": true,
-                      "servingStatus": "inactive",
+                      "servingStatus": "serving",
                       "stateDrift": {
-                        "classes": [
-                          "active_pointer_manifest_missing"
-                        ],
-                        "drifted": true,
-                        "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+                        "classes": [],
+                        "drifted": false,
+                        "runbook": null
                       },
-                      "status": "string",
-                      "targetLang": "string"
+                      "status": "failed",
+                      "targetLang": "fr"
                     }
                   ]
                 },

@@ -67,7 +67,7 @@ export function hasExplicitFailure(payload: Record<string, unknown>): boolean {
   if (isPreviewErrorCode(payload.errorCode) || payload.errorStage != null) {
     return true;
   }
-  if (payload.details && typeof payload.details === "object") {
+  if (payload.details != null && typeof payload.details === "object") {
     const details = payload.details as Record<string, unknown>;
     if (isPreviewErrorCode(details.errorCode) || details.errorStage != null) {
       return true;

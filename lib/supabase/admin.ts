@@ -62,5 +62,5 @@ export async function fetchUserByEmail(email: string): Promise<User | null> {
   }
 
   const payload = (await response.json()) as { users?: User[] };
-  return payload?.users?.[0] ?? null;
+  return payload.users?.[0] ?? null;
 }

@@ -149,7 +149,13 @@ function normalizeSubjectAccountId(subjectAccountId?: string | null): string {
 }
 
 function getCacheEnvPrefix(): string {
-  return process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown";
+  if (typeof process.env.VERCEL_ENV === "string") {
+    return process.env.VERCEL_ENV;
+  }
+  if (typeof process.env.NODE_ENV === "string") {
+    return process.env.NODE_ENV;
+  }
+  return "unknown";
 }
 
 function getBootstrapCacheKey(

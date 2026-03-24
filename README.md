@@ -36,6 +36,16 @@ Internationalization is handled via the `/[locale]` segment with English, French
 - Minimal validation for docs/capability alignment:
   - `corepack pnpm test:contracts`
   - `corepack pnpm check`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm check:ci`
+
+## Lint Rollout
+
+Type-aware ESLint now uses `projectService: true` for TypeScript files.
+
+- First-wave strict rules apply to `app/api/**/*.ts`, `internal/**/*.ts`, and `lib/**/*.ts`.
+- First-wave rules: `consistent-type-imports`, `no-floating-promises`, `no-misused-promises`, `no-unnecessary-condition`, and phased `strict-boolean-expressions`.
+- Broad TSX `strict-boolean-expressions` remains deferred for `components/**`, `modules/**`, route TSX files, and `internal/**/*.tsx` until ReactNode truthiness patterns are normalized.
+- `corepack pnpm check:ci` adds `test:contracts` and runs `docs:sync:check` when `WEBLINGO_REPO_PATH` is set.
 
 ## Environment Variables
 
@@ -129,7 +139,7 @@ CI behavior:
   - `WEBLINGO_REPO_PATH="$GITHUB_WORKSPACE/backend" corepack pnpm docs:sync:check`
   - `corepack pnpm test:contracts`
 - When token access is unavailable, run this fallback locally before opening/updating a PR:
-  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm docs:sync:check && corepack pnpm test:contracts`
+  - `WEBLINGO_REPO_PATH=/absolute/path/to/weblingo corepack pnpm check:ci`
 
 Ownership:
 

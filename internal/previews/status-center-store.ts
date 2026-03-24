@@ -169,14 +169,14 @@ export function parsePreviewStatusCenterRequestKey(
 ): ParsedPreviewStatusCenterRequestKey | null {
   if (requestKey.startsWith(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX)) {
     const encoded = requestKey.slice(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX.length);
-    const [sourceUrl, sourceLang, targetLang, email, ...rest] = encoded.split("|");
+    const [sourceUrl, sourceLang, targetLang, email = "", ...rest] = encoded.split("|");
     if (!sourceUrl || !sourceLang || !targetLang || rest.length > 0) {
       return null;
     }
     const decodedSourceUrl = decodeRequestKeyPart(sourceUrl);
     const decodedSourceLang = decodeRequestKeyPart(sourceLang);
     const decodedTargetLang = decodeRequestKeyPart(targetLang);
-    const decodedEmail = decodeRequestKeyPart(email ?? "");
+    const decodedEmail = decodeRequestKeyPart(email);
     if (!decodedSourceUrl || !decodedSourceLang || !decodedTargetLang) {
       return null;
     }
