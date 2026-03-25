@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const ORIGINAL_ENV = { ...process.env };
 const ORIGINAL_FETCH = globalThis.fetch;
 
+function setEnv(name: string, value: string | undefined) {
+  (process.env as Record<string, string | undefined>)[name] = value;
+}
+
 function setClientEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_123";
@@ -404,5 +408,35 @@ describe("webhooks request wrapper", () => {
     expect(snippets.snippets).toHaveLength(1);
 
     expect(fetchSpy).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps managed-demo mock payloads aligned with strict dashboard schemas", async () => {
+    setEnv("DASHBOARD_E2E_MOCK", "1");
+    setEnv("NODE_ENV", "test");
+    setEnv("VERCEL_ENV", "preview");
+
+    vi.resetModules();
+    const { createManagedDemo, listManagedDemos } = await import("./webhooks");
+
+    const created = await createManagedDemo("token", {
+      site: {
+        sourceUrl: "https://www.autotrim.com",
+        sourceLang: "en",
+        targetLangs: ["fr"],
+        subdomainPattern: "https://{lang}.autotrim.com",
+        servingMode: "strict",
+        maxLocales: null,
+      },
+      showcase: {
+        defaultLang: "fr",
+      },
+    });
+    const listed = await listManagedDemos("token");
+
+    expect(created.accountId).toBe("acct-demo-managed");
+    expect(created.site.id).toBe("site-smoke-1");
+    expect(created.site.crawlStatus).toEqual({ enqueued: true });
+    expect(created.showcase.websitePath).toBe("source.example.test");
+    expect(listed.items[0]?.showcaseServingStatus).toBe("ready");
   });
 });

@@ -1303,9 +1303,6 @@ function resolveDashboardE2eMockPayload(input: {
       accountId: "acct-demo-managed",
       site: {
         ...createDashboardE2eMockSite(DASHBOARD_E2E_MOCK_SITE_ID),
-        customerServingStatus: "needs_domain" as const,
-        showcaseServingStatus: "ready" as const,
-        showcase: createDashboardE2eMockSiteShowcase(DASHBOARD_E2E_MOCK_SITE_ID).showcase,
         crawlStatus: {
           enqueued: true,
         },

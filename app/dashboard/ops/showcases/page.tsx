@@ -28,13 +28,23 @@ export default async function OpsShowcasesPage() {
     notFound();
   }
 
-  const [managedDemoResponse, supportedLanguages] = await Promise.all([
+  const [managedDemoResult, supportedLanguagesResult] = await Promise.allSettled([
     listManagedDemos(actorAuth),
     listSupportedLanguagesCached(),
   ]);
-  const items = managedDemoResponse.items;
+  const items = managedDemoResult.status === "fulfilled" ? managedDemoResult.value.items : [];
+  const supportedLanguages =
+    supportedLanguagesResult.status === "fulfilled" ? supportedLanguagesResult.value : [];
+  const managedDemoError =
+    managedDemoResult.status === "rejected"
+      ? managedDemoResult.reason instanceof Error
+        ? managedDemoResult.reason.message
+        : "Unable to load managed demos right now."
+      : null;
   const activeShowcases = items.filter((item) => item.showcase.status === "active").length;
-  const servingShowcases = items.filter((item) => item.showcaseServingStatus === "serving").length;
+  const servingShowcases = items.filter(
+    (item) => item.showcaseServingStatus === "serving" || item.showcaseServingStatus === "degraded",
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -75,6 +85,12 @@ export default async function OpsShowcasesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {managedDemoError ? (
+            <div className="rounded-lg border border-dashed border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100">
+              Demo inventory is temporarily unavailable. You can still create a managed demo above.
+              <div className="mt-2 text-xs opacity-80">{managedDemoError}</div>
+            </div>
+          ) : null}
           {items.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
               No managed demos yet. Create one above to provision the account, site, and showcase
