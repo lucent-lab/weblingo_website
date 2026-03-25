@@ -211,6 +211,53 @@ const sitePagesSummarySchema = z
   })
   .strict();
 
+const siteRetrySummarySchema = z
+  .object({
+    activeRunCount: z.number().int().nonnegative(),
+    pagesCompleted: z.number().int().nonnegative(),
+    pagesPending: z.number().int().nonnegative(),
+    pagesInProgress: z.number().int().nonnegative(),
+    pagesFailed: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const siteDlqSummarySchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    perWorker: z.record(z.string(), z.number().int().nonnegative()),
+    oldest: z.string().nullable().optional(),
+    newest: z.string().nullable().optional(),
+    truncated: z.boolean(),
+    complete: z.boolean(),
+    invalidEntries: z.number().int().nonnegative(),
+    unreadableEntries: z.number().int().nonnegative(),
+    monitorPath: z.string(),
+    replayPath: z.string(),
+  })
+  .strict();
+
+const siteHealthSummarySchema = z
+  .object({
+    readyPaths: z
+      .object({
+        webhooks: z.string(),
+        serve: z.string(),
+        ops: z.string(),
+      })
+      .strict(),
+    heartbeatKey: z.string(),
+    runbookPath: z.string(),
+  })
+  .strict();
+
+const siteOperationalSummarySchema = z
+  .object({
+    retry: siteRetrySummarySchema.nullable(),
+    dlq: siteDlqSummarySchema.nullable(),
+    health: siteHealthSummarySchema,
+  })
+  .strict();
+
 const crawlStatusSchema = z.object({
   enqueued: z.boolean(),
   error: z.string().optional(),
@@ -597,6 +644,7 @@ const siteDashboardResponseSchema = z
     site: siteSchema,
     deployments: z.array(deploymentSchema),
     pagesSummary: sitePagesSummarySchema.optional(),
+    operationalSummary: siteOperationalSummarySchema.optional(),
     pages: z.array(sitePageSummarySchema).optional(),
     pagination: listSitePagesResponseSchema.shape.pagination.optional(),
   })

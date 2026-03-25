@@ -219,6 +219,70 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(10_000);
   });
 
+  it("accepts site dashboard payloads with operational summary fields", async () => {
+    const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer token");
+
+      return new Response(
+        JSON.stringify({
+          site: {
+            id: "site-1",
+            accountId: "acct-1",
+            sourceUrl: "https://example.com",
+            status: "active",
+            servingMode: "strict",
+            maxLocales: null,
+            siteProfile: null,
+            locales: [],
+            domains: [],
+            latestCrawlRun: null,
+          },
+          deployments: [],
+          operationalSummary: {
+            retry: {
+              activeRunCount: 1,
+              pagesCompleted: 1,
+              pagesPending: 2,
+              pagesInProgress: 0,
+              pagesFailed: 0,
+            },
+            dlq: {
+              total: 1,
+              perWorker: { translate: 1 },
+              oldest: "2026-03-25T00:00:00.000Z",
+              newest: "2026-03-25T00:00:00.000Z",
+              truncated: false,
+              complete: true,
+              invalidEntries: 0,
+              unreadableEntries: 0,
+              monitorPath: "/api/sites/site-1/dlq",
+              replayPath: "/api/sites/site-1/dlq/replay",
+            },
+            health: {
+              readyPaths: {
+                webhooks: "/api/health/ready",
+                serve: "/health/ready",
+                ops: "/health/ready",
+              },
+              heartbeatKey: "heartbeat:v1:webhooks.scheduled",
+              runbookPath: "/docs/ops/V1_OPERATIONS.md#queue-backlog--pipeline-stalls",
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+
+    vi.resetModules();
+    const { fetchSiteDashboard } = await import("./webhooks");
+    const payload = await fetchSiteDashboard("token", "site-1");
+
+    expect(payload.operationalSummary?.health.heartbeatKey).toBe("heartbeat:v1:webhooks.scheduled");
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
   it("requests deployment history with optional filters", async () => {
     const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
