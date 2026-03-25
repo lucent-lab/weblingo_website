@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Info } from "lucide-react";
 
 import { SiteAdminForm } from "./site-admin-form";
+import { SiteShowcaseCard } from "./site-showcase-card";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { DeploymentCompletenessBadge } from "@/components/dashboard/deployment-completeness-badge";
@@ -22,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import {
   getSiteDashboardCached,
   listSitesCached,
@@ -31,9 +32,12 @@ import {
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import {
   fetchDeploymentHistory,
+  getSiteShowcase,
+  WebhooksApiError,
   type Deployment,
   type DeploymentHistoryByLocale,
   type Site,
+  type SiteShowcaseResponse,
   type SupportedLanguage,
 } from "@internal/dashboard/webhooks";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
@@ -70,15 +74,24 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   let activeSiteCount: number | null = null;
   let error: string | null = null;
   let supportedLanguages: SupportedLanguage[] = [];
+  let showcaseState: SiteShowcaseResponse | null = null;
+  let showcaseError: string | null = null;
+  let showcaseMissingConfirmed = false;
+  const canManageShowcase = hasActorInternalOps(auth);
 
-  // Parallelize all API fetches - optimistic that site exists (the common case)
-  const [siteDashboardResult, deploymentHistoryResult, sitesResult, supportedLanguagesResult] =
-    await Promise.allSettled([
-      getSiteDashboardCached(auth.webhooksAuth!, id),
-      fetchDeploymentHistory(auth.webhooksAuth!, id, { limit: 5 }),
-      listSitesCached(auth.webhooksAuth!),
-      settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
-    ]);
+  const [
+    siteDashboardResult,
+    deploymentHistoryResult,
+    sitesResult,
+    supportedLanguagesResult,
+    showcaseResult,
+  ] = await Promise.allSettled([
+    getSiteDashboardCached(auth.webhooksAuth!, id),
+    fetchDeploymentHistory(auth.webhooksAuth!, id, { limit: 5 }),
+    listSitesCached(auth.webhooksAuth!),
+    settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
+    canManageShowcase ? getSiteShowcase(auth.webhooksAuth!, id) : Promise.resolve(null),
+  ]);
 
   if (siteDashboardResult.status === "fulfilled") {
     site = siteDashboardResult.value.site;
@@ -108,6 +121,21 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
 
   if (supportedLanguagesResult.status === "fulfilled") {
     supportedLanguages = supportedLanguagesResult.value;
+  }
+
+  if (showcaseResult.status === "fulfilled") {
+    showcaseState = showcaseResult.value;
+  } else if (
+    showcaseResult.reason instanceof WebhooksApiError &&
+    showcaseResult.reason.status === 404
+  ) {
+    showcaseState = null;
+    showcaseMissingConfirmed = true;
+  } else if (showcaseResult.status === "rejected") {
+    showcaseError =
+      showcaseResult.reason instanceof Error
+        ? showcaseResult.reason.message
+        : "Unable to load showcase state right now.";
   }
 
   if (!site) {
@@ -188,6 +216,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     needs_domain: t("dashboard.serving.status.needsDomain"),
     ready: t("dashboard.serving.status.ready"),
     serving: t("dashboard.serving.status.serving"),
+    degraded: t("dashboard.serving.status.degraded", "Degraded"),
   };
   const servingActionTranslate = t("dashboard.serving.action.translate");
   const servingActionVerify = t("dashboard.serving.action.verify");
@@ -369,6 +398,16 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
         initialBrandVoice={brandVoice}
         initialSiteProfileNotes={siteProfileNotes}
       />
+      {canManageShowcase ? (
+        <SiteShowcaseCard
+          siteId={site.id}
+          sourceUrl={site.sourceUrl}
+          targetLangs={targetLangs}
+          showcaseState={showcaseState}
+          showcaseMissingConfirmed={showcaseMissingConfirmed}
+          fetchError={showcaseError}
+        />
+      ) : null}
 
       <Card className="border-border/60 bg-muted/20">
         <CardHeader>

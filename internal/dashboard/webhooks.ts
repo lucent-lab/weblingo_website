@@ -211,6 +211,53 @@ const sitePagesSummarySchema = z
   })
   .strict();
 
+const siteRetrySummarySchema = z
+  .object({
+    activeRunCount: z.number().int().nonnegative(),
+    pagesCompleted: z.number().int().nonnegative(),
+    pagesPending: z.number().int().nonnegative(),
+    pagesInProgress: z.number().int().nonnegative(),
+    pagesFailed: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const siteDlqSummarySchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    perWorker: z.record(z.string(), z.number().int().nonnegative()),
+    oldest: z.string().nullable().optional(),
+    newest: z.string().nullable().optional(),
+    truncated: z.boolean(),
+    complete: z.boolean(),
+    invalidEntries: z.number().int().nonnegative(),
+    unreadableEntries: z.number().int().nonnegative(),
+    monitorPath: z.string(),
+    replayPath: z.string(),
+  })
+  .strict();
+
+const siteHealthSummarySchema = z
+  .object({
+    readyPaths: z
+      .object({
+        webhooks: z.string(),
+        serve: z.string(),
+        ops: z.string(),
+      })
+      .strict(),
+    heartbeatKey: z.string(),
+    runbookPath: z.string(),
+  })
+  .strict();
+
+const siteOperationalSummarySchema = z
+  .object({
+    retry: siteRetrySummarySchema.nullable(),
+    dlq: siteDlqSummarySchema.nullable(),
+    health: siteHealthSummarySchema,
+  })
+  .strict();
+
 const crawlStatusSchema = z.object({
   enqueued: z.boolean(),
   error: z.string().optional(),
@@ -247,7 +294,7 @@ const setLocaleServingResponseSchema = z
   .object({
     targetLang: z.string(),
     serveEnabled: z.boolean(),
-    servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving"]),
+    servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving", "degraded"]),
     activeDeploymentId: z.string().nullable().optional(),
   })
   .strict();
@@ -357,6 +404,15 @@ const artifactManifestSchema = z
   .nullable()
   .optional();
 
+const deploymentServingStatusSchema = z.enum([
+  "inactive",
+  "disabled",
+  "needs_domain",
+  "ready",
+  "serving",
+  "degraded",
+]);
+
 const deploymentCompletenessStatusSchema = z.enum([
   "not_started",
   "partial",
@@ -385,7 +441,7 @@ const deploymentSchema = z.object({
   domain: z.string().nullable().optional(),
   domainStatus: z.enum(["pending", "verified", "failed"]).nullable().optional(),
   serveEnabled: z.boolean(),
-  servingStatus: z.enum(["inactive", "disabled", "needs_domain", "ready", "serving"]),
+  servingStatus: deploymentServingStatusSchema,
   translationRun: translationRunSchema.nullable().optional(),
   completeness: deploymentCompletenessSchema,
 });
@@ -588,6 +644,7 @@ const siteDashboardResponseSchema = z
     site: siteSchema,
     deployments: z.array(deploymentSchema),
     pagesSummary: sitePagesSummarySchema.optional(),
+    operationalSummary: siteOperationalSummarySchema.optional(),
     pages: z.array(sitePageSummarySchema).optional(),
     pagination: listSitePagesResponseSchema.shape.pagination.optional(),
   })
@@ -712,6 +769,70 @@ const createAgencyCustomerResponseSchema = z
   })
   .strict();
 
+const managedDemoShowcaseStatusSchema = z.enum(["active", "disabled"]);
+
+const siteShowcaseSchema = z
+  .object({
+    websitePath: z.string(),
+    defaultLang: z.string().nullable(),
+    status: managedDemoShowcaseStatusSchema,
+    url: z.string().nullable(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const siteShowcaseResponseSchema = z
+  .object({
+    siteId: z.string(),
+    customerServingStatus: deploymentServingStatusSchema,
+    showcaseServingStatus: deploymentServingStatusSchema,
+    showcase: siteShowcaseSchema,
+  })
+  .strict();
+
+const managedDemoDeploymentSummarySchema = z
+  .object({
+    targetLang: z.string(),
+    deploymentId: z.string().nullable(),
+    status: z.string().nullable(),
+    activatedAt: z.string().nullable().optional(),
+    activeDeploymentId: z.string().nullable(),
+    activeDeploymentRowId: z.string().nullable(),
+    activeDeploymentStatus: z.string().nullable(),
+    activeActivatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const managedDemoSiteSummarySchema = z
+  .object({
+    accountId: z.string(),
+    siteId: z.string(),
+    sourceUrl: z.string(),
+    siteStatus: z.enum(["active", "inactive"]),
+    customerServingStatus: deploymentServingStatusSchema,
+    showcaseServingStatus: deploymentServingStatusSchema,
+    showcase: siteShowcaseSchema,
+    deployment: managedDemoDeploymentSummarySchema.nullable(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const listManagedDemoSitesResponseSchema = z
+  .object({
+    items: z.array(managedDemoSiteSummarySchema),
+  })
+  .strict();
+
+const createManagedDemoSiteResponseSchema = z
+  .object({
+    accountId: z.string(),
+    site: siteWithCrawlStatusSchema,
+    showcase: siteShowcaseSchema,
+  })
+  .strict();
+
 const dashboardBootstrapResponseSchema = z
   .object({
     token: z.string().min(1),
@@ -812,6 +933,12 @@ export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema
 export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
 export type CreateAgencyCustomerResponse = z.infer<typeof createAgencyCustomerResponseSchema>;
 export type DashboardBootstrapResponse = z.infer<typeof dashboardBootstrapResponseSchema>;
+export type SiteShowcase = z.infer<typeof siteShowcaseSchema>;
+export type SiteShowcaseResponse = z.infer<typeof siteShowcaseResponseSchema>;
+export type ManagedDemoDeploymentSummary = z.infer<typeof managedDemoDeploymentSummarySchema>;
+export type ManagedDemoSiteSummary = z.infer<typeof managedDemoSiteSummarySchema>;
+export type ListManagedDemoSitesResponse = z.infer<typeof listManagedDemoSitesResponseSchema>;
+export type CreateManagedDemoSiteResponse = z.infer<typeof createManagedDemoSiteResponseSchema>;
 
 // Exported for cross-repo contract tests only (OpenAPI ↔ website zod schemas).
 export const __webhooksZodContracts = {
@@ -821,6 +948,9 @@ export const __webhooksZodContracts = {
   accountMeSchema,
   listAgencyCustomersResponseSchema,
   createAgencyCustomerResponseSchema,
+  listManagedDemoSitesResponseSchema,
+  createManagedDemoSiteResponseSchema,
+  siteShowcaseResponseSchema,
   listSitesResponseSchema,
   siteSummarySchema,
   siteSchema,
@@ -1144,6 +1274,55 @@ function createDashboardE2eMockDashboardPayload(siteId: string, searchParams: UR
   return payload;
 }
 
+function createDashboardE2eMockSiteShowcase(siteId: string) {
+  const now = new Date().toISOString();
+  return {
+    siteId,
+    customerServingStatus: "needs_domain" as const,
+    showcaseServingStatus: "ready" as const,
+    showcase: {
+      websitePath: "source.example.test",
+      defaultLang: "fr",
+      status: "active" as const,
+      url: "https://t2.weblingo.app/source.example.test/fr",
+      createdAt: now,
+      updatedAt: now,
+    },
+  };
+}
+
+function createDashboardE2eMockManagedDemoSummary() {
+  const now = new Date().toISOString();
+  return {
+    accountId: "acct-demo-managed",
+    siteId: DASHBOARD_E2E_MOCK_SITE_ID,
+    sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+    siteStatus: "active" as const,
+    customerServingStatus: "needs_domain" as const,
+    showcaseServingStatus: "ready" as const,
+    showcase: {
+      websitePath: "source.example.test",
+      defaultLang: "fr",
+      status: "active" as const,
+      url: "https://t2.weblingo.app/source.example.test/fr",
+      createdAt: now,
+      updatedAt: now,
+    },
+    deployment: {
+      targetLang: "fr",
+      deploymentId: "dep-site-smoke-1-fr-current",
+      status: "active",
+      activatedAt: now,
+      activeDeploymentId: "dep-site-smoke-1-fr-current",
+      activeDeploymentRowId: "deployment-row-fr",
+      activeDeploymentStatus: "active",
+      activeActivatedAt: now,
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 function resolveDashboardE2eMockPayload(input: {
   path: string;
   method: string;
@@ -1163,6 +1342,23 @@ function resolveDashboardE2eMockPayload(input: {
     return { languages: FALLBACK_SUPPORTED_LANGUAGES.slice(0, 3) };
   }
 
+  if (method === "GET" && pathname === "/admin/managed-demos") {
+    return { items: [createDashboardE2eMockManagedDemoSummary()] };
+  }
+
+  if (method === "POST" && pathname === "/admin/managed-demos") {
+    return {
+      accountId: "acct-demo-managed",
+      site: {
+        ...createDashboardE2eMockSite(DASHBOARD_E2E_MOCK_SITE_ID),
+        crawlStatus: {
+          enqueued: true,
+        },
+      },
+      showcase: createDashboardE2eMockSiteShowcase(DASHBOARD_E2E_MOCK_SITE_ID).showcase,
+    };
+  }
+
   const siteMatch = pathname.match(/^\/sites\/([^/]+)$/);
   if (siteMatch && method === "GET") {
     return createDashboardE2eMockSite(siteMatch[1]);
@@ -1174,6 +1370,35 @@ function resolveDashboardE2eMockPayload(input: {
   const siteDashboardMatch = pathname.match(/^\/sites\/([^/]+)\/dashboard$/);
   if (siteDashboardMatch && method === "GET") {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
+  }
+
+  const siteShowcaseMatch = pathname.match(/^\/sites\/([^/]+)\/showcase$/);
+  if (siteShowcaseMatch && method === "GET") {
+    return createDashboardE2eMockSiteShowcase(siteShowcaseMatch[1]);
+  }
+  if (siteShowcaseMatch && (method === "POST" || method === "PATCH")) {
+    const payload = getBodyRecord(input.body);
+    const current = createDashboardE2eMockSiteShowcase(siteShowcaseMatch[1]);
+    return {
+      ...current,
+      showcase: {
+        ...current.showcase,
+        websitePath:
+          typeof payload.websitePath === "string" && payload.websitePath.trim().length > 0
+            ? payload.websitePath.trim()
+            : current.showcase.websitePath,
+        defaultLang:
+          payload.defaultLang === null
+            ? null
+            : typeof payload.defaultLang === "string"
+              ? payload.defaultLang
+              : current.showcase.defaultLang,
+        status:
+          payload.status === "disabled" || payload.status === "active"
+            ? payload.status
+            : current.showcase.status,
+      },
+    };
   }
 
   const deploymentsMatch = pathname.match(/^\/sites\/([^/]+)\/deployments$/);
@@ -1720,6 +1945,37 @@ export async function createAgencyCustomer(
   });
 }
 
+export type CreateManagedDemoSitePayload = {
+  site: CreateSitePayload;
+  showcase?: {
+    websitePath?: string;
+    defaultLang?: string | null;
+  };
+};
+
+export async function listManagedDemos(auth: AuthInput): Promise<ListManagedDemoSitesResponse> {
+  return request({
+    path: "/admin/managed-demos",
+    auth,
+    schema: listManagedDemoSitesResponseSchema,
+    timeoutProfile: "list",
+  });
+}
+
+export async function createManagedDemo(
+  auth: AuthInput,
+  payload: CreateManagedDemoSitePayload,
+): Promise<CreateManagedDemoSiteResponse> {
+  return request({
+    path: "/admin/managed-demos",
+    method: "POST",
+    auth,
+    body: payload,
+    schema: createManagedDemoSiteResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
 export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
   try {
     const data = await request({
@@ -1777,6 +2033,48 @@ export async function fetchSiteDashboard(
     auth,
     schema: siteDashboardResponseSchema,
     timeoutProfile: "detail",
+  });
+}
+
+export async function getSiteShowcase(
+  auth: AuthInput,
+  siteId: string,
+): Promise<SiteShowcaseResponse> {
+  return request({
+    path: `/sites/${siteId}/showcase`,
+    auth,
+    schema: siteShowcaseResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function createSiteShowcase(
+  auth: AuthInput,
+  siteId: string,
+  payload: { websitePath: string; defaultLang?: string | null },
+): Promise<SiteShowcaseResponse> {
+  return request({
+    path: `/sites/${siteId}/showcase`,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: siteShowcaseResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
+export async function updateSiteShowcase(
+  auth: AuthInput,
+  siteId: string,
+  payload: { defaultLang?: string | null; status?: "active" | "disabled" },
+): Promise<SiteShowcaseResponse> {
+  return request({
+    path: `/sites/${siteId}/showcase`,
+    method: "PATCH",
+    auth,
+    body: payload,
+    schema: siteShowcaseResponseSchema,
+    timeoutProfile: "mutation",
   });
 }
 

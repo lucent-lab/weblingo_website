@@ -121,6 +121,17 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 - Use for listing and inviting managed customer accounts.
 
+### Internal admin managed demos
+
+`GET /api/admin/managed-demos` and `POST /api/admin/managed-demos`
+
+- Internal-admin-only surfaces for pre-sales demo operations.
+- `GET` returns the managed demo inventory linked to the authenticated admin actor, including showcase state and deployment summary.
+- `POST` creates a managed demo account, first site, and showcase namespace together.
+- Website mapping:
+  - `/dashboard/ops/showcases` lists existing demos and creates new ones.
+  - "Open site admin" should switch workspace into the managed demo account, then redirect to `/dashboard/sites/:id/admin`.
+
 ### Sites (onboarding & management)
 
 `POST /api/sites`
@@ -151,6 +162,16 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Response:
   - Default: `{ site, deployments }`.
   - With `includePages=true`: `{ site, deployments, pages, pagination }`.
+
+`GET /api/sites/:id/showcase`, `POST /api/sites/:id/showcase`, `PATCH /api/sites/:id/showcase`
+
+- Internal-admin-only showcase namespace management for a specific site.
+- `GET` returns `{ siteId, customerServingStatus, showcaseServingStatus, showcase }`.
+- `POST` reserves a showcase namespace on `t2.weblingo.app`.
+- `PATCH` updates showcase `defaultLang` and `status` (`active | disabled`).
+- Website mapping:
+  - Render the showcase card on `/dashboard/sites/:id/admin` for internal admins only.
+  - Keep showcase access public; only creation and mutation are admin-gated.
 
 `PATCH /api/sites/:id`
 
@@ -295,6 +316,8 @@ Legend:
 | `accounts.me`                          | GA        | live   | dashboard | Dashboard entitlements/flags bootstrap and plan gating.       |
 | `agency.customers.list`                | GA        | live   | dashboard | Agency customer list and workspace switching.                 |
 | `agency.customers.create`              | GA        | live   | dashboard | Agency invite/create customer workflow.                       |
+| `admin.managedDemos.list`              | Beta      | live   | dashboard | Internal admin managed demo inventory page.                   |
+| `admin.managedDemos.create`            | Beta      | live   | dashboard | Internal admin managed demo bootstrap flow.                   |
 | `auth.token.mint`                      | GA        | live   | dashboard | Supabase-to-webhooks JWT bridge used for all dashboard calls. |
 | `dashboard.bootstrap`                  | GA        | live   | dashboard | One-call auth + entitlements + account context bootstrap.     |
 | `digests.subscription.upsert`          | Beta      | live   | dashboard | Site details “Automation and notifications” card.             |
@@ -305,6 +328,9 @@ Legend:
 | `sites.create`                         | GA        | live   | dashboard | Onboarding create site action.                                |
 | `sites.get`                            | GA        | live   | dashboard | Site detail loading and admin context.                        |
 | `sites.dashboard.get`                  | GA        | live   | dashboard | Consolidated site dashboard payload for detail pages.         |
+| `sites.showcase.get`                   | Beta      | live   | dashboard | Site-admin showcase card read path.                           |
+| `sites.showcase.create`                | Beta      | live   | dashboard | Site-admin showcase bootstrap for managed demo sites.         |
+| `sites.showcase.update`                | Beta      | live   | dashboard | Site-admin showcase default-lang / status updates.            |
 | `sites.update`                         | GA        | live   | dashboard | Site settings updates (status/locales/config/profile).        |
 | `sites.crawl.trigger`                  | GA        | live   | dashboard | Crawl trigger controls on site/admin pages.                   |
 | `sites.crawl_translate.trigger`        | GA        | live   | dashboard | Site details “Crawl + translate selection” control.           |

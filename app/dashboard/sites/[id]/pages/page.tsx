@@ -98,6 +98,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     needs_domain: t("dashboard.serving.status.needsDomain"),
     ready: t("dashboard.serving.status.ready"),
     serving: t("dashboard.serving.status.serving"),
+    degraded: t("dashboard.serving.status.degraded", "Degraded"),
   };
   const crawlStatusLabels = {
     in_progress: t("dashboard.crawl.status.inProgress"),

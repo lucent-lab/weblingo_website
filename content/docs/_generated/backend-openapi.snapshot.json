@@ -1400,6 +1400,53 @@
         ],
         "type": "object"
       },
+      "CreateManagedDemoSiteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "showcase": {
+            "additionalProperties": false,
+            "properties": {
+              "defaultLang": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "websitePath": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CreateSiteRequest"
+          }
+        },
+        "required": [
+          "site"
+        ],
+        "type": "object"
+      },
+      "CreateManagedDemoSiteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "showcase": {
+            "$ref": "#/components/schemas/ManagedDemoShowcase"
+          },
+          "site": {
+            "$ref": "#/components/schemas/SiteWithCrawlStatus"
+          }
+        },
+        "required": [
+          "accountId",
+          "site",
+          "showcase"
+        ],
+        "type": "object"
+      },
       "CreateOverrideRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1603,6 +1650,24 @@
         ],
         "type": "object"
       },
+      "CreateSiteShowcaseRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "websitePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "websitePath"
+        ],
+        "type": "object"
+      },
       "DailyCrawlUsage": {
         "additionalProperties": false,
         "properties": {
@@ -1734,6 +1799,9 @@
           "completeness": {
             "$ref": "#/components/schemas/DeploymentCompleteness"
           },
+          "customerServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
           "deploymentId": {
             "description": "Latest deployment row id from the durable deployments table.",
             "type": [
@@ -1777,6 +1845,22 @@
           },
           "servingStatus": {
             "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "showcaseServingStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentServingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "showcaseUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "stateDrift": {
             "$ref": "#/components/schemas/DeploymentStateDriftSignal"
@@ -2713,6 +2797,21 @@
         ],
         "type": "object"
       },
+      "ListManagedDemoSitesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedDemoSiteSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "ListSitePagesResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2795,6 +2894,138 @@
         },
         "required": [
           "summaries"
+        ],
+        "type": "object"
+      },
+      "ManagedDemoDeploymentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "activatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeActivatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentRowId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeDeploymentStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deploymentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "deploymentId",
+          "status",
+          "activeDeploymentId",
+          "activeDeploymentRowId",
+          "activeDeploymentStatus"
+        ],
+        "type": "object"
+      },
+      "ManagedDemoShowcase": {
+        "$ref": "#/components/schemas/SiteShowcase"
+      },
+      "ManagedDemoShowcaseStatus": {
+        "enum": [
+          "active",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "ManagedDemoSiteSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "deployment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagedDemoDeploymentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "showcase": {
+            "$ref": "#/components/schemas/ManagedDemoShowcase"
+          },
+          "showcaseServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "siteStatus": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "accountId",
+          "siteId",
+          "sourceUrl",
+          "siteStatus",
+          "customerServingStatus",
+          "showcaseServingStatus",
+          "showcase",
+          "deployment"
         ],
         "type": "object"
       },
@@ -3548,6 +3779,16 @@
           "accountId": {
             "type": "string"
           },
+          "customerServingStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentServingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "domains": {
             "items": {
               "$ref": "#/components/schemas/SiteDomain"
@@ -3591,6 +3832,26 @@
           },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
+          },
+          "showcase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiteShowcase"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "showcaseServingStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentServingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "siteProfile": {
             "anyOf": [
@@ -4004,6 +4265,72 @@
         ],
         "type": "object"
       },
+      "SiteShowcase": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "defaultLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ManagedDemoShowcaseStatus"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "websitePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "websitePath",
+          "defaultLang",
+          "status",
+          "url"
+        ],
+        "type": "object"
+      },
+      "SiteShowcaseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "customerServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "showcase": {
+            "$ref": "#/components/schemas/SiteShowcase"
+          },
+          "showcaseServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "siteId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "customerServingStatus",
+          "showcaseServingStatus",
+          "showcase"
+        ],
+        "type": "object"
+      },
       "SiteSummary": {
         "additionalProperties": false,
         "description": "Summary shape returned by `GET /api/sites`. Excludes detail/sensitive fields such as `locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, and `latestCrawlRun`.",
@@ -4099,6 +4426,16 @@
           "crawlStatus": {
             "$ref": "#/components/schemas/CrawlStatus"
           },
+          "customerServingStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentServingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "domains": {
             "items": {
               "$ref": "#/components/schemas/SiteDomain"
@@ -4142,6 +4479,26 @@
           },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
+          },
+          "showcase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiteShowcase"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "showcaseServingStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeploymentServingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "siteProfile": {
             "anyOf": [
@@ -4625,6 +4982,21 @@
         },
         "type": "object"
       },
+      "UpdateSiteShowcaseRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ManagedDemoShowcaseStatus"
+          }
+        },
+        "type": "object"
+      },
       "UpsertGlossaryRequest": {
         "additionalProperties": false,
         "properties": {
@@ -4895,6 +5267,221 @@
         "summary": "Get current account entitlements and quotas",
         "tags": [
           "Accounts"
+        ]
+      }
+    },
+    "/admin/managed-demos": {
+      "get": {
+        "description": "Returns showcase-backed demo sites owned by managed demo accounts linked to the authenticated internal admin actor.",
+        "operationId": "admin.managedDemos.list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "accountId": "string",
+                      "customerServingStatus": "inactive",
+                      "deployment": {
+                        "activeDeploymentId": "string",
+                        "activeDeploymentRowId": "string",
+                        "activeDeploymentStatus": "string",
+                        "deploymentId": "string",
+                        "status": "string",
+                        "targetLang": "string"
+                      },
+                      "showcase": {
+                        "defaultLang": "string",
+                        "status": "active",
+                        "url": "string",
+                        "websitePath": "string"
+                      },
+                      "showcaseServingStatus": "inactive",
+                      "siteId": "string",
+                      "siteStatus": "active",
+                      "sourceUrl": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListManagedDemoSitesResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List admin-managed demo sites",
+        "tags": [
+          "Admin"
+        ]
+      },
+      "post": {
+        "description": "Creates an internal managed demo account, links it to the authenticated internal admin actor, provisions the first site, and reserves its showcase namespace.",
+        "operationId": "admin.managedDemos.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "site": {
+                  "maxLocales": 5,
+                  "servingMode": "strict",
+                  "sourceLang": "en",
+                  "sourceUrl": "https://www.example.com",
+                  "subdomainPattern": "{lang}.example.com",
+                  "targetLangs": [
+                    "fr",
+                    "de"
+                  ]
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateManagedDemoSiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "showcase": {
+                    "defaultLang": "string",
+                    "status": "active",
+                    "url": "string",
+                    "websitePath": "string"
+                  },
+                  "site": {
+                    "accountId": "string",
+                    "crawlStatus": {
+                      "enqueued": true
+                    },
+                    "domains": [
+                      {
+                        "domain": "string",
+                        "status": "pending",
+                        "verificationToken": "string"
+                      }
+                    ],
+                    "id": "string",
+                    "locales": [
+                      {
+                        "serveEnabled": true,
+                        "sourceLang": "string",
+                        "targetLang": "string"
+                      }
+                    ],
+                    "maxLocales": 1,
+                    "servingMode": "strict",
+                    "sourceUrl": "string",
+                    "status": "active"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CreateManagedDemoSiteResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a managed demo account, site, and showcase",
+        "tags": [
+          "Admin"
         ]
       }
     },
@@ -5496,7 +6083,7 @@
                   "expiresAt": "2026-02-12T21:00:00.000Z",
                   "previewId": "9f27aa40-a2bc-4e8f-8f17-573b66195f1c",
                   "previewUrl": null,
-                  "status": "queued",
+                  "status": "pending",
                   "statusToken": "<status-token>",
                   "streamUrl": "/api/previews/9f27aa40-a2bc-4e8f-8f17-573b66195f1c/stream"
                 },
@@ -8748,6 +9335,296 @@
         "tags": [
           "Sites",
           "Pipeline"
+        ]
+      }
+    },
+    "/sites/{siteId}/showcase": {
+      "get": {
+        "description": "Returns the showcase namespace and separate customer-live vs showcase serving status for an admin-managed site.",
+        "operationId": "sites.showcase.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customerServingStatus": "inactive",
+                  "showcase": {
+                    "defaultLang": "string",
+                    "status": "active",
+                    "url": "string",
+                    "websitePath": "string"
+                  },
+                  "showcaseServingStatus": "inactive",
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteShowcaseResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get site showcase state",
+        "tags": [
+          "Sites",
+          "Admin"
+        ]
+      },
+      "patch": {
+        "description": "Updates showcase default language or status for an existing site showcase. Internal admin access required.",
+        "operationId": "sites.showcase.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "defaultLang": "string",
+                "status": "active"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSiteShowcaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customerServingStatus": "inactive",
+                  "showcase": {
+                    "defaultLang": "string",
+                    "status": "active",
+                    "url": "string",
+                    "websitePath": "string"
+                  },
+                  "showcaseServingStatus": "inactive",
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteShowcaseResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update site showcase state",
+        "tags": [
+          "Sites",
+          "Admin"
+        ]
+      },
+      "post": {
+        "description": "Reserves a showcase namespace on the managed showcase host for an existing site. Internal admin access required.",
+        "operationId": "sites.showcase.create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "websitePath": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateSiteShowcaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customerServingStatus": "inactive",
+                  "showcase": {
+                    "defaultLang": "string",
+                    "status": "active",
+                    "url": "string",
+                    "websitePath": "string"
+                  },
+                  "showcaseServingStatus": "inactive",
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteShowcaseResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create site showcase namespace",
+        "tags": [
+          "Sites",
+          "Admin"
         ]
       }
     },

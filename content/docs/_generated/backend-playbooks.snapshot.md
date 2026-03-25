@@ -34,6 +34,17 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 7. Generate language switcher snippets for custom frontend integration:
    - `operationId`: `sites.switcherSnippets.get`
 
+## Playbook: Admin Managed Demos
+
+1. List managed demo sites across the current internal admin account:
+   - `operationId`: `admin.managedDemos.list`
+2. Create a managed demo account, first site, and showcase namespace:
+   - `operationId`: `admin.managedDemos.create`
+3. Inspect and manage the showcase namespace for a managed demo site:
+   - `operationId`: `sites.showcase.get`
+   - `operationId`: `sites.showcase.create`
+   - `operationId`: `sites.showcase.update`
+
 ## Playbook: Serving Access and Previews
 
 1. Ensure locale serving is enabled:

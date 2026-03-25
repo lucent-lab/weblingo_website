@@ -4,12 +4,16 @@ import { revalidatePath } from "next/cache";
 
 import {
   createOverride,
+  createManagedDemo,
+  createSiteShowcase,
   createSite,
   deactivateSite,
   cancelTranslationRun,
   upsertConsistencyCpm,
   updateConsistencyBlock,
+  updateSiteShowcase,
   fetchSwitcherSnippets,
+  getSiteShowcase,
   listTranslationSummaries,
   provisionDomain,
   refreshDomain,
@@ -32,6 +36,8 @@ import {
 } from "@internal/dashboard/webhooks";
 import { invalidateSiteDashboardCache, invalidateSitesCache } from "@internal/dashboard/data";
 import {
+  hasActorInternalOps,
+  invalidateDashboardBootstrapCache,
   requireDashboardAuth,
   type DashboardAuth,
   type WebhooksAuthContext,
@@ -201,6 +207,17 @@ async function invalidateDashboardCaches(
   if (options.invalidateSitesList) {
     await invalidateSitesCache(auth);
   }
+}
+
+async function requireInternalAdminWorkspaceAuth(): Promise<WebhooksAuthContext> {
+  const auth = await requireDashboardAuth();
+  if (!hasActorInternalOps(auth)) {
+    throw new Error("Internal admin access is required.");
+  }
+  if (!auth.webhooksAuth) {
+    throw new Error("Unable to authenticate the current workspace.");
+  }
+  return auth.webhooksAuth;
 }
 
 function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
@@ -373,6 +390,176 @@ export async function createSiteAction(
       return failed(toFriendlyDashboardActionError(error, "Unable to create site right now."));
     }
     return failed("Unable to create site right now.");
+  }
+}
+
+export async function createManagedDemoAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const sourceUrl = formData.get("sourceUrl")?.toString().trim() ?? "";
+  const sourceLang = formData.get("sourceLang")?.toString().trim() ?? "";
+  const targetLangs = formData
+    .getAll("targetLangs")
+    .map((lang) => lang.toString().trim())
+    .filter(Boolean);
+  const subdomainPattern = formData.get("subdomainPattern")?.toString().trim() ?? "";
+  const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
+  const websitePath = formData.get("websitePath")?.toString().trim() ?? "";
+  const defaultLangRaw = formData.get("defaultLang")?.toString().trim() ?? "";
+
+  const uniqueTargets = Array.from(new Set(targetLangs));
+
+  if (!sourceUrl || !sourceLang || uniqueTargets.length === 0 || !subdomainPattern) {
+    return failed("Please fill every required field and pick at least one target language.");
+  }
+
+  const sourceUrlError = validateSourceUrl(sourceUrl);
+  if (sourceUrlError) {
+    return failed(sourceUrlError);
+  }
+  if (!subdomainPattern.includes("{lang}")) {
+    return failed("Generated subdomain pattern is invalid. Check the source URL.");
+  }
+  const defaultLang = defaultLangRaw || uniqueTargets[0] || "";
+  if (!defaultLang || !uniqueTargets.includes(defaultLang)) {
+    return failed("Default showcase language must be one of the selected target languages.");
+  }
+  const localeAliases = parseLocaleAliases(localeAliasesRaw, uniqueTargets);
+  if (typeof localeAliases === "string") {
+    return failed(localeAliases);
+  }
+
+  try {
+    const dashboardAuth = await requireDashboardAuth();
+    if (!hasActorInternalOps(dashboardAuth)) {
+      throw new Error("Internal admin access is required.");
+    }
+    if (!dashboardAuth.session?.access_token) {
+      throw new Error("Unable to read the current dashboard session.");
+    }
+    const auth =
+      dashboardAuth.actorWebhooksAuth ??
+      dashboardAuth.webhooksAuth ??
+      (() => {
+        throw new Error("Unable to authenticate internal admin actions.");
+      })();
+    const result = await createManagedDemo(auth, {
+      site: {
+        sourceUrl,
+        sourceLang,
+        targetLangs: uniqueTargets,
+        subdomainPattern,
+        ...(localeAliases ? { localeAliases } : {}),
+        servingMode: "strict",
+        maxLocales: null,
+      },
+      showcase: {
+        ...(websitePath ? { websitePath } : {}),
+        defaultLang,
+      },
+    });
+    await invalidateDashboardBootstrapCache(dashboardAuth.session.access_token);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/agency");
+    revalidatePath("/dashboard/agency/customers");
+    revalidatePath("/dashboard/ops/showcases");
+    return succeeded("Managed demo created.", {
+      accountId: result.accountId,
+      siteId: result.site.id,
+      showcaseUrl: result.showcase.url,
+      websitePath: result.showcase.websitePath,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] createManagedDemoAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to create the managed demo right now."),
+    );
+  }
+}
+
+export async function createSiteShowcaseAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim() ?? "";
+  const websitePath = formData.get("websitePath")?.toString().trim() ?? "";
+  const defaultLangRaw = formData.get("defaultLang")?.toString().trim();
+  const defaultLang = defaultLangRaw ? defaultLangRaw : null;
+
+  if (!siteId || !websitePath) {
+    return failed("Site ID and website path are required.");
+  }
+
+  try {
+    const auth = await requireInternalAdminWorkspaceAuth();
+    const result = await createSiteShowcase(auth, siteId, { websitePath, defaultLang });
+    await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath("/dashboard/ops/showcases");
+    return succeeded("Showcase created.", {
+      showcaseUrl: result.showcase.url,
+      websitePath: result.showcase.websitePath,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] createSiteShowcaseAction failed:", error);
+    return failed(toFriendlyDashboardActionError(error, "Unable to create showcase."));
+  }
+}
+
+export async function updateSiteShowcaseAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim() ?? "";
+  const defaultLangValue = formData.get("defaultLang")?.toString().trim();
+  const statusValue = formData.get("status")?.toString().trim();
+
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+  const payload: { defaultLang?: string | null; status?: "active" | "disabled" } = {};
+  if (defaultLangValue !== undefined) {
+    payload.defaultLang = defaultLangValue ? defaultLangValue : null;
+  }
+  if (statusValue) {
+    if (statusValue !== "active" && statusValue !== "disabled") {
+      return failed("Showcase status must be active or disabled.");
+    }
+    payload.status = statusValue;
+  }
+  if (!("defaultLang" in payload) && !payload.status) {
+    return failed("Choose a showcase update to apply.");
+  }
+
+  try {
+    const auth = await requireInternalAdminWorkspaceAuth();
+    const existing = await getSiteShowcase(auth, siteId);
+    const result = await updateSiteShowcase(auth, siteId, {
+      defaultLang: "defaultLang" in payload ? payload.defaultLang : existing.showcase.defaultLang,
+      status: payload.status ?? existing.showcase.status,
+    });
+    await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath("/dashboard/ops/showcases");
+    return succeeded("Showcase updated.", {
+      showcaseUrl: result.showcase.url,
+      websitePath: result.showcase.websitePath,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] updateSiteShowcaseAction failed:", error);
+    return failed(toFriendlyDashboardActionError(error, "Unable to update showcase."));
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Briefcase, Globe, LayoutDashboard, Users, Wrench } from "lucide-react";
+import { Briefcase, Globe, LayoutDashboard, MonitorPlay, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
 import { SitesNav, type SiteNavEntry } from "./_components/sites-nav";
@@ -22,7 +22,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { logout } from "@/app/auth/logout/actions";
-import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
+import {
+  hasActorInternalOps,
+  requireDashboardAuth,
+  type DashboardAuth,
+} from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
 import { i18nConfig } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
@@ -40,6 +44,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const auth = await requireDashboardAuth();
   const email = auth.user?.email ?? "—";
   const isAgency = auth.actorAccount?.planType === "agency";
+  const canAccessInternalOps = hasActorInternalOps(auth);
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
   const navItems = [
     {
@@ -70,6 +75,15 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       label: "Developer tools",
       icon: <Wrench className="h-4 w-4" />,
     },
+    ...(canAccessInternalOps
+      ? [
+          {
+            href: "/dashboard/ops/showcases",
+            label: "Showcases",
+            icon: <MonitorPlay className="h-4 w-4" />,
+          },
+        ]
+      : []),
   ];
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =

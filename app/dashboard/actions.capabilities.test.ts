@@ -22,6 +22,7 @@ const provisionDomain = vi.fn();
 const refreshDomain = vi.fn();
 const updateGlossary = vi.fn();
 const createOverride = vi.fn();
+const createManagedDemo = vi.fn();
 const updateSlug = vi.fn();
 const setLocaleServing = vi.fn();
 const deactivateSite = vi.fn();
@@ -40,6 +41,7 @@ class MockWebhooksApiError extends Error {
 
 vi.mock("@internal/dashboard/webhooks", () => ({
   createOverride,
+  createManagedDemo,
   createSite,
   deactivateSite,
   cancelTranslationRun,
@@ -70,16 +72,25 @@ vi.mock("@internal/dashboard/data", () => ({
 }));
 
 const requireDashboardAuth = vi.fn();
+const invalidateDashboardBootstrapCache = vi.fn();
+const hasActorInternalOps = vi.fn();
 vi.mock("@internal/dashboard/auth", () => ({
+  hasActorInternalOps,
+  invalidateDashboardBootstrapCache,
   requireDashboardAuth,
 }));
 
+const buildSiteSettingsUpdatePayload = vi.fn();
+const deriveSiteSettingsAccess = vi.fn();
+const parseJsonObject = vi.fn();
+const parseLocaleAliases = vi.fn();
+const validateSourceUrl = vi.fn();
 vi.mock("@internal/dashboard/site-settings", () => ({
-  buildSiteSettingsUpdatePayload: vi.fn(),
-  deriveSiteSettingsAccess: vi.fn(),
-  parseJsonObject: vi.fn(),
-  parseLocaleAliases: vi.fn(),
-  validateSourceUrl: vi.fn(),
+  buildSiteSettingsUpdatePayload,
+  deriveSiteSettingsAccess,
+  parseJsonObject,
+  parseLocaleAliases,
+  validateSourceUrl,
 }));
 
 describe("dashboard capability actions", () => {
@@ -88,6 +99,9 @@ describe("dashboard capability actions", () => {
     withWebhooksAuth.mockImplementation(async (callback: (auth: { token: string }) => unknown) =>
       callback({ token: "webhooks-token" }),
     );
+    hasActorInternalOps.mockReturnValue(true);
+    validateSourceUrl.mockReturnValue(null);
+    parseLocaleAliases.mockImplementation((raw: string) => (raw ? JSON.parse(raw) : undefined));
   });
 
   it("queues crawl+translate with parsed csv payload and force flag", async () => {
@@ -254,5 +268,72 @@ describe("dashboard capability actions", () => {
         currentLang: "fr",
       },
     );
+  });
+
+  it("creates a managed demo with locale aliases and invalidates actor bootstrap auth", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      session: { access_token: "session-token" },
+      actorWebhooksAuth: { token: "actor-token", subjectAccountId: "acct-admin" },
+      webhooksAuth: { token: "subject-token", subjectAccountId: "acct-customer" },
+      actorAccount: { accountId: "acct-admin", planType: "agency", featureFlags: {} },
+      account: { accountId: "acct-customer", planType: "pro", featureFlags: {} },
+    });
+    createManagedDemo.mockResolvedValue({
+      accountId: "acct-demo",
+      site: { id: "site-demo" },
+      showcase: { url: "https://t2.weblingo.app/autotrim.com/fr", websitePath: "autotrim.com" },
+    });
+
+    const { createManagedDemoAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.autotrim.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.append("targetLangs", "de");
+    formData.set("subdomainPattern", "https://{lang}.autotrim.com");
+    formData.set("defaultLang", "fr");
+    formData.set("localeAliases", JSON.stringify({ fr: "fr-fr" }));
+
+    const result = await createManagedDemoAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: true,
+      meta: {
+        accountId: "acct-demo",
+        siteId: "site-demo",
+      },
+    });
+    expect(createManagedDemo).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "actor-token" }),
+      expect.objectContaining({
+        site: expect.objectContaining({
+          localeAliases: { fr: "fr-fr" },
+          targetLangs: ["fr", "de"],
+        }),
+      }),
+    );
+    expect(invalidateDashboardBootstrapCache).toHaveBeenCalledWith("session-token");
+  });
+
+  it("rejects managed demo creation when locale aliases are invalid", async () => {
+    parseLocaleAliases.mockReturnValue("Locale aliases are invalid.");
+
+    const { createManagedDemoAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.autotrim.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.autotrim.com");
+    formData.set("defaultLang", "fr");
+    formData.set("localeAliases", '{"fr":"bad alias"}');
+
+    const result = await createManagedDemoAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Locale aliases are invalid.",
+      meta: undefined,
+    });
+    expect(createManagedDemo).not.toHaveBeenCalled();
   });
 });

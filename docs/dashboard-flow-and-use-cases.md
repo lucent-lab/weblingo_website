@@ -12,6 +12,7 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 - Normal customer: owns a single account and manages only their own sites.
 - Agency admin: manages their own agency account plus multiple customer accounts.
 - Agency-managed customer: a standard customer account that is managed by an agency (same UI as normal customer, but accessed via agency context).
+- Internal admin operator: an agency admin with `internal_ops` access who provisions and maintains pre-sales showcase demos.
 
 ## Core flows (normal customer)
 
@@ -42,12 +43,24 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 6. Manage customer sites using the same UI as a normal customer.
 7. Switch back to agency workspace for global metrics.
 
+## Core flows (internal admin operator)
+
+1. Stay in the admin workspace and open `/dashboard/ops/showcases`.
+2. Create a managed demo:
+   - Source URL + source language.
+   - Target languages.
+   - Optional showcase path override.
+3. The system creates the managed demo account, first site, and public showcase namespace together.
+4. Review the public `t2.weblingo.app` URL from the managed demo inventory.
+5. Jump directly into the managed workspace from the inventory to continue site-level operations.
+6. On `/dashboard/sites/:id/admin`, adjust showcase default language or disable the showcase namespace without changing customer-domain verification rules.
+
 ## Current state (weblingo_website)
 
 The current dashboard is implemented in `app/dashboard` and uses the webhooks worker API.
 
 - Auth + entitlements: `internal/dashboard/auth.ts` exchanges Supabase tokens for a webhooks JWT and fetches `/accounts/me`.
-- Navigation: Overview, Sites, Developer tools; agencies also see Agency overview + Customers (`app/dashboard/layout.tsx`).
+- Navigation: Overview, Sites, Developer tools; agencies also see Agency overview + Customers, and internal admins also see Showcases (`app/dashboard/layout.tsx`).
 - Overview: summary cards for active sites, unverified domains, and configured locales (`app/dashboard/page.tsx`).
 - Sites list: list + summary per site; plan + usage badges live in the shared header (`app/dashboard/sites/page.tsx`).
 - Site detail: domains, deployments, trigger crawl, glossary, overrides, slugs (`app/dashboard/sites/[id]/page.tsx`).
@@ -56,6 +69,7 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 - Onboarding: uses `maxLocales` from `/accounts/me` and blocks adding targets past the cap (`app/dashboard/sites/new/onboarding-form.tsx`).
 - Domain onboarding: handles CNAME instructions (provision/refresh) or TXT verification (`app/dashboard/sites/[id]/page.tsx`).
 - Agency surface: workspace switcher + agency overview/customers list (with filters and invite flow).
+- Internal admin surface: `/dashboard/ops/showcases` for managed demo bootstrap/listing and a showcase card on site-admin pages.
 - Auth refresh policy: dashboard exchanges Supabase tokens for webhooks JWTs server-side on each request, refreshes pre-expiry (5-minute buffer), and retries once on 401.
 - Billing policy: mutations require both actor and subject plans to be active; billing banners warn the billing owner (agency when acting as agency, customer when in own workspace) without showing agency billing warnings to customer workspaces.
 - Polling policy: `/api/dashboard/sites/{siteId}/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
@@ -114,6 +128,7 @@ Agency admins (in agency context):
 - `/dashboard/sites` — Agency-owned sites (same component as normal customers).
 - `/dashboard/sites/new` — Create agency-owned site (when allowed).
 - `/dashboard/developer-tools` — Tokens/config.
+- `/dashboard/ops/showcases` — Internal managed demo inventory + bootstrap flow.
 
 Workspace switcher (header):
 
