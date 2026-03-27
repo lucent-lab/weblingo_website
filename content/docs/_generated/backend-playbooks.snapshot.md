@@ -23,24 +23,32 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `agency.customers.list`
 2. Create/invite agency customer account (agency plans):
    - `operationId`: `agency.customers.create`
-3. List portfolio sites:
+3. Update an existing managed customer between Starter and Pro:
+   - `operationId`: `agency.customers.update`
+4. List portfolio sites:
    - `operationId`: `sites.list`
-4. Load consolidated site dashboard payload (detail + deployments, optional pages):
+5. Load consolidated site dashboard payload (detail + deployments, optional pages):
    - `operationId`: `sites.dashboard.get`
-5. Update site configuration:
+6. Update site configuration:
    - `operationId`: `sites.update`
-6. List discovered pages for a site:
+7. List discovered pages for a site:
    - `operationId`: `sites.pages.list`
-7. Generate language switcher snippets for custom frontend integration:
+8. Generate language switcher snippets for custom frontend integration:
    - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Admin Managed Demos
 
 1. List managed demo sites across the current internal admin account:
    - `operationId`: `admin.managedDemos.list`
-2. Create a managed demo account, first site, and showcase namespace:
+2. Search managed customer accounts across the current internal admin account:
+   - `operationId`: `admin.accounts.list`
+3. Load a single managed account policy surface:
+   - `operationId`: `admin.accounts.get`
+4. Update managed account plan, quotas, or flags:
+   - `operationId`: `admin.accounts.update`
+5. Create a managed demo account, first site, and showcase namespace:
    - `operationId`: `admin.managedDemos.create`
-3. Inspect and manage the showcase namespace for a managed demo site:
+6. Inspect and manage the showcase namespace for a managed demo site:
    - `operationId`: `sites.showcase.get`
    - `operationId`: `sites.showcase.create`
    - `operationId`: `sites.showcase.update`

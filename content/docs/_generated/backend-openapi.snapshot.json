@@ -388,12 +388,15 @@
         ],
         "type": "object"
       },
-      "AgencyCustomerPlan": {
+      "AgencyCustomerEditablePlan": {
         "enum": [
           "starter",
           "pro"
         ],
         "type": "string"
+      },
+      "AgencyCustomerPlan": {
+        "$ref": "#/components/schemas/ManagedAccountPlan"
       },
       "AgencyCustomersSummary": {
         "additionalProperties": false,
@@ -1372,7 +1375,7 @@
         "additionalProperties": false,
         "properties": {
           "customerPlan": {
-            "$ref": "#/components/schemas/AgencyCustomerPlan"
+            "$ref": "#/components/schemas/AgencyCustomerEditablePlan"
           },
           "email": {
             "type": "string"
@@ -1403,6 +1406,9 @@
       "CreateManagedDemoSiteRequest": {
         "additionalProperties": false,
         "properties": {
+          "accountPlan": {
+            "$ref": "#/components/schemas/ManagedAccountPlan"
+          },
           "showcase": {
             "additionalProperties": false,
             "properties": {
@@ -2431,6 +2437,18 @@
         ],
         "type": "string"
       },
+      "GetAdminAccountResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/ManagedAccountPolicy"
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "type": "object"
+      },
       "GlossaryEntry": {
         "additionalProperties": false,
         "properties": {
@@ -2684,6 +2702,42 @@
         ],
         "type": "string"
       },
+      "ListAdminAccountsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedAccountPolicy"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": false,
+            "properties": {
+              "hasMore": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "offset": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "limit",
+              "offset",
+              "hasMore"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "type": "object"
+      },
       "ListAgencyCustomersResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2897,6 +2951,230 @@
         ],
         "type": "object"
       },
+      "ManagedAccountAgencyLink": {
+        "additionalProperties": false,
+        "properties": {
+          "agencyAccountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerPlan": {
+            "$ref": "#/components/schemas/AgencyCustomerPlan"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgencyCustomerStatus"
+          }
+        },
+        "required": [
+          "agencyAccountId",
+          "customerPlan",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ManagedAccountFeatureFlagOverrides": {
+        "additionalProperties": false,
+        "properties": {
+          "agencyActionsEnabled": {
+            "type": "boolean"
+          },
+          "clientRuntimeToggleEnabled": {
+            "type": "boolean"
+          },
+          "crawlCaptureModeEnabled": {
+            "type": "boolean"
+          },
+          "crawlTriggerEnabled": {
+            "type": "boolean"
+          },
+          "demoMode": {
+            "type": "boolean"
+          },
+          "domainVerifyEnabled": {
+            "type": "boolean"
+          },
+          "editEnabled": {
+            "type": "boolean"
+          },
+          "featurePreview": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "glossaryEnabled": {
+            "type": "boolean"
+          },
+          "internalOpsEnabled": {
+            "type": "boolean"
+          },
+          "localeUpdateEnabled": {
+            "type": "boolean"
+          },
+          "maxDailyPageRecrawls": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxDailyRecrawls": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxGlossarySources": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxLocales": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "overridesEnabled": {
+            "type": "boolean"
+          },
+          "pipelineAllowed": {
+            "type": "boolean"
+          },
+          "publishEnabled": {
+            "type": "boolean"
+          },
+          "renderEnabled": {
+            "type": "boolean"
+          },
+          "serveAllowed": {
+            "type": "boolean"
+          },
+          "siteCreateEnabled": {
+            "type": "boolean"
+          },
+          "slugEditEnabled": {
+            "type": "boolean"
+          },
+          "tmWriteEnabled": {
+            "type": "boolean"
+          },
+          "translatableAttributesEnabled": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "ManagedAccountPlan": {
+        "enum": [
+          "free",
+          "starter",
+          "pro"
+        ],
+        "type": "string"
+      },
+      "ManagedAccountPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "accountEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "activeSiteCount": {
+            "type": "number"
+          },
+          "agencyLinks": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedAccountAgencyLink"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureFlags": {
+            "$ref": "#/components/schemas/ManagedAccountFeatureFlagOverrides"
+          },
+          "managedDemo": {
+            "type": "boolean"
+          },
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "planType": {
+            "$ref": "#/components/schemas/ManagedAccountPlan"
+          },
+          "quotas": {
+            "$ref": "#/components/schemas/ManagedAccountQuotaOverrides"
+          }
+        },
+        "required": [
+          "accountId",
+          "activeSiteCount",
+          "agencyLinks",
+          "featureFlags",
+          "managedDemo",
+          "planStatus",
+          "planType",
+          "quotas"
+        ],
+        "type": "object"
+      },
+      "ManagedAccountQuotaOverrides": {
+        "additionalProperties": false,
+        "properties": {
+          "freeQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "proQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "starterQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "maxSites",
+          "freeQuota",
+          "starterQuota",
+          "proQuota"
+        ],
+        "type": "object"
+      },
       "ManagedDemoDeploymentSummary": {
         "additionalProperties": false,
         "properties": {
@@ -2972,6 +3250,9 @@
           "accountId": {
             "type": "string"
           },
+          "accountPlan": {
+            "$ref": "#/components/schemas/ManagedAccountPlan"
+          },
           "createdAt": {
             "type": [
               "string",
@@ -3019,6 +3300,7 @@
         },
         "required": [
           "accountId",
+          "accountPlan",
           "siteId",
           "sourceUrl",
           "siteStatus",
@@ -4838,6 +5120,91 @@
         ],
         "type": "object"
       },
+      "UpdateAdminAccountRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "featureFlags": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagedAccountFeatureFlagOverrides"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freeQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "managedDemo": {
+            "type": "boolean"
+          },
+          "maxSites": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "planStatus": {
+            "$ref": "#/components/schemas/AccountPlanStatus"
+          },
+          "planType": {
+            "$ref": "#/components/schemas/ManagedAccountPlan"
+          },
+          "proQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "starterQuota": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "UpdateAdminAccountResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/ManagedAccountPolicy"
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "type": "object"
+      },
+      "UpdateAgencyCustomerRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "customerPlan": {
+            "$ref": "#/components/schemas/AgencyCustomerEditablePlan"
+          }
+        },
+        "required": [
+          "customerPlan"
+        ],
+        "type": "object"
+      },
+      "UpdateAgencyCustomerResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/AgencyCustomer"
+          }
+        },
+        "required": [
+          "customer"
+        ],
+        "type": "object"
+      },
       "UpdateSiteRequest": {
         "additionalProperties": false,
         "example": {
@@ -5270,6 +5637,374 @@
         ]
       }
     },
+    "/admin/accounts": {
+      "get": {
+        "operationId": "admin.accounts.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "accountId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "planType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "free",
+                "starter",
+                "pro"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managedDemo",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "accountId": "string",
+                      "activeSiteCount": 1,
+                      "agencyLinks": [
+                        {
+                          "agencyAccountId": "string",
+                          "status": "active"
+                        }
+                      ],
+                      "featureFlags": {
+                        "editEnabled": true,
+                        "glossaryEnabled": true,
+                        "slugEditEnabled": true
+                      },
+                      "managedDemo": true,
+                      "planStatus": "active",
+                      "planType": "free",
+                      "quotas": {
+                        "freeQuota": 1,
+                        "maxSites": 1,
+                        "proQuota": 1,
+                        "starterQuota": 1
+                      }
+                    }
+                  ],
+                  "pagination": {
+                    "hasMore": true,
+                    "limit": 1,
+                    "offset": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListAdminAccountsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List managed accounts for internal admin policy editing",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/admin/accounts/{accountId}": {
+      "get": {
+        "operationId": "admin.accounts.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": {
+                    "accountId": "string",
+                    "activeSiteCount": 1,
+                    "agencyLinks": [
+                      {
+                        "agencyAccountId": "string",
+                        "customerPlan": "free",
+                        "status": "active"
+                      }
+                    ],
+                    "featureFlags": {
+                      "editEnabled": true,
+                      "glossaryEnabled": true,
+                      "slugEditEnabled": true
+                    },
+                    "managedDemo": true,
+                    "planStatus": "active",
+                    "planType": "free",
+                    "quotas": {
+                      "freeQuota": 1,
+                      "maxSites": 1,
+                      "proQuota": 1,
+                      "starterQuota": 1
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GetAdminAccountResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get managed account policy detail",
+        "tags": [
+          "Admin"
+        ]
+      },
+      "patch": {
+        "operationId": "admin.accounts.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "managedDemo": true,
+                "planStatus": "active",
+                "planType": "free"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": {
+                    "accountId": "string",
+                    "activeSiteCount": 1,
+                    "agencyLinks": [
+                      {
+                        "agencyAccountId": "string",
+                        "customerPlan": "free",
+                        "status": "active"
+                      }
+                    ],
+                    "featureFlags": {
+                      "editEnabled": true,
+                      "glossaryEnabled": true,
+                      "slugEditEnabled": true
+                    },
+                    "managedDemo": true,
+                    "planStatus": "active",
+                    "planType": "free",
+                    "quotas": {
+                      "freeQuota": 1,
+                      "maxSites": 1,
+                      "proQuota": 1,
+                      "starterQuota": 1
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateAdminAccountResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update managed account policy and account-level overrides",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/admin/managed-demos": {
       "get": {
         "description": "Returns showcase-backed demo sites owned by managed demo accounts linked to the authenticated internal admin actor.",
@@ -5282,6 +6017,7 @@
                   "items": [
                     {
                       "accountId": "string",
+                      "accountPlan": "free",
                       "customerServingStatus": "inactive",
                       "deployment": {
                         "activeDeploymentId": "string",
@@ -5326,6 +6062,22 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
           },
           "429": {
             "content": {
@@ -5448,6 +6200,38 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "showcase_website_path_conflict"
+                  },
+                  "error": "showcase.websitePath is already in use"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The showcase namespace is already reserved or the bootstrap is in progress."
           },
           "429": {
             "content": {
@@ -5651,6 +6435,118 @@
           }
         ],
         "summary": "Create/invite a managed customer account",
+        "tags": [
+          "Agency"
+        ]
+      }
+    },
+    "/agency/customers/{customerAccountId}": {
+      "patch": {
+        "operationId": "agency.customers.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customerAccountId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "customerPlan": "starter"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgencyCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customer": {
+                    "activeSiteCount": 1,
+                    "agencyAccountId": "string",
+                    "customerAccountId": "string",
+                    "customerPlan": "starter",
+                    "planStatus": "active",
+                    "status": "active"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateAgencyCustomerResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "customerPlan must be \"starter\" or \"pro\""
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only starter or pro plans are assignable through the agency surface."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update a managed customer account plan",
         "tags": [
           "Agency"
         ]
@@ -9390,6 +10286,38 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "showcase_not_found"
+                  },
+                  "error": "Showcase not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The site or showcase namespace was not found."
+          },
           "429": {
             "content": {
               "application/json": {
@@ -9491,6 +10419,38 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "showcase_not_found"
+                  },
+                  "error": "Showcase not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The site or showcase namespace was not found."
+          },
           "429": {
             "content": {
               "application/json": {
@@ -9590,6 +10550,38 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "showcase_website_path_conflict"
+                  },
+                  "error": "showcase.websitePath is already in use"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The site already has a showcase or the requested namespace is already in use."
           },
           "429": {
             "content": {

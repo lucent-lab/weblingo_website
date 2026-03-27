@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { Info } from "lucide-react";
 
+import { InternalAdminPolicyCard } from "./internal-admin-policy-card";
 import { SiteAdminForm } from "./site-admin-form";
 import { SiteShowcaseCard } from "./site-showcase-card";
 
@@ -331,6 +332,18 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
             </Button>
           </CardContent>
         </Card>
+      ) : null}
+      {canManageShowcase ? (
+        <InternalAdminPolicyCard
+          accountId={site.accountId}
+          planType={auth.account?.planType ?? null}
+          planStatus={auth.account?.planStatus ?? null}
+          accountPolicyHref={
+            auth.account?.planType === "agency"
+              ? null
+              : `/dashboard/ops/accounts/${encodeURIComponent(site.accountId)}`
+          }
+        />
       ) : null}
       <SiteAdminForm
         siteId={site.id}

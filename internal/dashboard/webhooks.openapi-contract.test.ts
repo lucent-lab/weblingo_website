@@ -357,6 +357,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/accounts/me", method: "get" },
       { path: "/agency/customers", method: "get" },
       { path: "/agency/customers", method: "post" },
+      { path: "/agency/customers/{customerAccountId}", method: "patch" },
+      { path: "/admin/accounts", method: "get" },
+      { path: "/admin/accounts/{accountId}", method: "get" },
+      { path: "/admin/accounts/{accountId}", method: "patch" },
       { path: "/admin/managed-demos", method: "get" },
       { path: "/admin/managed-demos", method: "post" },
       { path: "/digests/subscription", method: "put" },
@@ -420,6 +424,22 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "CreateAgencyCustomerResponse",
         schema: __webhooksZodContracts.createAgencyCustomerResponseSchema,
+      },
+      {
+        name: "UpdateAgencyCustomerResponse",
+        schema: __webhooksZodContracts.updateAgencyCustomerResponseSchema,
+      },
+      {
+        name: "ListAdminAccountsResponse",
+        schema: __webhooksZodContracts.listAdminAccountsResponseSchema,
+      },
+      {
+        name: "GetAdminAccountResponse",
+        schema: __webhooksZodContracts.getAdminAccountResponseSchema,
+      },
+      {
+        name: "UpdateAdminAccountResponse",
+        schema: __webhooksZodContracts.updateAdminAccountResponseSchema,
       },
       {
         name: "ListManagedDemoSitesResponse",

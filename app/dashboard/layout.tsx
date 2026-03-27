@@ -78,6 +78,16 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     ...(canAccessInternalOps
       ? [
           {
+            href: "/dashboard/ops",
+            label: "Ops",
+            icon: <Wrench className="h-4 w-4" />,
+          },
+          {
+            href: "/dashboard/ops/accounts",
+            label: "Accounts",
+            icon: <Users className="h-4 w-4" />,
+          },
+          {
             href: "/dashboard/ops/showcases",
             label: "Showcases",
             icon: <MonitorPlay className="h-4 w-4" />,

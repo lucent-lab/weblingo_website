@@ -118,6 +118,7 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
             <Badge variant={item.showcase.status === "active" ? "secondary" : "outline"}>
               Showcase {item.showcase.status}
             </Badge>
+            <Badge variant="outline">Plan {item.accountPlan}</Badge>
           </div>
           <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
             <InfoRow label="Customer serving" value={item.customerServingStatus} />
@@ -170,8 +171,8 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
             </Button>
           </form>
           <Button asChild variant="ghost" className="justify-start px-0">
-            <Link href={`/dashboard/agency/customers?query=${encodeURIComponent(item.accountId)}`}>
-              Inspect linked workspace
+            <Link href={`/dashboard/ops/accounts/${encodeURIComponent(item.accountId)}`}>
+              Open account policy
             </Link>
           </Button>
         </div>

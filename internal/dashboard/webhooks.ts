@@ -48,6 +48,7 @@ function getBodyRecord(value: unknown): Record<string, unknown> {
 }
 
 const planTypeSchema = z.enum(["free", "starter", "pro", "agency"]);
+const managedAccountPlanSchema = z.enum(["free", "starter", "pro"]);
 const planStatusSchema = z.enum(["active", "past_due", "cancelled"]);
 
 const entitlementsSchema = z
@@ -732,7 +733,7 @@ const accountMeSchema = z
   })
   .strict();
 
-const agencyCustomerPlanSchema = z.enum(["starter", "pro"]);
+const agencyCustomerPlanSchema = managedAccountPlanSchema;
 const agencyCustomerStatusSchema = z.enum(["active", "suspended"]);
 
 const agencyCustomerSchema = z
@@ -766,6 +767,65 @@ const createAgencyCustomerResponseSchema = z
   .object({
     customer: agencyCustomerSchema,
     inviteLink: z.string(),
+  })
+  .strict();
+
+const updateAgencyCustomerResponseSchema = z
+  .object({
+    customer: agencyCustomerSchema,
+  })
+  .strict();
+
+const managedAccountQuotaOverridesSchema = quotasSchema;
+
+const managedAccountFeatureFlagOverridesSchema = featureFlagsSchema.partial();
+
+const managedAccountAgencyLinkSchema = z
+  .object({
+    agencyAccountId: z.string(),
+    customerPlan: agencyCustomerPlanSchema,
+    status: agencyCustomerStatusSchema,
+    createdAt: z.string().nullable().optional(),
+  })
+  .strict();
+
+const managedAccountPolicySchema = z
+  .object({
+    accountId: z.string(),
+    planType: managedAccountPlanSchema,
+    planStatus: planStatusSchema,
+    managedDemo: z.boolean(),
+    createdAt: z.string().nullable().optional(),
+    accountEmail: z.string().nullable().optional(),
+    activeSiteCount: z.number().int().nonnegative(),
+    quotas: managedAccountQuotaOverridesSchema,
+    featureFlags: managedAccountFeatureFlagOverridesSchema,
+    agencyLinks: z.array(managedAccountAgencyLinkSchema),
+  })
+  .strict();
+
+const listAdminAccountsResponseSchema = z
+  .object({
+    items: z.array(managedAccountPolicySchema),
+    pagination: z
+      .object({
+        limit: z.number().int().positive(),
+        offset: z.number().int().nonnegative(),
+        hasMore: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
+
+const getAdminAccountResponseSchema = z
+  .object({
+    account: managedAccountPolicySchema,
+  })
+  .strict();
+
+const updateAdminAccountResponseSchema = z
+  .object({
+    account: managedAccountPolicySchema,
   })
   .strict();
 
@@ -807,6 +867,7 @@ const managedDemoDeploymentSummarySchema = z
 const managedDemoSiteSummarySchema = z
   .object({
     accountId: z.string(),
+    accountPlan: managedAccountPlanSchema,
     siteId: z.string(),
     sourceUrl: z.string(),
     siteStatus: z.enum(["active", "inactive"]),
@@ -927,11 +988,22 @@ export type LanguageSwitcherSnippetsResponse = z.infer<
   typeof languageSwitcherSnippetsResponseSchema
 >;
 export type AccountMe = z.infer<typeof accountMeSchema>;
+export type ManagedAccountPlan = z.infer<typeof managedAccountPlanSchema>;
 export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
 export type AgencyCustomer = z.infer<typeof agencyCustomerSchema>;
 export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema>;
 export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
 export type CreateAgencyCustomerResponse = z.infer<typeof createAgencyCustomerResponseSchema>;
+export type UpdateAgencyCustomerResponse = z.infer<typeof updateAgencyCustomerResponseSchema>;
+export type ManagedAccountQuotaOverrides = z.infer<typeof managedAccountQuotaOverridesSchema>;
+export type ManagedAccountFeatureFlagOverrides = z.infer<
+  typeof managedAccountFeatureFlagOverridesSchema
+>;
+export type ManagedAccountAgencyLink = z.infer<typeof managedAccountAgencyLinkSchema>;
+export type ManagedAccountPolicy = z.infer<typeof managedAccountPolicySchema>;
+export type ListAdminAccountsResponse = z.infer<typeof listAdminAccountsResponseSchema>;
+export type GetAdminAccountResponse = z.infer<typeof getAdminAccountResponseSchema>;
+export type UpdateAdminAccountResponse = z.infer<typeof updateAdminAccountResponseSchema>;
 export type DashboardBootstrapResponse = z.infer<typeof dashboardBootstrapResponseSchema>;
 export type SiteShowcase = z.infer<typeof siteShowcaseSchema>;
 export type SiteShowcaseResponse = z.infer<typeof siteShowcaseResponseSchema>;
@@ -948,6 +1020,10 @@ export const __webhooksZodContracts = {
   accountMeSchema,
   listAgencyCustomersResponseSchema,
   createAgencyCustomerResponseSchema,
+  updateAgencyCustomerResponseSchema,
+  listAdminAccountsResponseSchema,
+  getAdminAccountResponseSchema,
+  updateAdminAccountResponseSchema,
   listManagedDemoSitesResponseSchema,
   createManagedDemoSiteResponseSchema,
   siteShowcaseResponseSchema,
@@ -1945,8 +2021,95 @@ export async function createAgencyCustomer(
   });
 }
 
+export async function updateAgencyCustomer(
+  auth: AuthInput,
+  customerAccountId: string,
+  payload: { customerPlan: "starter" | "pro" },
+): Promise<UpdateAgencyCustomerResponse> {
+  return request({
+    path: `/agency/customers/${customerAccountId}`,
+    method: "PATCH",
+    auth,
+    body: payload,
+    schema: updateAgencyCustomerResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
+export async function listAdminAccounts(
+  auth: AuthInput,
+  options?: {
+    accountId?: string;
+    planType?: ManagedAccountPlan;
+    managedDemo?: boolean;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<ListAdminAccountsResponse> {
+  const qs = new URLSearchParams();
+  if (options?.accountId) {
+    qs.set("accountId", options.accountId);
+  }
+  if (options?.planType) {
+    qs.set("planType", options.planType);
+  }
+  if (typeof options?.managedDemo === "boolean") {
+    qs.set("managedDemo", String(options.managedDemo));
+  }
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+  const path = qs.size ? `/admin/accounts?${qs.toString()}` : "/admin/accounts";
+  return request({
+    path,
+    auth,
+    schema: listAdminAccountsResponseSchema,
+    timeoutProfile: "list",
+  });
+}
+
+export async function getAdminAccount(
+  auth: AuthInput,
+  accountId: string,
+): Promise<GetAdminAccountResponse> {
+  return request({
+    path: `/admin/accounts/${accountId}`,
+    auth,
+    schema: getAdminAccountResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function updateAdminAccount(
+  auth: AuthInput,
+  accountId: string,
+  payload: {
+    planType?: ManagedAccountPlan;
+    planStatus?: z.infer<typeof planStatusSchema>;
+    managedDemo?: boolean;
+    maxSites?: number | null;
+    freeQuota?: number | null;
+    starterQuota?: number | null;
+    proQuota?: number | null;
+    featureFlags?: ManagedAccountFeatureFlagOverrides | null;
+  },
+): Promise<UpdateAdminAccountResponse> {
+  return request({
+    path: `/admin/accounts/${accountId}`,
+    method: "PATCH",
+    auth,
+    body: payload,
+    schema: updateAdminAccountResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
 export type CreateManagedDemoSitePayload = {
   site: CreateSitePayload;
+  accountPlan?: ManagedAccountPlan;
   showcase?: {
     websitePath?: string;
     defaultLang?: string | null;

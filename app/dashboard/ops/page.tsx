@@ -66,6 +66,25 @@ export default async function OpsPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-border/60 bg-muted/20">
+        <CardHeader>
+          <CardTitle>Managed account policy</CardTitle>
+          <CardDescription>
+            Browse managed customer accounts, inspect agency links, and edit account-level policy
+            outside the current workspace context.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            This inventory uses the admin actor identity directly, so it remains safe even while you
+            are acting inside a managed customer workspace.
+          </p>
+          <Button asChild variant="secondary">
+            <Link href="/dashboard/ops/accounts">Open account inventory</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>

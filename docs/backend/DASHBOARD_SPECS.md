@@ -117,19 +117,53 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 ### Agency management
 
-`GET /api/agency/customers` and `POST /api/agency/customers`
+`GET /api/agency/customers`, `POST /api/agency/customers`, and `PATCH /api/agency/customers/:customerAccountId`
 
-- Use for listing and inviting managed customer accounts.
+- Use for listing, inviting, and later changing managed customer plans.
+- `PATCH` remains limited to `starter | pro`; `free` and `agency` assignment stay internal-admin only.
+- `PATCH /api/agency/customers/:customerAccountId`
+  - Payload: `{ customerPlan }` where `customerPlan` is required and must be `starter | pro`.
+  - Response: `{ customer }` with the refreshed managed-customer row (`customerAccountId`, `customerPlan`, `planStatus`, `status`, `activeSiteCount`, `customerEmail`, `createdAt`).
+  - Errors: `400` invalid plan, `404` missing managed-customer relationship, `403` auth/billing gate failures.
+- Website mapping:
+  - `/dashboard/agency/customers` lists linked managed customers, supports invite flow, and exposes the plan-update control.
+
+### Internal admin managed accounts
+
+`GET /api/admin/accounts`, `GET /api/admin/accounts/:accountId`, and `PATCH /api/admin/accounts/:accountId`
+
+- Internal-admin-only managed account discovery, detail, and policy editing.
+- `GET /api/admin/accounts` is a bounded inventory/search surface (`accountId`, `planType`, `managedDemo`, `limit`, `offset`).
+- `PATCH` supports managed account plan assignment (`free | starter | pro` only), managed-demo state, quota overrides, and raw account-level feature-flag overrides.
+- `GET /api/admin/accounts`
+  - Query: `accountId?: string`, `planType?: "free" | "starter" | "pro"`, `managedDemo?: boolean`, `limit?: int` (default `20`, max `50`), `offset?: int` (default `0`).
+  - Response: `{ items, pagination }`, where each item includes `accountId`, `planType`, `planStatus`, `managedDemo`, `accountEmail`, `activeSiteCount`, `quotas`, `featureFlags`, and linked `agencyLinks`.
+- `GET /api/admin/accounts/:accountId`
+  - Response: `{ account }` with the same normalized managed-account policy object used by the inventory page.
+  - Errors: `404` when the managed account is missing or is an `agency` subject; `403` when internal-admin auth is missing.
+- `PATCH /api/admin/accounts/:accountId`
+  - Payload: any subset of `{ planType, planStatus, managedDemo, maxSites, freeQuota, starterQuota, proQuota, featureFlags }`.
+  - Response: `{ account }` with the refreshed managed-account policy object.
+  - Errors: `400` validation failures, `403` auth failures, `404` missing managed account, `409` account/link sync conflicts.
+- Website mapping:
+  - `/dashboard/ops/accounts` lists managed accounts with deterministic pagination.
+  - `/dashboard/ops/accounts/:accountId` is the account policy editor.
 
 ### Internal admin managed demos
 
 `GET /api/admin/managed-demos` and `POST /api/admin/managed-demos`
 
 - Internal-admin-only surfaces for pre-sales demo operations.
-- `GET` returns the managed demo inventory linked to the authenticated admin actor, including showcase state and deployment summary.
-- `POST` creates a managed demo account, first site, and showcase namespace together.
+- `GET` returns the managed demo inventory linked to the authenticated admin actor, including the managed account plan, showcase state, and deployment summary.
+- `POST` creates a managed demo account, first site, and showcase namespace together, with optional initial plan selection (`free | starter | pro`).
+- `POST /api/admin/managed-demos`
+  - Payload: `{ site, showcase?, accountPlan? }`.
+  - Response: `{ accountId, site, showcase }`.
+- `GET /api/admin/managed-demos`
+  - Response items include `{ accountId, accountPlan, siteId, sourceUrl, siteStatus, customerServingStatus, showcaseServingStatus, showcase, deployment }`.
 - Website mapping:
   - `/dashboard/ops/showcases` lists existing demos and creates new ones.
+  - "Open account policy" links to `/dashboard/ops/accounts/:accountId`.
   - "Open site admin" should switch workspace into the managed demo account, then redirect to `/dashboard/sites/:id/admin`.
 
 ### Sites (onboarding & management)
@@ -316,6 +350,10 @@ Legend:
 | `accounts.me`                          | GA        | live   | dashboard | Dashboard entitlements/flags bootstrap and plan gating.       |
 | `agency.customers.list`                | GA        | live   | dashboard | Agency customer list and workspace switching.                 |
 | `agency.customers.create`              | GA        | live   | dashboard | Agency invite/create customer workflow.                       |
+| `agency.customers.update`              | GA        | live   | dashboard | Agency customer plan changes within the paid-plan envelope.   |
+| `admin.accounts.list`                  | Beta      | live   | dashboard | Internal admin managed-account inventory and filters.         |
+| `admin.accounts.get`                   | Beta      | live   | dashboard | Internal admin managed-account detail page.                   |
+| `admin.accounts.update`                | Beta      | live   | dashboard | Internal admin account policy + raw flag override editing.    |
 | `admin.managedDemos.list`              | Beta      | live   | dashboard | Internal admin managed demo inventory page.                   |
 | `admin.managedDemos.create`            | Beta      | live   | dashboard | Internal admin managed demo bootstrap flow.                   |
 | `auth.token.mint`                      | GA        | live   | dashboard | Supabase-to-webhooks JWT bridge used for all dashboard calls. |

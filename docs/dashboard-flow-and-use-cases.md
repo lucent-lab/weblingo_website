@@ -39,28 +39,31 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
    - Customer list (plan, status, active site count).
 3. Filter customers by plan/status/usage.
 4. Create customer (invite flow) and pick plan.
-5. Switch context into a customer workspace.
-6. Manage customer sites using the same UI as a normal customer.
-7. Switch back to agency workspace for global metrics.
+5. Update existing managed customers between Starter and Pro without leaving the customer list.
+6. Switch context into a customer workspace.
+7. Manage customer sites using the same UI as a normal customer.
+8. Switch back to agency workspace for global metrics.
 
 ## Core flows (internal admin operator)
 
-1. Stay in the admin workspace and open `/dashboard/ops/showcases`.
-2. Create a managed demo:
+1. Stay in the admin workspace and open `/dashboard/ops/accounts` or `/dashboard/ops/showcases`.
+2. Use `/dashboard/ops/accounts` to inspect managed account policy, agency links, and raw account-level flag overrides.
+3. Create a managed demo:
    - Source URL + source language.
    - Target languages.
+   - Managed account plan (`free | starter | pro`).
    - Optional showcase path override.
-3. The system creates the managed demo account, first site, and public showcase namespace together.
-4. Review the public `t2.weblingo.app` URL from the managed demo inventory.
-5. Jump directly into the managed workspace from the inventory to continue site-level operations.
-6. On `/dashboard/sites/:id/admin`, adjust showcase default language or disable the showcase namespace without changing customer-domain verification rules.
+4. The system creates the managed demo account, first site, and public showcase namespace together.
+5. Review the public `t2.weblingo.app` URL from the managed demo inventory.
+6. Jump directly into the managed workspace from the inventory to continue site-level operations.
+7. On `/dashboard/sites/:id/admin`, use the internal-admin policy scope card to distinguish account-level policy from site-level settings, then adjust showcase/site settings without changing customer-domain verification rules.
 
 ## Current state (weblingo_website)
 
 The current dashboard is implemented in `app/dashboard` and uses the webhooks worker API.
 
 - Auth + entitlements: `internal/dashboard/auth.ts` exchanges Supabase tokens for a webhooks JWT and fetches `/accounts/me`.
-- Navigation: Overview, Sites, Developer tools; agencies also see Agency overview + Customers, and internal admins also see Showcases (`app/dashboard/layout.tsx`).
+- Navigation: Overview, Sites, Developer tools; agencies also see Agency overview + Customers, and internal admins also see Ops + Accounts + Showcases (`app/dashboard/layout.tsx`).
 - Overview: summary cards for active sites, unverified domains, and configured locales (`app/dashboard/page.tsx`).
 - Sites list: list + summary per site; plan + usage badges live in the shared header (`app/dashboard/sites/page.tsx`).
 - Site detail: domains, deployments, trigger crawl, glossary, overrides, slugs (`app/dashboard/sites/[id]/page.tsx`).
@@ -68,8 +71,8 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 - Feature gating: locked sections show disabled cards with upgrade CTAs instead of disappearing.
 - Onboarding: uses `maxLocales` from `/accounts/me` and blocks adding targets past the cap (`app/dashboard/sites/new/onboarding-form.tsx`).
 - Domain onboarding: handles CNAME instructions (provision/refresh) or TXT verification (`app/dashboard/sites/[id]/page.tsx`).
-- Agency surface: workspace switcher + agency overview/customers list (with filters and invite flow).
-- Internal admin surface: `/dashboard/ops/showcases` for managed demo bootstrap/listing and a showcase card on site-admin pages.
+- Agency surface: workspace switcher + agency overview/customers list (with filters, invite flow, and paid-plan updates).
+- Internal admin surface: `/dashboard/ops/accounts` for managed account policy, `/dashboard/ops/showcases` for managed demo bootstrap/listing, and a policy-scope + showcase card on site-admin pages.
 - Auth refresh policy: dashboard exchanges Supabase tokens for webhooks JWTs server-side on each request, refreshes pre-expiry (5-minute buffer), and retries once on 401.
 - Billing policy: mutations require both actor and subject plans to be active; billing banners warn the billing owner (agency when acting as agency, customer when in own workspace) without showing agency billing warnings to customer workspaces.
 - Polling policy: `/api/dashboard/sites/{siteId}/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
@@ -128,6 +131,12 @@ Agency admins (in agency context):
 - `/dashboard/sites` — Agency-owned sites (same component as normal customers).
 - `/dashboard/sites/new` — Create agency-owned site (when allowed).
 - `/dashboard/developer-tools` — Tokens/config.
+
+Internal admin operators (agency admin + `internal_ops`, in admin context):
+
+- `/dashboard/ops` — Internal admin landing page.
+- `/dashboard/ops/accounts` — Internal managed-account inventory + filters.
+- `/dashboard/ops/accounts/:accountId` — Internal managed-account policy editor.
 - `/dashboard/ops/showcases` — Internal managed demo inventory + bootstrap flow.
 
 Workspace switcher (header):

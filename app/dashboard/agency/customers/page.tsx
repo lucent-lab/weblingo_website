@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { setWorkspaceAction } from "../../_lib/workspace-actions";
+import { CustomerPlanUpdateForm } from "../customer-plan-update-form";
 import { CustomerInviteForm } from "../customer-invite-form";
 
 type CustomersPageProps = {
@@ -91,6 +92,7 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
                 defaultValue={planFilter}
               >
                 <option value="all">All</option>
+                <option value="free">Free</option>
                 <option value="starter">Starter</option>
                 <option value="pro">Pro</option>
               </select>
@@ -136,14 +138,28 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
                     <Badge variant="outline">Link Status: {customer.status}</Badge>
                     <Badge variant="outline">Sites: {customer.activeSiteCount}</Badge>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Agencies can move managed customers between Starter and Pro. Free and agency
+                    plan assignment stays internal-admin only.
+                  </p>
                 </div>
-                <form action={setWorkspaceAction}>
-                  <input name="subjectAccountId" type="hidden" value={customer.customerAccountId} />
-                  <input name="redirectTo" type="hidden" value="/dashboard/sites" />
-                  <Button type="submit" variant="secondary">
-                    View sites
-                  </Button>
-                </form>
+                <div className="flex flex-col gap-2 md:items-end">
+                  <CustomerPlanUpdateForm
+                    customerAccountId={customer.customerAccountId}
+                    currentPlan={customer.customerPlan}
+                  />
+                  <form action={setWorkspaceAction}>
+                    <input
+                      name="subjectAccountId"
+                      type="hidden"
+                      value={customer.customerAccountId}
+                    />
+                    <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+                    <Button type="submit" variant="secondary">
+                      View sites
+                    </Button>
+                  </form>
+                </div>
               </div>
             ))
           )}

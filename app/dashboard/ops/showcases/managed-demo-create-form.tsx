@@ -39,6 +39,7 @@ export function ManagedDemoCreateForm({
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>({});
   const [websitePath, setWebsitePath] = useState("");
   const [defaultLang, setDefaultLang] = useState("");
+  const [accountPlan, setAccountPlan] = useState<"free" | "starter" | "pro">("pro");
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const sourceHost = parsedSourceUrl ? stripWwwPrefix(parsedSourceUrl.hostname) : "";
@@ -99,6 +100,7 @@ export function ManagedDemoCreateForm({
           <input name="subdomainPattern" type="hidden" value={subdomainPattern} />
           <input name="defaultLang" type="hidden" value={effectiveDefaultLang} />
           <input name="localeAliases" type="hidden" value={localeAliasesJson} />
+          <input name="accountPlan" type="hidden" value={accountPlan} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Field label="Source URL" htmlFor="managed-demo-source-url">
@@ -180,6 +182,24 @@ export function ManagedDemoCreateForm({
             </Field>
           </div>
 
+          <Field
+            label="Managed account plan"
+            htmlFor="managed-demo-account-plan"
+            description="Choose the initial managed-account tier. Agency is intentionally excluded until the role/billing split lands."
+          >
+            <select
+              id="managed-demo-account-plan"
+              name="accountPlanSelect"
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+              value={accountPlan}
+              onChange={(event) => setAccountPlan(event.target.value as "free" | "starter" | "pro")}
+            >
+              <option value="free">Free</option>
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+            </select>
+          </Field>
+
           <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 lg:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -197,6 +217,12 @@ export function ManagedDemoCreateForm({
               <p className="font-mono text-sm text-foreground">
                 {customerPatternPreview ?? "Derived after you enter the source URL."}
               </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Account plan
+              </p>
+              <p className="text-sm text-foreground">{accountPlan}</p>
             </div>
           </div>
 

@@ -55,6 +55,90 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.accounts.get",
+        "path": "/admin/accounts/:accountId"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.accounts.get",
+      "name": "Get managed account policy detail",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "admin.accounts.get"
+      ],
+      "stability": "Internal",
+      "summary": "Get managed account policy detail",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.accounts.list",
+        "path": "/admin/accounts"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.accounts.list",
+      "name": "List managed accounts for internal admin policy editing",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "admin.accounts.list"
+      ],
+      "stability": "Internal",
+      "summary": "List managed accounts for internal admin policy editing",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PATCH",
+        "operationId": "admin.accounts.update",
+        "path": "/admin/accounts/:accountId"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.accounts.update",
+      "name": "Update managed account policy and account-level overrides",
+      "playbooks": [
+        {
+          "anchor": "playbook-admin-managed-demos",
+          "id": "playbook-admin-managed-demos",
+          "title": "Playbook: Admin Managed Demos"
+        }
+      ],
+      "routeIds": [
+        "admin.accounts.update"
+      ],
+      "stability": "Internal",
+      "summary": "Update managed account policy and account-level overrides",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "admin.managedDemos.create",
         "path": "/admin/managed-demos"
@@ -162,6 +246,34 @@
       ],
       "stability": "GA",
       "summary": "List agency-managed customer accounts",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PATCH",
+        "operationId": "agency.customers.update",
+        "path": "/agency/customers/:customerAccountId"
+      },
+      "family": "api",
+      "flagKeys": [
+        "agencyActionsEnabled"
+      ],
+      "group": "agency",
+      "id": "api.agency.customers.update",
+      "name": "Update a managed customer account plan",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "agency.customers.update"
+      ],
+      "stability": "GA",
+      "summary": "Update a managed customer account plan",
       "userFacing": true
     },
     {

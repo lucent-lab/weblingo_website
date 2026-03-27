@@ -286,6 +286,7 @@ describe("dashboard capability actions", () => {
 
     const { createManagedDemoAction } = await import("./actions");
     const formData = new FormData();
+    formData.set("accountPlan", "starter");
     formData.set("sourceUrl", "https://www.autotrim.com");
     formData.set("sourceLang", "en");
     formData.append("targetLangs", "fr");
@@ -306,6 +307,7 @@ describe("dashboard capability actions", () => {
     expect(createManagedDemo).toHaveBeenCalledWith(
       expect.objectContaining({ token: "actor-token" }),
       expect.objectContaining({
+        accountPlan: "starter",
         site: expect.objectContaining({
           localeAliases: { fr: "fr-fr" },
           targetLangs: ["fr", "de"],
@@ -320,6 +322,7 @@ describe("dashboard capability actions", () => {
 
     const { createManagedDemoAction } = await import("./actions");
     const formData = new FormData();
+    formData.set("accountPlan", "pro");
     formData.set("sourceUrl", "https://www.autotrim.com");
     formData.set("sourceLang", "en");
     formData.append("targetLangs", "fr");

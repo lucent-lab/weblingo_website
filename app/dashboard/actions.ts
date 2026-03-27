@@ -397,6 +397,7 @@ export async function createManagedDemoAction(
   _prevState: ActionResponse | undefined,
   formData: FormData,
 ): Promise<ActionResponse> {
+  const accountPlan = formData.get("accountPlan")?.toString().trim() ?? "";
   const sourceUrl = formData.get("sourceUrl")?.toString().trim() ?? "";
   const sourceLang = formData.get("sourceLang")?.toString().trim() ?? "";
   const targetLangs = formData
@@ -412,6 +413,9 @@ export async function createManagedDemoAction(
 
   if (!sourceUrl || !sourceLang || uniqueTargets.length === 0 || !subdomainPattern) {
     return failed("Please fill every required field and pick at least one target language.");
+  }
+  if (accountPlan !== "free" && accountPlan !== "starter" && accountPlan !== "pro") {
+    return failed("Managed demo accounts can only start on Free, Starter, or Pro.");
   }
 
   const sourceUrlError = validateSourceUrl(sourceUrl);
@@ -445,6 +449,7 @@ export async function createManagedDemoAction(
         throw new Error("Unable to authenticate internal admin actions.");
       })();
     const result = await createManagedDemo(auth, {
+      accountPlan,
       site: {
         sourceUrl,
         sourceLang,

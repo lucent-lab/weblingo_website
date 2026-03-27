@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
-import { createAgencyCustomer } from "@internal/dashboard/webhooks";
+import { createAgencyCustomer, updateAgencyCustomer } from "@internal/dashboard/webhooks";
 
 export type ActionResponse = {
   ok: boolean;
@@ -70,5 +70,42 @@ export async function createAgencyCustomerAction(
   } catch (error) {
     console.error("[dashboard] createAgencyCustomerAction failed:", error);
     return failed("Unable to invite customer.");
+  }
+}
+
+export async function updateAgencyCustomerPlanAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const customerAccountId = formData.get("customerAccountId")?.toString().trim() ?? "";
+  const customerPlan = formData.get("customerPlan")?.toString().trim() ?? "";
+
+  if (!customerAccountId) {
+    return failed("Customer account ID is required.");
+  }
+  if (customerPlan !== "starter" && customerPlan !== "pro") {
+    return failed("Agencies can only assign Starter or Pro.");
+  }
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (auth.actorAccount?.planType !== "agency") {
+      return failed("Agency access is required.");
+    }
+    if (!auth.actorWebhooksAuth) {
+      return failed("Unable to authenticate agency actions.");
+    }
+    if (!auth.actorPlanActive) {
+      return failed(formatAgencyBillingMessage(auth));
+    }
+    await updateAgencyCustomer(auth.actorWebhooksAuth, customerAccountId, {
+      customerPlan,
+    });
+    revalidatePath("/dashboard/agency");
+    revalidatePath("/dashboard/agency/customers");
+    return succeeded("Customer plan updated.");
+  } catch (error) {
+    console.error("[dashboard] updateAgencyCustomerPlanAction failed:", error);
+    return failed("Unable to update the customer plan.");
   }
 }
