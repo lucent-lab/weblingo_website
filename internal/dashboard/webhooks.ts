@@ -1371,6 +1371,7 @@ function createDashboardE2eMockManagedDemoSummary() {
   const now = new Date().toISOString();
   return {
     accountId: "acct-demo-managed",
+    accountPlan: "starter" as const,
     siteId: DASHBOARD_E2E_MOCK_SITE_ID,
     sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
     siteStatus: "active" as const,
