@@ -60,6 +60,7 @@ PUBLIC_PORTAL_MODE=enabled # required: enabled | disabled
 NEXT_PUBLIC_WEBHOOKS_API_BASE=https://api.weblingo.app/api
 NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS=15000
 TRY_NOW_TOKEN=preview_token_value
+PREVIEW_BASE_URL=https://preview.weblingo.app
 
 # Public form abuse controls
 WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS=60000
@@ -108,7 +109,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ## Running Locally
 
 1. Install dependencies: `corepack pnpm install`
-2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` for the dashboard and `TRY_NOW_TOKEN` for previews).
+2. Fill `.env.local` with the values above (set `NEXT_PUBLIC_WEBHOOKS_API_BASE` for the dashboard, `TRY_NOW_TOKEN` for previews, and `PREVIEW_BASE_URL` for preview shell links).
    Redis credentials are required for public-form and preview rate limiting (`UPSTASH_REDIS__KV_REST_API_URL` + `UPSTASH_REDIS__KV_REST_API_TOKEN`).
 3. Start dev server: `corepack pnpm run dev` (opens `http://localhost:3000`).
 4. Dashboard access: visit `/dashboard`, sign in via Supabase auth, then create/manage sites (calls `NEXT_PUBLIC_WEBHOOKS_API_BASE`).
@@ -162,7 +163,7 @@ Ownership:
 - **Hosting**: Deploy to Vercel/Netlify/Fly/etc. with Node 20.9+ and set all env vars above. Ensure the hosting URL matches `NEXT_PUBLIC_APP_URL`.
 - **Rate limiting store**: Provision Upstash Redis (or compatible REST KV) and configure `UPSTASH_REDIS__KV_REST_API_URL`/`UPSTASH_REDIS__KV_REST_API_TOKEN`. This is required for waitlist/contact/preview abuse controls.
 - **Supabase**: Configure the site URL and redirect URLs in Supabase Auth settings. Provide `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` to the host.
-- **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin. Use `TRY_NOW_TOKEN` for server-side preview requests.
+- **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin. Use `TRY_NOW_TOKEN` for server-side preview requests and `PREVIEW_BASE_URL` for the preview shell/links host.
 - **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.
 - **Dashboard**: `/dashboard` uses Supabase session cookies; ensure the domain matches your Supabase config so auth cookies persist.
 - **Smoke checks**: After deploy, verify `/[locale]` pages load, Stripe Pricing Table renders, and dashboard can list/create sites via the worker API.

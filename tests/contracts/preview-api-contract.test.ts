@@ -40,6 +40,7 @@ beforeAll(() => {
   process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.upstash.io";
   process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "upstash_token";
   process.env.TRY_NOW_TOKEN = "preview_token";
+  process.env.PREVIEW_BASE_URL = "https://preview.weblingo.app";
   process.env.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS = "60000";
   process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW = "20";
   process.env.WEBSITE_PREVIEW_CREATE_MAX_PER_SOURCE_HOST_PER_WINDOW = "10";

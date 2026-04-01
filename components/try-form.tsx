@@ -81,6 +81,17 @@ type ResolvedPreviewError = {
 
 const emailSchema = z.email();
 
+function buildPreviewModeHref(
+  locale: string,
+  previewUrl: string,
+  mode: "iframe" | "overlay",
+): string {
+  if (mode === "overlay") {
+    return previewUrl;
+  }
+  return `/${locale}/preview-shell?src=${encodeURIComponent(previewUrl)}`;
+}
+
 export type TryFormMode =
   | "idle"
   | "creating"
@@ -1373,11 +1384,26 @@ export function TryForm({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span>{t("try.status.ready")}</span>
               {trackedJob.previewUrl ? (
-                <Button asChild size="sm" variant="secondary">
-                  <a href={trackedJob.previewUrl} target="_blank" rel="noreferrer">
-                    {t("try.preview.open")}
-                  </a>
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button asChild size="sm" variant="secondary" className="justify-center">
+                    <a
+                      href={buildPreviewModeHref(locale, trackedJob.previewUrl, "iframe")}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("try.preview.openIframe")}
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" variant="outline" className="justify-center">
+                    <a
+                      href={buildPreviewModeHref(locale, trackedJob.previewUrl, "overlay")}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t("try.preview.openOverlay")}
+                    </a>
+                  </Button>
+                </div>
               ) : null}
             </div>
 

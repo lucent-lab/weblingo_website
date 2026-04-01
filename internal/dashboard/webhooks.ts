@@ -160,6 +160,8 @@ const siteSchema = z.object({
   servingMode: z.enum(["strict", "tolerant"]),
   maxLocales: z.number().int().positive().nullable(),
   siteProfile: siteProfileSchema,
+  webhookUrl: z.string().nullable().optional(),
+  webhookSecret: z.string().nullable().optional(),
   locales: z.array(
     z.object({
       sourceLang: z.string(),
@@ -189,6 +191,9 @@ const siteSchema = z.object({
     })
     .nullable()
     .optional(),
+  customerServingStatus: z.lazy(() => deploymentServingStatusSchema).nullable().optional(),
+  showcaseServingStatus: z.lazy(() => deploymentServingStatusSchema).nullable().optional(),
+  showcase: z.lazy(() => siteShowcaseSchema).nullable().optional(),
 });
 
 const listSitesResponseSchema = z.object({ sites: z.array(siteSummarySchema) });

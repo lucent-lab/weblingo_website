@@ -77,6 +77,8 @@ const messages = {
   "try.pending.emailError": "Could not save email. Try again.",
   "try.preview.linkLabel": "Preview link",
   "try.preview.open": "Open preview",
+  "try.preview.openIframe": "Open iframe preview",
+  "try.preview.openOverlay": "Open overlay preview",
   "try.preview.copy": "Copy link",
   "try.preview.copied": "Copied",
   "try.error.default": "Preview failed.",
@@ -374,6 +376,12 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("Ready")).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Open iframe preview" }).getAttribute("href")).toBe(
+        "/en/preview-shell?src=https%3A%2F%2Fpreview.example.com%2Fp%2Fready",
+      );
+      expect(screen.getByRole("link", { name: "Open overlay preview" }).getAttribute("href")).toBe(
+        "https://preview.example.com/p/ready",
+      );
     });
 
     cleanup();
