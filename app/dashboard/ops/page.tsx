@@ -85,6 +85,24 @@ export default async function OpsPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-border/60 bg-muted/20">
+        <CardHeader>
+          <CardTitle>Preview reviews</CardTitle>
+          <CardDescription>
+            Inspect recent preview runs, see which ones collected structured feedback, and open the
+            full review detail surface.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            This keeps preview metadata and review history together on one internal-admin page.
+          </p>
+          <Button asChild variant="secondary">
+            <Link href="/dashboard/ops/previews">Open preview reviews</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Sites</CardTitle>

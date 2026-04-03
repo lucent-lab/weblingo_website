@@ -195,6 +195,44 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.previews.get",
+        "path": "/admin/previews/:previewId"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "admin",
+      "id": "api.admin.previews.get",
+      "name": "Get preview detail with ordered reviews",
+      "routeIds": [
+        "admin.previews.get"
+      ],
+      "stability": "Internal",
+      "summary": "Returns one preview request with its current metadata plus all associated structured feedback reviews, ordered newest first.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.previews.list",
+        "path": "/admin/previews"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "admin",
+      "id": "api.admin.previews.list",
+      "name": "List preview requests with review summaries",
+      "routeIds": [
+        "admin.previews.list"
+      ],
+      "stability": "Internal",
+      "summary": "Returns recent preview requests plus the minimal feedback summary needed to show review presence and open a preview detail surface.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "agency.customers.create",
         "path": "/agency/customers"
@@ -404,6 +442,32 @@
       ],
       "stability": "Beta",
       "summary": "Creates an ephemeral preview translation request and enqueues preview processing. Supports either public preview token auth or dashboard bearer auth.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewFeedbackToken",
+        "method": "POST",
+        "operationId": "previews.feedback",
+        "path": "/previews/:previewId/feedback"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "previews",
+      "id": "api.previews.feedback",
+      "name": "Submit preview feedback",
+      "playbooks": [
+        {
+          "anchor": "playbook-5-previews-and-notifications",
+          "id": "playbook-5",
+          "title": "Playbook 5: Previews and Notifications"
+        }
+      ],
+      "routeIds": [
+        "previews.feedback"
+      ],
+      "stability": "Beta",
+      "summary": "Persists overlay feedback for a preview. The preview host proxies the request and attaches the feedback token server-side.",
       "userFacing": true
     },
     {

@@ -326,6 +326,187 @@
         ],
         "type": "object"
       },
+      "AdminPreviewFeedbackSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "latestSubmittedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "reviewCount",
+          "latestSubmittedAt"
+        ],
+        "type": "object"
+      },
+      "AdminPreviewReview": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/PreviewFeedbackChannel"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "designRating": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "originUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previewErrorCodeAtSubmit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previewStageAtSubmit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previewStatusAtSubmit": {
+            "$ref": "#/components/schemas/PreviewRequestStatus"
+          },
+          "submittedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "translationRating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "translationRating",
+          "designRating",
+          "comment",
+          "previewStatusAtSubmit",
+          "previewStageAtSubmit",
+          "previewErrorCodeAtSubmit",
+          "channel",
+          "originUrl",
+          "submittedAt"
+        ],
+        "type": "object"
+      },
+      "AdminPreviewSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreviewErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errorStage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/AdminPreviewFeedbackSummary"
+          },
+          "previewId": {
+            "type": "string"
+          },
+          "previewUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readyAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "stageLast": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PreviewRequestStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "previewId",
+          "sourceUrl",
+          "sourceLang",
+          "targetLang",
+          "status",
+          "previewUrl",
+          "expiresAt",
+          "readyAt",
+          "stageLast",
+          "errorCode",
+          "errorStage",
+          "error",
+          "createdAt",
+          "updatedAt",
+          "feedback"
+        ],
+        "type": "object"
+      },
       "AgencyCustomer": {
         "additionalProperties": false,
         "example": {
@@ -2449,6 +2630,25 @@
         ],
         "type": "object"
       },
+      "GetAdminPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "preview": {
+            "$ref": "#/components/schemas/AdminPreviewSummary"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPreviewReview"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "preview",
+          "reviews"
+        ],
+        "type": "object"
+      },
       "GlossaryEntry": {
         "additionalProperties": false,
         "properties": {
@@ -2708,6 +2908,42 @@
           "items": {
             "items": {
               "$ref": "#/components/schemas/ManagedAccountPolicy"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": false,
+            "properties": {
+              "hasMore": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "offset": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "limit",
+              "offset",
+              "hasMore"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "type": "object"
+      },
+      "ListAdminPreviewsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPreviewSummary"
             },
             "type": "array"
           },
@@ -3237,6 +3473,38 @@
       "ManagedDemoShowcase": {
         "$ref": "#/components/schemas/SiteShowcase"
       },
+      "ManagedDemoShowcaseLocaleSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "customerServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "serveEnabled": {
+            "type": "boolean"
+          },
+          "showcaseServingStatus": {
+            "$ref": "#/components/schemas/DeploymentServingStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "serveEnabled",
+          "isDefault",
+          "customerServingStatus",
+          "showcaseServingStatus",
+          "url"
+        ],
+        "type": "object"
+      },
       "ManagedDemoShowcaseStatus": {
         "enum": [
           "active",
@@ -3275,6 +3543,12 @@
           "showcase": {
             "$ref": "#/components/schemas/ManagedDemoShowcase"
           },
+          "showcaseLocales": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedDemoShowcaseLocaleSummary"
+            },
+            "type": "array"
+          },
           "showcaseServingStatus": {
             "$ref": "#/components/schemas/DeploymentServingStatus"
           },
@@ -3307,6 +3581,7 @@
           "customerServingStatus",
           "showcaseServingStatus",
           "showcase",
+          "showcaseLocales",
           "deployment"
         ],
         "type": "object"
@@ -3414,6 +3689,79 @@
           "origin-derived-compat"
         ],
         "type": "string"
+      },
+      "PreviewErrorCode": {
+        "enum": [
+          "invalid_url",
+          "blocked_host",
+          "dns_failed",
+          "dns_timeout",
+          "page_too_large",
+          "render_failed",
+          "template_decode_failed",
+          "waf_blocked",
+          "translate_failed",
+          "storage_failed",
+          "preview_csp_failed",
+          "config_error",
+          "processing_timeout",
+          "queue_enqueue_failed",
+          "preview_not_found",
+          "preview_expired",
+          "canceled",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "PreviewFeedbackChannel": {
+        "const": "overlay",
+        "type": "string"
+      },
+      "PreviewFeedbackRequest": {
+        "additionalProperties": false,
+        "example": {
+          "comment": "Navigation spacing is slightly off in the header.",
+          "designRating": 5,
+          "translationRating": 4
+        },
+        "examples": [
+          {
+            "comment": "Navigation spacing is slightly off in the header.",
+            "designRating": 5,
+            "translationRating": 4
+          }
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "designRating": {
+            "type": "number"
+          },
+          "translationRating": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "translationRating",
+          "designRating"
+        ],
+        "type": "object"
+      },
+      "PreviewFeedbackResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
       },
       "PreviewRequest": {
         "additionalProperties": false,
@@ -5420,6 +5768,11 @@
         "scheme": "bearer",
         "type": "http"
       },
+      "previewFeedbackToken": {
+        "in": "header",
+        "name": "x-preview-feedback-token",
+        "type": "apiKey"
+      },
       "previewStatusToken": {
         "in": "header",
         "name": "x-preview-status-token",
@@ -6033,6 +6386,16 @@
                         "url": "string",
                         "websitePath": "string"
                       },
+                      "showcaseLocales": [
+                        {
+                          "customerServingStatus": "inactive",
+                          "isDefault": true,
+                          "serveEnabled": true,
+                          "showcaseServingStatus": "inactive",
+                          "targetLang": "string",
+                          "url": "string"
+                        }
+                      ],
                       "showcaseServingStatus": "inactive",
                       "siteId": "string",
                       "siteStatus": "active",
@@ -6264,6 +6627,284 @@
           }
         ],
         "summary": "Create a managed demo account, site, and showcase",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/admin/previews": {
+      "get": {
+        "description": "Returns recent preview requests plus the minimal feedback summary needed to show review presence and open a preview detail surface.",
+        "operationId": "admin.previews.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "createdAt": "string",
+                      "error": "string",
+                      "errorCode": "invalid_url",
+                      "errorStage": "string",
+                      "expiresAt": "string",
+                      "feedback": {
+                        "latestSubmittedAt": "string",
+                        "reviewCount": 1
+                      },
+                      "previewId": "string",
+                      "previewUrl": "string",
+                      "readyAt": "string",
+                      "sourceLang": "string",
+                      "sourceUrl": "string",
+                      "stageLast": "string",
+                      "status": "pending",
+                      "targetLang": "string",
+                      "updatedAt": "string"
+                    }
+                  ],
+                  "pagination": {
+                    "hasMore": true,
+                    "limit": 1,
+                    "offset": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListAdminPreviewsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List preview requests with review summaries",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/admin/previews/{previewId}": {
+      "get": {
+        "description": "Returns one preview request with its current metadata plus all associated structured feedback reviews, ordered newest first.",
+        "operationId": "admin.previews.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "previewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "preview": {
+                    "createdAt": "string",
+                    "error": "string",
+                    "errorCode": "invalid_url",
+                    "errorStage": "string",
+                    "expiresAt": "string",
+                    "feedback": {
+                      "latestSubmittedAt": "string",
+                      "reviewCount": 1
+                    },
+                    "previewId": "string",
+                    "previewUrl": "string",
+                    "readyAt": "string",
+                    "sourceLang": "string",
+                    "sourceUrl": "string",
+                    "stageLast": "string",
+                    "status": "pending",
+                    "targetLang": "string",
+                    "updatedAt": "string"
+                  },
+                  "reviews": [
+                    {
+                      "channel": "overlay",
+                      "comment": "string",
+                      "designRating": 1,
+                      "id": "string",
+                      "originUrl": "string",
+                      "previewErrorCodeAtSubmit": "string",
+                      "previewStageAtSubmit": "string",
+                      "previewStatusAtSubmit": "pending",
+                      "submittedAt": "string",
+                      "translationRating": 1
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/GetAdminPreviewResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "preview_not_found"
+                  },
+                  "error": "Preview not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Preview not found."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get preview detail with ordered reviews",
         "tags": [
           "Admin"
         ]
@@ -7211,6 +7852,165 @@
           }
         ],
         "summary": "Attach email to an in-flight preview",
+        "tags": [
+          "Previews"
+        ]
+      }
+    },
+    "/previews/{previewId}/feedback": {
+      "post": {
+        "description": "Persists overlay feedback for a preview. The preview host proxies the request and attaches the feedback token server-side.",
+        "operationId": "previews.feedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "previewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "comment": "Navigation spacing is slightly off in the header.",
+                "designRating": 5,
+                "translationRating": 4
+              },
+              "schema": {
+                "$ref": "#/components/schemas/PreviewFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "ok": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewFeedbackResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "bad_request"
+                  },
+                  "error": "translationRating must be an integer between 1 and 5"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid feedback payload"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "preview_not_found"
+                  },
+                  "error": "Preview not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Preview not found or feedback token invalid"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "preview_feedback_not_ready"
+                  },
+                  "error": "Preview feedback is not available yet"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Preview feedback not available yet"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "preview_expired"
+                  },
+                  "error": "Preview expired"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Preview expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewFeedbackToken": []
+          }
+        ],
+        "summary": "Submit preview feedback",
         "tags": [
           "Previews"
         ]
