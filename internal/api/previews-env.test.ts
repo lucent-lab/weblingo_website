@@ -43,7 +43,6 @@ function setRequiredEnv() {
   process.env.WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS = "15000";
   process.env.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS = "15000";
   process.env.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS = "15000";
-  process.env.PREVIEW_BASE_URL = "https://preview.weblingo.app";
 }
 
 function makeRequest(payload: unknown, accept = "application/json") {
@@ -60,11 +59,6 @@ function makeRequest(payload: unknown, accept = "application/json") {
 async function loadRoute() {
   vi.resetModules();
   return await import("../../app/api/previews/route");
-}
-
-async function loadMarketingPage() {
-  vi.resetModules();
-  return await import("../../app/[locale]/(marketing)/page");
 }
 
 beforeEach(() => {
@@ -98,7 +92,7 @@ describe("preview api env", () => {
     expect(response.status).toBe(500);
   });
 
-  it("uses public preview base with the server-only token", async () => {
+  it("uses the server-only token", async () => {
     process.env.TRY_NOW_TOKEN = "server-preview-token";
     process.env.NEXT_PUBLIC_TRY_NOW_TOKEN = "client-preview-token";
 
@@ -124,13 +118,5 @@ describe("preview api env", () => {
     expect(url).toBe("https://client.example.com/api/previews");
     const headers = (init as RequestInit | undefined)?.headers as Record<string, string>;
     expect(headers["x-preview-token"]).toBe("server-preview-token");
-  });
-
-  it("allows the marketing page to import without PREVIEW_BASE_URL", async () => {
-    delete process.env.PREVIEW_BASE_URL;
-
-    const { default: MarketingPage } = await loadMarketingPage();
-
-    expect(MarketingPage).toBeTypeOf("function");
   });
 });

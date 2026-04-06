@@ -50,7 +50,6 @@ beforeAll(() => {
 
   process.env.UPSTASH_REDIS__KV_REST_API_URL = "https://example.upstash.io";
   process.env.UPSTASH_REDIS__KV_REST_API_TOKEN = "upstash_token";
-  process.env.PREVIEW_BASE_URL = "https://preview.weblingo.app";
 });
 
 beforeEach(() => {
