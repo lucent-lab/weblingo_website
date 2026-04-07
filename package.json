@@ -74,14 +74,19 @@
   },
   "pnpm": {
     "overrides": {
-      "fast-xml-parser": "5.3.6",
       "glob@10.4.5": "10.5.0",
       "js-yaml@4.1.0": "4.1.1",
       "preact@10.27.2": "10.27.3",
       "minimatch": "10.2.3",
       "rollup": "4.59.0",
       "ajv": "6.14.0",
-      "qs": "6.14.2"
+      "qs": "6.14.2",
+      "flatted": "3.4.2",
+      "fast-xml-parser": "5.5.10",
+      "picomatch@2.3.1": "2.3.2",
+      "picomatch@4.0.3": "4.0.4",
+      "happy-dom": "20.8.9",
+      "vite": "7.3.2"
     }
   }
 }
