@@ -547,6 +547,62 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     }
   });
 
+  it("parses managed demo create responses that include showcase-aware site fields", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const parsed = __webhooksZodContracts.createManagedDemoSiteResponseSchema.parse({
+      accountId: "acct-demo",
+      site: {
+        id: "site-demo",
+        accountId: "acct-demo",
+        sourceUrl: "https://www.autotrim.com",
+        status: "active",
+        servingMode: "strict",
+        maxLocales: 1,
+        siteProfile: null,
+        webhookUrl: null,
+        webhookSecret: null,
+        locales: [
+          {
+            sourceLang: "en",
+            targetLang: "fr",
+            alias: null,
+            serveEnabled: true,
+          },
+        ],
+        routeConfig: null,
+        domains: [],
+        latestCrawlRun: null,
+        customerServingStatus: "needs_domain",
+        showcaseServingStatus: "ready",
+        showcase: {
+          websitePath: "autotrim.com",
+          defaultLang: "fr",
+          status: "active",
+          url: "https://t2.weblingo.app/autotrim.com/fr",
+          createdAt: null,
+          updatedAt: null,
+        },
+        crawlStatus: {
+          enqueued: true,
+        },
+      },
+      showcase: {
+        websitePath: "autotrim.com",
+        defaultLang: "fr",
+        status: "active",
+        url: "https://t2.weblingo.app/autotrim.com/fr",
+        createdAt: null,
+        updatedAt: null,
+      },
+    });
+
+    expect(parsed.site.customerServingStatus).toBe("needs_domain");
+    expect(parsed.site.showcaseServingStatus).toBe("ready");
+    expect(parsed.site.showcase?.websitePath).toBe("autotrim.com");
+  });
+
   it("keeps SiteShowcaseResponse.showcaseServingStatus required and non-null", async () => {
     const spec = readOpenApiSpecFromEnv();
     const openApiSchema = spec.components?.schemas?.SiteShowcaseResponse as

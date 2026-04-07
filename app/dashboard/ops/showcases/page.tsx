@@ -158,6 +158,32 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
               <ExternalLink className="ml-2 h-4 w-4" />
             </Link>
           </Button>
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Locale URLs
+            </p>
+            <div className="mt-2 grid gap-2">
+              {item.showcaseLocales.map((locale) => (
+                <div
+                  key={locale.targetLang}
+                  className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <Badge variant={locale.isDefault ? "secondary" : "outline"}>
+                    {locale.targetLang.toUpperCase()}
+                  </Badge>
+                  <Badge variant="outline">{locale.showcaseServingStatus}</Badge>
+                  <Link
+                    href={locale.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="min-w-0 flex-1 truncate font-mono text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    {locale.url}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
           <form action={setWorkspaceAction}>
             <input name="subjectAccountId" type="hidden" value={item.accountId} />
             <input

@@ -1373,11 +1373,13 @@ export function TryForm({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span>{t("try.status.ready")}</span>
               {trackedJob.previewUrl ? (
-                <Button asChild size="sm" variant="secondary">
-                  <a href={trackedJob.previewUrl} target="_blank" rel="noreferrer">
-                    {t("try.preview.open")}
-                  </a>
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button asChild size="sm" variant="secondary" className="justify-center">
+                    <a href={trackedJob.previewUrl} target="_blank" rel="noreferrer">
+                      {t("try.preview.openOverlay")}
+                    </a>
+                  </Button>
+                </div>
               ) : null}
             </div>
 

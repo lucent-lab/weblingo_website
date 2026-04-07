@@ -145,13 +145,15 @@ Local/dev TXT verification flow:
    - `operationId`: `previews.create`
 2. Poll preview status:
    - `operationId`: `previews.status`
-3. Attach email to in-flight preview:
+3. Collect structured overlay feedback after the preview reaches a terminal outcome:
+   - `operationId`: `previews.feedback`
+4. Attach email to in-flight preview:
    - `operationId`: `previews.updateEmail`
-4. Configure digest email subscription:
+5. Configure digest email subscription:
    - `operationId`: `digests.subscription.upsert`
-5. Configure per-locale translation summary frequency:
+6. Configure per-locale translation summary frequency:
    - `operationId`: `sites.locales.translationSummary.put`
-6. Read translation summary rollups:
+7. Read translation summary rollups:
    - `operationId`: `sites.translationSummaries.list`
 
 ## Playbook 6: Operations and Incident Response

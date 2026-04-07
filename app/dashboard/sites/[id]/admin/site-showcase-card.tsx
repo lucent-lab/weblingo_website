@@ -16,6 +16,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import type { SiteShowcaseResponse } from "@internal/dashboard/webhooks";
+import { buildShowcaseLocaleLinks } from "./showcase-locale-links";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
@@ -63,6 +64,17 @@ export function SiteShowcaseCard({
   );
   const [status, setStatus] = useState<"active" | "disabled">(
     showcaseState?.showcase.status ?? "active",
+  );
+  const showcaseLocaleLinks = useMemo(
+    () =>
+      showcaseState
+        ? buildShowcaseLocaleLinks(
+            showcaseState.showcase.websitePath,
+            targetLangs,
+            showcaseState.showcase.defaultLang,
+          )
+        : [],
+    [showcaseState, targetLangs],
   );
 
   const createWithToast = useActionToast({
@@ -136,6 +148,32 @@ export function SiteShowcaseCard({
                 <p className="mt-1 font-mono text-sm text-foreground">
                   {showcaseState.showcase.websitePath}
                 </p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Locale URLs
+                </p>
+                <div className="mt-2 grid gap-2">
+                  {showcaseLocaleLinks.map((link) => (
+                    <div
+                      key={link.targetLang}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 px-3 py-2"
+                    >
+                      <span className="font-mono text-xs text-foreground">
+                        {link.targetLang.toUpperCase()}
+                      </span>
+                      {link.isDefault ? <Badge variant="secondary">Default</Badge> : null}
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="min-w-0 flex-1 truncate font-mono text-sm text-primary underline-offset-4 hover:underline"
+                      >
+                        {link.url}
+                      </a>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

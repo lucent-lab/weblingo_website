@@ -92,7 +92,7 @@ describe("preview api env", () => {
     expect(response.status).toBe(500);
   });
 
-  it("uses public preview base with the server-only token", async () => {
+  it("uses the server-only token", async () => {
     process.env.TRY_NOW_TOKEN = "server-preview-token";
     process.env.NEXT_PUBLIC_TRY_NOW_TOKEN = "client-preview-token";
 
