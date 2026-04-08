@@ -156,6 +156,7 @@ describe("webhooks request wrapper", () => {
       const url = typeof input === "string" ? input : input.toString();
       expect(url).toContain("/sites/site-1/dashboard");
       expect(url).toContain("includePages=true");
+      expect(url).toContain("includeOperationalSummary=false");
       expect(url).toContain("limit=10");
       expect(url).toContain("offset=20");
 
@@ -206,6 +207,7 @@ describe("webhooks request wrapper", () => {
     const { fetchSiteDashboard } = await import("./webhooks");
     const payload = await fetchSiteDashboard("token", "site-1", {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 10,
       offset: 20,
     });

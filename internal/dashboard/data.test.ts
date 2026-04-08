@@ -84,6 +84,7 @@ describe("dashboard data caches", () => {
     const { getSiteDashboardCached } = await import("./data");
     const result = await getSiteDashboardCached(auth, "site-1", {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 10,
       offset: 20,
     });
@@ -91,6 +92,7 @@ describe("dashboard data caches", () => {
     expect(result).toEqual(payload);
     expect(mockedFetchSiteDashboard).toHaveBeenCalledWith(auth, "site-1", {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 10,
       offset: 20,
     });
@@ -115,6 +117,7 @@ describe("dashboard data caches", () => {
     const auth = makeAuth();
     const result = await getSiteDashboardCached(auth, "site-1", {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 10,
       offset: 20,
     });
@@ -122,6 +125,7 @@ describe("dashboard data caches", () => {
     expect(result.site.id).toBe("site-1");
     expect(mockedFetchSiteDashboard).toHaveBeenCalledWith(auth, "site-1", {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 10,
       offset: 20,
     });
@@ -151,6 +155,35 @@ describe("dashboard data caches", () => {
     expect(mockedFetchSiteDashboard).not.toHaveBeenCalled();
     expect(redisMock.set).not.toHaveBeenCalled();
     expect(redisMock.sadd).not.toHaveBeenCalled();
+  });
+
+  it("keeps operational summary variants in separate cache buckets", async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue("OK");
+    redisMock.sadd.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+
+    const payload = makeDashboardPayload();
+    const { fetchSiteDashboard } = await import("./webhooks");
+    const mockedFetchSiteDashboard = vi.mocked(fetchSiteDashboard);
+    mockedFetchSiteDashboard.mockResolvedValue(payload);
+
+    const { getSiteDashboardCached } = await import("./data");
+    const auth = makeAuth();
+
+    await getSiteDashboardCached(auth, "site-1", {
+      includeOperationalSummary: false,
+    });
+    await getSiteDashboardCached(auth, "site-1", {
+      includeOperationalSummary: true,
+    });
+
+    expect(redisMock.set).toHaveBeenCalledTimes(2);
+    const firstCacheKey = redisMock.set.mock.calls[0]?.[0];
+    const secondCacheKey = redisMock.set.mock.calls[1]?.[0];
+    expect(typeof firstCacheKey).toBe("string");
+    expect(typeof secondCacheKey).toBe("string");
+    expect(firstCacheKey).not.toBe(secondCacheKey);
   });
 
   it("invalidates all indexed site dashboard cache variants", async () => {

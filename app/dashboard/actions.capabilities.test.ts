@@ -23,6 +23,7 @@ const refreshDomain = vi.fn();
 const updateGlossary = vi.fn();
 const createOverride = vi.fn();
 const createManagedDemo = vi.fn();
+const rerunManagedDemoSiteCrawl = vi.fn();
 const updateSlug = vi.fn();
 const setLocaleServing = vi.fn();
 const deactivateSite = vi.fn();
@@ -42,6 +43,7 @@ class MockWebhooksApiError extends Error {
 vi.mock("@internal/dashboard/webhooks", () => ({
   createOverride,
   createManagedDemo,
+  rerunManagedDemoSiteCrawl,
   createSite,
   deactivateSite,
   cancelTranslationRun,
@@ -315,6 +317,48 @@ describe("dashboard capability actions", () => {
       }),
     );
     expect(invalidateDashboardBootstrapCache).toHaveBeenCalledWith("session-token");
+  });
+
+  it("queues a forced managed demo crawl with internal admin auth", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      actorWebhooksAuth: { token: "actor-token", subjectAccountId: "acct-admin" },
+      webhooksAuth: { token: "subject-token", subjectAccountId: "acct-demo" },
+      actorAccount: {
+        accountId: "acct-admin",
+        planType: "agency",
+        featureFlags: { internalOpsEnabled: true },
+      },
+      actorAccountId: "acct-admin",
+      subjectAccountId: "acct-admin",
+      mutationsAllowed: true,
+    });
+    rerunManagedDemoSiteCrawl.mockResolvedValue({
+      siteId: "site-demo",
+      sourceUrl: "https://www.weblingo.app/",
+      adminInitiated: true,
+      usageCounted: false,
+      force: true,
+      targetLangs: ["it"],
+      crawlStatus: { enqueued: true },
+    });
+
+    const { triggerManagedDemoForceCrawlAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-demo");
+
+    const result = await triggerManagedDemoForceCrawlAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: true,
+      message: "Forced pipeline refresh enqueued for 1 locale.",
+    });
+    expect(rerunManagedDemoSiteCrawl).toHaveBeenCalledWith(
+      expect.objectContaining({ subjectAccountId: "acct-admin", token: "actor-token" }),
+      "site-demo",
+      { force: true },
+    );
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-demo/pages");
   });
 
   it("rejects managed demo creation when locale aliases are invalid", async () => {

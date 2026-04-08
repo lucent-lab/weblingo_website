@@ -57,12 +57,14 @@ function getLanguagesCacheKey(): string {
 
 type SiteDashboardCacheOptions = {
   includePages?: boolean;
+  includeOperationalSummary?: boolean;
   limit?: number;
   offset?: number;
 };
 
 type NormalizedSiteDashboardOptions = {
   includePages: boolean;
+  includeOperationalSummary: boolean;
   limit: number;
   offset: number;
 };
@@ -71,11 +73,13 @@ function normalizeSiteDashboardOptions(
   options?: SiteDashboardCacheOptions,
 ): NormalizedSiteDashboardOptions {
   const includePages = options?.includePages === true;
+  const includeOperationalSummary = options?.includeOperationalSummary !== false;
   if (!includePages) {
-    return { includePages: false, limit: 25, offset: 0 };
+    return { includePages: false, includeOperationalSummary, limit: 25, offset: 0 };
   }
   return {
     includePages,
+    includeOperationalSummary,
     limit: typeof options.limit === "number" ? options.limit : 25,
     offset: typeof options.offset === "number" ? options.offset : 0,
   };
@@ -87,9 +91,11 @@ function getSiteDashboardCacheKey(
   options?: SiteDashboardCacheOptions,
 ): string {
   const normalized = normalizeSiteDashboardOptions(options);
-  const suffix = normalized.includePages
-    ? `pages:${normalized.limit}:${normalized.offset}`
-    : "pages:none";
+  const suffixParts = [
+    normalized.includePages ? `pages:${normalized.limit}:${normalized.offset}` : "pages:none",
+    normalized.includeOperationalSummary ? "ops:yes" : "ops:no",
+  ];
+  const suffix = suffixParts.join(":");
   const digest = hashToken(`${subjectAccountId}:${siteId}:${suffix}`);
   return `${SITE_DASHBOARD_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
 }
