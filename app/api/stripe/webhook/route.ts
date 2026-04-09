@@ -80,19 +80,83 @@ async function resolveStripeCustomerEmail(customerId: string): Promise<string | 
   return customer.email ?? null;
 }
 
+type StripeBillingUserMetadata = Record<string, unknown> & {
+  stripeCustomerId?: unknown;
+};
+
 function resolveStripeCustomerIdFromSubscription(subscription: Stripe.Subscription): string | null {
   return typeof subscription.customer === "string"
     ? subscription.customer
     : subscription.customer.id;
 }
 
-async function upsertStripeBillingMetadataForEmail({
+function userHasStripeCustomerId(userMetadata: unknown, customerId: string): boolean {
+  if (userMetadata == null || typeof userMetadata !== "object" || Array.isArray(userMetadata)) {
+    return false;
+  }
+  return (userMetadata as StripeBillingUserMetadata).stripeCustomerId === customerId;
+}
+
+async function findSupabaseUserByStripeCustomerId(customerId: string) {
+  const supabase = createServiceRoleClient();
+  const perPage = 100;
+
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+
+    if (error) {
+      console.error(
+        JSON.stringify(
+          {
+            level: "error",
+            message: "Failed to list Supabase users while resolving Stripe customer metadata",
+            siteId: SITE_ID,
+            customerId: maskStripeId(customerId),
+            error: error.message,
+          },
+          null,
+          0,
+        ),
+      );
+      return null;
+    }
+
+    const match = data.users.find((user) =>
+      userHasStripeCustomerId(user.user_metadata, customerId),
+    );
+    if (match) {
+      return match;
+    }
+
+    if (data.users.length < perPage) {
+      return null;
+    }
+  }
+
+  console.warn(
+    JSON.stringify(
+      {
+        level: "warn",
+        message: "Supabase user scan exhausted while resolving Stripe customer metadata",
+        siteId: SITE_ID,
+        customerId: maskStripeId(customerId),
+      },
+      null,
+      0,
+    ),
+  );
+  return null;
+}
+
+async function upsertStripeBillingMetadata({
+  customerId,
   email,
   metadata,
   sessionLocale,
   allowCreate,
   logContext,
 }: {
+  customerId: string;
   email: string;
   metadata: StripeBillingMetadata;
   sessionLocale?: string | null;
@@ -104,20 +168,20 @@ async function upsertStripeBillingMetadataForEmail({
   };
 }) {
   const supabase = createServiceRoleClient();
-  let existingUser: Awaited<ReturnType<typeof fetchUserByEmail>> | null = null;
+  let existingUser: Awaited<ReturnType<typeof findSupabaseUserByStripeCustomerId>> | null = null;
 
   try {
-    existingUser = await fetchUserByEmail(email);
-  } catch (fetchError) {
+    existingUser = await findSupabaseUserByStripeCustomerId(customerId);
+  } catch (lookupError) {
     console.error(
       JSON.stringify(
         {
           level: "error",
-          message: "Failed to fetch Supabase user by email",
+          message: "Failed to resolve Supabase user by Stripe customer id",
           siteId: SITE_ID,
-          email,
+          customerId: maskStripeId(customerId),
           ...logContext,
-          error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+          error: lookupError instanceof Error ? lookupError.message : String(lookupError),
         },
         null,
         0,
@@ -126,16 +190,37 @@ async function upsertStripeBillingMetadataForEmail({
     return;
   }
 
+  if (!existingUser && email) {
+    try {
+      existingUser = await fetchUserByEmail(email);
+    } catch (fetchError) {
+      console.error(
+        JSON.stringify(
+          {
+            level: "error",
+            message: "Failed to resolve Supabase user by email fallback",
+            siteId: SITE_ID,
+            customerId: maskStripeId(customerId),
+            ...logContext,
+            error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+          },
+          null,
+          0,
+        ),
+      );
+      return;
+    }
+  }
+
   if (!existingUser && !allowCreate) {
     console.warn(
       JSON.stringify(
         {
           level: "warn",
-          message: "Unable to update Supabase user metadata without an existing user",
+          message: "Unable to update Supabase user metadata without a matching Stripe customer id",
           siteId: SITE_ID,
-          email,
+          customerId: maskStripeId(customerId),
           ...logContext,
-          customerId: maskStripeId(metadata.stripeCustomerId),
           subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
         },
         null,
@@ -168,9 +253,8 @@ async function upsertStripeBillingMetadataForEmail({
             level: "error",
             message: "Failed to update Supabase user metadata after Stripe event",
             siteId: SITE_ID,
-            email,
+            customerId: maskStripeId(customerId),
             ...logContext,
-            customerId: maskStripeId(metadata.stripeCustomerId),
             subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
             error: error.message,
           },
@@ -195,9 +279,8 @@ async function upsertStripeBillingMetadataForEmail({
           level: "error",
           message: "Failed to create Supabase user from Stripe checkout",
           siteId: SITE_ID,
-          email,
+          customerId: maskStripeId(customerId),
           ...logContext,
-          customerId: maskStripeId(metadata.stripeCustomerId),
           subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
           error: error.message,
         },
@@ -368,7 +451,8 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      await upsertStripeBillingMetadataForEmail({
+      await upsertStripeBillingMetadata({
+        customerId,
         email,
         metadata: buildStripeBillingMetadata(customerId, subscription),
         sessionLocale: session.locale,
@@ -456,7 +540,8 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      await upsertStripeBillingMetadataForEmail({
+      await upsertStripeBillingMetadata({
+        customerId,
         email,
         metadata: buildStripeBillingMetadata(customerId, subscription),
         allowCreate: false,

@@ -64,14 +64,21 @@ beforeEach(() => {
 describe("POST /api/stripe/webhook", () => {
   it("persists billing runtime metadata for checkout completion", async () => {
     const checkoutPeriodEnd = 1_765_065_600;
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: "user-1",
+            user_metadata: { existing: true, stripeCustomerId: "cus_123" },
+          },
+        ],
+      },
+      error: null,
+    });
     const updateUserById = vi.fn().mockResolvedValue({ error: null });
     const createUser = vi.fn().mockResolvedValue({ error: null });
     createServiceRoleClient.mockReturnValue({
-      auth: { admin: { updateUserById, createUser } },
-    });
-    fetchUserByEmail.mockResolvedValue({
-      id: "user-1",
-      user_metadata: { existing: true },
+      auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
     const retrieveSubscription = vi.fn().mockResolvedValue({
@@ -109,7 +116,8 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(retrieveSubscription).toHaveBeenCalledOnce();
-    expect(fetchUserByEmail).toHaveBeenCalledWith("billing@example.com");
+    expect(listUsers).toHaveBeenCalled();
+    expect(fetchUserByEmail).not.toHaveBeenCalled();
     expect(updateUserById).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({
@@ -130,14 +138,21 @@ describe("POST /api/stripe/webhook", () => {
 
   it("updates billing runtime metadata for subscription lifecycle events", async () => {
     const lifecyclePeriodEnd = 1_765_152_000;
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: "user-1",
+            user_metadata: { stripeCustomerId: "cus_456" },
+          },
+        ],
+      },
+      error: null,
+    });
     const updateUserById = vi.fn().mockResolvedValue({ error: null });
     const createUser = vi.fn().mockResolvedValue({ error: null });
     createServiceRoleClient.mockReturnValue({
-      auth: { admin: { updateUserById, createUser } },
-    });
-    fetchUserByEmail.mockResolvedValue({
-      id: "user-1",
-      user_metadata: {},
+      auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
     const retrieveCustomer = vi.fn().mockResolvedValue({ email: "billing@example.com" });
@@ -167,8 +182,9 @@ describe("POST /api/stripe/webhook", () => {
     const response = await POST(makeRequest("{}"));
 
     expect(response.status).toBe(200);
+    expect(listUsers).toHaveBeenCalled();
     expect(retrieveCustomer).toHaveBeenCalledWith("cus_456");
-    expect(fetchUserByEmail).toHaveBeenCalledWith("billing@example.com");
+    expect(fetchUserByEmail).not.toHaveBeenCalled();
     expect(updateUserById).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({
