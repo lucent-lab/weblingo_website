@@ -57,6 +57,12 @@ export function hasActorInternalOps(
   return actor?.planType === "agency" && actor.featureFlags.internalOpsEnabled === true;
 }
 
+export function getActiveAgencyCustomers(
+  agencyCustomers: AgencyCustomersResponse | null,
+): AgencyCustomersResponse["customers"] {
+  return agencyCustomers?.customers.filter((customer) => customer.status === "active") ?? [];
+}
+
 const BOOTSTRAP_CACHE_NAMESPACE = "dashboard:bootstrap";
 const BOOTSTRAP_CACHE_MAX_TTL_SECONDS = 300;
 const BOOTSTRAP_CACHE_MIN_TTL_SECONDS = 30;
@@ -461,12 +467,8 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
 
   const allowedSubjectIds = new Set<string>();
   allowedSubjectIds.add(actorBootstrap.subjectAccountId);
-  if (agencyCustomers) {
-    for (const customer of agencyCustomers.customers) {
-      if (customer.status === "active") {
-        allowedSubjectIds.add(customer.customerAccountId);
-      }
-    }
+  for (const customer of getActiveAgencyCustomers(agencyCustomers)) {
+    allowedSubjectIds.add(customer.customerAccountId);
   }
 
   let subjectBootstrap = actorBootstrap;
