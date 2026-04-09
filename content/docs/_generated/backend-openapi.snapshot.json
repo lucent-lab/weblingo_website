@@ -326,6 +326,59 @@
         ],
         "type": "object"
       },
+      "AdminManagedDemoRerunCrawlResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "adminInitiated": {
+            "const": true,
+            "type": "boolean"
+          },
+          "crawlStatus": {
+            "additionalProperties": false,
+            "properties": {
+              "enqueued": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "enqueued"
+            ],
+            "type": "object"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "usageCounted": {
+            "const": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "siteId",
+          "sourceUrl",
+          "adminInitiated",
+          "usageCounted",
+          "force",
+          "targetLangs",
+          "crawlStatus"
+        ],
+        "type": "object"
+      },
       "AdminPreviewFeedbackSummary": {
         "additionalProperties": false,
         "properties": {
@@ -358,7 +411,7 @@
             ]
           },
           "designRating": {
-            "type": "number"
+            "$ref": "#/components/schemas/PreviewFeedbackRating"
           },
           "id": {
             "type": "string"
@@ -391,7 +444,7 @@
             ]
           },
           "translationRating": {
-            "type": "number"
+            "$ref": "#/components/schemas/PreviewFeedbackRating"
           }
         },
         "required": [
@@ -1746,9 +1799,7 @@
             "type": "object"
           },
           "maxDepth": {
-            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
-            "minimum": 0,
-            "type": "integer"
+            "type": "number"
           },
           "maxLocales": {
             "type": [
@@ -2632,6 +2683,104 @@
       },
       "GetAdminPreviewResponse": {
         "additionalProperties": false,
+        "example": {
+          "preview": {
+            "createdAt": "2026-04-03T00:00:00.000Z",
+            "error": null,
+            "errorCode": null,
+            "errorStage": null,
+            "expiresAt": "2026-04-04T00:00:00.000Z",
+            "feedback": {
+              "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+              "reviewCount": 2
+            },
+            "previewId": "preview-ready",
+            "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+            "readyAt": "2026-04-03T00:05:00.000Z",
+            "sourceLang": "en",
+            "sourceUrl": "https://example.com/pricing",
+            "stageLast": "complete",
+            "status": "ready",
+            "targetLang": "fr",
+            "updatedAt": "2026-04-03T00:06:00.000Z"
+          },
+          "reviews": [
+            {
+              "channel": "overlay",
+              "comment": "Header spacing is slightly tight.",
+              "designRating": 4,
+              "id": "review-2",
+              "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+              "previewErrorCodeAtSubmit": null,
+              "previewStageAtSubmit": "complete",
+              "previewStatusAtSubmit": "ready",
+              "submittedAt": "2026-04-03T00:08:00.000Z",
+              "translationRating": 3
+            },
+            {
+              "channel": "overlay",
+              "comment": "Looks strong overall.",
+              "designRating": 5,
+              "id": "review-1",
+              "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+              "previewErrorCodeAtSubmit": null,
+              "previewStageAtSubmit": "complete",
+              "previewStatusAtSubmit": "ready",
+              "submittedAt": "2026-04-03T00:07:00.000Z",
+              "translationRating": 4
+            }
+          ]
+        },
+        "examples": [
+          {
+            "preview": {
+              "createdAt": "2026-04-03T00:00:00.000Z",
+              "error": null,
+              "errorCode": null,
+              "errorStage": null,
+              "expiresAt": "2026-04-04T00:00:00.000Z",
+              "feedback": {
+                "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+                "reviewCount": 2
+              },
+              "previewId": "preview-ready",
+              "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+              "readyAt": "2026-04-03T00:05:00.000Z",
+              "sourceLang": "en",
+              "sourceUrl": "https://example.com/pricing",
+              "stageLast": "complete",
+              "status": "ready",
+              "targetLang": "fr",
+              "updatedAt": "2026-04-03T00:06:00.000Z"
+            },
+            "reviews": [
+              {
+                "channel": "overlay",
+                "comment": "Header spacing is slightly tight.",
+                "designRating": 4,
+                "id": "review-2",
+                "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                "previewErrorCodeAtSubmit": null,
+                "previewStageAtSubmit": "complete",
+                "previewStatusAtSubmit": "ready",
+                "submittedAt": "2026-04-03T00:08:00.000Z",
+                "translationRating": 3
+              },
+              {
+                "channel": "overlay",
+                "comment": "Looks strong overall.",
+                "designRating": 5,
+                "id": "review-1",
+                "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                "previewErrorCodeAtSubmit": null,
+                "previewStageAtSubmit": "complete",
+                "previewStatusAtSubmit": "ready",
+                "submittedAt": "2026-04-03T00:07:00.000Z",
+                "translationRating": 4
+              }
+            ]
+          }
+        ],
         "properties": {
           "preview": {
             "$ref": "#/components/schemas/AdminPreviewSummary"
@@ -2940,6 +3089,106 @@
       },
       "ListAdminPreviewsResponse": {
         "additionalProperties": false,
+        "example": {
+          "items": [
+            {
+              "createdAt": "2026-04-03T00:00:00.000Z",
+              "error": null,
+              "errorCode": null,
+              "errorStage": null,
+              "expiresAt": "2026-04-04T00:00:00.000Z",
+              "feedback": {
+                "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+                "reviewCount": 2
+              },
+              "previewId": "preview-ready",
+              "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+              "readyAt": "2026-04-03T00:05:00.000Z",
+              "sourceLang": "en",
+              "sourceUrl": "https://example.com/pricing",
+              "stageLast": "complete",
+              "status": "ready",
+              "targetLang": "fr",
+              "updatedAt": "2026-04-03T00:06:00.000Z"
+            },
+            {
+              "createdAt": "2026-04-02T00:00:00.000Z",
+              "error": "Preview capture failed",
+              "errorCode": "render_failed",
+              "errorStage": "generating_preview",
+              "expiresAt": "2026-04-04T00:00:00.000Z",
+              "feedback": {
+                "latestSubmittedAt": "2026-04-02T00:04:00.000Z",
+                "reviewCount": 1
+              },
+              "previewId": "preview-failed",
+              "previewUrl": null,
+              "readyAt": null,
+              "sourceLang": "en",
+              "sourceUrl": "https://example.com/about",
+              "stageLast": "generating_preview",
+              "status": "failed",
+              "targetLang": "ja",
+              "updatedAt": "2026-04-02T00:03:00.000Z"
+            }
+          ],
+          "pagination": {
+            "hasMore": false,
+            "limit": 20,
+            "offset": 0
+          }
+        },
+        "examples": [
+          {
+            "items": [
+              {
+                "createdAt": "2026-04-03T00:00:00.000Z",
+                "error": null,
+                "errorCode": null,
+                "errorStage": null,
+                "expiresAt": "2026-04-04T00:00:00.000Z",
+                "feedback": {
+                  "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+                  "reviewCount": 2
+                },
+                "previewId": "preview-ready",
+                "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                "readyAt": "2026-04-03T00:05:00.000Z",
+                "sourceLang": "en",
+                "sourceUrl": "https://example.com/pricing",
+                "stageLast": "complete",
+                "status": "ready",
+                "targetLang": "fr",
+                "updatedAt": "2026-04-03T00:06:00.000Z"
+              },
+              {
+                "createdAt": "2026-04-02T00:00:00.000Z",
+                "error": "Preview capture failed",
+                "errorCode": "render_failed",
+                "errorStage": "generating_preview",
+                "expiresAt": "2026-04-04T00:00:00.000Z",
+                "feedback": {
+                  "latestSubmittedAt": "2026-04-02T00:04:00.000Z",
+                  "reviewCount": 1
+                },
+                "previewId": "preview-failed",
+                "previewUrl": null,
+                "readyAt": null,
+                "sourceLang": "en",
+                "sourceUrl": "https://example.com/about",
+                "stageLast": "generating_preview",
+                "status": "failed",
+                "targetLang": "ja",
+                "updatedAt": "2026-04-02T00:03:00.000Z"
+              }
+            ],
+            "pagination": {
+              "hasMore": false,
+              "limit": 20,
+              "offset": 0
+            }
+          }
+        ],
         "properties": {
           "items": {
             "items": {
@@ -3717,6 +3966,16 @@
         "const": "overlay",
         "type": "string"
       },
+      "PreviewFeedbackRating": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "type": "number"
+      },
       "PreviewFeedbackRequest": {
         "additionalProperties": false,
         "example": {
@@ -3739,10 +3998,10 @@
             ]
           },
           "designRating": {
-            "type": "number"
+            "$ref": "#/components/schemas/PreviewFeedbackRating"
           },
           "translationRating": {
-            "type": "number"
+            "$ref": "#/components/schemas/PreviewFeedbackRating"
           }
         },
         "required": [
@@ -3925,6 +4184,37 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "retryHint": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "emailRecommended": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "const": "browser_capacity_exhausted",
+                    "type": "string"
+                  },
+                  "retryAfterSeconds": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "reason",
+                  "retryAfterSeconds",
+                  "emailRecommended"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "stage": {
@@ -4201,9 +4491,8 @@
             "type": "array"
           },
           "maxDepth": {
-            "description": "Default: 0 (unlimited). Positive integers cap traversal depth from the source page.",
-            "minimum": 0,
-            "type": "integer"
+            "description": "Default: 0 (unlimited)",
+            "type": "number"
           },
           "pattern": {
             "type": [
@@ -4443,6 +4732,9 @@
               "$ref": "#/components/schemas/SiteLocale"
             },
             "type": "array"
+          },
+          "managedDemo": {
+            "type": "boolean"
           },
           "maxLocales": {
             "type": [
@@ -5091,6 +5383,9 @@
             },
             "type": "array"
           },
+          "managedDemo": {
+            "type": "boolean"
+          },
           "maxLocales": {
             "type": [
               "number",
@@ -5610,9 +5905,7 @@
             "type": "object"
           },
           "maxDepth": {
-            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
-            "minimum": 0,
-            "type": "integer"
+            "type": "number"
           },
           "maxLocales": {
             "type": [
@@ -6632,6 +6925,138 @@
         ]
       }
     },
+    "/admin/managed-demos/{siteId}/rerun-crawl": {
+      "post": {
+        "description": "Enqueues a forced site refresh for one admin-managed demo site without incrementing customer manual crawl usage counters. Serve-enabled locales are retranslated through the normal pipeline after crawl.",
+        "operationId": "admin.managedDemos.rerunCrawl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "force": true
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CrawlTriggerRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "adminInitiated": true,
+                  "crawlStatus": {
+                    "enqueued": true
+                  },
+                  "force": true,
+                  "siteId": "string",
+                  "sourceUrl": "string",
+                  "targetLangs": [
+                    "string"
+                  ],
+                  "usageCounted": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminManagedDemoRerunCrawlResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Managed demo site not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requested site is not one of the current admin's managed demo sites."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Re-run the pipeline for an admin-managed demo site",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/admin/previews": {
       "get": {
         "description": "Returns recent preview requests plus the minimal feedback summary needed to show review presence and open a preview detail surface.",
@@ -6664,30 +7089,50 @@
                 "example": {
                   "items": [
                     {
-                      "createdAt": "string",
-                      "error": "string",
-                      "errorCode": "invalid_url",
-                      "errorStage": "string",
-                      "expiresAt": "string",
+                      "createdAt": "2026-04-03T00:00:00.000Z",
+                      "error": null,
+                      "errorCode": null,
+                      "errorStage": null,
+                      "expiresAt": "2026-04-04T00:00:00.000Z",
                       "feedback": {
-                        "latestSubmittedAt": "string",
+                        "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+                        "reviewCount": 2
+                      },
+                      "previewId": "preview-ready",
+                      "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                      "readyAt": "2026-04-03T00:05:00.000Z",
+                      "sourceLang": "en",
+                      "sourceUrl": "https://example.com/pricing",
+                      "stageLast": "complete",
+                      "status": "ready",
+                      "targetLang": "fr",
+                      "updatedAt": "2026-04-03T00:06:00.000Z"
+                    },
+                    {
+                      "createdAt": "2026-04-02T00:00:00.000Z",
+                      "error": "Preview capture failed",
+                      "errorCode": "render_failed",
+                      "errorStage": "generating_preview",
+                      "expiresAt": "2026-04-04T00:00:00.000Z",
+                      "feedback": {
+                        "latestSubmittedAt": "2026-04-02T00:04:00.000Z",
                         "reviewCount": 1
                       },
-                      "previewId": "string",
-                      "previewUrl": "string",
-                      "readyAt": "string",
-                      "sourceLang": "string",
-                      "sourceUrl": "string",
-                      "stageLast": "string",
-                      "status": "pending",
-                      "targetLang": "string",
-                      "updatedAt": "string"
+                      "previewId": "preview-failed",
+                      "previewUrl": null,
+                      "readyAt": null,
+                      "sourceLang": "en",
+                      "sourceUrl": "https://example.com/about",
+                      "stageLast": "generating_preview",
+                      "status": "failed",
+                      "targetLang": "ja",
+                      "updatedAt": "2026-04-02T00:03:00.000Z"
                     }
                   ],
                   "pagination": {
-                    "hasMore": true,
-                    "limit": 1,
-                    "offset": 1
+                    "hasMore": false,
+                    "limit": 20,
+                    "offset": 0
                   }
                 },
                 "schema": {
@@ -6785,37 +7230,49 @@
               "application/json": {
                 "example": {
                   "preview": {
-                    "createdAt": "string",
-                    "error": "string",
-                    "errorCode": "invalid_url",
-                    "errorStage": "string",
-                    "expiresAt": "string",
+                    "createdAt": "2026-04-03T00:00:00.000Z",
+                    "error": null,
+                    "errorCode": null,
+                    "errorStage": null,
+                    "expiresAt": "2026-04-04T00:00:00.000Z",
                     "feedback": {
-                      "latestSubmittedAt": "string",
-                      "reviewCount": 1
+                      "latestSubmittedAt": "2026-04-03T00:08:00.000Z",
+                      "reviewCount": 2
                     },
-                    "previewId": "string",
-                    "previewUrl": "string",
-                    "readyAt": "string",
-                    "sourceLang": "string",
-                    "sourceUrl": "string",
-                    "stageLast": "string",
-                    "status": "pending",
-                    "targetLang": "string",
-                    "updatedAt": "string"
+                    "previewId": "preview-ready",
+                    "previewUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                    "readyAt": "2026-04-03T00:05:00.000Z",
+                    "sourceLang": "en",
+                    "sourceUrl": "https://example.com/pricing",
+                    "stageLast": "complete",
+                    "status": "ready",
+                    "targetLang": "fr",
+                    "updatedAt": "2026-04-03T00:06:00.000Z"
                   },
                   "reviews": [
                     {
                       "channel": "overlay",
-                      "comment": "string",
-                      "designRating": 1,
-                      "id": "string",
-                      "originUrl": "string",
-                      "previewErrorCodeAtSubmit": "string",
-                      "previewStageAtSubmit": "string",
-                      "previewStatusAtSubmit": "pending",
-                      "submittedAt": "string",
-                      "translationRating": 1
+                      "comment": "Header spacing is slightly tight.",
+                      "designRating": 4,
+                      "id": "review-2",
+                      "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                      "previewErrorCodeAtSubmit": null,
+                      "previewStageAtSubmit": "complete",
+                      "previewStatusAtSubmit": "ready",
+                      "submittedAt": "2026-04-03T00:08:00.000Z",
+                      "translationRating": 3
+                    },
+                    {
+                      "channel": "overlay",
+                      "comment": "Looks strong overall.",
+                      "designRating": 5,
+                      "id": "review-1",
+                      "originUrl": "https://preview.weblingo.app/_preview/preview-ready",
+                      "previewErrorCodeAtSubmit": null,
+                      "previewStageAtSubmit": "complete",
+                      "previewStatusAtSubmit": "ready",
+                      "submittedAt": "2026-04-03T00:07:00.000Z",
+                      "translationRating": 4
                     }
                   ]
                 },
@@ -9376,7 +9833,7 @@
     },
     "/sites/{siteId}/dashboard": {
       "get": {
-        "description": "Returns a consolidated dashboard payload (site + deployments) with pages summary, an operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
+        "description": "Returns a consolidated dashboard payload (site + deployments) with pages summary, optional operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
         "operationId": "sites.dashboard.get",
         "parameters": [
           {
@@ -9394,6 +9851,16 @@
             "required": false,
             "schema": {
               "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "When false, omit `operationalSummary` and skip retry/DLQ aggregation. Defaults to true.",
+            "in": "query",
+            "name": "includeOperationalSummary",
+            "required": false,
+            "schema": {
+              "default": true,
               "type": "boolean"
             }
           },

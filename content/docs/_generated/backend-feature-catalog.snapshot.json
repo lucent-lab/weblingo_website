@@ -195,6 +195,27 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "POST",
+        "operationId": "admin.managedDemos.rerunCrawl",
+        "path": "/admin/managed-demos/:siteId/rerun-crawl"
+      },
+      "family": "api",
+      "flagKeys": [
+        "internalOpsEnabled"
+      ],
+      "group": "admin",
+      "id": "api.admin.managedDemos.rerunCrawl",
+      "name": "Re-run the pipeline for an admin-managed demo site",
+      "routeIds": [
+        "admin.managedDemos.rerunCrawl"
+      ],
+      "stability": "Internal",
+      "summary": "Enqueues a forced site refresh for one admin-managed demo site without incrementing customer manual crawl usage counters. Serve-enabled locales are retranslated through the normal pipeline after crawl.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "GET",
         "operationId": "admin.previews.get",
         "path": "/admin/previews/:previewId"
@@ -795,7 +816,7 @@
         "sites.dashboard.get"
       ],
       "stability": "GA",
-      "summary": "Returns a consolidated dashboard payload (site + deployments) with pages summary, an operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
+      "summary": "Returns a consolidated dashboard payload (site + deployments) with pages summary, optional operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
       "userFacing": true
     },
     {
@@ -2218,6 +2239,16 @@
             "name": "force",
             "optional": true,
             "type": "boolean"
+          },
+          {
+            "name": "skip_usage_accounting",
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "target_langs",
+            "optional": true,
+            "type": "LangTag[]"
           }
         ],
         "interfaceName": "CrawlSiteQueuePayload",
