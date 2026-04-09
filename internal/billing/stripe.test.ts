@@ -33,6 +33,6 @@ describe("stripe client", () => {
       throw new Error("Stripe constructor was not called");
     }
     const [, config] = capturedConstructorArgs as [string, { apiVersion?: string }];
-    expect(config.apiVersion).toBe("2025-10-29.clover");
+    expect(config.apiVersion).toBe("2026-02-25.clover");
   });
 });
