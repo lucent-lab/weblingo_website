@@ -25,7 +25,7 @@ beforeAll(async () => {
 describe("getActiveAgencyCustomers", () => {
   it("returns only active agency customers", () => {
     const customers = getActiveAgencyCustomers({
-      summary: { totalActiveSites: 0, totalCustomers: 2 },
+      summary: { totalActiveSites: 0, maxSites: null },
       customers: [
         {
           agencyAccountId: "acct-agency",
