@@ -30,6 +30,7 @@ export const PREVIEW_STATUS_CENTER_STAGE_MESSAGE_KEYS: Record<PreviewStage, stri
 };
 
 export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
+  "try.center.capacityHint",
   "try.center.dismiss",
   "try.center.retryHint",
   "try.error.blocked_host",
@@ -105,6 +106,16 @@ export function resolvePreviewStatusCenterMessage(
     return t("try.error.preview_expired");
   }
   return resolvePreviewStatusCenterErrorMessage(job, t);
+}
+
+export function resolvePreviewStatusCenterCapacityHint(
+  job: PreviewStatusCenterJob,
+  t: PreviewStatusCenterTranslator,
+): string | null {
+  if (job.retryHint?.reason !== "browser_capacity_exhausted") {
+    return null;
+  }
+  return t("try.center.capacityHint");
 }
 
 export function resolvePreviewStatusCenterTextClass(job: PreviewStatusCenterJob): string {

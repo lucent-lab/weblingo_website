@@ -1,11 +1,13 @@
 import {
   isPreviewJobTerminal,
+  parsePreviewRetryHint,
   reducePreviewJob,
   resolveNextPreviewJobPhase,
   type PreviewJob,
   type PreviewJobEvent,
   type PreviewJobPatch,
   type PreviewJobPhase,
+  type PreviewRetryHint,
   type PreviewJobUpsertInput,
 } from "./preview-job-machine";
 import {
@@ -27,6 +29,7 @@ export type PreviewStatusCenterJobStatus = PreviewJobPhase;
 export type PreviewStatusCenterJob = PreviewJob;
 export type PreviewStatusCenterJobInput = PreviewJobUpsertInput;
 export type PreviewStatusCenterJobPatch = PreviewJobPatch;
+export type { PreviewRetryHint } from "./preview-job-machine";
 
 export type PreviewStatusCenterState = {
   jobs: PreviewStatusCenterJob[];
@@ -237,6 +240,7 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
         ? job.nextPollAt
         : Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
     stage: terminal ? null : job.stage,
+    retryHint: terminal ? null : job.retryHint,
   };
 }
 
@@ -338,6 +342,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
+    retryHint: parsePreviewRetryHint(value.retryHint),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
@@ -385,6 +390,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage: legacyStage,
+    retryHint: null,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
@@ -613,6 +619,7 @@ function migrateLegacyJobsFromStorage(now: number): {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: pending.updatedAt,
         updatedAt: pending.updatedAt,
         expiresAt: null,

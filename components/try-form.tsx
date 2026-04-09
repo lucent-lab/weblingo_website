@@ -28,6 +28,10 @@ import {
   type PreviewStage,
 } from "@internal/previews/preview-sse";
 import {
+  parsePreviewRetryHint,
+  type PreviewRetryHint,
+} from "@internal/previews/preview-job-machine";
+import {
   PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS,
   resolvePreviewStatusCenterErrorMessage,
   resolvePreviewStatusCenterMessage,
@@ -71,6 +75,7 @@ type ConnectStatusUpdatesOptions = {
   initialStatus?: "pending" | "processing";
   initialStage?: PreviewStage | null;
   initialPreviewUrl?: string;
+  initialRetryHint?: PreviewRetryHint | null;
 };
 
 type ResolvedPreviewError = {
@@ -107,6 +112,10 @@ const PREVIEW_PROGRESS_STEP_ORDER: PreviewProgressStepId[] = [
   "rendering",
   "ready",
 ];
+
+function resolvePreviewRetryHint(payload: Record<string, unknown> | null): PreviewRetryHint | null {
+  return parsePreviewRetryHint(payload?.retryHint);
+}
 
 function resolvePreviewProgressStepId(
   mode: TryFormMode,
@@ -322,6 +331,16 @@ export function TryForm({
     }
     return (currentProgressStepIndex / (progressSteps.length - 1)) * 100;
   }, [currentProgressStepIndex, progressSteps.length]);
+  const activeRetryHint =
+    trackedJob && (trackedJob.status === "pending" || trackedJob.status === "processing")
+      ? trackedJob.retryHint
+      : null;
+  const processingHintMessage = useMemo(() => {
+    if (activeRetryHint?.reason !== "browser_capacity_exhausted") {
+      return t("try.status.processingHint");
+    }
+    return showEmailField ? t("try.status.capacityEmailHint") : t("try.status.capacityHint");
+  }, [activeRetryHint, showEmailField, t]);
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -505,6 +524,7 @@ export function TryForm({
     previewId: string,
     status: "pending" | "processing",
     stage: PreviewStage | null,
+    retryHint?: PreviewRetryHint | null,
   ) {
     updatePreviewStatusCenterJob(previewId, {
       status,
@@ -512,6 +532,7 @@ export function TryForm({
       error: null,
       errorCode: null,
       errorStage: null,
+      retryHint: retryHint ?? null,
     });
   }
 
@@ -565,7 +586,12 @@ export function TryForm({
       if (!response.ok) {
         const decision = resolveStatusCheckFailure(response.status, payload);
         if (decision === "processing") {
-          syncStatusCenterActiveState(previewId, "processing", null);
+          syncStatusCenterActiveState(
+            previewId,
+            "processing",
+            null,
+            resolvePreviewRetryHint(payload),
+          );
           return false;
         }
 
@@ -628,6 +654,7 @@ export function TryForm({
         previewId,
         payload.status === "pending" ? "pending" : "processing",
         isPreviewStage(payload.stage) ? payload.stage : null,
+        resolvePreviewRetryHint(payload),
       );
       return false;
     } catch {
@@ -707,6 +734,7 @@ export function TryForm({
           previewId,
           data.status,
           isPreviewStage(data.stage) ? data.stage : null,
+          resolvePreviewRetryHint(data),
         );
       }
     };
@@ -815,6 +843,7 @@ export function TryForm({
       errorCode: null,
       errorStage: null,
       previewUrl: options.initialPreviewUrl,
+      retryHint: options.initialRetryHint ?? null,
       retryCount: 0,
     });
 
@@ -963,6 +992,7 @@ export function TryForm({
               : "pending",
           initialStage: isPreviewStage(payload?.stage) ? payload.stage : null,
           initialPreviewUrl: immediatePreview ?? undefined,
+          initialRetryHint: resolvePreviewRetryHint(payload),
         });
       } finally {
         if (abortControllerRef.current === controller) {
@@ -1226,7 +1256,7 @@ export function TryForm({
                 <div className="space-y-1">
                   <span className="text-lg font-semibold text-foreground">{statusMessage}</span>
                   <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
-                    {t("try.status.processingHint")}
+                    {processingHintMessage}
                   </p>
                 </div>
               ) : null}

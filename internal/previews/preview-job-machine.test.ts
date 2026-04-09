@@ -20,6 +20,7 @@ function buildJob(overrides: Partial<PreviewJob> = {}): PreviewJob {
     error: null,
     errorCode: null,
     errorStage: null,
+    retryHint: null,
     createdAt: now,
     updatedAt: now,
     expiresAt: null,

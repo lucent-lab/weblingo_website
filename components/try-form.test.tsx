@@ -56,6 +56,8 @@ const messages = {
   "try.form.targetLabel": "Target language",
   "try.form.sameLanguage": "Pick a different target language",
   "try.status.creating": "Creating preview...",
+  "try.status.capacityHint": "Capacity hint",
+  "try.status.capacityEmailHint": "Capacity email hint",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing preview...",
   "try.status.processingHint": "Processing hint",
@@ -204,6 +206,7 @@ describe("TryForm preview status", () => {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -225,6 +228,7 @@ describe("TryForm preview status", () => {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -246,6 +250,7 @@ describe("TryForm preview status", () => {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -267,6 +272,7 @@ describe("TryForm preview status", () => {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -288,6 +294,7 @@ describe("TryForm preview status", () => {
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: null,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -522,6 +529,7 @@ describe("TryForm preview status", () => {
                 ? "preview_expired"
                 : null,
           errorStage: phase.status === "failed" ? "generating_preview" : null,
+          retryHint: null,
           createdAt: 1,
           updatedAt: 1,
           expiresAt: null,
@@ -749,6 +757,41 @@ describe("TryForm preview status", () => {
         }),
       );
       expect(screen.getByText("We'll email you when it's ready.")).toBeTruthy();
+    });
+  });
+
+  it("shows the capacity-specific processing hint when browser slots are full", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "capacity-6666-6666-6666-666666666666",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://capacity.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "capacity-token",
+      sourceUrl: "https://capacity.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      stage: "fetching_page",
+      retryHint: {
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 60,
+        emailRecommended: true,
+      },
+    });
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Capacity email hint")).toBeTruthy();
     });
   });
 

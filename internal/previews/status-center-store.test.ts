@@ -38,6 +38,7 @@ function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenter
     sourceLang: "en",
     targetLang: "fr",
     status: "pending" as const,
+    retryHint: null,
     ...overrides,
   };
 }
@@ -245,6 +246,7 @@ describe("status-center-store", () => {
       error: null,
       errorCode: null,
       errorStage: null,
+      retryHint: null,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -262,6 +264,7 @@ describe("status-center-store", () => {
       error: null,
       errorCode: null,
       errorStage: null,
+      retryHint: null,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
