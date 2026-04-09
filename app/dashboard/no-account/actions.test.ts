@@ -2,9 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createClient = vi.fn();
 const fetchWithTimeout = vi.fn();
+const invalidateDashboardBootstrapCache = vi.fn();
+const revalidatePath = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient,
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath,
+}));
+
+vi.mock("@/internal/dashboard/auth", () => ({
+  invalidateDashboardBootstrapCache,
 }));
 
 vi.mock("@internal/core/env-server", () => ({
@@ -47,5 +57,7 @@ describe("claimAccount", () => {
         onboardingState: "claimed_free_account",
       },
     });
+    expect(invalidateDashboardBootstrapCache).toHaveBeenCalledWith("supabase-access-token");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
   });
 });
