@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { logout } from "@/app/auth/logout/actions";
 import {
+  getActiveAgencyCustomers,
   hasActorInternalOps,
   requireDashboardAuth,
   type DashboardAuth,
@@ -370,16 +371,11 @@ function buildWorkspaceOptions(auth: Awaited<ReturnType<typeof requireDashboardA
       label: auth.actorAccount?.planType === "agency" ? "My agency" : "My account",
     },
   ];
-  if (auth.agencyCustomers) {
-    for (const customer of auth.agencyCustomers.customers) {
-      if (customer.status !== "active") {
-        continue;
-      }
-      const label = customer.customerEmail
-        ? customer.customerEmail
-        : `Customer ${customer.customerAccountId.slice(0, 8)}`;
-      options.push({ id: customer.customerAccountId, label });
-    }
+  for (const customer of getActiveAgencyCustomers(auth.agencyCustomers)) {
+    const label = customer.customerEmail
+      ? customer.customerEmail
+      : `Customer ${customer.customerAccountId.slice(0, 8)}`;
+    options.push({ id: customer.customerAccountId, label });
   }
   return options;
 }

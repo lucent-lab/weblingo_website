@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { getActiveAgencyCustomers, requireDashboardAuth } from "@internal/dashboard/auth";
 import { SUBJECT_ACCOUNT_COOKIE } from "@internal/dashboard/workspace";
 
 export async function setWorkspaceAction(formData: FormData) {
@@ -22,12 +22,8 @@ export async function setWorkspaceAction(formData: FormData) {
   }
 
   const allowedIds = new Set<string>([actorId]);
-  if (auth.agencyCustomers) {
-    for (const customer of auth.agencyCustomers.customers) {
-      if (customer.status === "active") {
-        allowedIds.add(customer.customerAccountId);
-      }
-    }
+  for (const customer of getActiveAgencyCustomers(auth.agencyCustomers)) {
+    allowedIds.add(customer.customerAccountId);
   }
 
   if (!subjectAccountId || subjectAccountId === actorId) {
