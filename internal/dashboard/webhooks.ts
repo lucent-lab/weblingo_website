@@ -1632,7 +1632,8 @@ function resolveDashboardE2eMockPayload(input: {
 
   if (
     method === "POST" &&
-    pathname === `/admin/managed-demos/${encodeURIComponent(DASHBOARD_E2E_MOCK_SITE_ID)}/rerun-crawl`
+    pathname ===
+      `/admin/managed-demos/${encodeURIComponent(DASHBOARD_E2E_MOCK_SITE_ID)}/rerun-crawl`
   ) {
     const body = getBodyRecord(input.body);
     return {

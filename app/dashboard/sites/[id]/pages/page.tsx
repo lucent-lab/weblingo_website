@@ -276,9 +276,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
               <div className="text-sm text-muted-foreground">
                 <p>
                   Account cohort:{" "}
-                  <span className="font-semibold text-foreground">
-                    Managed demo
-                  </span>
+                  <span className="font-semibold text-foreground">Managed demo</span>
                 </p>
                 <p>Use this when a managed demo keeps serving an older rendered snapshot.</p>
               </div>
