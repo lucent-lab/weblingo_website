@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
 import { createServiceRoleClient, fetchUserByEmail } from "@/lib/supabase/admin";
-import { verifyStripeSignature } from "@internal/billing";
+import { getStripeClient, verifyStripeSignature } from "@internal/billing";
 import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
 import { SITE_ID } from "@modules/pricing";
 
@@ -26,6 +26,186 @@ function maskStripeId(id: string) {
     return `${prefix}***${suffix}`;
   }
   return `***${suffix}`;
+}
+
+type StripeBillingMetadata = {
+  stripeCustomerId: string;
+  lastStripeSubscriptionId: string;
+  stripeSubscriptionStatus: Stripe.Subscription["status"];
+  stripeSubscriptionPriceId: string | null;
+  stripeSubscriptionCurrentPeriodEnd: string | null;
+  stripeSubscriptionCancelAtPeriodEnd: boolean;
+};
+
+function buildStripeBillingMetadata(
+  customerId: string,
+  subscription: Stripe.Subscription,
+): StripeBillingMetadata {
+  const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number })
+    .current_period_end;
+  return {
+    stripeCustomerId: customerId,
+    lastStripeSubscriptionId: subscription.id,
+    stripeSubscriptionStatus: subscription.status,
+    stripeSubscriptionPriceId: subscription.items.data[0]?.price.id ?? null,
+    stripeSubscriptionCurrentPeriodEnd:
+      typeof periodEnd === "number" && periodEnd > 0
+        ? new Date(periodEnd * 1000).toISOString()
+        : null,
+    stripeSubscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
+  };
+}
+
+async function resolveStripeSubscriptionFromCheckoutSession(
+  session: Stripe.Checkout.Session,
+): Promise<Stripe.Subscription | null> {
+  const subscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : (session.subscription?.id ?? null);
+  if (!subscriptionId) {
+    return null;
+  }
+  if (typeof session.subscription === "object" && session.subscription !== null) {
+    return session.subscription;
+  }
+  return await getStripeClient().subscriptions.retrieve(subscriptionId);
+}
+
+async function resolveStripeCustomerEmail(customerId: string): Promise<string | null> {
+  const customer = await getStripeClient().customers.retrieve(customerId);
+  if (isDeletedCustomer(customer)) {
+    return null;
+  }
+  return customer.email ?? null;
+}
+
+function resolveStripeCustomerIdFromSubscription(subscription: Stripe.Subscription): string | null {
+  return typeof subscription.customer === "string"
+    ? subscription.customer
+    : subscription.customer.id;
+}
+
+async function upsertStripeBillingMetadataForEmail({
+  email,
+  metadata,
+  sessionLocale,
+  allowCreate,
+  logContext,
+}: {
+  email: string;
+  metadata: StripeBillingMetadata;
+  sessionLocale?: string | null;
+  allowCreate: boolean;
+  logContext: {
+    sessionId?: string;
+    customerId?: string;
+    subscriptionId?: string;
+  };
+}) {
+  const supabase = createServiceRoleClient();
+  let existingUser: Awaited<ReturnType<typeof fetchUserByEmail>> | null = null;
+
+  try {
+    existingUser = await fetchUserByEmail(email);
+  } catch (fetchError) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Failed to fetch Supabase user by email",
+          siteId: SITE_ID,
+          email,
+          ...logContext,
+          error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        },
+        null,
+        0,
+      ),
+    );
+    return;
+  }
+
+  if (!existingUser && !allowCreate) {
+    console.warn(
+      JSON.stringify(
+        {
+          level: "warn",
+          message: "Unable to update Supabase user metadata without an existing user",
+          siteId: SITE_ID,
+          email,
+          ...logContext,
+          customerId: maskStripeId(metadata.stripeCustomerId),
+          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+        },
+        null,
+        0,
+      ),
+    );
+    return;
+  }
+
+  const userMetadata = {
+    ...(existingUser?.user_metadata ?? {}),
+    stripeCustomerId: metadata.stripeCustomerId,
+    lastStripeSubscriptionId: metadata.lastStripeSubscriptionId,
+    stripeSubscriptionStatus: metadata.stripeSubscriptionStatus,
+    stripeSubscriptionPriceId: metadata.stripeSubscriptionPriceId,
+    stripeSubscriptionCurrentPeriodEnd: metadata.stripeSubscriptionCurrentPeriodEnd,
+    stripeSubscriptionCancelAtPeriodEnd: metadata.stripeSubscriptionCancelAtPeriodEnd,
+    ...(sessionLocale ? { locale: sessionLocale } : {}),
+  };
+
+  if (existingUser) {
+    const { error } = await supabase.auth.admin.updateUserById(existingUser.id, {
+      user_metadata: userMetadata,
+    });
+
+    if (error) {
+      console.error(
+        JSON.stringify(
+          {
+            level: "error",
+            message: "Failed to update Supabase user metadata after Stripe event",
+            siteId: SITE_ID,
+            email,
+            ...logContext,
+            customerId: maskStripeId(metadata.stripeCustomerId),
+            subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+            error: error.message,
+          },
+          null,
+          0,
+        ),
+      );
+    }
+    return;
+  }
+
+  const { error } = await supabase.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: userMetadata,
+  });
+
+  if (error) {
+    console.error(
+      JSON.stringify(
+        {
+          level: "error",
+          message: "Failed to create Supabase user from Stripe checkout",
+          siteId: SITE_ID,
+          email,
+          ...logContext,
+          customerId: maskStripeId(metadata.stripeCustomerId),
+          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+          error: error.message,
+        },
+        null,
+        0,
+      ),
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -90,12 +270,32 @@ export async function POST(request: NextRequest) {
 
       const customerId =
         typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : (session.subscription?.id ?? null);
+      let subscription: Stripe.Subscription | null = null;
 
-      if (!customerId || !subscriptionId) {
+      try {
+        subscription = await resolveStripeSubscriptionFromCheckoutSession(session);
+      } catch (subscriptionError) {
+        console.error(
+          JSON.stringify(
+            {
+              level: "error",
+              message: "Failed to resolve Stripe subscription for completed checkout session",
+              siteId: SITE_ID,
+              sessionId: maskStripeId(session.id),
+              customerId: customerId ? maskStripeId(customerId) : null,
+              error:
+                subscriptionError instanceof Error
+                  ? subscriptionError.message
+                  : String(subscriptionError),
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      if (!customerId || !subscription) {
         console.error(
           JSON.stringify(
             {
@@ -119,23 +319,72 @@ export async function POST(request: NextRequest) {
             siteId: SITE_ID,
             sessionId: maskStripeId(session.id),
             customerId: maskStripeId(customerId),
-            subscriptionId: maskStripeId(subscriptionId),
+            subscriptionId: maskStripeId(subscription.id),
           },
           null,
           0,
         ),
       );
 
-      await ensureSupabaseUser({
-        session,
-        customerId,
-        subscriptionId,
+      let email = extractCustomerEmail(session);
+      if (!email) {
+        try {
+          email = await resolveStripeCustomerEmail(customerId);
+        } catch (customerError) {
+          console.error(
+            JSON.stringify(
+              {
+                level: "error",
+                message: "Failed to resolve Stripe customer email for completed checkout session",
+                siteId: SITE_ID,
+                sessionId: maskStripeId(session.id),
+                customerId: maskStripeId(customerId),
+                subscriptionId: maskStripeId(subscription.id),
+                error:
+                  customerError instanceof Error ? customerError.message : String(customerError),
+              },
+              null,
+              0,
+            ),
+          );
+          break;
+        }
+      }
+      if (!email) {
+        console.warn(
+          JSON.stringify(
+            {
+              level: "warn",
+              message: "Unable to update Supabase user metadata after checkout without email",
+              siteId: SITE_ID,
+              sessionId: maskStripeId(session.id),
+              customerId: maskStripeId(customerId),
+              subscriptionId: maskStripeId(subscription.id),
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      await upsertStripeBillingMetadataForEmail({
+        email,
+        metadata: buildStripeBillingMetadata(customerId, subscription),
+        sessionLocale: session.locale,
+        allowCreate: true,
+        logContext: {
+          sessionId: maskStripeId(session.id),
+          customerId: maskStripeId(customerId),
+          subscriptionId: maskStripeId(subscription.id),
+        },
       });
       break;
     }
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
+      const customerId = resolveStripeCustomerIdFromSubscription(subscription);
       console.log(
         JSON.stringify(
           {
@@ -149,6 +398,73 @@ export async function POST(request: NextRequest) {
           0,
         ),
       );
+      if (!customerId) {
+        console.warn(
+          JSON.stringify(
+            {
+              level: "warn",
+              message: "Subscription lifecycle event missing customer",
+              siteId: SITE_ID,
+              subscriptionId: maskStripeId(subscription.id),
+              status: subscription.status,
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      let email: string | null = null;
+      try {
+        email = await resolveStripeCustomerEmail(customerId);
+      } catch (customerError) {
+        console.error(
+          JSON.stringify(
+            {
+              level: "error",
+              message: "Failed to resolve Stripe customer email for lifecycle event",
+              siteId: SITE_ID,
+              customerId: maskStripeId(customerId),
+              subscriptionId: maskStripeId(subscription.id),
+              status: subscription.status,
+              error: customerError instanceof Error ? customerError.message : String(customerError),
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      if (!email) {
+        console.warn(
+          JSON.stringify(
+            {
+              level: "warn",
+              message:
+                "Unable to update Supabase user metadata after lifecycle event without email",
+              siteId: SITE_ID,
+              customerId: maskStripeId(customerId),
+              subscriptionId: maskStripeId(subscription.id),
+              status: subscription.status,
+            },
+            null,
+            0,
+          ),
+        );
+        break;
+      }
+
+      await upsertStripeBillingMetadataForEmail({
+        email,
+        metadata: buildStripeBillingMetadata(customerId, subscription),
+        allowCreate: false,
+        logContext: {
+          customerId: maskStripeId(customerId),
+          subscriptionId: maskStripeId(subscription.id),
+        },
+      });
       break;
     }
     default:
@@ -156,122 +472,6 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
-}
-
-async function ensureSupabaseUser({
-  session,
-  customerId,
-  subscriptionId,
-}: {
-  session: Stripe.Checkout.Session;
-  customerId: string;
-  subscriptionId: string;
-}) {
-  const email = extractCustomerEmail(session);
-
-  if (!email) {
-    console.warn(
-      JSON.stringify(
-        {
-          level: "warn",
-          message: "Unable to create Supabase user without email",
-          siteId: SITE_ID,
-          sessionId: maskStripeId(session.id),
-          customerId: maskStripeId(customerId),
-          subscriptionId: maskStripeId(subscriptionId),
-        },
-        null,
-        0,
-      ),
-    );
-    return;
-  }
-
-  const supabase = createServiceRoleClient();
-  let existingUser: Awaited<ReturnType<typeof fetchUserByEmail>> | null = null;
-
-  try {
-    existingUser = await fetchUserByEmail(email);
-  } catch (fetchError) {
-    console.error(
-      JSON.stringify(
-        {
-          level: "error",
-          message: "Failed to fetch Supabase user by email",
-          siteId: SITE_ID,
-          sessionId: maskStripeId(session.id),
-          customerId: maskStripeId(customerId),
-          subscriptionId: maskStripeId(subscriptionId),
-          error: fetchError instanceof Error ? fetchError.message : String(fetchError),
-        },
-        null,
-        0,
-      ),
-    );
-  }
-
-  if (existingUser) {
-    const metadata = {
-      ...existingUser.user_metadata,
-      stripeCustomerId: customerId,
-      lastStripeSubscriptionId: subscriptionId,
-    };
-
-    const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
-      user_metadata: metadata,
-    });
-
-    if (updateError) {
-      console.error(
-        JSON.stringify(
-          {
-            level: "error",
-            message: "Failed to update Supabase user metadata after Stripe checkout",
-            siteId: SITE_ID,
-            sessionId: maskStripeId(session.id),
-            customerId: maskStripeId(customerId),
-            subscriptionId: maskStripeId(subscriptionId),
-            error: updateError.message,
-          },
-          null,
-          0,
-        ),
-      );
-    }
-
-    // TODO: Persist Stripe subscription status in a dedicated billing table when it exists.
-    return;
-  }
-
-  const { error } = await supabase.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: {
-      stripeCustomerId: customerId,
-      lastStripeSubscriptionId: subscriptionId,
-      locale: session.locale,
-    },
-  });
-
-  if (error) {
-    console.error(
-      JSON.stringify(
-        {
-          level: "error",
-          message: "Failed to create Supabase user from Stripe checkout",
-          siteId: SITE_ID,
-          sessionId: maskStripeId(session.id),
-          customerId: maskStripeId(customerId),
-          subscriptionId: maskStripeId(subscriptionId),
-          error: error.message,
-        },
-        null,
-        0,
-      ),
-    );
-  }
-  // TODO: Send onboarding email or analytics event after provisioning the account.
-  // Consider generating a Supabase magic link or app-specific invite so the user can set a password.
 }
 
 function isDeletedCustomer(
