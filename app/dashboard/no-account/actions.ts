@@ -78,9 +78,10 @@ export async function claimAccount(
   }
 
   if (shouldRedirectToDashboard) {
-    return succeeded("Account linked. Redirecting to dashboard.", {
+    return succeeded("Dashboard access linked. Redirecting to dashboard.", {
       redirectTo: "/dashboard",
       refresh: false,
+      onboardingState: "claimed_free_account",
     });
   }
 

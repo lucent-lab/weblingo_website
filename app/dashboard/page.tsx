@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
+import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import { i18nConfig } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
@@ -32,6 +33,7 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
+  const onboardingState = resolveDashboardOnboardingState(auth);
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
 
   return (
@@ -52,6 +54,26 @@ export default async function DashboardPage() {
           <OverviewActions auth={auth} pricingPath={pricingPath} />
         </Suspense>
       </div>
+
+      {onboardingState.stage === "claimed_free_account" ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>{onboardingState.title}</CardTitle>
+              <CardDescription>{onboardingState.description}</CardDescription>
+            </div>
+            <Badge variant="outline">{onboardingState.badge}</Badge>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/dashboard/sites/new">Start onboarding</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={pricingPath}>Review pricing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Suspense fallback={<OverviewSitesSkeleton />}>
         <OverviewSites auth={auth} pricingPath={pricingPath} />
