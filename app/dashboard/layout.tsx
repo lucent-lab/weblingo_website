@@ -28,6 +28,10 @@ import {
   requireDashboardAuth,
   type DashboardAuth,
 } from "@internal/dashboard/auth";
+import {
+  formatStripeBillingStatusLabel,
+  resolveStripeBillingRuntime,
+} from "@internal/dashboard/billing-runtime";
 import { listSitesCached } from "@internal/dashboard/data";
 import { i18nConfig } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
@@ -127,6 +131,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const statusTone = resolveStatusTone(rawStatusLabel);
 
   const billingBanner = resolveBillingBanner(auth);
+  const stripeBillingRuntime = resolveStripeBillingRuntime(auth.user?.user_metadata);
+  const stripeBillingLabel = formatStripeBillingStatusLabel(stripeBillingRuntime);
   const subjectFallbackNotice = auth.subjectFallbackToActor
     ? "We couldn't switch to the selected workspace. Showing your main account instead."
     : null;
@@ -242,6 +248,14 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                     Signed in
                   </span>
                   <span className="text-sm font-medium">{email}</span>
+                  {stripeBillingLabel ? (
+                    <Badge
+                      variant="outline"
+                      className="mt-2 w-fit text-[10px] uppercase tracking-wide"
+                    >
+                      {stripeBillingLabel}
+                    </Badge>
+                  ) : null}
                 </div>
                 <form action={logout}>
                   <Button size="sm" variant="outline" type="submit">
