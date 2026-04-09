@@ -80,7 +80,7 @@ export default async function OpsAccountsPage({ searchParams }: AccountsPageProp
   if (!hasActorInternalOps(auth)) {
     notFound();
   }
-  const actorAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+  const actorAuth = auth.actorWebhooksAuth;
   if (!actorAuth) {
     notFound();
   }

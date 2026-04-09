@@ -43,7 +43,7 @@ export default async function OpsPreviewDetailPage({ params }: OpsPreviewDetailP
   if (!hasActorInternalOps(auth)) {
     notFound();
   }
-  const actorAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+  const actorAuth = auth.actorWebhooksAuth;
   if (!actorAuth) {
     notFound();
   }

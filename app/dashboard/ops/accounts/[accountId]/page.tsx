@@ -29,7 +29,7 @@ export default async function OpsAccountDetailPage({ params }: AccountDetailPage
   if (!hasActorInternalOps(auth)) {
     notFound();
   }
-  const actorAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+  const actorAuth = auth.actorWebhooksAuth;
   if (!actorAuth) {
     notFound();
   }

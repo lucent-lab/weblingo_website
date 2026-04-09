@@ -319,6 +319,31 @@ describe("dashboard capability actions", () => {
     expect(invalidateDashboardBootstrapCache).toHaveBeenCalledWith("session-token");
   });
 
+  it("fails closed when internal admin actor auth is unavailable", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      session: { access_token: "session-token" },
+      actorWebhooksAuth: null,
+      webhooksAuth: { token: "subject-token", subjectAccountId: "acct-customer" },
+      actorAccount: { accountId: "acct-admin", planType: "agency", featureFlags: {} },
+      account: { accountId: "acct-customer", planType: "pro", featureFlags: {} },
+    });
+
+    const { createManagedDemoAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("accountPlan", "starter");
+    formData.set("sourceUrl", "https://www.autotrim.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.autotrim.com");
+    formData.set("defaultLang", "fr");
+    formData.set("localeAliases", JSON.stringify({ fr: "fr-fr" }));
+
+    const result = await createManagedDemoAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(createManagedDemo).not.toHaveBeenCalled();
+  });
+
   it("queues a forced managed demo crawl with internal admin auth", async () => {
     requireDashboardAuth.mockResolvedValue({
       actorWebhooksAuth: { token: "actor-token", subjectAccountId: "acct-admin" },

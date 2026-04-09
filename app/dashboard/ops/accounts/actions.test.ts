@@ -67,6 +67,26 @@ describe("ops account actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/ops/accounts/acct-customer");
   });
 
+  it("fails closed when internal admin actor auth is unavailable", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      actorWebhooksAuth: null,
+      webhooksAuth: { token: "subject-token", subjectAccountId: "acct-admin" },
+      actorAccount: { accountId: "acct-admin", planType: "agency", featureFlags: {} },
+    });
+
+    const { updateAdminAccountPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("accountId", "acct-customer");
+    formData.set("planType", "starter");
+    formData.set("planStatus", "active");
+    formData.set("managedDemo", "true");
+
+    const result = await updateAdminAccountPolicyAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(updateAdminAccount).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid feature-flag JSON", async () => {
     const { updateAdminAccountPolicyAction } = await import("./actions");
     const formData = new FormData();

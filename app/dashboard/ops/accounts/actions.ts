@@ -72,7 +72,7 @@ function getInternalAdminAuth() {
     if (!hasActorInternalOps(auth)) {
       throw new Error("Internal admin access is required.");
     }
-    const actorAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+    const actorAuth = auth.actorWebhooksAuth;
     if (!actorAuth) {
       throw new Error("Unable to authenticate internal admin actions.");
     }

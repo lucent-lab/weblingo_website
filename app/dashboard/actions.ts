@@ -215,9 +215,9 @@ async function requireInternalAdminWorkspaceAuth(): Promise<WebhooksAuthContext>
   if (!hasActorInternalOps(auth)) {
     throw new Error("Internal admin access is required.");
   }
-  const webhooksAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+  const webhooksAuth = auth.actorWebhooksAuth;
   if (!webhooksAuth) {
-    throw new Error("Unable to authenticate the current workspace.");
+    throw new Error("Unable to authenticate internal admin actions.");
   }
   return webhooksAuth;
 }
@@ -444,12 +444,10 @@ export async function createManagedDemoAction(
     if (!dashboardAuth.session?.access_token) {
       throw new Error("Unable to read the current dashboard session.");
     }
-    const auth =
-      dashboardAuth.actorWebhooksAuth ??
-      dashboardAuth.webhooksAuth ??
-      (() => {
-        throw new Error("Unable to authenticate internal admin actions.");
-      })();
+    const auth = dashboardAuth.actorWebhooksAuth;
+    if (!auth) {
+      throw new Error("Unable to authenticate internal admin actions.");
+    }
     const result = await createManagedDemo(auth, {
       accountPlan,
       site: {
