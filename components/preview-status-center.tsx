@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { createClientTranslator, type ClientMessages } from "@internal/i18n";
 import {
+  resolvePreviewStatusCenterCapacityHint,
   resolvePreviewStatusCenterMessage,
   resolvePreviewStatusCenterTextClass,
 } from "@internal/previews/status-center-i18n";
@@ -49,6 +50,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
     >
       {jobs.map((job) => {
         const terminal = isPreviewStatusCenterJobTerminal(job.status);
+        const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
         return (
           <section
             key={job.previewId}
@@ -74,6 +76,10 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
             <p className={`mt-2 text-sm ${resolvePreviewStatusCenterTextClass(job)}`}>
               {resolvePreviewStatusCenterMessage(job, t)}
             </p>
+
+            {capacityHint ? (
+              <p className="mt-1 text-xs text-muted-foreground">{capacityHint}</p>
+            ) : null}
 
             {job.status === "failed" ? (
               <p className="mt-1 text-xs text-muted-foreground">{t("try.center.retryHint")}</p>

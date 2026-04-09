@@ -80,6 +80,7 @@ export default async function SitePage({ params }: SitePageProps) {
   try {
     const payload = await getSiteDashboardCached(authToken, id, {
       includePages: true,
+      includeOperationalSummary: false,
       limit: 25,
       offset: 0,
     });

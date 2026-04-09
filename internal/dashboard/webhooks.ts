@@ -158,6 +158,7 @@ const siteSchema = z.object({
   accountId: z.string(),
   sourceUrl: z.string(),
   status: z.enum(["active", "inactive"]),
+  managedDemo: z.boolean().optional(),
   servingMode: z.enum(["strict", "tolerant"]),
   maxLocales: z.number().int().positive().nullable(),
   siteProfile: siteProfileSchema,
@@ -921,6 +922,18 @@ const createManagedDemoSiteResponseSchema = z
   })
   .strict();
 
+const rerunManagedDemoSiteCrawlResponseSchema = z
+  .object({
+    siteId: z.string(),
+    sourceUrl: z.string(),
+    adminInitiated: z.literal(true),
+    usageCounted: z.literal(false),
+    force: z.boolean(),
+    targetLangs: z.array(z.string()),
+    crawlStatus: crawlStatusSchema,
+  })
+  .strict();
+
 const adminPreviewFeedbackSummarySchema = z
   .object({
     reviewCount: z.number().int().nonnegative(),
@@ -1100,6 +1113,9 @@ export type ManagedDemoDeploymentSummary = z.infer<typeof managedDemoDeploymentS
 export type ManagedDemoSiteSummary = z.infer<typeof managedDemoSiteSummarySchema>;
 export type ListManagedDemoSitesResponse = z.infer<typeof listManagedDemoSitesResponseSchema>;
 export type CreateManagedDemoSiteResponse = z.infer<typeof createManagedDemoSiteResponseSchema>;
+export type RerunManagedDemoSiteCrawlResponse = z.infer<
+  typeof rerunManagedDemoSiteCrawlResponseSchema
+>;
 export type AdminPreviewSummary = z.infer<typeof adminPreviewSummarySchema>;
 export type AdminPreviewReview = z.infer<typeof adminPreviewReviewSchema>;
 export type ListAdminPreviewsResponse = z.infer<typeof listAdminPreviewsResponseSchema>;
@@ -1119,6 +1135,7 @@ export const __webhooksZodContracts = {
   updateAdminAccountResponseSchema,
   listManagedDemoSitesResponseSchema,
   createManagedDemoSiteResponseSchema,
+  rerunManagedDemoSiteCrawlResponseSchema,
   listAdminPreviewsResponseSchema,
   getAdminPreviewResponseSchema,
   siteShowcaseResponseSchema,
@@ -1610,6 +1627,23 @@ function resolveDashboardE2eMockPayload(input: {
         },
       },
       showcase: createDashboardE2eMockSiteShowcase(DASHBOARD_E2E_MOCK_SITE_ID).showcase,
+    };
+  }
+
+  if (
+    method === "POST" &&
+    pathname ===
+      `/admin/managed-demos/${encodeURIComponent(DASHBOARD_E2E_MOCK_SITE_ID)}/rerun-crawl`
+  ) {
+    const body = getBodyRecord(input.body);
+    return {
+      siteId: DASHBOARD_E2E_MOCK_SITE_ID,
+      sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+      adminInitiated: true,
+      usageCounted: false,
+      force: body.force === true,
+      targetLangs: ["fr"],
+      crawlStatus: { enqueued: true },
     };
   }
 
@@ -2350,6 +2384,21 @@ export async function createManagedDemo(
   });
 }
 
+export async function rerunManagedDemoSiteCrawl(
+  auth: AuthInput,
+  siteId: string,
+  options?: { force?: boolean },
+): Promise<RerunManagedDemoSiteCrawlResponse> {
+  return request({
+    path: `/admin/managed-demos/${siteId}/rerun-crawl`,
+    method: "POST",
+    auth,
+    body: options?.force === true ? { force: true } : undefined,
+    schema: rerunManagedDemoSiteCrawlResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
 export async function listAdminPreviews(
   auth: AuthInput,
   options?: { limit?: number; offset?: number },
@@ -2419,11 +2468,19 @@ export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> 
 export async function fetchSiteDashboard(
   auth: AuthInput,
   siteId: string,
-  options?: { includePages?: boolean; limit?: number; offset?: number },
+  options?: {
+    includePages?: boolean;
+    includeOperationalSummary?: boolean;
+    limit?: number;
+    offset?: number;
+  },
 ): Promise<SiteDashboardResponse> {
   const qs = new URLSearchParams();
   if (typeof options?.includePages === "boolean") {
     qs.set("includePages", String(options.includePages));
+  }
+  if (typeof options?.includeOperationalSummary === "boolean") {
+    qs.set("includeOperationalSummary", String(options.includeOperationalSummary));
   }
   if (typeof options?.limit === "number") {
     qs.set("limit", String(options.limit));

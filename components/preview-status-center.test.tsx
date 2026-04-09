@@ -10,6 +10,7 @@ import {
 } from "@internal/previews/status-center-store";
 
 const messages = {
+  "try.center.capacityHint": "Capacity hint",
   "try.center.dismiss": "Dismiss",
   "try.center.retryHint": "Retry hint",
   "try.error.default": "Preview failed",
@@ -111,6 +112,33 @@ describe("PreviewStatusCenter", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("Ready")).toBeNull();
+    });
+  });
+
+  it("renders a capacity hint for active jobs waiting on browser slots", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "33333333-3333-3333-3333-333333333333",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://capacity.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "capacity-token",
+      sourceUrl: "https://capacity.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      retryHint: {
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 60,
+        emailRecommended: true,
+      },
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Capacity hint")).toBeTruthy();
     });
   });
 });

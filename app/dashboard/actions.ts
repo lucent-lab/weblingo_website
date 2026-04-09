@@ -17,6 +17,7 @@ import {
   listTranslationSummaries,
   provisionDomain,
   refreshDomain,
+  rerunManagedDemoSiteCrawl,
   resumeTranslationRun,
   setTranslationSummaryPreference,
   setLocaleServing,
@@ -214,10 +215,11 @@ async function requireInternalAdminWorkspaceAuth(): Promise<WebhooksAuthContext>
   if (!hasActorInternalOps(auth)) {
     throw new Error("Internal admin access is required.");
   }
-  if (!auth.webhooksAuth) {
+  const webhooksAuth = auth.actorWebhooksAuth ?? auth.webhooksAuth;
+  if (!webhooksAuth) {
     throw new Error("Unable to authenticate the current workspace.");
   }
-  return auth.webhooksAuth;
+  return webhooksAuth;
 }
 
 function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
@@ -647,6 +649,48 @@ export async function triggerCrawlAction(
     }
     console.error("[dashboard] triggerCrawlAction failed:", error);
     return failed(toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."));
+  }
+}
+
+export async function triggerManagedDemoForceCrawlAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  try {
+    const auth = await requireInternalAdminWorkspaceAuth();
+    const result = await rerunManagedDemoSiteCrawl(auth, siteId, { force: true });
+    await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/pages`);
+    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    if (result.crawlStatus.enqueued) {
+      return succeeded(
+        result.targetLangs.length > 0
+          ? `Forced pipeline refresh enqueued for ${result.targetLangs.length} locale${result.targetLangs.length === 1 ? "" : "s"}.`
+          : "Forced crawl enqueued.",
+      );
+    }
+    if (result.crawlStatus.error) {
+      return failed(result.crawlStatus.error);
+    }
+    return succeeded("Forced crawl is already queued.");
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] triggerManagedDemoForceCrawlAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(
+        error,
+        "Unable to enqueue a forced pipeline refresh right now.",
+      ),
+    );
   }
 }
 

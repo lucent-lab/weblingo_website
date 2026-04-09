@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { triggerPageCrawlAction } from "../../../actions";
+import { triggerManagedDemoForceCrawlAction, triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
@@ -11,7 +11,7 @@ import { CrawlSummaryClient } from "./crawl-summary.client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { getSiteDashboardCached } from "@internal/dashboard/data";
 import {
   WebhooksApiError,
@@ -50,6 +50,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
+  const canForceManagedDemoCrawl = hasActorInternalOps(auth);
   const deactivateLabel = t("dashboard.site.status.deactivate");
   const reactivateLabel = t("dashboard.site.status.reactivate");
   const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
@@ -121,6 +122,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   try {
     const payload = await getSiteDashboardCached(authToken, id, {
       includePages: true,
+      includeOperationalSummary: false,
       limit: PAGES_PAGE_SIZE,
       offset,
     });
@@ -196,6 +198,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const previousPageHref =
     currentPage - 1 <= 1 ? basePagesPath : `${basePagesPath}?page=${currentPage - 1}`;
   const nextPageHref = `${basePagesPath}?page=${currentPage + 1}`;
+  const showManagedDemoForceCard = canForceManagedDemoCrawl && site.managedDemo === true;
 
   return (
     <div className="space-y-8">
@@ -259,6 +262,51 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           />
         </CardContent>
       </Card>
+
+      {showManagedDemoForceCard ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Managed demo force refresh</CardTitle>
+            <CardDescription>
+              Force a full crawl for this managed demo without counting customer manual usage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  Account cohort:{" "}
+                  <span className="font-semibold text-foreground">Managed demo</span>
+                </p>
+                <p>Use this when a managed demo keeps serving an older rendered snapshot.</p>
+              </div>
+              <ActionForm
+                action={triggerManagedDemoForceCrawlAction}
+                loading="Starting forced pipeline refresh..."
+                success="Forced pipeline refresh enqueued."
+                error="Unable to enqueue forced pipeline refresh."
+                refreshOnSuccess={false}
+              >
+                <>
+                  <input name="siteId" type="hidden" value={site.id} />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={!crawlReady}
+                    title={
+                      crawlReady
+                        ? "Force a full pipeline refresh for this managed demo."
+                        : "Enable localization to force a pipeline refresh."
+                    }
+                  >
+                    Force managed demo refresh
+                  </Button>
+                </>
+              </ActionForm>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -9,6 +9,7 @@ import {
   type PreviewErrorCode,
   type PreviewStage,
 } from "./preview-sse";
+import { parsePreviewRetryHint, type PreviewRetryHint } from "./preview-job-machine";
 import {
   calculatePreviewStatusCenterRetryDelayMs,
   cleanupPreviewStatusCenterJobs,
@@ -64,6 +65,10 @@ function resolveErrorPayload(payload: Record<string, unknown> | null): {
     stage,
     message,
   };
+}
+
+function resolveRetryHint(payload: Record<string, unknown> | null): PreviewRetryHint | null {
+  return parsePreviewRetryHint(payload?.retryHint);
 }
 
 export function usePreviewStatusRuntime() {
@@ -165,6 +170,7 @@ export function usePreviewStatusRuntime() {
               error: null,
               errorCode: null,
               errorStage: null,
+              retryHint: null,
             });
             resetPreviewStatusCenterJobRetry(job.previewId);
             return;
@@ -189,6 +195,7 @@ export function usePreviewStatusRuntime() {
             error: null,
             errorCode: null,
             errorStage: null,
+            retryHint: null,
           });
           resetPreviewStatusCenterJobRetry(job.previewId);
           return;
@@ -225,6 +232,7 @@ export function usePreviewStatusRuntime() {
           error: null,
           errorCode: null,
           errorStage: null,
+          retryHint: resolveRetryHint(payload),
         });
         resetPreviewStatusCenterJobRetry(job.previewId);
       } catch {

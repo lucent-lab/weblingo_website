@@ -2,6 +2,12 @@ import type { PreviewErrorCode, PreviewStage } from "./preview-sse";
 
 export type PreviewJobPhase = "pending" | "processing" | "ready" | "failed" | "expired";
 
+export type PreviewRetryHint = {
+  reason: "browser_capacity_exhausted";
+  retryAfterSeconds: number | null;
+  emailRecommended: boolean;
+};
+
 export type PreviewJob = {
   previewId: string;
   requestKey: string;
@@ -15,6 +21,7 @@ export type PreviewJob = {
   error: string | null;
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
+  retryHint: PreviewRetryHint | null;
   createdAt: number;
   updatedAt: number;
   expiresAt: number | null;
@@ -35,6 +42,7 @@ export type PreviewJobUpsertInput = {
   error?: string | null;
   errorCode?: PreviewErrorCode | null;
   errorStage?: PreviewStage | null;
+  retryHint?: PreviewRetryHint | null;
   expiresAt?: number | null;
   retryCount?: number;
   nextPollAt?: number;
@@ -52,6 +60,7 @@ export type PreviewJobPatch = Partial<{
   error: string | null;
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
+  retryHint: PreviewRetryHint | null;
   expiresAt: number | null;
   retryCount: number;
   nextPollAt: number;
@@ -103,6 +112,25 @@ const STAGE_ORDER: Record<PreviewStage, number> = {
 
 function isNonEmptyString(value: string | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
+  if (!isRecord(value) || value.reason !== "browser_capacity_exhausted") {
+    return null;
+  }
+  const retryAfterSeconds =
+    typeof value.retryAfterSeconds === "number" && Number.isFinite(value.retryAfterSeconds)
+      ? value.retryAfterSeconds
+      : null;
+  return {
+    reason: "browser_capacity_exhausted",
+    retryAfterSeconds,
+    emailRecommended: value.emailRecommended === true,
+  };
 }
 
 function resolveStringWithFallback(patchValue: string | undefined, currentValue: string): string {
@@ -195,6 +223,11 @@ function reduceUpsert(
     error: input.error ?? existing?.error ?? null,
     errorCode: input.errorCode ?? existing?.errorCode ?? null,
     errorStage: input.errorStage ?? existing?.errorStage ?? null,
+    retryHint: terminal
+      ? null
+      : input.retryHint === undefined
+        ? (existing?.retryHint ?? null)
+        : input.retryHint,
     createdAt: existing?.createdAt ?? context.now,
     updatedAt: context.now,
     expiresAt: input.expiresAt ?? existing?.expiresAt ?? null,
@@ -236,6 +269,11 @@ function reducePatch(
     error: patch.error === undefined ? existing.error : patch.error,
     errorCode: patch.errorCode === undefined ? existing.errorCode : patch.errorCode,
     errorStage: patch.errorStage === undefined ? existing.errorStage : patch.errorStage,
+    retryHint: terminal
+      ? null
+      : patch.retryHint === undefined
+        ? existing.retryHint
+        : patch.retryHint,
     expiresAt: patch.expiresAt === undefined ? existing.expiresAt : patch.expiresAt,
     updatedAt: context.now,
     retryCount: terminal

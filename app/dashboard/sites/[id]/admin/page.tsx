@@ -87,7 +87,9 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     supportedLanguagesResult,
     showcaseResult,
   ] = await Promise.allSettled([
-    getSiteDashboardCached(auth.webhooksAuth!, id),
+    getSiteDashboardCached(auth.webhooksAuth!, id, {
+      includeOperationalSummary: false,
+    }),
     fetchDeploymentHistory(auth.webhooksAuth!, id, { limit: 5 }),
     listSitesCached(auth.webhooksAuth!),
     settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),

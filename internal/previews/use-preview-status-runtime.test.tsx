@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
   DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+  getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
@@ -167,6 +168,58 @@ describe("usePreviewStatusRuntime", () => {
     render(<RuntimeHarness />);
     await waitFor(() => {
       expect(activeIntervals.size).toBe(1);
+    });
+  });
+
+  it("stores retry hints from status polling while a preview stays active", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "processing",
+              stage: "fetching_page",
+              retryHint: {
+                reason: "browser_capacity_exhausted",
+                retryAfterSeconds: 60,
+                emailRecommended: true,
+              },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "44444444-4444-4444-4444-444444444444",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "44444444-4444-4444-4444-444444444444",
+      );
+      expect(job?.retryHint).toEqual({
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 60,
+        emailRecommended: true,
+      });
     });
   });
 });

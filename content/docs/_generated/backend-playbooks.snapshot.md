@@ -145,9 +145,9 @@ Local/dev TXT verification flow:
    - `operationId`: `previews.create`
 2. Poll preview status:
    - `operationId`: `previews.status`
-3. Collect structured overlay feedback after the preview reaches a terminal outcome:
+3. Collect structured overlay feedback after the preview reaches a terminal outcome (`ready` or `failed`):
    - `operationId`: `previews.feedback`
-4. Attach email to in-flight preview:
+4. Attach email while the preview is still in flight (`pending` or `processing`):
    - `operationId`: `previews.updateEmail`
 5. Configure digest email subscription:
    - `operationId`: `digests.subscription.upsert`
