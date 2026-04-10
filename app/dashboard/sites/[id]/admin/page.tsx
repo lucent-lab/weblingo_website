@@ -353,6 +353,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       ) : null}
       <SiteAdminForm
         siteId={site.id}
+        siteStatus={site.status}
         sourceUrl={site.sourceUrl}
         sourceLang={site.locales[0]?.sourceLang ?? ""}
         targets={targetLangs}

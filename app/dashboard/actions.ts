@@ -582,13 +582,13 @@ export async function updateSiteSettingsAction(
     if (!auth.account || !auth.webhooksAuth) {
       return failed("Unable to resolve account entitlements.");
     }
-    if (!auth.mutationsAllowed) {
-      return failed(formatBillingBlockMessage(auth, "edit site settings"));
-    }
     const access = deriveSiteSettingsAccess({
       has: auth.has,
       mutationsAllowed: auth.mutationsAllowed,
     });
+    if (access.billingBlocked) {
+      return failed(formatBillingBlockMessage(auth, "edit site settings"));
+    }
     const update = buildSiteSettingsUpdatePayload(formData, access);
     if (!update.ok) {
       return failed(update.error);
