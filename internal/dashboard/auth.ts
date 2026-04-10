@@ -16,7 +16,7 @@ import {
 } from "./webhooks";
 import { createHas, type HasCheck } from "./entitlements";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
-import { clearSubjectAccountId, readSubjectAccountId } from "./workspace";
+import { readSubjectAccountId } from "./workspace";
 
 export type WebhooksAuthContext = {
   token: string;
@@ -495,7 +495,6 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     }
   } else if (requestedSubjectId && requestedSubjectId !== actorBootstrap.subjectAccountId) {
     subjectFallbackToActor = true;
-    await clearSubjectAccountId();
   }
 
   const actorPlanActive = actorAccount.planStatus === "active";

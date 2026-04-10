@@ -157,7 +157,7 @@ async function upsertStripeBillingMetadata({
   logContext,
 }: {
   customerId: string;
-  email: string;
+  email: string | null;
   metadata: StripeBillingMetadata;
   sessionLocale?: string | null;
   allowCreate: boolean;
@@ -210,6 +210,24 @@ async function upsertStripeBillingMetadata({
       );
       return;
     }
+  }
+
+  if (!existingUser && !email && allowCreate) {
+    console.warn(
+      JSON.stringify(
+        {
+          level: "warn",
+          message: "Unable to create Supabase user from Stripe event without an email",
+          siteId: SITE_ID,
+          customerId: maskStripeId(customerId),
+          ...logContext,
+          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+        },
+        null,
+        0,
+      ),
+    );
+    return;
   }
 
   if (!existingUser && !allowCreate) {
@@ -503,11 +521,11 @@ export async function POST(request: NextRequest) {
       try {
         email = await resolveStripeCustomerEmail(customerId);
       } catch (customerError) {
-        console.error(
+        console.warn(
           JSON.stringify(
             {
-              level: "error",
-              message: "Failed to resolve Stripe customer email for lifecycle event",
+              level: "warn",
+              message: "Stripe customer email lookup failed for lifecycle event; continuing",
               siteId: SITE_ID,
               customerId: maskStripeId(customerId),
               subscriptionId: maskStripeId(subscription.id),
@@ -518,26 +536,6 @@ export async function POST(request: NextRequest) {
             0,
           ),
         );
-        break;
-      }
-
-      if (!email) {
-        console.warn(
-          JSON.stringify(
-            {
-              level: "warn",
-              message:
-                "Unable to update Supabase user metadata after lifecycle event without email",
-              siteId: SITE_ID,
-              customerId: maskStripeId(customerId),
-              subscriptionId: maskStripeId(subscription.id),
-              status: subscription.status,
-            },
-            null,
-            0,
-          ),
-        );
-        break;
       }
 
       await upsertStripeBillingMetadata({
