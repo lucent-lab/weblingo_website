@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import {
   getSiteDashboardCached,
@@ -980,15 +981,16 @@ function InfoHeader({
     <span className="inline-flex items-center gap-1">
       <span>{label}</span>
       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            aria-label={helpLabel}
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5 text-muted-foreground"
-          >
-            <Info className="h-3.5 w-3.5" />
-          </Button>
+        <PopoverTrigger
+          aria-label={helpLabel}
+          className={buttonVariants({
+            variant: "ghost",
+            size: "icon",
+            className: "h-5 w-5 text-muted-foreground",
+          })}
+          type="button"
+        >
+          <Info className="h-3.5 w-3.5" />
         </PopoverTrigger>
         <PopoverContent className="max-w-xs text-xs text-muted-foreground">
           {helpText}

@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getSiteDashboardCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
@@ -428,15 +429,16 @@ function DomainSection({
                           <span className="inline-flex items-center gap-1">
                             <span>Cloudflare</span>
                             <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  aria-label={cloudflareStatusHelpLabel}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-5 w-5 text-muted-foreground"
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                </Button>
+                              <PopoverTrigger
+                                aria-label={cloudflareStatusHelpLabel}
+                                className={buttonVariants({
+                                  variant: "ghost",
+                                  size: "icon",
+                                  className: "h-5 w-5 text-muted-foreground",
+                                })}
+                                type="button"
+                              >
+                                <Info className="h-3.5 w-3.5" />
                               </PopoverTrigger>
                               <PopoverContent className="max-w-xs text-xs text-muted-foreground">
                                 <div className="space-y-2">
