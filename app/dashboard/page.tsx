@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Suspense, cache } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/au
 import { listSitesCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
@@ -36,7 +37,8 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
   const onboardingState = resolveDashboardOnboardingState(auth);
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${locale}/pricing`;
 
   return (
     <div className="space-y-6">

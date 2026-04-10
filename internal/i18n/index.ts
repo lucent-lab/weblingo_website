@@ -3,6 +3,7 @@ export {
   getMessages,
   createTranslator,
   normalizeLocale,
+  resolvePreferredLocale,
   type Messages,
   type Translator,
   resolveLocaleTranslator,

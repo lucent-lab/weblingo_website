@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { triggerManagedDemoForceCrawlAction, triggerPageCrawlAction } from "../../../actions";
@@ -22,7 +23,7 @@ import {
   type SitePageSummary,
   type SitePagesSummary,
 } from "@internal/dashboard/webhooks";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
   title: "Site pages",
@@ -45,9 +46,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
@@ -265,7 +265,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
               remainingPageCrawlsToday: pagesSummaryRemainingLabel,
               unavailable: pagesSummaryUnavailableLabel,
             }}
-            locale={i18nConfig.defaultLocale}
+            locale={locale}
           />
         </CardContent>
       </Card>

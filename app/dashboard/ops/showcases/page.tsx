@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSupportedLanguagesCached } from "@internal/dashboard/data";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import { listManagedDemos, type ManagedDemoSiteSummary } from "@internal/dashboard/webhooks";
 import { setWorkspaceAction } from "../../_lib/workspace-actions";
 
@@ -45,6 +46,7 @@ export default async function OpsShowcasesPage() {
   const servingShowcases = items.filter(
     (item) => item.showcaseServingStatus === "serving" || item.showcaseServingStatus === "degraded",
   ).length;
+  const displayLocale = resolvePreferredLocale((await headers()).get("accept-language"));
 
   return (
     <div className="space-y-6">
@@ -73,7 +75,7 @@ export default async function OpsShowcasesPage() {
 
       <ManagedDemoCreateForm
         supportedLanguages={supportedLanguages}
-        displayLocale={i18nConfig.defaultLocale}
+        displayLocale={displayLocale}
       />
 
       <Card>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -22,7 +23,7 @@ import {
   WebhooksApiError,
 } from "@internal/dashboard/webhooks";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
   title: "Consistency governance",
@@ -46,9 +47,8 @@ export default async function SiteConsistencyPage({
     throw new Error("Dashboard auth context is missing webhooksAuth.");
   }
   const mutationsAllowed = auth.mutationsAllowed;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
@@ -174,7 +174,7 @@ export default async function SiteConsistencyPage({
     dataLoadError = dataLoadError ?? warningsResult.reason;
   }
 
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const pricingPath = `/${locale}/pricing`;
 
   return (
     <div className="space-y-8">

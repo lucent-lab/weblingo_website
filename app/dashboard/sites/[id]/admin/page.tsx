@@ -43,7 +43,7 @@ import {
   type SiteShowcaseResponse,
   type SupportedLanguage,
 } from "@internal/dashboard/webhooks";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
   title: "Site settings",
@@ -66,10 +66,9 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
   const canToggleServing = auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const displayLocale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${displayLocale}/pricing`;
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale: displayLocale }));
   let site: Site | null = null;
   let deployments: Deployment[] = [];
   let deploymentHistory: DeploymentHistoryByLocale[] = [];
@@ -164,7 +163,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     notFound();
   }
 
-  const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const localeAliases = site.locales.reduce<Record<string, string | null>>((acc, locale) => {
     acc[locale.targetLang] = locale.alias ?? null;
@@ -938,11 +936,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       </Card>
     </div>
   );
-}
-
-function pickPreferredLocale(acceptLanguageHeader: string): string {
-  const first = acceptLanguageHeader.split(",")[0]?.split(";")[0]?.trim();
-  return first && first.length ? first : "en";
 }
 
 function formatPlanLabel(planType: string | null): string | null {

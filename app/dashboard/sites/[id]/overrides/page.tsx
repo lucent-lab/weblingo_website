@@ -10,6 +10,7 @@ import { OverrideForm, SlugForm } from "../translation-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { headers } from "next/headers";
 import {
   fetchGlossary,
   fetchSite,
@@ -18,7 +19,7 @@ import {
   type Site,
 } from "@internal/dashboard/webhooks";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
   title: "Overrides",
@@ -34,10 +35,9 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${locale}/pricing`;
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
