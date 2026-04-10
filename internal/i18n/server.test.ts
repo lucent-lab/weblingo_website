@@ -14,4 +14,9 @@ describe("resolvePreferredLocale", () => {
     expect(resolvePreferredLocale("")).toBe("en");
     expect(resolvePreferredLocale(null)).toBe("en");
   });
+
+  it("ignores zero-quality language ranges", () => {
+    expect(resolvePreferredLocale("fr;q=0,en;q=0.9")).toBe("en");
+    expect(resolvePreferredLocale("fr;q=0,ja;q=0")).toBe("en");
+  });
 });

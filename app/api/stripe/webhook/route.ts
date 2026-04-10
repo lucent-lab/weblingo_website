@@ -28,31 +28,40 @@ function maskStripeId(id: string) {
   return `***${suffix}`;
 }
 
+function maskStripeIdOrNull(id: string | null | undefined): string | null {
+  if (!id) {
+    return null;
+  }
+  return maskStripeId(id);
+}
+
 type StripeBillingMetadata = {
   stripeCustomerId: string;
-  lastStripeSubscriptionId: string;
-  stripeSubscriptionStatus: Stripe.Subscription["status"];
+  lastStripeSubscriptionId: string | null;
+  stripeSubscriptionStatus: Stripe.Subscription["status"] | null;
   stripeSubscriptionPriceId: string | null;
   stripeSubscriptionCurrentPeriodEnd: string | null;
-  stripeSubscriptionCancelAtPeriodEnd: boolean;
+  stripeSubscriptionCancelAtPeriodEnd: boolean | null;
 };
 
 function buildStripeBillingMetadata(
   customerId: string,
-  subscription: Stripe.Subscription,
+  subscription: Stripe.Subscription | null,
+  subscriptionId: string | null = subscription?.id ?? null,
 ): StripeBillingMetadata {
-  const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number })
-    .current_period_end;
+  const periodEnd = subscription
+    ? (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end
+    : undefined;
   return {
     stripeCustomerId: customerId,
-    lastStripeSubscriptionId: subscription.id,
-    stripeSubscriptionStatus: subscription.status,
-    stripeSubscriptionPriceId: subscription.items.data[0]?.price.id ?? null,
+    lastStripeSubscriptionId: subscriptionId,
+    stripeSubscriptionStatus: subscription?.status ?? null,
+    stripeSubscriptionPriceId: subscription?.items.data[0]?.price.id ?? null,
     stripeSubscriptionCurrentPeriodEnd:
       typeof periodEnd === "number" && periodEnd > 0
         ? new Date(periodEnd * 1000).toISOString()
         : null,
-    stripeSubscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
+    stripeSubscriptionCancelAtPeriodEnd: subscription?.cancel_at_period_end ?? null,
   };
 }
 
@@ -210,7 +219,7 @@ async function upsertStripeBillingMetadata({
           siteId: SITE_ID,
           customerId: maskStripeId(customerId),
           ...logContext,
-          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+          subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
         },
         null,
         0,
@@ -228,7 +237,7 @@ async function upsertStripeBillingMetadata({
           siteId: SITE_ID,
           customerId: maskStripeId(customerId),
           ...logContext,
-          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+          subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
         },
         null,
         0,
@@ -256,17 +265,17 @@ async function upsertStripeBillingMetadata({
     if (error) {
       console.error(
         JSON.stringify(
-          {
-            level: "error",
-            message: "Failed to update Supabase user metadata after Stripe event",
-            siteId: SITE_ID,
-            customerId: maskStripeId(customerId),
-            ...logContext,
-            subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
-            error: error.message,
-          },
-          null,
-          0,
+        {
+          level: "error",
+          message: "Failed to update Supabase user metadata after Stripe event",
+          siteId: SITE_ID,
+          customerId: maskStripeId(customerId),
+          ...logContext,
+          subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
+          error: error.message,
+        },
+        null,
+        0,
         ),
       );
     }
@@ -288,7 +297,7 @@ async function upsertStripeBillingMetadata({
           siteId: SITE_ID,
           customerId: maskStripeId(customerId),
           ...logContext,
-          subscriptionId: maskStripeId(metadata.lastStripeSubscriptionId),
+          subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
           error: error.message,
         },
         null,
@@ -360,16 +369,21 @@ export async function POST(request: NextRequest) {
 
       const customerId =
         typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
+      const sessionSubscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : (session.subscription?.id ?? null);
       let subscription: Stripe.Subscription | null = null;
 
       try {
         subscription = await resolveStripeSubscriptionFromCheckoutSession(session);
       } catch (subscriptionError) {
-        console.error(
+        console.warn(
           JSON.stringify(
             {
-              level: "error",
-              message: "Failed to resolve Stripe subscription for completed checkout session",
+              level: "warn",
+              message:
+                "Failed to resolve Stripe subscription for completed checkout session; continuing with session data",
               siteId: SITE_ID,
               sessionId: maskStripeId(session.id),
               customerId: customerId ? maskStripeId(customerId) : null,
@@ -377,20 +391,20 @@ export async function POST(request: NextRequest) {
                 subscriptionError instanceof Error
                   ? subscriptionError.message
                   : String(subscriptionError),
+              subscriptionId: maskStripeIdOrNull(sessionSubscriptionId),
             },
             null,
             0,
           ),
         );
-        break;
       }
 
-      if (!customerId || !subscription) {
+      if (!customerId) {
         console.error(
           JSON.stringify(
             {
               level: "error",
-              message: "Missing customer or subscription on completed checkout session",
+              message: "Missing customer on completed checkout session",
               siteId: SITE_ID,
               sessionId: maskStripeId(session.id),
             },
@@ -409,7 +423,7 @@ export async function POST(request: NextRequest) {
             siteId: SITE_ID,
             sessionId: maskStripeId(session.id),
             customerId: maskStripeId(customerId),
-            subscriptionId: maskStripeId(subscription.id),
+            subscriptionId: maskStripeIdOrNull(sessionSubscriptionId),
           },
           null,
           0,
@@ -429,7 +443,7 @@ export async function POST(request: NextRequest) {
                 siteId: SITE_ID,
                 sessionId: maskStripeId(session.id),
                 customerId: maskStripeId(customerId),
-                subscriptionId: maskStripeId(subscription.id),
+                subscriptionId: maskStripeIdOrNull(sessionSubscriptionId),
                 error:
                   customerError instanceof Error ? customerError.message : String(customerError),
               },
@@ -449,7 +463,7 @@ export async function POST(request: NextRequest) {
               siteId: SITE_ID,
               sessionId: maskStripeId(session.id),
               customerId: maskStripeId(customerId),
-              subscriptionId: maskStripeId(subscription.id),
+              subscriptionId: maskStripeIdOrNull(sessionSubscriptionId),
             },
             null,
             0,
@@ -461,13 +475,13 @@ export async function POST(request: NextRequest) {
       await upsertStripeBillingMetadata({
         customerId,
         email,
-        metadata: buildStripeBillingMetadata(customerId, subscription),
+        metadata: buildStripeBillingMetadata(customerId, subscription, sessionSubscriptionId),
         sessionLocale: session.locale,
         allowCreate: true,
         logContext: {
           sessionId: maskStripeId(session.id),
           customerId: maskStripeId(customerId),
-          subscriptionId: maskStripeId(subscription.id),
+          subscriptionId: maskStripeIdOrNull(sessionSubscriptionId) ?? undefined,
         },
       });
       break;
