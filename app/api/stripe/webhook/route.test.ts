@@ -328,6 +328,52 @@ describe("POST /api/stripe/webhook", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it("does not create billing runtime metadata for subscription lifecycle events when the Supabase user is missing", async () => {
+    const lifecyclePeriodEnd = 1_765_152_000;
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [],
+      },
+      error: null,
+    });
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+    const createUser = vi.fn().mockResolvedValue({ error: null });
+    createServiceRoleClient.mockReturnValue({
+      auth: { admin: { listUsers, updateUserById, createUser } },
+    });
+
+    const retrieveCustomer = vi.fn().mockResolvedValue({ email: "billing@example.com" });
+    getStripeClient.mockReturnValue({
+      subscriptions: { retrieve: vi.fn() },
+      customers: { retrieve: retrieveCustomer },
+    });
+
+    const event = {
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_abc",
+          status: "active",
+          cancel_at_period_end: false,
+          current_period_end: lifecyclePeriodEnd,
+          customer: "cus_abc",
+          items: { data: [{ price: { id: "price_abc" } }] },
+        },
+      },
+    } as unknown as Stripe.Event;
+    verifyStripeSignature.mockReturnValueOnce(event);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest("{}"));
+
+    expect(response.status).toBe(200);
+    expect(listUsers).toHaveBeenCalled();
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_abc");
+    expect(updateUserById).not.toHaveBeenCalled();
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
   it("keeps paging until it finds a Stripe customer in a later Supabase page", async () => {
     const listUsers = vi.fn().mockImplementation(({ page, perPage }) => {
       if (page < 21) {
