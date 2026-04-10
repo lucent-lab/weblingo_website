@@ -10,3 +10,8 @@ export async function readSubjectAccountId(): Promise<string | null> {
   }
   return value;
 }
+
+export async function clearSubjectAccountId(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(SUBJECT_ACCOUNT_COOKIE);
+}

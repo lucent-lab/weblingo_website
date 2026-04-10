@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getActiveAgencyCustomers, requireDashboardAuth } from "@internal/dashboard/auth";
-import { SUBJECT_ACCOUNT_COOKIE } from "@internal/dashboard/workspace";
+import { clearSubjectAccountId, SUBJECT_ACCOUNT_COOKIE } from "@internal/dashboard/workspace";
 
 export async function setWorkspaceAction(formData: FormData) {
   const rawSubjectAccountId = String(formData.get("subjectAccountId") ?? "").trim();
@@ -33,6 +33,7 @@ export async function setWorkspaceAction(formData: FormData) {
   }
 
   if (!allowedIds.has(subjectAccountId)) {
+    await clearSubjectAccountId();
     redirect("/dashboard");
   }
 
