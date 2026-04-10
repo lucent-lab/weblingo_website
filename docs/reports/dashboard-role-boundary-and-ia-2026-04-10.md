@@ -3,6 +3,7 @@
 Date: 2026-04-10
 
 Scope:
+
 - Auth, entitlements, workspace switching, site settings access, and ops routes.
 - Live UI exercised in dashboard mock mode for customer flows.
 - Agency and internal-ops behavior verified from code contracts and route guards.
