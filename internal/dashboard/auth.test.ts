@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AgencyCustomersResponse, DashboardBootstrapResponse } from "./webhooks";
 
 const redisMock = {
   del: vi.fn(),
@@ -44,7 +45,7 @@ vi.mock("./webhooks", () => ({
   },
 }));
 
-function makeActorBootstrap() {
+function makeActorBootstrap(): DashboardBootstrapResponse {
   return {
     token: "actor-token",
     expiresAt: "2026-01-01T00:00:00.000Z",
@@ -167,15 +168,14 @@ describe("getDashboardAuth", () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
-    const fetchDashboardBootstrap = (await import("./webhooks")).fetchDashboardBootstrap as ReturnType<
-      typeof vi.fn
-    >;
+    const fetchDashboardBootstrap = (await import("./webhooks"))
+      .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
     const exchangeWebhooksToken = (await import("./webhooks")).exchangeWebhooksToken as ReturnType<
       typeof vi.fn
     >;
 
     const actorBootstrap = makeActorBootstrap();
-    actorBootstrap.agencyCustomers = {
+    const agencyCustomers: AgencyCustomersResponse = {
       summary: { totalActiveSites: 1, maxSites: 10 },
       customers: [
         {
@@ -189,6 +189,7 @@ describe("getDashboardAuth", () => {
         },
       ],
     };
+    actorBootstrap.agencyCustomers = agencyCustomers;
 
     createClient.mockResolvedValue({
       auth: {
@@ -222,15 +223,14 @@ describe("getDashboardAuth", () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
-    const fetchDashboardBootstrap = (await import("./webhooks")).fetchDashboardBootstrap as ReturnType<
-      typeof vi.fn
-    >;
+    const fetchDashboardBootstrap = (await import("./webhooks"))
+      .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
     const exchangeWebhooksToken = (await import("./webhooks")).exchangeWebhooksToken as ReturnType<
       typeof vi.fn
     >;
 
     const actorBootstrap = makeActorBootstrap();
-    actorBootstrap.agencyCustomers = {
+    const agencyCustomers: AgencyCustomersResponse = {
       summary: { totalActiveSites: 1, maxSites: 10 },
       customers: [
         {
@@ -244,6 +244,7 @@ describe("getDashboardAuth", () => {
         },
       ],
     };
+    actorBootstrap.agencyCustomers = agencyCustomers;
 
     createClient.mockResolvedValue({
       auth: {
@@ -273,7 +274,9 @@ describe("getDashboardAuth", () => {
     expect(auth.account?.accountId).toBe("acct-agency");
     expect(cookiesStore.delete).not.toHaveBeenCalled();
     expect(
-      fetchDashboardBootstrap.mock.calls.filter(([, options]) => options?.subjectAccountId === "acct-customer"),
+      fetchDashboardBootstrap.mock.calls.filter(
+        ([, options]) => options?.subjectAccountId === "acct-customer",
+      ),
     ).toHaveLength(1);
     expect(exchangeWebhooksToken).not.toHaveBeenCalled();
   });

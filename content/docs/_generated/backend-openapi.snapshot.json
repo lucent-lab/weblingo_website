@@ -1799,7 +1799,9 @@
             "type": "object"
           },
           "maxDepth": {
-            "type": "number"
+            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
           },
           "maxLocales": {
             "type": [
@@ -4491,8 +4493,9 @@
             "type": "array"
           },
           "maxDepth": {
-            "description": "Default: 0 (unlimited)",
-            "type": "number"
+            "description": "Default: 0 (unlimited). Positive integers cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
           },
           "pattern": {
             "type": [
@@ -5905,7 +5908,9 @@
             "type": "object"
           },
           "maxDepth": {
-            "type": "number"
+            "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
+            "minimum": 0,
+            "type": "integer"
           },
           "maxLocales": {
             "type": [

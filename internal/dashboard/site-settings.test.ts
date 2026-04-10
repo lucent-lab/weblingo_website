@@ -84,18 +84,18 @@ describe("deriveSiteSettingsAccess", () => {
 
 describe("requiresSourceUrlReactivation", () => {
   it("returns true when the source URL changes on an active site", () => {
-    expect(
-      requiresSourceUrlReactivation({ siteStatus: "active", sourceUrlChanged: true }),
-    ).toBe(true);
+    expect(requiresSourceUrlReactivation({ siteStatus: "active", sourceUrlChanged: true })).toBe(
+      true,
+    );
   });
 
   it("returns false when the site is inactive or the URL does not change", () => {
-    expect(
-      requiresSourceUrlReactivation({ siteStatus: "inactive", sourceUrlChanged: true }),
-    ).toBe(false);
-    expect(
-      requiresSourceUrlReactivation({ siteStatus: "active", sourceUrlChanged: false }),
-    ).toBe(false);
+    expect(requiresSourceUrlReactivation({ siteStatus: "inactive", sourceUrlChanged: true })).toBe(
+      false,
+    );
+    expect(requiresSourceUrlReactivation({ siteStatus: "active", sourceUrlChanged: false })).toBe(
+      false,
+    );
   });
 });
 

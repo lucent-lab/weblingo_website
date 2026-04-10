@@ -111,7 +111,7 @@ async function findSupabaseUserByStripeCustomerId(customerId: string) {
   const perPage = 100;
   let page = 1;
 
-  while (true) {
+  for (;;) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
 
     if (error) {
@@ -233,7 +233,8 @@ async function upsertStripeBillingMetadata({
       JSON.stringify(
         {
           level: "warn",
-          message: "Unable to update Supabase user metadata without a matching Stripe customer id",
+          message:
+            "Unable to recover Supabase user from Stripe event without a matching Supabase user",
           siteId: SITE_ID,
           customerId: maskStripeId(customerId),
           ...logContext,
@@ -265,20 +266,40 @@ async function upsertStripeBillingMetadata({
     if (error) {
       console.error(
         JSON.stringify(
+          {
+            level: "error",
+            message: "Failed to update Supabase user metadata after Stripe event",
+            siteId: SITE_ID,
+            customerId: maskStripeId(customerId),
+            ...logContext,
+            subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
+            error: error.message,
+          },
+          null,
+          0,
+        ),
+      );
+    }
+    return;
+  }
+
+  if (!email) {
+    console.warn(
+      JSON.stringify(
         {
-          level: "error",
-          message: "Failed to update Supabase user metadata after Stripe event",
+          level: "warn",
+          message: allowCreate
+            ? "Unable to create Supabase user from Stripe event without an email"
+            : "Unable to recover Supabase user from Stripe event without an email",
           siteId: SITE_ID,
           customerId: maskStripeId(customerId),
           ...logContext,
           subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
-          error: error.message,
         },
         null,
         0,
-        ),
-      );
-    }
+      ),
+    );
     return;
   }
 

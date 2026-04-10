@@ -21,9 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
-import {
-  REQUIRED_FIELDS_MESSAGE,
-} from "@internal/dashboard/site-settings";
+import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
   CrawlCaptureMode,
   SpaRefreshFallback,
