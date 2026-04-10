@@ -100,8 +100,9 @@ function userHasStripeCustomerId(userMetadata: unknown, customerId: string): boo
 async function findSupabaseUserByStripeCustomerId(customerId: string) {
   const supabase = createServiceRoleClient();
   const perPage = 100;
+  let page = 1;
 
-  for (let page = 1; page <= 20; page += 1) {
+  while (true) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
 
     if (error) {
@@ -131,21 +132,9 @@ async function findSupabaseUserByStripeCustomerId(customerId: string) {
     if (data.users.length < perPage) {
       return null;
     }
-  }
 
-  console.warn(
-    JSON.stringify(
-      {
-        level: "warn",
-        message: "Supabase user scan exhausted while resolving Stripe customer metadata",
-        siteId: SITE_ID,
-        customerId: maskStripeId(customerId),
-      },
-      null,
-      0,
-    ),
-  );
-  return null;
+    page += 1;
+  }
 }
 
 async function upsertStripeBillingMetadata({
