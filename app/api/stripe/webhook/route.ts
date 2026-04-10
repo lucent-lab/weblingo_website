@@ -13,6 +13,7 @@ const webhookEvents = new Set<Stripe.Event.Type>([
   "customer.subscription.updated",
   "customer.subscription.deleted",
 ]);
+const SUPABASE_USER_SCAN_PAGE_LIMIT = 25;
 
 function maskStripeId(id: string) {
   const trimmed = id.trim();
@@ -111,7 +112,7 @@ async function findSupabaseUserByStripeCustomerId(customerId: string) {
   const perPage = 100;
   let page = 1;
 
-  for (;;) {
+  while (page <= SUPABASE_USER_SCAN_PAGE_LIMIT) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
 
     if (error) {
@@ -144,6 +145,23 @@ async function findSupabaseUserByStripeCustomerId(customerId: string) {
 
     page += 1;
   }
+
+  console.warn(
+    JSON.stringify(
+      {
+        level: "warn",
+        message: "Supabase user scan limit reached while resolving Stripe customer metadata",
+        siteId: SITE_ID,
+        customerId: maskStripeId(customerId),
+        perPage,
+        pageLimit: SUPABASE_USER_SCAN_PAGE_LIMIT,
+      },
+      null,
+      0,
+    ),
+  );
+
+  return null;
 }
 
 async function upsertStripeBillingMetadata({
@@ -475,24 +493,6 @@ export async function POST(request: NextRequest) {
           break;
         }
       }
-      if (!email) {
-        console.warn(
-          JSON.stringify(
-            {
-              level: "warn",
-              message: "Unable to update Supabase user metadata after checkout without email",
-              siteId: SITE_ID,
-              sessionId: maskStripeId(session.id),
-              customerId: maskStripeId(customerId),
-              subscriptionId: maskStripeIdOrNull(sessionSubscriptionId),
-            },
-            null,
-            0,
-          ),
-        );
-        break;
-      }
-
       await upsertStripeBillingMetadata({
         customerId,
         email,
