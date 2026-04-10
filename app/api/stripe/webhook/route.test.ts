@@ -266,6 +266,77 @@ describe("POST /api/stripe/webhook", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it("keeps paging until it finds a Stripe customer in a later Supabase page", async () => {
+    const listUsers = vi.fn().mockImplementation(({ page, perPage }) => {
+      if (page < 21) {
+        return Promise.resolve({
+          data: {
+            users: Array.from({ length: perPage }, (_, index) => ({
+              id: `user-${page}-${index}`,
+              user_metadata: {},
+            })),
+          },
+          error: null,
+        });
+      }
+
+      return Promise.resolve({
+        data: {
+          users: [
+            {
+              id: "user-21",
+              user_metadata: { stripeCustomerId: "cus_999" },
+            },
+          ],
+        },
+        error: null,
+      });
+    });
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+    const createUser = vi.fn().mockResolvedValue({ error: null });
+    createServiceRoleClient.mockReturnValue({
+      auth: { admin: { listUsers, updateUserById, createUser } },
+    });
+
+    const retrieveCustomer = vi.fn().mockResolvedValue({ email: null });
+    getStripeClient.mockReturnValue({
+      subscriptions: { retrieve: vi.fn() },
+      customers: { retrieve: retrieveCustomer },
+    });
+
+    const event = {
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_999",
+          status: "active",
+          cancel_at_period_end: false,
+          current_period_end: 1_765_152_000,
+          customer: "cus_999",
+          items: { data: [{ price: { id: "price_999" } }] },
+        },
+      },
+    } as unknown as Stripe.Event;
+    verifyStripeSignature.mockReturnValueOnce(event);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest("{}"));
+
+    expect(response.status).toBe(200);
+    expect(listUsers).toHaveBeenCalledTimes(21);
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_999");
+    expect(updateUserById).toHaveBeenCalledWith(
+      "user-21",
+      expect.objectContaining({
+        user_metadata: expect.objectContaining({
+          stripeCustomerId: "cus_999",
+          lastStripeSubscriptionId: "sub_999",
+        }),
+      }),
+    );
+  });
+
   it("redacts signature verification errors in production responses", async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
