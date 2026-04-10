@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { GlossaryEditor } from "../glossary-editor";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { OverrideForm, SlugForm } from "../translation-forms";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import {
   fetchGlossary,
@@ -15,6 +17,7 @@ import {
   type GlossaryEntry,
   type Site,
 } from "@internal/dashboard/webhooks";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
@@ -51,7 +54,7 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
 
   let site: Site | null = null;
   let glossary: GlossaryEntry[] = [];
-  let error: string | null = null;
+  let error: unknown = null;
 
   const [siteResult, glossaryResult] = await Promise.allSettled([
     fetchSite(authToken, id),
@@ -62,7 +65,7 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
     site = siteResult.value;
   } else {
     const err = siteResult.reason;
-    error = err instanceof Error ? err.message : "Unable to load overrides.";
+    error = err;
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSite failed", {
         siteId: id,
@@ -106,18 +109,23 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the site list.",
+        message: "Unable to load overrides.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard/sites">Back to sites</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();

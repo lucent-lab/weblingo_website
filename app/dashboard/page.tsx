@@ -4,9 +4,11 @@ import { Suspense, cache } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import { i18nConfig } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
@@ -159,22 +161,24 @@ async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; prici
     canCreateSite = data.canCreateSite;
     billingBlocked = data.billingBlocked;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to load sites from the webhooks worker.";
+    const errorView = resolveDashboardErrorView(error, {
+      title: "Could not load sites",
+      description:
+        "We could not complete your request. You can retry or return to the dashboard home.",
+      message: "Unable to load sites from the webhooks worker.",
+    });
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
-        <CardHeader>
-          <CardTitle className="text-destructive">Could not load sites</CardTitle>
-          <CardDescription>{message}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Check that{" "}
-            <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
-            reachable and that your Supabase session is valid.
-          </p>
-        </CardContent>
-      </Card>
+      <ErrorStateCard
+        title={errorView.title}
+        description={errorView.description}
+        message={errorView.message}
+      >
+        <p className="text-sm text-muted-foreground">
+          Check that{" "}
+          <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
+          reachable and that your Supabase session is valid.
+        </p>
+      </ErrorStateCard>
     );
   }
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { triggerManagedDemoForceCrawlAction, triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { getSiteDashboardCached } from "@internal/dashboard/data";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   WebhooksApiError,
   type Deployment,
@@ -117,7 +119,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let pageHasMore = false;
   let deployments: Deployment[] = [];
   let pagesSummary: SitePagesSummary | null = null;
-  let error: string | null = null;
+  let error: unknown = null;
 
   try {
     const payload = await getSiteDashboardCached(authToken, id, {
@@ -133,7 +135,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     deployments = payload.deployments ?? [];
     pagesSummary = payload.pagesSummary ?? null;
   } catch (err) {
-    error = err instanceof Error ? err.message : "Unable to load site pages.";
+    error = err;
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSiteDashboard failed", {
         siteId: id,
@@ -154,18 +156,23 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the site list.",
+        message: "Unable to load site pages.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard/sites">Back to sites</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();

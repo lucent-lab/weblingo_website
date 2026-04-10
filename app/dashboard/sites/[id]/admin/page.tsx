@@ -8,6 +8,7 @@ import { SiteAdminForm } from "./site-admin-form";
 import { SiteShowcaseCard } from "./site-showcase-card";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DeploymentCompletenessBadge } from "@/components/dashboard/deployment-completeness-badge";
 import { DeploymentHistoryTable } from "@/components/dashboard/deployment-history-table";
 
@@ -31,6 +32,7 @@ import {
   listSupportedLanguagesCached,
 } from "@internal/dashboard/data";
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchDeploymentHistory,
   getSiteShowcase,
@@ -73,7 +75,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   let deploymentHistory: DeploymentHistoryByLocale[] = [];
   let deploymentHistoryLimit: number | null = null;
   let activeSiteCount: number | null = null;
-  let error: string | null = null;
+  let error: unknown = null;
   let supportedLanguages: SupportedLanguage[] = [];
   let showcaseState: SiteShowcaseResponse | null = null;
   let showcaseError: string | null = null;
@@ -100,10 +102,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     site = siteDashboardResult.value.site;
     deployments = siteDashboardResult.value.deployments;
   } else {
-    error =
-      siteDashboardResult.reason instanceof Error
-        ? siteDashboardResult.reason.message
-        : "Unable to load site settings.";
+    error = siteDashboardResult.reason;
   }
 
   if (deploymentHistoryResult.status === "fulfilled") {
@@ -143,18 +142,23 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the site list.",
+        message: "Unable to load site settings.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard/sites">Back to sites</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();
