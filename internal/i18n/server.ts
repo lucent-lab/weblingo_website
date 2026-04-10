@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { i18nConfig, type Locale } from "./config";
+import { getBaseLangTag } from "./lang-tag";
 
 export type Messages = Record<string, string>;
 
@@ -15,6 +16,16 @@ export function normalizeLocale(locale: string): Locale {
     return locale as Locale;
   }
   return i18nConfig.defaultLocale;
+}
+
+export function resolvePreferredLocale(acceptLanguageHeader: string | null | undefined): Locale {
+  const firstLanguageRange = acceptLanguageHeader?.split(",")[0]?.split(";")[0]?.trim() ?? "";
+  if (!firstLanguageRange) {
+    return i18nConfig.defaultLocale;
+  }
+
+  const baseTag = getBaseLangTag(firstLanguageRange);
+  return normalizeLocale(baseTag ?? firstLanguageRange);
 }
 
 const cache: Partial<Record<Locale, Messages>> = {};

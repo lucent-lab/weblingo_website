@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { listSitesCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { type SiteSummary } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import { SitesList } from "../_components/sites-list";
 
 export default async function SitesPage() {
@@ -16,7 +17,8 @@ export default async function SitesPage() {
   let canCreateSite = false;
   let billingBlocked = false;
   let atSiteLimit = false;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${locale}/pricing`;
 
   try {
     const auth = await requireDashboardAuth();

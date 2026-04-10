@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Briefcase, Globe, LayoutDashboard, MonitorPlay, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
@@ -33,7 +34,7 @@ import {
   resolveStripeBillingRuntime,
 } from "@internal/dashboard/billing-runtime";
 import { listSitesCached } from "@internal/dashboard/data";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
@@ -47,10 +48,11 @@ type DashboardLayoutProps = {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const auth = await requireDashboardAuth();
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const email = auth.user?.email ?? "—";
   const isAgency = auth.actorAccount?.planType === "agency";
   const canAccessInternalOps = hasActorInternalOps(auth);
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const pricingPath = `/${locale}/pricing`;
   const navItems = [
     {
       href: "/dashboard",

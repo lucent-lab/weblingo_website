@@ -1,11 +1,13 @@
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { envServer } from "@internal/core/env-server";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 
-export default function AuthLoginRedirect() {
+export default async function AuthLoginRedirect() {
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     notFound();
   }
-  redirect(`/${i18nConfig.defaultLocale}/login`);
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  redirect(`/${locale}/login`);
 }

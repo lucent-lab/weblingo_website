@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { PricingTableEmbed } from "./pricing-table";
@@ -11,14 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { envServer } from "@internal/core/env-server";
 import { getPricingTableId } from "@internal/billing";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import { buildNoAccountOnboardingState } from "@internal/dashboard/onboarding-state";
 
 export default async function NoAccountPage() {
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     notFound();
   }
-  const locale = i18nConfig.defaultLocale;
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingTableId = getPricingTableId(locale);
   const publishableKey = envServer.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   const onboardingState = buildNoAccountOnboardingState();
