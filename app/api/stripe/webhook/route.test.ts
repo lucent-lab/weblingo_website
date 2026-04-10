@@ -201,6 +201,71 @@ describe("POST /api/stripe/webhook", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it("updates billing runtime metadata for subscription lifecycle events without customer email", async () => {
+    const lifecyclePeriodEnd = 1_765_152_000;
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: "user-1",
+            user_metadata: { stripeCustomerId: "cus_789" },
+          },
+        ],
+      },
+      error: null,
+    });
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+    const createUser = vi.fn().mockResolvedValue({ error: null });
+    createServiceRoleClient.mockReturnValue({
+      auth: { admin: { listUsers, updateUserById, createUser } },
+    });
+
+    const retrieveCustomer = vi.fn().mockResolvedValue({ email: null });
+    const retrieveSubscription = vi.fn();
+    getStripeClient.mockReturnValue({
+      subscriptions: { retrieve: retrieveSubscription },
+      customers: { retrieve: retrieveCustomer },
+    });
+
+    const event = {
+      type: "customer.subscription.deleted",
+      data: {
+        object: {
+          id: "sub_789",
+          status: "canceled",
+          cancel_at_period_end: false,
+          current_period_end: lifecyclePeriodEnd,
+          customer: "cus_789",
+          items: { data: [{ price: { id: "price_789" } }] },
+        },
+      },
+    } as unknown as Stripe.Event;
+    verifyStripeSignature.mockReturnValueOnce(event);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest("{}"));
+
+    expect(response.status).toBe(200);
+    expect(listUsers).toHaveBeenCalled();
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_789");
+    expect(fetchUserByEmail).not.toHaveBeenCalled();
+    expect(updateUserById).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        user_metadata: expect.objectContaining({
+          stripeCustomerId: "cus_789",
+          lastStripeSubscriptionId: "sub_789",
+          stripeSubscriptionStatus: "canceled",
+          stripeSubscriptionPriceId: "price_789",
+          stripeSubscriptionCurrentPeriodEnd: new Date(lifecyclePeriodEnd * 1000).toISOString(),
+          stripeSubscriptionCancelAtPeriodEnd: false,
+        }),
+      }),
+    );
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
   it("redacts signature verification errors in production responses", async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";

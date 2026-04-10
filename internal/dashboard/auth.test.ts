@@ -213,7 +213,7 @@ describe("getDashboardAuth", () => {
     expect(auth.actingAsCustomer).toBe(false);
     expect(auth.subjectAccountId).toBe("acct-agency");
     expect(auth.account?.accountId).toBe("acct-agency");
-    expect(cookiesStore.delete).toHaveBeenCalledWith("weblingo_dashboard_subject");
+    expect(cookiesStore.delete).not.toHaveBeenCalled();
     expect(fetchDashboardBootstrap).toHaveBeenCalledTimes(1);
     expect(exchangeWebhooksToken).not.toHaveBeenCalled();
   });
