@@ -3,6 +3,7 @@
 Date: 2026-04-10
 
 Scope:
+
 - Customer dashboard, agency surfaces, and internal-ops dashboard in the website repo.
 - Live browser exercise for customer flows in mock-auth mode.
 - Code-level verification for agency and internal-ops routes, auth, entitlements, and site settings.
@@ -11,8 +12,8 @@ Scope:
 
 - Dashboard shell and navigation:
   - [app/dashboard/layout.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/layout.tsx)
-  - [app/dashboard/_components/sites-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/sites-nav.tsx)
-  - [app/dashboard/_components/dashboard-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/dashboard-nav.tsx)
+  - [app/dashboard/\_components/sites-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/sites-nav.tsx)
+  - [app/dashboard/\_components/dashboard-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/dashboard-nav.tsx)
 - Customer surfaces:
   - [app/dashboard/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/page.tsx)
   - [app/dashboard/sites/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/sites/page.tsx)
@@ -35,7 +36,7 @@ Scope:
   - [internal/dashboard/entitlements.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/entitlements.ts)
   - [internal/dashboard/site-settings.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/site-settings.ts)
   - [internal/dashboard/webhooks.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/webhooks.ts)
-  - [app/dashboard/_lib/workspace-actions.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_lib/workspace-actions.ts)
+  - [app/dashboard/\_lib/workspace-actions.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_lib/workspace-actions.ts)
 
 I also exercised the customer dashboard in live mock-auth mode. That covered the home, sites list, site workspace, pages, settings, overrides, consistency, developer tools, and no-account flows.
 

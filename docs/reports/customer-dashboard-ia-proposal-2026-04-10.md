@@ -13,7 +13,7 @@ This report intentionally excludes agency and internal-ops surfaces. Those are r
 - [app/dashboard/sites/[id]/admin/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/sites/[id]/admin/page.tsx)
 - [app/dashboard/sites/[id]/overrides/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/sites/[id]/overrides/page.tsx)
 - [app/dashboard/sites/[id]/consistency/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/sites/[id]/consistency/page.tsx)
-- [app/dashboard/_components/sites-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/sites-nav.tsx)
+- [app/dashboard/\_components/sites-nav.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/_components/sites-nav.tsx)
 - [internal/dashboard/site-settings.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/site-settings.ts)
 - [internal/dashboard/entitlements.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/entitlements.ts)
 
