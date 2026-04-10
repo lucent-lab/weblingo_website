@@ -136,6 +136,68 @@ describe("POST /api/stripe/webhook", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it("continues checkout provisioning when subscription lookup fails", async () => {
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [],
+      },
+      error: null,
+    });
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+    const createUser = vi.fn().mockResolvedValue({ error: null });
+    createServiceRoleClient.mockReturnValue({
+      auth: { admin: { listUsers, updateUserById, createUser } },
+    });
+
+    const retrieveSubscription = vi.fn().mockRejectedValue(new Error("stripe unavailable"));
+    const retrieveCustomer = vi.fn();
+    getStripeClient.mockReturnValue({
+      subscriptions: { retrieve: retrieveSubscription },
+      customers: { retrieve: retrieveCustomer },
+    });
+    fetchUserByEmail.mockResolvedValue(null);
+
+    const event = {
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_123",
+          mode: "subscription",
+          customer: "cus_123",
+          subscription: "sub_123",
+          customer_details: { email: "billing@example.com" },
+          locale: "en",
+        },
+      },
+    } as unknown as Stripe.Event;
+    verifyStripeSignature.mockReturnValueOnce(event);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest("{}"));
+
+    expect(response.status).toBe(200);
+    expect(retrieveSubscription).toHaveBeenCalledOnce();
+    expect(retrieveCustomer).not.toHaveBeenCalled();
+    expect(fetchUserByEmail).toHaveBeenCalledWith("billing@example.com");
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "billing@example.com",
+        email_confirm: true,
+        user_metadata: expect.objectContaining({
+          stripeCustomerId: "cus_123",
+          lastStripeSubscriptionId: "sub_123",
+          stripeSubscriptionStatus: null,
+          stripeSubscriptionPriceId: null,
+          stripeSubscriptionCurrentPeriodEnd: null,
+          stripeSubscriptionCancelAtPeriodEnd: null,
+          locale: "en",
+        }),
+      }),
+    );
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
   it("updates billing runtime metadata for subscription lifecycle events", async () => {
     const lifecyclePeriodEnd = 1_765_152_000;
     const listUsers = vi.fn().mockResolvedValue({

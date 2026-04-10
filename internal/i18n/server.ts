@@ -50,6 +50,7 @@ function parseAcceptLanguageRanges(
       return { tag, quality, index };
     })
     .filter((range): range is { tag: string; quality: number; index: number } => range !== null)
+    .filter((range) => range.quality > 0)
     .sort((left, right) => {
       if (right.quality !== left.quality) {
         return right.quality - left.quality;
