@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import {
   REQUIRED_FIELDS_MESSAGE,
-  requiresSourceUrlReactivation,
 } from "@internal/dashboard/site-settings";
 import type {
   CrawlCaptureMode,
@@ -42,7 +41,6 @@ const initialState: ActionResponse = { ok: false, message: "" };
 
 type SiteAdminFormProps = {
   siteId: string;
-  siteStatus: "active" | "inactive";
   sourceUrl: string;
   sourceLang: string;
   targets: string[];
@@ -110,7 +108,6 @@ type SiteAdminFormProps = {
 
 export function SiteAdminForm({
   siteId,
-  siteStatus,
   sourceUrl: initialSourceUrl,
   sourceLang,
   targets: initialTargets,
@@ -196,11 +193,6 @@ export function SiteAdminForm({
     Boolean(normalizedInitialUrl) &&
     normalizedSourceUrl !== normalizedInitialUrl;
   const requiresResetConfirm = canEditBasics && sourceUrlChanged && sourceUrlValid;
-  const sourceUrlRequiresReactivation = requiresSourceUrlReactivation({
-    siteStatus,
-    sourceUrlChanged,
-  });
-
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
       return "";
@@ -269,8 +261,7 @@ export function SiteAdminForm({
     canEditTranslatableAttributes ||
     canEditProfile;
   const basicsInvalid =
-    canEditBasics &&
-    (!patternIsValid || !sourceUrlValid || sourceUrlRequiresReactivation || resetConfirmationError);
+    canEditBasics && (!patternIsValid || !sourceUrlValid || resetConfirmationError);
   const localesInvalid = canEditLocales && (targets.length === 0 || hasInvalidAlias);
   const submitDisabled = !hasEditableSection || basicsInvalid || localesInvalid;
   const localeHelpText = canEditLocales ? undefined : lockedHelp;
@@ -422,13 +413,7 @@ export function SiteAdminForm({
               <Field
                 label="Confirm URL reset"
                 description="Changing the source URL clears pages, translations, and deployments. We'll re-scan sitemaps after verification."
-                error={
-                  sourceUrlRequiresReactivation
-                    ? "Pause localization before changing the source URL."
-                    : resetConfirmationError
-                      ? "Confirm the reset to continue."
-                      : undefined
-                }
+                error={resetConfirmationError ? "Confirm the reset to continue." : undefined}
               >
                 <label className="flex items-start gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
                   <input
