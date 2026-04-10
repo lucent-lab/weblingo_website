@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { listSitesCached } from "@internal/dashboard/data";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { type SiteSummary } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { i18nConfig } from "@internal/i18n";
@@ -10,7 +12,7 @@ import { SitesList } from "../_components/sites-list";
 
 export default async function SitesPage() {
   let sites: SiteSummary[] = [];
-  let error: string | null = null;
+  let error: unknown = null;
   let canCreateSite = false;
   let billingBlocked = false;
   let atSiteLimit = false;
@@ -26,8 +28,15 @@ export default async function SitesPage() {
     atSiteLimit = maxSites !== null && activeSites >= maxSites;
     canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   } catch (err) {
-    error = err instanceof Error ? err.message : "Unable to load sites.";
+    error = err;
   }
+
+  const errorView = resolveDashboardErrorView(error, {
+    title: "Could not load sites",
+    description:
+      "We could not complete your request. You can retry or return to the dashboard home.",
+    message: "Unable to load sites.",
+  });
 
   return (
     <div className="space-y-6">
@@ -71,12 +80,11 @@ export default async function SitesPage() {
       </div>
 
       {error ? (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Could not load sites</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+        />
       ) : sites.length === 0 ? (
         <Card>
           <CardHeader>

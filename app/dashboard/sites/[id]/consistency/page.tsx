@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { ConsistencyManager } from "./consistency-manager";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import {
@@ -19,6 +21,7 @@ import {
   type Site,
   WebhooksApiError,
 } from "@internal/dashboard/webhooks";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
@@ -56,12 +59,12 @@ export default async function SiteConsistencyPage({
   const activateHelp = t("dashboard.site.status.activateHelp");
 
   let site: Site | null = null;
-  let siteLoadError: string | null = null;
+  let siteLoadError: unknown = null;
 
   try {
     site = await fetchSite(authToken, id);
   } catch (error) {
-    siteLoadError = error instanceof Error ? error.message : "Unable to load site.";
+    siteLoadError = error;
     if (error instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSite consistency failed", {
         siteId: id,
@@ -82,18 +85,23 @@ export default async function SiteConsistencyPage({
 
   if (!site) {
     if (siteLoadError) {
+      const errorView = resolveDashboardErrorView(siteLoadError, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the site list.",
+        message: "Unable to load site.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{siteLoadError}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard/sites">Back to sites</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();
@@ -130,7 +138,7 @@ export default async function SiteConsistencyPage({
   let cpmEntries: ConsistencyCpmEntry[] = [];
   let blocks: ConsistencyBlock[] = [];
   let overrideWarnings: ConsistencyOverrideHygieneWarning[] = [];
-  let dataLoadError: string | null = null;
+  let dataLoadError: unknown = null;
 
   const [cpmResult, blocksResult, warningsResult] = await Promise.allSettled([
     fetchConsistencyCpm(authToken, site.id, {
@@ -151,30 +159,19 @@ export default async function SiteConsistencyPage({
   if (cpmResult.status === "fulfilled") {
     cpmEntries = cpmResult.value.entries;
   } else {
-    dataLoadError =
-      cpmResult.reason instanceof Error
-        ? cpmResult.reason.message
-        : "Unable to load canonical phrases.";
+    dataLoadError = cpmResult.reason;
   }
 
   if (blocksResult.status === "fulfilled") {
     blocks = blocksResult.value.blocks;
   } else {
-    dataLoadError =
-      dataLoadError ??
-      (blocksResult.reason instanceof Error
-        ? blocksResult.reason.message
-        : "Unable to load consistency blocks.");
+    dataLoadError = dataLoadError ?? blocksResult.reason;
   }
 
   if (warningsResult.status === "fulfilled") {
     overrideWarnings = warningsResult.value.warnings;
   } else {
-    dataLoadError =
-      dataLoadError ??
-      (warningsResult.reason instanceof Error
-        ? warningsResult.reason.message
-        : "Unable to load override hygiene warnings.");
+    dataLoadError = dataLoadError ?? warningsResult.reason;
   }
 
   const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
@@ -229,12 +226,27 @@ export default async function SiteConsistencyPage({
           badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
         />
       ) : dataLoadError ? (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load consistency data</CardTitle>
-            <CardDescription>{dataLoadError}</CardDescription>
-          </CardHeader>
-        </Card>
+        (() => {
+          const errorView = resolveDashboardErrorView(dataLoadError, {
+            title: "Unable to load consistency data",
+            description:
+              "We could not complete your request. You can retry or return to the site list.",
+            message: "Unable to load consistency data.",
+          });
+
+          return (
+            <ErrorStateCard
+              title={errorView.title}
+              description={errorView.description}
+              message={errorView.message}
+              actions={
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/sites">Back to sites</Link>
+                </Button>
+              }
+            />
+          );
+        })()
       ) : (
         <ConsistencyManager
           siteId={site.id}
