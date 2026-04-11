@@ -474,11 +474,12 @@ export async function POST(request: NextRequest) {
         try {
           email = await resolveStripeCustomerEmail(customerId);
         } catch (customerError) {
-          console.error(
+          console.warn(
             JSON.stringify(
               {
-                level: "error",
-                message: "Failed to resolve Stripe customer email for completed checkout session",
+                level: "warn",
+                message:
+                  "Failed to resolve Stripe customer email for completed checkout session; continuing",
                 siteId: SITE_ID,
                 sessionId: maskStripeId(session.id),
                 customerId: maskStripeId(customerId),
@@ -490,7 +491,7 @@ export async function POST(request: NextRequest) {
               0,
             ),
           );
-          break;
+          email = null;
         }
       }
       await upsertStripeBillingMetadata({
@@ -541,30 +542,9 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      let email: string | null = null;
-      try {
-        email = await resolveStripeCustomerEmail(customerId);
-      } catch (customerError) {
-        console.warn(
-          JSON.stringify(
-            {
-              level: "warn",
-              message: "Stripe customer email lookup failed for lifecycle event; continuing",
-              siteId: SITE_ID,
-              customerId: maskStripeId(customerId),
-              subscriptionId: maskStripeId(subscription.id),
-              status: subscription.status,
-              error: customerError instanceof Error ? customerError.message : String(customerError),
-            },
-            null,
-            0,
-          ),
-        );
-      }
-
       await upsertStripeBillingMetadata({
         customerId,
-        email,
+        email: null,
         metadata: buildStripeBillingMetadata(customerId, subscription),
         allowCreate: false,
         logContext: {
