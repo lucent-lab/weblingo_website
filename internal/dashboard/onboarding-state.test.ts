@@ -1,10 +1,33 @@
 import { describe, expect, it } from "vitest";
 
+import type { Translator } from "@internal/i18n";
 import { buildNoAccountOnboardingState, resolveDashboardOnboardingState } from "./onboarding-state";
+
+const t: Translator = (key, fallback) => {
+  const messages: Record<string, string> = {
+    "dashboard.onboarding.noAccount.badge": "Status: claim required",
+    "dashboard.onboarding.noAccount.title": "Claim free dashboard access",
+    "dashboard.onboarding.noAccount.description":
+      "Claiming creates the dashboard account now. Pricing and billing stay separate until you choose a plan.",
+    "dashboard.onboarding.pendingBilling.badge": "Status: billing update needed",
+    "dashboard.onboarding.pendingBilling.title": "Update billing to continue",
+    "dashboard.onboarding.pendingBilling.description":
+      "Your account exists, but billing must be updated before more site changes can continue.",
+    "dashboard.onboarding.claimedFree.badge": "Status: free account linked",
+    "dashboard.onboarding.claimedFree.title": "Free account linked",
+    "dashboard.onboarding.claimedFree.description":
+      "Your dashboard account is active. Start onboarding a site, then update billing when you are ready to upgrade.",
+    "dashboard.onboarding.ready.badge": "Status: ready",
+    "dashboard.onboarding.ready.title": "Dashboard ready",
+    "dashboard.onboarding.ready.description": "Your account is active and ready for onboarding.",
+  };
+
+  return messages[key] ?? fallback ?? key;
+};
 
 describe("dashboard onboarding state", () => {
   it("describes the no-account handoff explicitly", () => {
-    expect(buildNoAccountOnboardingState()).toEqual({
+    expect(buildNoAccountOnboardingState(t)).toEqual({
       stage: "no_account",
       badge: "Status: claim required",
       title: "Claim free dashboard access",
@@ -14,14 +37,17 @@ describe("dashboard onboarding state", () => {
   });
 
   it("marks a newly claimed free account as its own state", () => {
-    const state = resolveDashboardOnboardingState({
-      account: {
-        planType: "free",
-        planStatus: "active",
-      } as never,
-      billingIssue: null,
-      mutationsAllowed: true,
-    });
+    const state = resolveDashboardOnboardingState(
+      {
+        account: {
+          planType: "free",
+          planStatus: "active",
+        } as never,
+        billingIssue: null,
+        mutationsAllowed: true,
+      },
+      t,
+    );
 
     expect(state).toEqual({
       stage: "claimed_free_account",
@@ -33,14 +59,17 @@ describe("dashboard onboarding state", () => {
   });
 
   it("marks inactive billing as a separate onboarding state", () => {
-    const state = resolveDashboardOnboardingState({
-      account: {
-        planType: "starter",
-        planStatus: "past_due",
-      } as never,
-      billingIssue: { scope: "actor", status: "past_due" },
-      mutationsAllowed: false,
-    });
+    const state = resolveDashboardOnboardingState(
+      {
+        account: {
+          planType: "starter",
+          planStatus: "past_due",
+        } as never,
+        billingIssue: { scope: "actor", status: "past_due" },
+        mutationsAllowed: false,
+      },
+      t,
+    );
 
     expect(state).toEqual({
       stage: "pending_billing",
@@ -52,14 +81,17 @@ describe("dashboard onboarding state", () => {
   });
 
   it("marks active paid accounts as ready", () => {
-    const state = resolveDashboardOnboardingState({
-      account: {
-        planType: "starter",
-        planStatus: "active",
-      } as never,
-      billingIssue: null,
-      mutationsAllowed: true,
-    });
+    const state = resolveDashboardOnboardingState(
+      {
+        account: {
+          planType: "starter",
+          planStatus: "active",
+        } as never,
+        billingIssue: null,
+        mutationsAllowed: true,
+      },
+      t,
+    );
 
     expect(state).toEqual({
       stage: "ready",

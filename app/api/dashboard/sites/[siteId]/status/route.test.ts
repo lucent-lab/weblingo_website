@@ -52,6 +52,7 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   subjectPlanActive: true,
   mutationsAllowed: true,
   billingIssue: null,
+  stripeBillingRuntime: null,
   has: () => true,
 });
 

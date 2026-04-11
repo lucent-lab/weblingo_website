@@ -219,6 +219,50 @@ describe("getDashboardAuth", () => {
     expect(exchangeWebhooksToken).not.toHaveBeenCalled();
   });
 
+  it("threads stripe billing runtime from dashboard metadata", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const fetchDashboardBootstrap = (await import("./webhooks"))
+      .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+
+    const actorBootstrap = makeActorBootstrap();
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session } }),
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              ...session.user,
+              user_metadata: {
+                stripeCustomerId: "cus_123",
+                lastStripeSubscriptionId: "sub_123",
+                stripeSubscriptionStatus: "past_due",
+                stripeSubscriptionPriceId: "price_123",
+                stripeSubscriptionCurrentPeriodEnd: "2026-04-10T00:00:00.000Z",
+                stripeSubscriptionCancelAtPeriodEnd: true,
+              },
+            },
+          },
+        }),
+      },
+    });
+    fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.stripeBillingRuntime).toEqual({
+      customerId: "cus_123",
+      subscriptionId: "sub_123",
+      status: "past_due",
+      priceId: "price_123",
+      currentPeriodEnd: "2026-04-10T00:00:00.000Z",
+      cancelAtPeriodEnd: true,
+    });
+  });
+
   it("falls back to the actor when an allowed subject bootstrap fails", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn

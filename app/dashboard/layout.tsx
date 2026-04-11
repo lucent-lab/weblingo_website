@@ -29,10 +29,7 @@ import {
   requireDashboardAuth,
   type DashboardAuth,
 } from "@internal/dashboard/auth";
-import {
-  formatStripeBillingStatusLabel,
-  resolveStripeBillingRuntime,
-} from "@internal/dashboard/billing-runtime";
+import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
 import { listSitesCached } from "@internal/dashboard/data";
 import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
@@ -133,8 +130,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const statusTone = resolveStatusTone(rawStatusLabel);
 
   const billingBanner = resolveBillingBanner(auth);
-  const stripeBillingRuntime = resolveStripeBillingRuntime(auth.user?.user_metadata);
-  const stripeBillingLabel = formatStripeBillingStatusLabel(stripeBillingRuntime);
+  const stripeBillingLabel = formatStripeBillingStatusLabel(auth.stripeBillingRuntime);
   const subjectFallbackNotice = auth.subjectFallbackToActor
     ? "We couldn't switch to the selected workspace. Showing your main account instead."
     : null;

@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { envServer } from "@internal/core/env-server";
 import { getPricingTableId } from "@internal/billing";
-import { resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import { buildNoAccountOnboardingState } from "@internal/dashboard/onboarding-state";
 
 export default async function NoAccountPage() {
@@ -20,9 +20,10 @@ export default async function NoAccountPage() {
     notFound();
   }
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const pricingTableId = getPricingTableId(locale);
   const publishableKey = envServer.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-  const onboardingState = buildNoAccountOnboardingState();
+  const onboardingState = buildNoAccountOnboardingState(t);
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-5xl flex-col gap-8 px-4 py-12">

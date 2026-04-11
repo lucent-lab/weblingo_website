@@ -11,7 +11,7 @@ import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/au
 import { listSitesCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
-import { resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
@@ -36,8 +36,9 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
-  const onboardingState = resolveDashboardOnboardingState(auth);
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const onboardingState = resolveDashboardOnboardingState(auth, t);
   const pricingPath = `/${locale}/pricing`;
 
   return (
