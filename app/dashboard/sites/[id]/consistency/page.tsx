@@ -24,6 +24,11 @@ import {
 } from "@internal/dashboard/webhooks";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
+import {
+  buildConsistencyLocaleScopes,
+  formatConsistencyLocaleScopeLabel,
+  selectConsistencyLocaleScope,
+} from "./locale-scope";
 
 export const metadata = {
   title: "Consistency governance",
@@ -32,7 +37,7 @@ export const metadata = {
 
 type SiteConsistencyPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ targetLang?: string }>;
+  searchParams?: Promise<{ sourceLang?: string; targetLang?: string }>;
 };
 
 export default async function SiteConsistencyPage({
@@ -107,17 +112,13 @@ export default async function SiteConsistencyPage({
     notFound();
   }
 
-  const localePairs = Array.from(
-    new Map(site.locales.map((locale) => [locale.targetLang, locale.sourceLang])).entries(),
-  ).map(([targetLang, sourceLang]) => ({ targetLang, sourceLang }));
-  const availableTargetLangs = localePairs.map((pair) => pair.targetLang);
-  const requestedTargetLang = resolvedSearchParams?.targetLang;
-  const selectedTargetLang =
-    requestedTargetLang && availableTargetLangs.includes(requestedTargetLang)
-      ? requestedTargetLang
-      : (availableTargetLangs[0] ?? null);
+  const localeScopes = buildConsistencyLocaleScopes(site.locales);
+  const selectedLocaleScope = selectConsistencyLocaleScope(localeScopes, {
+    sourceLang: resolvedSearchParams?.sourceLang,
+    targetLang: resolvedSearchParams?.targetLang,
+  });
 
-  if (!selectedTargetLang) {
+  if (!selectedLocaleScope) {
     return (
       <Card>
         <CardHeader>
@@ -130,10 +131,7 @@ export default async function SiteConsistencyPage({
     );
   }
 
-  const selectedSourceLang =
-    localePairs.find((pair) => pair.targetLang === selectedTargetLang)?.sourceLang ??
-    site.locales[0]?.sourceLang ??
-    "en";
+  const { sourceLang: selectedSourceLang, targetLang: selectedTargetLang } = selectedLocaleScope;
 
   let cpmEntries: ConsistencyCpmEntry[] = [];
   let blocks: ConsistencyBlock[] = [];
@@ -194,19 +192,27 @@ export default async function SiteConsistencyPage({
         <CardHeader>
           <CardTitle>Locale scope</CardTitle>
           <CardDescription>
-            Switch locale to review canonicals, blocks, and override conflicts.
+            Switch locale pair to review canonicals, blocks, and override conflicts.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {availableTargetLangs.map((targetLang) => {
-            const active = targetLang === selectedTargetLang;
+          {localeScopes.map((scope) => {
+            const active =
+              scope.targetLang === selectedTargetLang && scope.sourceLang === selectedSourceLang;
+            const params = new URLSearchParams({
+              sourceLang: scope.sourceLang,
+              targetLang: scope.targetLang,
+            });
             const href =
-              targetLang === availableTargetLangs[0]
+              scope.sourceLang === localeScopes[0]?.sourceLang &&
+              scope.targetLang === localeScopes[0]?.targetLang
                 ? `/dashboard/sites/${site.id}/consistency`
-                : `/dashboard/sites/${site.id}/consistency?targetLang=${encodeURIComponent(targetLang)}`;
+                : `/dashboard/sites/${site.id}/consistency?${params.toString()}`;
             return (
-              <Link key={targetLang} href={href}>
-                <Badge variant={active ? "default" : "secondary"}>{targetLang}</Badge>
+              <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                <Badge variant={active ? "default" : "secondary"}>
+                  {formatConsistencyLocaleScopeLabel(scope)}
+                </Badge>
               </Link>
             );
           })}

@@ -269,6 +269,77 @@ describe("POST /api/stripe/webhook", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
+  it("continues checkout provisioning when the Stripe customer email lookup fails", async () => {
+    const checkoutPeriodEnd = 1_765_065_600;
+    const listUsers = vi.fn().mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: "user-1",
+            user_metadata: { existing: true, stripeCustomerId: "cus_123" },
+          },
+        ],
+      },
+      error: null,
+    });
+    const updateUserById = vi.fn().mockResolvedValue({ error: null });
+    const createUser = vi.fn().mockResolvedValue({ error: null });
+    createServiceRoleClient.mockReturnValue({
+      auth: { admin: { listUsers, updateUserById, createUser } },
+    });
+
+    const retrieveSubscription = vi.fn().mockResolvedValue({
+      id: "sub_123",
+      status: "active",
+      cancel_at_period_end: false,
+      current_period_end: checkoutPeriodEnd,
+      items: { data: [{ price: { id: "price_123" } }] },
+      customer: "cus_123",
+    });
+    const retrieveCustomer = vi.fn().mockRejectedValue(new Error("stripe unavailable"));
+    getStripeClient.mockReturnValue({
+      subscriptions: { retrieve: retrieveSubscription },
+      customers: { retrieve: retrieveCustomer },
+    });
+
+    const event = {
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_123",
+          mode: "subscription",
+          customer: "cus_123",
+          subscription: "sub_123",
+        },
+      },
+    } as unknown as Stripe.Event;
+    verifyStripeSignature.mockReturnValueOnce(event);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest("{}"));
+
+    expect(response.status).toBe(200);
+    expect(retrieveSubscription).toHaveBeenCalledOnce();
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_123");
+    expect(fetchUserByEmail).not.toHaveBeenCalled();
+    expect(updateUserById).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        user_metadata: expect.objectContaining({
+          existing: true,
+          stripeCustomerId: "cus_123",
+          lastStripeSubscriptionId: "sub_123",
+          stripeSubscriptionStatus: "active",
+          stripeSubscriptionPriceId: "price_123",
+          stripeSubscriptionCurrentPeriodEnd: new Date(checkoutPeriodEnd * 1000).toISOString(),
+          stripeSubscriptionCancelAtPeriodEnd: false,
+        }),
+      }),
+    );
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
   it("updates billing runtime metadata for subscription lifecycle events", async () => {
     const lifecyclePeriodEnd = 1_765_152_000;
     const listUsers = vi.fn().mockResolvedValue({
@@ -288,11 +359,10 @@ describe("POST /api/stripe/webhook", () => {
       auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
-    const retrieveCustomer = vi.fn().mockResolvedValue({ email: "billing@example.com" });
     const retrieveSubscription = vi.fn();
     getStripeClient.mockReturnValue({
       subscriptions: { retrieve: retrieveSubscription },
-      customers: { retrieve: retrieveCustomer },
+      customers: { retrieve: vi.fn() },
     });
 
     const event = {
@@ -316,8 +386,8 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(listUsers).toHaveBeenCalled();
-    expect(retrieveCustomer).toHaveBeenCalledWith("cus_456");
     expect(fetchUserByEmail).not.toHaveBeenCalled();
+    expect(getStripeClient().customers.retrieve).not.toHaveBeenCalled();
     expect(updateUserById).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({
@@ -353,11 +423,10 @@ describe("POST /api/stripe/webhook", () => {
       auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
-    const retrieveCustomer = vi.fn().mockResolvedValue({ email: null });
     const retrieveSubscription = vi.fn();
     getStripeClient.mockReturnValue({
       subscriptions: { retrieve: retrieveSubscription },
-      customers: { retrieve: retrieveCustomer },
+      customers: { retrieve: vi.fn() },
     });
 
     const event = {
@@ -381,8 +450,8 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(listUsers).toHaveBeenCalled();
-    expect(retrieveCustomer).toHaveBeenCalledWith("cus_789");
     expect(fetchUserByEmail).not.toHaveBeenCalled();
+    expect(getStripeClient().customers.retrieve).not.toHaveBeenCalled();
     expect(updateUserById).toHaveBeenCalledWith(
       "user-1",
       expect.objectContaining({
@@ -413,10 +482,9 @@ describe("POST /api/stripe/webhook", () => {
       auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
-    const retrieveCustomer = vi.fn().mockResolvedValue({ email: "billing@example.com" });
     getStripeClient.mockReturnValue({
       subscriptions: { retrieve: vi.fn() },
-      customers: { retrieve: retrieveCustomer },
+      customers: { retrieve: vi.fn() },
     });
 
     const event = {
@@ -440,7 +508,6 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(listUsers).toHaveBeenCalled();
-    expect(retrieveCustomer).toHaveBeenCalledWith("cus_abc");
     expect(updateUserById).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
   });
@@ -504,7 +571,7 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(listUsers).toHaveBeenCalledTimes(21);
-    expect(retrieveCustomer).toHaveBeenCalledWith("cus_999");
+    expect(retrieveCustomer).not.toHaveBeenCalled();
     expect(updateUserById).toHaveBeenCalledWith(
       "user-21",
       expect.objectContaining({
@@ -560,7 +627,7 @@ describe("POST /api/stripe/webhook", () => {
     const response = await POST(makeRequest("{}"));
 
     expect(response.status).toBe(200);
-    expect(retrieveCustomer).toHaveBeenCalledWith("cus_cap");
+    expect(retrieveCustomer).not.toHaveBeenCalled();
     expect(listUsers).toHaveBeenCalledTimes(25);
     expect(updateUserById).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
