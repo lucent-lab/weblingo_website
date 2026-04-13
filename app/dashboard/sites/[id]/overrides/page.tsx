@@ -160,7 +160,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   let overrideWarnings: ConsistencyOverrideHygieneWarning[] = [];
   let dataLoadError: unknown = null;
 
-  if (selectedLocaleScope) {
+  if (selectedLocaleScope && canEdit) {
     const [cpmResult, blocksResult, warningsResult] = await Promise.allSettled([
       fetchConsistencyCpm(authToken, site.id, {
         targetLang: selectedLocaleScope.targetLang,
