@@ -123,7 +123,10 @@ export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
     return null;
   }
   const retryAfterSeconds =
-    typeof value.retryAfterSeconds === "number" && Number.isFinite(value.retryAfterSeconds)
+    typeof value.retryAfterSeconds === "number" &&
+    Number.isFinite(value.retryAfterSeconds) &&
+    Number.isInteger(value.retryAfterSeconds) &&
+    value.retryAfterSeconds >= 0
       ? value.retryAfterSeconds
       : null;
   return {
