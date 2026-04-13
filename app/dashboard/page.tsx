@@ -138,6 +138,9 @@ async function OverviewActions({
           <Button disabled variant="outline">
             Add a site
           </Button>
+          <Button asChild variant="secondary">
+            <Link href={pricingPath}>Upgrade to unlock</Link>
+          </Button>
         </div>
       )}
     </div>
