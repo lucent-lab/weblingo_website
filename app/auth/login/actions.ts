@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { envServer } from "@internal/core/env-server";
+import { clearSubjectAccountId } from "@internal/dashboard/workspace";
 
 type AuthFormState = {
   error: string | null;
@@ -104,6 +105,7 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
   }
 
   revalidatePath("/", "layout");
+  await clearSubjectAccountId();
   redirect("/dashboard");
 }
 
@@ -145,5 +147,6 @@ export async function signup(_: AuthFormState, formData: FormData): Promise<Auth
   }
 
   revalidatePath("/", "layout");
+  await clearSubjectAccountId();
   redirect("/dashboard");
 }
