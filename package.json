@@ -62,7 +62,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.23",
-    "baseline-browser-mapping": "^2.9.11",
+    "baseline-browser-mapping": "^2.10.18",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.2.3",
     "happy-dom": "^20.3.0",
