@@ -135,7 +135,8 @@ describe("SiteAdminPage", () => {
       if (node.type === mocks.SiteAdminForm) {
         return node.props as Record<string, unknown>;
       }
-      return findElement(node.props?.children);
+      const props = node.props as { children?: unknown };
+      return findElement(props.children);
     }
 
     const siteAdminForm = findElement(tree);
