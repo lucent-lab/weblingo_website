@@ -47,7 +47,7 @@ import {
 import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
-  title: "Site settings",
+  title: "Settings",
   robots: { index: false, follow: false },
 };
 
@@ -145,7 +145,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the site list.",
+          "We could not complete your request. You can retry or return to the dashboard.",
         message: "Unable to load site settings.",
       });
       return (
@@ -155,7 +155,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
           message={errorView.message}
           actions={
             <Button asChild variant="outline">
-              <Link href="/dashboard/sites">Back to sites</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           }
         />
@@ -306,13 +306,13 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Site settings</h2>
+          <h2 className="text-2xl font-semibold">Settings</h2>
           <p className="text-sm text-muted-foreground">
             Manage languages, routing, and translation context for this site.
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href={`/dashboard/sites/${site.id}`}>Back to site</Link>
+          <Link href={`/dashboard/sites/${site.id}`}>Back to workspace</Link>
         </Button>
       </div>
 
@@ -333,7 +333,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
               <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`/dashboard/sites/${site.id}`}>Back to site</Link>
+              <Link href={`/dashboard/sites/${site.id}`}>Back to workspace</Link>
             </Button>
           </CardContent>
         </Card>

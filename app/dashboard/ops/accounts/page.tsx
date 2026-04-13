@@ -316,7 +316,7 @@ export default async function OpsAccountsPage({ searchParams }: AccountsPageProp
                     </Button>
                     <form action={setWorkspaceAction}>
                       <input name="subjectAccountId" type="hidden" value={account.accountId} />
-                      <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+                      <input name="redirectTo" type="hidden" value="/dashboard" />
                       <Button type="submit" variant="outline" className="w-full">
                         {openWorkspaceLabel}
                       </Button>

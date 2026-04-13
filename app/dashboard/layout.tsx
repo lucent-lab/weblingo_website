@@ -53,7 +53,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const navItems = [
     {
       href: "/dashboard",
-      label: "Overview",
+      label: "Dashboard",
       icon: <LayoutDashboard className="h-4 w-4" />,
     },
     ...(isAgency

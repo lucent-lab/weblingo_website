@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -7,31 +8,47 @@ import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { OverrideForm, SlugForm } from "../translation-forms";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { headers } from "next/headers";
 import {
   fetchGlossary,
   fetchSite,
-  WebhooksApiError,
   type GlossaryEntry,
   type Site,
+  WebhooksApiError,
 } from "@internal/dashboard/webhooks";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
+import {
+  buildConsistencyLocaleScopes,
+  formatConsistencyLocaleScopeLabel,
+  selectConsistencyLocaleScope,
+} from "../consistency/locale-scope";
+import {
+  fetchConsistencyBlocks,
+  fetchConsistencyCpm,
+  fetchConsistencyOverrideHygiene,
+  type ConsistencyBlock,
+  type ConsistencyCpmEntry,
+  type ConsistencyOverrideHygieneWarning,
+} from "@internal/dashboard/webhooks";
+import { ConsistencyManager } from "../consistency/consistency-manager";
 
 export const metadata = {
-  title: "Overrides",
+  title: "Translation rules",
   robots: { index: false, follow: false },
 };
 
 type SiteOverridesPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ sourceLang?: string; targetLang?: string }>;
 };
 
-export default async function SiteOverridesPage({ params }: SiteOverridesPageProps) {
+export default async function SiteOverridesPage({ params, searchParams }: SiteOverridesPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
@@ -99,7 +116,7 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      const message = err instanceof Error ? err.message : "Unable to load overrides.";
+      const message = err instanceof Error ? err.message : "Unable to load translation rules.";
       console.warn("[dashboard] fetchGlossary failed (unknown error)", {
         siteId: id,
         message,
@@ -112,8 +129,8 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the site list.",
-        message: "Unable to load overrides.",
+          "We could not complete your request. You can retry or return to the dashboard.",
+        message: "Unable to load translation rules.",
       });
       return (
         <ErrorStateCard
@@ -122,7 +139,7 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
           message={errorView.message}
           actions={
             <Button asChild variant="outline">
-              <Link href="/dashboard/sites">Back to sites</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           }
         />
@@ -131,7 +148,53 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
     notFound();
   }
 
-  const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
+  const targetLangs = Array.from(new Set(site.locales.map((entry) => entry.targetLang)));
+  const localeScopes = buildConsistencyLocaleScopes(site.locales);
+  const selectedLocaleScope = selectConsistencyLocaleScope(localeScopes, {
+    sourceLang: resolvedSearchParams?.sourceLang,
+    targetLang: resolvedSearchParams?.targetLang,
+  });
+
+  let cpmEntries: ConsistencyCpmEntry[] = [];
+  let blocks: ConsistencyBlock[] = [];
+  let overrideWarnings: ConsistencyOverrideHygieneWarning[] = [];
+  let dataLoadError: unknown = null;
+
+  if (selectedLocaleScope) {
+    const [cpmResult, blocksResult, warningsResult] = await Promise.allSettled([
+      fetchConsistencyCpm(authToken, site.id, {
+        targetLang: selectedLocaleScope.targetLang,
+        sourceLang: selectedLocaleScope.sourceLang,
+        limit: 100,
+        offset: 0,
+      }),
+      fetchConsistencyBlocks(authToken, site.id),
+      fetchConsistencyOverrideHygiene(authToken, site.id, {
+        targetLang: selectedLocaleScope.targetLang,
+        sourceLang: selectedLocaleScope.sourceLang,
+        limit: 100,
+        offset: 0,
+      }),
+    ]);
+
+    if (cpmResult.status === "fulfilled") {
+      cpmEntries = cpmResult.value.entries;
+    } else {
+      dataLoadError = cpmResult.reason;
+    }
+
+    if (blocksResult.status === "fulfilled") {
+      blocks = blocksResult.value.blocks;
+    } else {
+      dataLoadError = dataLoadError ?? blocksResult.reason;
+    }
+
+    if (warningsResult.status === "fulfilled") {
+      overrideWarnings = warningsResult.value.warnings;
+    } else {
+      dataLoadError = dataLoadError ?? warningsResult.reason;
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -147,12 +210,61 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
         activateHelp={activateHelp}
       />
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Translation rules</CardTitle>
+          <CardDescription>
+            Manage glossary terms, manual overrides, localized slugs, and consistency policy from
+            one surface.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Locale scope</CardTitle>
+          <CardDescription>
+            Switch locale pair to review canonicals, blocks, and override conflicts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {localeScopes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Add at least one target locale before using consistency governance.
+            </p>
+          ) : (
+            localeScopes.map((scope) => {
+              const active =
+                selectedLocaleScope !== null &&
+                scope.targetLang === selectedLocaleScope.targetLang &&
+                scope.sourceLang === selectedLocaleScope.sourceLang;
+              const params = new URLSearchParams({
+                sourceLang: scope.sourceLang,
+                targetLang: scope.targetLang,
+              });
+              const href =
+                scope.sourceLang === localeScopes[0]?.sourceLang &&
+                scope.targetLang === localeScopes[0]?.targetLang
+                  ? `/dashboard/sites/${site.id}/overrides`
+                  : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
+              return (
+                <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                  <Badge variant={active ? "default" : "secondary"}>
+                    {formatConsistencyLocaleScopeLabel(scope)}
+                  </Badge>
+                </Link>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
       {canGlossary ? (
         <Card>
           <CardHeader>
             <CardTitle>Glossary</CardTitle>
             <CardDescription>
-              Maintain terminology control and optional retranslate.
+              Maintain terminology control and optionally retranslate after glossary updates.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -205,6 +317,66 @@ export default async function SiteOverridesPage({ params }: SiteOverridesPagePro
           />
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Consistency governance</CardTitle>
+          <CardDescription>
+            Review canonical phrases, blocks, and override conflicts for the selected locale pair.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!selectedLocaleScope ? (
+            <p className="text-sm text-muted-foreground">
+              Add at least one target locale before using consistency governance.
+            </p>
+          ) : !canEdit ? (
+            <LockedFeatureCard
+              title="Consistency governance"
+              description={
+                mutationsAllowed
+                  ? "Upgrade to edit canonical phrases and block policies."
+                  : "Update billing to resume consistency governance edits."
+              }
+              pricingPath={pricingPath}
+              ctaLabel={mutationsAllowed ? "Upgrade plan" : "Update billing"}
+              badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
+            />
+          ) : dataLoadError ? (
+            (() => {
+              const errorView = resolveDashboardErrorView(dataLoadError, {
+                title: "Unable to load consistency data",
+                description:
+                  "We could not complete your request. You can retry or return to the dashboard.",
+                message: "Unable to load consistency data.",
+              });
+
+              return (
+                <ErrorStateCard
+                  title={errorView.title}
+                  description={errorView.description}
+                  message={errorView.message}
+                  actions={
+                    <Button asChild variant="outline">
+                      <Link href="/dashboard">Back to dashboard</Link>
+                    </Button>
+                  }
+                />
+              );
+            })()
+          ) : (
+            <ConsistencyManager
+              siteId={site.id}
+              sourceLang={selectedLocaleScope.sourceLang}
+              targetLang={selectedLocaleScope.targetLang}
+              canMutate={canEdit}
+              cpmEntries={cpmEntries}
+              blocks={blocks}
+              overrideWarnings={overrideWarnings}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -45,7 +45,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Overview</h2>
+          <h2 className="text-2xl font-semibold">Dashboard</h2>
           <p className="text-sm text-muted-foreground">
             Welcome back. Set up a new site or check deployment health.
           </p>
@@ -105,9 +105,6 @@ async function OverviewActions({
         <Button disabled variant="outline">
           Add a site
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/sites">All sites</Link>
-        </Button>
       </div>
     );
   }
@@ -141,14 +138,8 @@ async function OverviewActions({
           <Button disabled variant="outline">
             Add a site
           </Button>
-          <Button asChild variant="secondary">
-            <Link href={pricingPath}>Upgrade to unlock</Link>
-          </Button>
         </div>
       )}
-      <Button asChild variant="outline">
-        <Link href="/dashboard/sites">All sites</Link>
-      </Button>
     </div>
   );
 }
@@ -226,7 +217,7 @@ function OverviewActionsSkeleton() {
         Add a site
       </Button>
       <Button disabled variant="outline">
-        All sites
+        Dashboard
       </Button>
     </div>
   );

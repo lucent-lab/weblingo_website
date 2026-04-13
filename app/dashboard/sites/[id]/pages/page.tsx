@@ -26,7 +26,7 @@ import {
 import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
-  title: "Site pages",
+  title: "Pages & crawl",
   robots: { index: false, follow: false },
 };
 
@@ -159,7 +159,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the site list.",
+          "We could not complete your request. You can retry or return to the dashboard.",
         message: "Unable to load site pages.",
       });
       return (
@@ -169,7 +169,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           message={errorView.message}
           actions={
             <Button asChild variant="outline">
-              <Link href="/dashboard/sites">Back to sites</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           }
         />

@@ -106,8 +106,8 @@ export function SiteHeader({
           </Link>
         </Button>
         <Button asChild variant="link">
-          <Link href="/dashboard/sites" title="Back to list">
-            Back to list
+          <Link href="/dashboard" title="Back to dashboard">
+            Back to dashboard
           </Link>
         </Button>
       </div>

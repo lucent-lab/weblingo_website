@@ -154,7 +154,7 @@ export default async function AgencyCustomersPage({ searchParams }: CustomersPag
                       type="hidden"
                       value={customer.customerAccountId}
                     />
-                    <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+                    <input name="redirectTo" type="hidden" value="/dashboard" />
                     <Button type="submit" variant="secondary">
                       View sites
                     </Button>

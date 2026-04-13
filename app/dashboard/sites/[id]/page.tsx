@@ -115,7 +115,7 @@ export default async function SitePage({ params }: SitePageProps) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the site list.",
+          "We could not complete your request. You can retry or return to the dashboard.",
         message: "Unable to load site pages.",
       });
       return (
@@ -125,7 +125,7 @@ export default async function SitePage({ params }: SitePageProps) {
           message={errorView.message}
           actions={
             <Button asChild variant="outline">
-              <Link href="/dashboard/sites">Back to sites</Link>
+              <Link href="/dashboard">Back to dashboard</Link>
             </Button>
           }
         />
@@ -162,7 +162,7 @@ export default async function SitePage({ params }: SitePageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Configuration</CardTitle>
+          <CardTitle>Site workspace</CardTitle>
           <CardDescription>
             Source, languages, and route pattern captured from onboarding.
           </CardDescription>

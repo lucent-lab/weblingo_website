@@ -53,7 +53,7 @@ export default async function NewSitePage() {
             <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard/sites">Back to sites</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </CardContent>
       </Card>

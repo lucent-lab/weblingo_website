@@ -73,7 +73,7 @@ export default async function OpsAccountDetailPage({ params }: AccountDetailPage
           <div className="flex flex-wrap gap-2">
             <form action={setWorkspaceAction}>
               <input name="subjectAccountId" type="hidden" value={account.accountId} />
-              <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+              <input name="redirectTo" type="hidden" value="/dashboard" />
               <Button type="submit" variant="secondary">
                 Open workspace
               </Button>
