@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Info } from "lucide-react";
 
 import { InternalAdminPolicyCard } from "./internal-admin-policy-card";
+import { PageSectionNav } from "../page-section-nav";
 import { SiteAdminForm } from "./site-admin-form";
 import { SiteShowcaseCard } from "./site-showcase-card";
 
@@ -316,6 +317,19 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
         </Button>
       </div>
 
+      <PageSectionNav
+        title="On this page"
+        description="Jump directly to the settings section you need."
+        links={[
+          { href: "#site-settings", label: "Site settings" },
+          { href: "#localization", label: "Localization" },
+          { href: "#serving", label: "Serving" },
+          { href: "#deployments", label: "Deployments" },
+          { href: "#deployment-history", label: "Deployment history" },
+          { href: "#crawl-control", label: "Crawl control" },
+        ]}
+      />
+
       {billingBlocked || hasLockedSections ? (
         <Card className="border-border/60 bg-muted/30">
           <CardHeader>
@@ -350,72 +364,74 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
           }
         />
       ) : null}
-      <SiteAdminForm
-        siteId={site.id}
-        sourceUrl={site.sourceUrl}
-        sourceLang={site.locales[0]?.sourceLang ?? ""}
-        targets={targetLangs}
-        aliases={localeAliases}
-        pattern={site.routeConfig?.pattern ?? null}
-        maxLocales={site.maxLocales ?? null}
-        servingMode={site.servingMode}
-        crawlCaptureMode={site.routeConfig?.crawlCaptureMode ?? "template_plus_hydrated"}
-        crawlCaptureCopy={{
-          title: crawlCaptureTitle,
-          description: crawlCaptureDescription,
-          label: crawlCaptureLabel,
-          help: crawlCaptureHelp,
-          options: {
-            templatePlusHydrated: crawlCaptureOptionTemplatePlusHydrated,
-            templateOnly: crawlCaptureOptionTemplateOnly,
-            hydratedOnly: crawlCaptureOptionHydratedOnly,
-          },
-        }}
-        clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? true}
-        clientRuntimeCopy={{
-          title: clientRuntimeTitle,
-          description: clientRuntimeDescription,
-          label: clientRuntimeLabel,
-          help: clientRuntimeHelp,
-        }}
-        spaRefresh={site.routeConfig?.spaRefresh ?? null}
-        spaRefreshCopy={{
-          title: spaRefreshTitle,
-          description: spaRefreshDescription,
-          label: spaRefreshLabel,
-          help: spaRefreshHelp,
-          note: spaRefreshNote,
-          missingFallbackLabel: spaRefreshMissingFallbackLabel,
-          missingFallbackHelp: spaRefreshMissingFallbackHelp,
-          errorFallbackLabel: spaRefreshErrorFallbackLabel,
-          errorFallbackHelp: spaRefreshErrorFallbackHelp,
-          sectionScopeLabel: spaRefreshSectionScopeLabel,
-          sectionScopeHelp: spaRefreshSectionScopeHelp,
-          optionGlobalOnly: spaRefreshOptionGlobalOnly,
-          optionBaseline: spaRefreshOptionBaseline,
-        }}
-        translatableAttributes={site.routeConfig?.translatableAttributes ?? null}
-        translatableAttributesCopy={{
-          title: translatableAttributesTitle,
-          description: translatableAttributesDescription,
-          label: translatableAttributesLabel,
-          help: translatableAttributesHelp,
-          placeholder: translatableAttributesPlaceholder,
-        }}
-        lockedHelp={lockedHelp}
-        canEditBasics={settingsAccess.canEditBasics}
-        canEditLocales={settingsAccess.canEditLocales}
-        canEditServingMode={settingsAccess.canEditServingMode}
-        canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
-        canEditClientRuntime={settingsAccess.canEditClientRuntime}
-        canEditSpaRefresh={settingsAccess.canEditSpaRefresh}
-        canEditTranslatableAttributes={settingsAccess.canEditTranslatableAttributes}
-        canEditProfile={settingsAccess.canEditProfile}
-        supportedLanguages={supportedLanguages}
-        displayLocale={displayLocale}
-        initialBrandVoice={brandVoice}
-        initialSiteProfileNotes={siteProfileNotes}
-      />
+      <section id="site-settings" className="scroll-mt-24">
+        <SiteAdminForm
+          siteId={site.id}
+          sourceUrl={site.sourceUrl}
+          sourceLang={site.locales[0]?.sourceLang ?? ""}
+          targets={targetLangs}
+          aliases={localeAliases}
+          pattern={site.routeConfig?.pattern ?? null}
+          maxLocales={site.maxLocales ?? null}
+          servingMode={site.servingMode}
+          crawlCaptureMode={site.routeConfig?.crawlCaptureMode ?? "template_plus_hydrated"}
+          crawlCaptureCopy={{
+            title: crawlCaptureTitle,
+            description: crawlCaptureDescription,
+            label: crawlCaptureLabel,
+            help: crawlCaptureHelp,
+            options: {
+              templatePlusHydrated: crawlCaptureOptionTemplatePlusHydrated,
+              templateOnly: crawlCaptureOptionTemplateOnly,
+              hydratedOnly: crawlCaptureOptionHydratedOnly,
+            },
+          }}
+          clientRuntimeEnabled={site.routeConfig?.clientRuntimeEnabled ?? true}
+          clientRuntimeCopy={{
+            title: clientRuntimeTitle,
+            description: clientRuntimeDescription,
+            label: clientRuntimeLabel,
+            help: clientRuntimeHelp,
+          }}
+          spaRefresh={site.routeConfig?.spaRefresh ?? null}
+          spaRefreshCopy={{
+            title: spaRefreshTitle,
+            description: spaRefreshDescription,
+            label: spaRefreshLabel,
+            help: spaRefreshHelp,
+            note: spaRefreshNote,
+            missingFallbackLabel: spaRefreshMissingFallbackLabel,
+            missingFallbackHelp: spaRefreshMissingFallbackHelp,
+            errorFallbackLabel: spaRefreshErrorFallbackLabel,
+            errorFallbackHelp: spaRefreshErrorFallbackHelp,
+            sectionScopeLabel: spaRefreshSectionScopeLabel,
+            sectionScopeHelp: spaRefreshSectionScopeHelp,
+            optionGlobalOnly: spaRefreshOptionGlobalOnly,
+            optionBaseline: spaRefreshOptionBaseline,
+          }}
+          translatableAttributes={site.routeConfig?.translatableAttributes ?? null}
+          translatableAttributesCopy={{
+            title: translatableAttributesTitle,
+            description: translatableAttributesDescription,
+            label: translatableAttributesLabel,
+            help: translatableAttributesHelp,
+            placeholder: translatableAttributesPlaceholder,
+          }}
+          lockedHelp={lockedHelp}
+          canEditBasics={settingsAccess.canEditBasics}
+          canEditLocales={settingsAccess.canEditLocales}
+          canEditServingMode={settingsAccess.canEditServingMode}
+          canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
+          canEditClientRuntime={settingsAccess.canEditClientRuntime}
+          canEditSpaRefresh={settingsAccess.canEditSpaRefresh}
+          canEditTranslatableAttributes={settingsAccess.canEditTranslatableAttributes}
+          canEditProfile={settingsAccess.canEditProfile}
+          supportedLanguages={supportedLanguages}
+          displayLocale={displayLocale}
+          initialBrandVoice={brandVoice}
+          initialSiteProfileNotes={siteProfileNotes}
+        />
+      </section>
       {canManageShowcase ? (
         <SiteShowcaseCard
           siteId={site.id}
@@ -427,513 +443,529 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
         />
       ) : null}
 
-      <Card className="border-border/60 bg-muted/20">
-        <CardHeader>
-          <CardTitle>Localization</CardTitle>
-          <CardDescription>
-            Active sites serve localized pages and count toward your plan limit. Paused sites keep
-            translations but stop serving and free the slot.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {slotSummary ? (
-            <div className="rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground">
-              {slotSummary}
-            </div>
-          ) : null}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              Localization status:{" "}
-              <span className="font-semibold text-foreground">
-                {site.status === "active" ? "Enabled" : "Paused"}
-              </span>
-            </p>
-            {site.status === "active" ? (
-              canDeactivate ? (
+      <section id="localization" className="scroll-mt-24">
+        <Card className="border-border/60 bg-muted/20">
+          <CardHeader>
+            <CardTitle>Localization</CardTitle>
+            <CardDescription>
+              Active sites serve localized pages and count toward your plan limit. Paused sites keep
+              translations but stop serving and free the slot.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {slotSummary ? (
+              <div className="rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground">
+                {slotSummary}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Localization status:{" "}
+                <span className="font-semibold text-foreground">
+                  {site.status === "active" ? "Enabled" : "Paused"}
+                </span>
+              </p>
+              {site.status === "active" ? (
+                canDeactivate ? (
+                  <ActionForm
+                    action={deactivateSiteAction}
+                    loading="Pausing localization..."
+                    success="Localization paused."
+                    error="Unable to pause localization."
+                    refreshOnSuccess={true}
+                  >
+                    <>
+                      <input name="siteId" type="hidden" value={site.id} />
+                      <Button type="submit" variant="destructive">
+                        Pause localization
+                      </Button>
+                    </>
+                  </ActionForm>
+                ) : (
+                  <Button variant="outline" disabled>
+                    Pause localization
+                  </Button>
+                )
+              ) : canActivate ? (
                 <ActionForm
-                  action={deactivateSiteAction}
-                  loading="Pausing localization..."
-                  success="Localization paused."
-                  error="Unable to pause localization."
+                  action={activateSiteAction}
+                  loading="Enabling localization..."
+                  success="Localization enabled."
+                  error="Unable to enable localization."
                   refreshOnSuccess={true}
                 >
                   <>
                     <input name="siteId" type="hidden" value={site.id} />
-                    <Button type="submit" variant="destructive">
-                      Pause localization
+                    <Button type="submit" variant="outline" disabled={activationDisabled}>
+                      Enable localization
                     </Button>
                   </>
                 </ActionForm>
               ) : (
                 <Button variant="outline" disabled>
-                  Pause localization
+                  Enable localization
                 </Button>
-              )
-            ) : canActivate ? (
-              <ActionForm
-                action={activateSiteAction}
-                loading="Enabling localization..."
-                success="Localization enabled."
-                error="Unable to enable localization."
-                refreshOnSuccess={true}
-              >
-                <>
-                  <input name="siteId" type="hidden" value={site.id} />
-                  <Button type="submit" variant="outline" disabled={activationDisabled}>
-                    Enable localization
-                  </Button>
-                </>
-              </ActionForm>
-            ) : (
-              <Button variant="outline" disabled>
-                Enable localization
-              </Button>
-            )}
-          </div>
-          <div className="rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">Serving:</span>{" "}
-            {hasVerifiedDomain
-              ? `${verifiedDomains} verified domain(s). Serving turns on after publish.`
-              : "Off until you verify at least one domain."}
-          </div>
-          {site.status === "inactive" && !hasAvailableSlot ? (
-            <p className="text-xs text-destructive">
-              No active site slots available. Pause localization for another site or upgrade your
-              plan to add more.
-            </p>
-          ) : null}
-          {site.status === "inactive" && slotCheckUnavailable ? (
+              )}
+            </div>
+            <div className="rounded-md border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Serving:</span>{" "}
+              {hasVerifiedDomain
+                ? `${verifiedDomains} verified domain(s). Serving turns on after publish.`
+                : "Off until you verify at least one domain."}
+            </div>
+            {site.status === "inactive" && !hasAvailableSlot ? (
+              <p className="text-xs text-destructive">
+                No active site slots available. Pause localization for another site or upgrade your
+                plan to add more.
+              </p>
+            ) : null}
+            {site.status === "inactive" && slotCheckUnavailable ? (
+              <p className="text-xs text-muted-foreground">
+                We could not verify slot availability right now. We will validate when you enable
+                localization.
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">
-              We could not verify slot availability right now. We will validate when you enable
-              localization.
+              Paused sites do not count toward your active site limit.
             </p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            Paused sites do not count toward your active site limit.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Serving</CardTitle>
-          <CardDescription>
-            Serve translated pages on verified domains after a successful publish.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              Serving status:{" "}
-              <span className="font-semibold text-foreground">
-                {servingLive
-                  ? "Live"
-                  : site.status !== "active"
-                    ? "Off (localization paused)"
-                    : hasVerifiedDomain
-                      ? "Ready to publish"
-                      : "Off (verify domain)"}
-              </span>
-            </p>
-            {servingLive && firstServingDomain ? (
-              <Button asChild variant="outline">
-                <Link
-                  href={`https://${firstServingDomain}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={servingActionView}
-                >
-                  View live site
-                </Link>
-              </Button>
-            ) : site.status !== "active" ? (
-              <Button variant="outline" disabled title="Enable localization first">
-                Enable localization first
-              </Button>
-            ) : !hasVerifiedDomain ? (
-              <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${site.id}#domains`} title={servingActionVerify}>
-                  Verify a domain
-                </Link>
-              </Button>
-            ) : canCrawl ? (
-              <ActionForm
-                action={triggerCrawlAction}
-                loading="Starting crawl..."
-                success="Crawl enqueued."
-                error="Unable to start crawl."
-                refreshOnSuccess={false}
-              >
-                <>
-                  <input name="siteId" type="hidden" value={site.id} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={siteCrawlLimitReached}
-                    title={
-                      siteCrawlLimitReached ? "Daily site crawl limit reached." : "Start serving"
-                    }
+      <section id="serving" className="scroll-mt-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>Serving</CardTitle>
+            <CardDescription>
+              Serve translated pages on verified domains after a successful publish.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Serving status:{" "}
+                <span className="font-semibold text-foreground">
+                  {servingLive
+                    ? "Live"
+                    : site.status !== "active"
+                      ? "Off (localization paused)"
+                      : hasVerifiedDomain
+                        ? "Ready to publish"
+                        : "Off (verify domain)"}
+                </span>
+              </p>
+              {servingLive && firstServingDomain ? (
+                <Button asChild variant="outline">
+                  <Link
+                    href={`https://${firstServingDomain}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={servingActionView}
                   >
-                    Start serving
-                  </Button>
-                </>
-              </ActionForm>
-            ) : (
-              <Button variant="outline" disabled title="Start serving">
-                Start serving
-              </Button>
-            )}
-          </div>
-          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-            {servingLive
-              ? "Serving translated pages on verified domains."
-              : siteCrawlLimitReached
-                ? "Daily crawl limit reached. Try again tomorrow or upgrade your plan."
-                : site.status !== "active"
-                  ? "Enable localization to generate translations before serving."
-                  : hasVerifiedDomain
-                    ? "Run a crawl to publish the latest translations and start serving them."
-                    : "Verify at least one domain to start serving translated pages."}
-          </div>
-          {servingRows.length ? (
-            <div className="space-y-2">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{servingLanguagesTitle}</p>
-                <p className="text-xs text-muted-foreground">{servingLanguagesDescription}</p>
-              </div>
-              <div className="overflow-x-auto rounded-lg border border-border/60">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left">{servingLanguageLabel}</th>
-                      <th className="px-3 py-2 text-left">{servingDomainLabel}</th>
-                      <th className="px-3 py-2 text-left">{servingStatusLabel}</th>
-                      <th className="px-3 py-2 text-right">{servingActionLabel}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {servingRows.map((deployment) => {
-                      const domainStatus = deployment.domainStatus ?? null;
-                      const servingLabel =
-                        servingStatusLabels[deployment.servingStatus] ?? deployment.servingStatus;
-                      const servingVariant = resolveServingStatusVariant(deployment.servingStatus);
-                      const domainVariant = resolveDomainStatusVariant(domainStatus);
-                      const canStartServing = canCrawl && !siteCrawlLimitReached;
-                      const canManageTranslations = canCrawl;
-                      const toggleLabel = deployment.serveEnabled
-                        ? servingActionDisable
-                        : servingActionEnable;
-                      const toggleValue = deployment.serveEnabled ? "false" : "true";
-                      const showToggle = deployment.servingStatus !== "inactive";
-                      return (
-                        <tr
-                          key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
-                          className="border-t border-border/50"
-                        >
-                          <td className="px-3 py-3 align-top font-semibold text-foreground">
-                            {deployment.targetLang.toUpperCase()}
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-foreground">{deployment.domain ?? "—"}</span>
-                              {domainStatus ? (
-                                <Badge variant={domainVariant}>{domainStatus}</Badge>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <Badge variant={servingVariant}>{servingLabel}</Badge>
-                          </td>
-                          <td className="px-3 py-3 text-right align-top">
-                            <div className="flex flex-col items-end gap-2">
-                              {deployment.servingStatus === "serving" && deployment.domain ? (
-                                <Button asChild size="sm" variant="outline">
-                                  <Link
-                                    href={`https://${deployment.domain}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    title={servingActionView}
+                    View live site
+                  </Link>
+                </Button>
+              ) : site.status !== "active" ? (
+                <Button variant="outline" disabled title="Enable localization first">
+                  Enable localization first
+                </Button>
+              ) : !hasVerifiedDomain ? (
+                <Button asChild variant="outline">
+                  <Link href={`/dashboard/sites/${site.id}#domains`} title={servingActionVerify}>
+                    Verify a domain
+                  </Link>
+                </Button>
+              ) : canCrawl ? (
+                <ActionForm
+                  action={triggerCrawlAction}
+                  loading="Starting crawl..."
+                  success="Crawl enqueued."
+                  error="Unable to start crawl."
+                  refreshOnSuccess={false}
+                >
+                  <>
+                    <input name="siteId" type="hidden" value={site.id} />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={siteCrawlLimitReached}
+                      title={
+                        siteCrawlLimitReached ? "Daily site crawl limit reached." : "Start serving"
+                      }
+                    >
+                      Start serving
+                    </Button>
+                  </>
+                </ActionForm>
+              ) : (
+                <Button variant="outline" disabled title="Start serving">
+                  Start serving
+                </Button>
+              )}
+            </div>
+            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              {servingLive
+                ? "Serving translated pages on verified domains."
+                : siteCrawlLimitReached
+                  ? "Daily crawl limit reached. Try again tomorrow or upgrade your plan."
+                  : site.status !== "active"
+                    ? "Enable localization to generate translations before serving."
+                    : hasVerifiedDomain
+                      ? "Run a crawl to publish the latest translations and start serving them."
+                      : "Verify at least one domain to start serving translated pages."}
+            </div>
+            {servingRows.length ? (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{servingLanguagesTitle}</p>
+                  <p className="text-xs text-muted-foreground">{servingLanguagesDescription}</p>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-border/60">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2 text-left">{servingLanguageLabel}</th>
+                        <th className="px-3 py-2 text-left">{servingDomainLabel}</th>
+                        <th className="px-3 py-2 text-left">{servingStatusLabel}</th>
+                        <th className="px-3 py-2 text-right">{servingActionLabel}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {servingRows.map((deployment) => {
+                        const domainStatus = deployment.domainStatus ?? null;
+                        const servingLabel =
+                          servingStatusLabels[deployment.servingStatus] ?? deployment.servingStatus;
+                        const servingVariant = resolveServingStatusVariant(
+                          deployment.servingStatus,
+                        );
+                        const domainVariant = resolveDomainStatusVariant(domainStatus);
+                        const canStartServing = canCrawl && !siteCrawlLimitReached;
+                        const canManageTranslations = canCrawl;
+                        const toggleLabel = deployment.serveEnabled
+                          ? servingActionDisable
+                          : servingActionEnable;
+                        const toggleValue = deployment.serveEnabled ? "false" : "true";
+                        const showToggle = deployment.servingStatus !== "inactive";
+                        return (
+                          <tr
+                            key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
+                            className="border-t border-border/50"
+                          >
+                            <td className="px-3 py-3 align-top font-semibold text-foreground">
+                              {deployment.targetLang.toUpperCase()}
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-foreground">{deployment.domain ?? "—"}</span>
+                                {domainStatus ? (
+                                  <Badge variant={domainVariant}>{domainStatus}</Badge>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 align-top">
+                              <Badge variant={servingVariant}>{servingLabel}</Badge>
+                            </td>
+                            <td className="px-3 py-3 text-right align-top">
+                              <div className="flex flex-col items-end gap-2">
+                                {deployment.servingStatus === "serving" && deployment.domain ? (
+                                  <Button asChild size="sm" variant="outline">
+                                    <Link
+                                      href={`https://${deployment.domain}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title={servingActionView}
+                                    >
+                                      {servingActionView}
+                                    </Link>
+                                  </Button>
+                                ) : deployment.servingStatus === "ready" ? (
+                                  <div className="flex flex-col items-end gap-2">
+                                    <ActionForm
+                                      action={translateAndServeAction}
+                                      loading="Starting translation..."
+                                      success="Translation started."
+                                      error="Unable to start translation."
+                                      refreshOnSuccess={false}
+                                    >
+                                      <>
+                                        <input name="siteId" type="hidden" value={site.id} />
+                                        <input
+                                          name="siteStatus"
+                                          type="hidden"
+                                          value={site.status}
+                                        />
+                                        <input
+                                          name="targetLang"
+                                          type="hidden"
+                                          value={deployment.targetLang}
+                                        />
+                                        <Button
+                                          type="submit"
+                                          size="sm"
+                                          variant="outline"
+                                          disabled={
+                                            !canStartServing || Boolean(deployment.translationRun)
+                                          }
+                                          title={
+                                            deployment.translationRun
+                                              ? "Translation already running."
+                                              : canStartServing
+                                                ? servingActionTranslate
+                                                : "Daily site crawl limit reached."
+                                          }
+                                        >
+                                          {servingActionTranslate}
+                                        </Button>
+                                      </>
+                                    </ActionForm>
+                                    {deployment.translationRun ? (
+                                      <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+                                        <span>
+                                          Translation{" "}
+                                          {deployment.translationRun.status === "queued"
+                                            ? "queued"
+                                            : "in progress"}
+                                          {deployment.translationRun.pagesTotal
+                                            ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
+                                            : ""}
+                                        </span>
+                                        <ActionForm
+                                          action={cancelTranslationRunAction}
+                                          loading="Cancelling run..."
+                                          success="Translation run cancelled."
+                                          error="Unable to cancel run."
+                                        >
+                                          <>
+                                            <input name="siteId" type="hidden" value={site.id} />
+                                            <input
+                                              name="runId"
+                                              type="hidden"
+                                              value={deployment.translationRun.id}
+                                            />
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              type="submit"
+                                              disabled={!canManageTranslations}
+                                              title="Cancel"
+                                            >
+                                              Cancel
+                                            </Button>
+                                          </>
+                                        </ActionForm>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : deployment.servingStatus === "needs_domain" ? (
+                                  <Button asChild size="sm" variant="outline">
+                                    <Link
+                                      href={`/dashboard/sites/${site.id}#domains`}
+                                      title={servingActionVerify}
+                                    >
+                                      {servingActionVerify}
+                                    </Link>
+                                  </Button>
+                                ) : deployment.servingStatus === "disabled" ? null : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled
+                                    title={servingActionEnable}
                                   >
-                                    {servingActionView}
-                                  </Link>
-                                </Button>
-                              ) : deployment.servingStatus === "ready" ? (
-                                <div className="flex flex-col items-end gap-2">
+                                    {servingActionEnable}
+                                  </Button>
+                                )}
+                                {showToggle ? (
                                   <ActionForm
-                                    action={translateAndServeAction}
-                                    loading="Starting translation..."
-                                    success="Translation started."
-                                    error="Unable to start translation."
-                                    refreshOnSuccess={false}
+                                    action={setLocaleServingAction}
+                                    loading="Updating serving..."
+                                    success="Serving updated."
+                                    error="Unable to update serving."
                                   >
                                     <>
                                       <input name="siteId" type="hidden" value={site.id} />
-                                      <input name="siteStatus" type="hidden" value={site.status} />
                                       <input
                                         name="targetLang"
                                         type="hidden"
                                         value={deployment.targetLang}
                                       />
+                                      <input name="enabled" type="hidden" value={toggleValue} />
                                       <Button
-                                        type="submit"
                                         size="sm"
                                         variant="outline"
-                                        disabled={
-                                          !canStartServing || Boolean(deployment.translationRun)
-                                        }
-                                        title={
-                                          deployment.translationRun
-                                            ? "Translation already running."
-                                            : canStartServing
-                                              ? servingActionTranslate
-                                              : "Daily site crawl limit reached."
-                                        }
+                                        disabled={!canToggleServing}
+                                        title={toggleLabel}
                                       >
-                                        {servingActionTranslate}
+                                        {toggleLabel}
                                       </Button>
                                     </>
                                   </ActionForm>
-                                  {deployment.translationRun ? (
-                                    <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
-                                      <span>
-                                        Translation{" "}
-                                        {deployment.translationRun.status === "queued"
-                                          ? "queued"
-                                          : "in progress"}
-                                        {deployment.translationRun.pagesTotal
-                                          ? ` (${deployment.translationRun.pagesCompleted}/${deployment.translationRun.pagesTotal})`
-                                          : ""}
-                                      </span>
-                                      <ActionForm
-                                        action={cancelTranslationRunAction}
-                                        loading="Cancelling run..."
-                                        success="Translation run cancelled."
-                                        error="Unable to cancel run."
-                                      >
-                                        <>
-                                          <input name="siteId" type="hidden" value={site.id} />
-                                          <input
-                                            name="runId"
-                                            type="hidden"
-                                            value={deployment.translationRun.id}
-                                          />
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            type="submit"
-                                            disabled={!canManageTranslations}
-                                            title="Cancel"
-                                          >
-                                            Cancel
-                                          </Button>
-                                        </>
-                                      </ActionForm>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : deployment.servingStatus === "needs_domain" ? (
-                                <Button asChild size="sm" variant="outline">
-                                  <Link
-                                    href={`/dashboard/sites/${site.id}#domains`}
-                                    title={servingActionVerify}
-                                  >
-                                    {servingActionVerify}
-                                  </Link>
-                                </Button>
-                              ) : deployment.servingStatus === "disabled" ? null : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled
-                                  title={servingActionEnable}
-                                >
-                                  {servingActionEnable}
-                                </Button>
-                              )}
-                              {showToggle ? (
-                                <ActionForm
-                                  action={setLocaleServingAction}
-                                  loading="Updating serving..."
-                                  success="Serving updated."
-                                  error="Unable to update serving."
-                                >
-                                  <>
-                                    <input name="siteId" type="hidden" value={site.id} />
-                                    <input
-                                      name="targetLang"
-                                      type="hidden"
-                                      value={deployment.targetLang}
-                                    />
-                                    <input name="enabled" type="hidden" value={toggleValue} />
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={!canToggleServing}
-                                      title={toggleLabel}
-                                    >
-                                      {toggleLabel}
-                                    </Button>
-                                  </>
-                                </ActionForm>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="deployments" className="scroll-mt-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>{deploymentsTitle}</CardTitle>
+            <CardDescription>{deploymentsDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {deployments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{deploymentsEmpty}</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border/60">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left">{deploymentLanguageLabel}</th>
+                      <th className="px-3 py-2 text-left">
+                        <InfoHeader
+                          label={deploymentStatusLabel}
+                          helpLabel={deploymentStatusHelpLabel}
+                          helpText={deploymentStatusHelp}
+                        />
+                      </th>
+                      <th className="px-3 py-2 text-left">
+                        <InfoHeader
+                          label={deploymentIdLabel}
+                          helpLabel={deploymentIdHelpLabel}
+                          helpText={deploymentIdHelp}
+                        />
+                      </th>
+                      <th className="px-3 py-2 text-left">
+                        <InfoHeader
+                          label={activeDeploymentLabel}
+                          helpLabel={activeDeploymentHelpLabel}
+                          helpText={activeDeploymentHelp}
+                        />
+                      </th>
+                      <th className="px-3 py-2 text-left">
+                        <InfoHeader
+                          label={deploymentRouteLabel}
+                          helpLabel={deploymentRouteHelpLabel}
+                          helpText={deploymentRouteHelp}
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deployments.map((deployment) => (
+                      <tr key={`${deployment.targetLang}-${deployment.deploymentId ?? "none"}`}>
+                        <td className="px-3 py-3 align-top font-semibold text-foreground">
+                          {deployment.targetLang.toUpperCase()}
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <div className="flex flex-col gap-2">
+                            <Badge variant="outline">{deployment.status}</Badge>
+                            <DeploymentCompletenessBadge completeness={deployment.completeness} />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          {renderOptionalValue(deployment.deploymentId, true)}
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          {renderOptionalValue(deployment.activeDeploymentId, true)}
+                        </td>
+                        <td className="px-3 py-3 align-top text-muted-foreground">
+                          {renderOptionalValue(deployment.routePrefix, false)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{deploymentsTitle}</CardTitle>
-          <CardDescription>{deploymentsDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {deployments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{deploymentsEmpty}</p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{deploymentLanguageLabel}</th>
-                    <th className="px-3 py-2 text-left">
-                      <InfoHeader
-                        label={deploymentStatusLabel}
-                        helpLabel={deploymentStatusHelpLabel}
-                        helpText={deploymentStatusHelp}
-                      />
-                    </th>
-                    <th className="px-3 py-2 text-left">
-                      <InfoHeader
-                        label={deploymentIdLabel}
-                        helpLabel={deploymentIdHelpLabel}
-                        helpText={deploymentIdHelp}
-                      />
-                    </th>
-                    <th className="px-3 py-2 text-left">
-                      <InfoHeader
-                        label={activeDeploymentLabel}
-                        helpLabel={activeDeploymentHelpLabel}
-                        helpText={activeDeploymentHelp}
-                      />
-                    </th>
-                    <th className="px-3 py-2 text-left">
-                      <InfoHeader
-                        label={deploymentRouteLabel}
-                        helpLabel={deploymentRouteHelpLabel}
-                        helpText={deploymentRouteHelp}
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deployments.map((deployment) => (
-                    <tr key={`${deployment.targetLang}-${deployment.deploymentId ?? "none"}`}>
-                      <td className="px-3 py-3 align-top font-semibold text-foreground">
-                        {deployment.targetLang.toUpperCase()}
-                      </td>
-                      <td className="px-3 py-3 align-top">
-                        <div className="flex flex-col gap-2">
-                          <Badge variant="outline">{deployment.status}</Badge>
-                          <DeploymentCompletenessBadge completeness={deployment.completeness} />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 align-top">
-                        {renderOptionalValue(deployment.deploymentId, true)}
-                      </td>
-                      <td className="px-3 py-3 align-top">
-                        {renderOptionalValue(deployment.activeDeploymentId, true)}
-                      </td>
-                      <td className="px-3 py-3 align-top text-muted-foreground">
-                        {renderOptionalValue(deployment.routePrefix, false)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{deploymentHistoryTitle}</CardTitle>
-          <CardDescription>{deploymentHistoryDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DeploymentHistoryTable history={deploymentHistory} locale={displayLocale} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Force full website crawl</CardTitle>
-          <CardDescription>
-            Run a full crawl to capture source changes and refresh translations immediately.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Allowed per day:{" "}
-                <span className="font-semibold text-foreground">{siteCrawlLimitLabel}</span>
-              </p>
-              <p>
-                Remaining today:{" "}
-                <span className="font-semibold text-foreground">{siteCrawlRemainingLabel}</span>
-              </p>
-            </div>
-            {canCrawl ? (
-              <ActionForm
-                action={triggerCrawlAction}
-                loading="Starting crawl..."
-                success="Crawl enqueued."
-                error="Unable to enqueue crawl."
-                refreshOnSuccess={false}
-              >
-                <>
-                  <input name="siteId" type="hidden" value={site.id} />
-                  <input name="force" type="hidden" value="true" />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={!crawlReady || siteCrawlLimitReached}
-                    title={
-                      !crawlReady
-                        ? "Enable localization to crawl."
-                        : siteCrawlLimitReached
-                          ? "Daily site crawl limit reached."
-                          : "Enqueue a full-site crawl."
-                    }
-                  >
-                    Force full website crawl
-                  </Button>
-                </>
-              </ActionForm>
-            ) : (
-              <Button variant="outline" disabled>
-                Force full website crawl
-              </Button>
             )}
-          </div>
-          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-            {siteCrawlLimitReached
-              ? "Daily crawl limit reached. Try again tomorrow or upgrade your plan."
-              : !crawlReady
-                ? "Enable localization before forcing a crawl."
-                : "Use this after publishing changes on your source site to refresh translations."}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="deployment-history" className="scroll-mt-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>{deploymentHistoryTitle}</CardTitle>
+            <CardDescription>{deploymentHistoryDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DeploymentHistoryTable history={deploymentHistory} locale={displayLocale} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="crawl-control" className="scroll-mt-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>Force full website crawl</CardTitle>
+            <CardDescription>
+              Run a full crawl to capture source changes and refresh translations immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  Allowed per day:{" "}
+                  <span className="font-semibold text-foreground">{siteCrawlLimitLabel}</span>
+                </p>
+                <p>
+                  Remaining today:{" "}
+                  <span className="font-semibold text-foreground">{siteCrawlRemainingLabel}</span>
+                </p>
+              </div>
+              {canCrawl ? (
+                <ActionForm
+                  action={triggerCrawlAction}
+                  loading="Starting crawl..."
+                  success="Crawl enqueued."
+                  error="Unable to enqueue crawl."
+                  refreshOnSuccess={false}
+                >
+                  <>
+                    <input name="siteId" type="hidden" value={site.id} />
+                    <input name="force" type="hidden" value="true" />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={!crawlReady || siteCrawlLimitReached}
+                      title={
+                        !crawlReady
+                          ? "Enable localization to crawl."
+                          : siteCrawlLimitReached
+                            ? "Daily site crawl limit reached."
+                            : "Enqueue a full-site crawl."
+                      }
+                    >
+                      Force full website crawl
+                    </Button>
+                  </>
+                </ActionForm>
+              ) : (
+                <Button variant="outline" disabled>
+                  Force full website crawl
+                </Button>
+              )}
+            </div>
+            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              {siteCrawlLimitReached
+                ? "Daily crawl limit reached. Try again tomorrow or upgrade your plan."
+                : !crawlReady
+                  ? "Enable localization before forcing a crawl."
+                  : "Use this after publishing changes on your source site to refresh translations."}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

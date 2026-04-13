@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { GlossaryEditor } from "../glossary-editor";
 import { LockedFeatureCard } from "../locked-feature-card";
+import { PageSectionNav } from "../page-section-nav";
 import { SiteHeader } from "../site-header";
 import { OverrideForm, SlugForm } from "../translation-forms";
 
@@ -105,7 +106,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
     glossary = glossaryResult.value;
   } else {
     const err = glossaryResult.reason;
-    if (err instanceof WebhooksApiError) {
+    if (err instanceof WebhooksApiError && err.status === 404) {
+      glossary = [];
+    } else if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchGlossary failed", {
         siteId: id,
         status: err.status,
@@ -220,163 +223,189 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         </CardHeader>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Locale scope</CardTitle>
-          <CardDescription>
-            Switch locale pair to review canonicals, blocks, and override conflicts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {localeScopes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Add at least one target locale before using consistency governance.
-            </p>
-          ) : (
-            localeScopes.map((scope) => {
-              const active =
-                selectedLocaleScope !== null &&
-                scope.targetLang === selectedLocaleScope.targetLang &&
-                scope.sourceLang === selectedLocaleScope.sourceLang;
-              const params = new URLSearchParams({
-                sourceLang: scope.sourceLang,
-                targetLang: scope.targetLang,
-              });
-              const href =
-                scope.sourceLang === localeScopes[0]?.sourceLang &&
-                scope.targetLang === localeScopes[0]?.targetLang
-                  ? `/dashboard/sites/${site.id}/overrides`
-                  : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
-              return (
-                <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
-                  <Badge variant={active ? "default" : "secondary"}>
-                    {formatConsistencyLocaleScopeLabel(scope)}
-                  </Badge>
-                </Link>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+      <PageSectionNav
+        title="On this page"
+        description="Jump directly to the rules surface you need."
+        links={[
+          { href: "#locale-scope", label: "Locale scope" },
+          { href: "#glossary", label: "Glossary" },
+          { href: "#manual-overrides", label: "Manual overrides" },
+          { href: "#localized-slugs", label: "Localized slugs" },
+          { href: "#consistency-governance", label: "Consistency governance" },
+        ]}
+      />
 
-      {canGlossary ? (
+      <section id="locale-scope" className="scroll-mt-24">
         <Card>
           <CardHeader>
-            <CardTitle>Glossary</CardTitle>
+            <CardTitle>Locale scope</CardTitle>
             <CardDescription>
-              Maintain terminology control and optionally retranslate after glossary updates.
+              Switch locale pair to review canonicals, blocks, and override conflicts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {localeScopes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Add at least one target locale before using consistency governance.
+              </p>
+            ) : (
+              localeScopes.map((scope) => {
+                const active =
+                  selectedLocaleScope !== null &&
+                  scope.targetLang === selectedLocaleScope.targetLang &&
+                  scope.sourceLang === selectedLocaleScope.sourceLang;
+                const params = new URLSearchParams({
+                  sourceLang: scope.sourceLang,
+                  targetLang: scope.targetLang,
+                });
+                const href =
+                  scope.sourceLang === localeScopes[0]?.sourceLang &&
+                  scope.targetLang === localeScopes[0]?.targetLang
+                    ? `/dashboard/sites/${site.id}/overrides`
+                    : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
+                return (
+                  <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                    <Badge variant={active ? "default" : "secondary"}>
+                      {formatConsistencyLocaleScopeLabel(scope)}
+                    </Badge>
+                  </Link>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="glossary" className="scroll-mt-24">
+        {canGlossary ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Glossary</CardTitle>
+              <CardDescription>
+                Maintain terminology control and optionally retranslate after glossary updates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GlossaryEditor
+                initialEntries={glossary}
+                siteId={site.id}
+                targetLangs={targetLangs}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <LockedFeatureCard
+            title="Glossary"
+            description={
+              mutationsAllowed
+                ? "Upgrade to manage glossary entries and keep terminology consistent."
+                : "Update billing to resume glossary management."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={lockCtaLabel}
+            badgeLabel={lockBadgeLabel}
+          />
+        )}
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <section id="manual-overrides" className="scroll-mt-24">
+          {canOverrides ? (
+            <OverrideForm siteId={site.id} />
+          ) : (
+            <LockedFeatureCard
+              title="Manual overrides"
+              description={
+                mutationsAllowed
+                  ? "Upgrade to override individual translations."
+                  : "Update billing to resume manual overrides."
+              }
+              pricingPath={pricingPath}
+              ctaLabel={lockCtaLabel}
+              badgeLabel={lockBadgeLabel}
+            />
+          )}
+        </section>
+        <section id="localized-slugs" className="scroll-mt-24">
+          {canSlugs ? (
+            <SlugForm siteId={site.id} />
+          ) : (
+            <LockedFeatureCard
+              title="Localized slugs"
+              description={
+                mutationsAllowed
+                  ? "Upgrade to customize translated URL slugs."
+                  : "Update billing to resume localized slug edits."
+              }
+              pricingPath={pricingPath}
+              ctaLabel={lockCtaLabel}
+              badgeLabel={lockBadgeLabel}
+            />
+          )}
+        </section>
+      </div>
+
+      <section id="consistency-governance" className="scroll-mt-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>Consistency governance</CardTitle>
+            <CardDescription>
+              Review canonical phrases, blocks, and override conflicts for the selected locale pair.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <GlossaryEditor initialEntries={glossary} siteId={site.id} targetLangs={targetLangs} />
+            {!selectedLocaleScope ? (
+              <p className="text-sm text-muted-foreground">
+                Add at least one target locale before using consistency governance.
+              </p>
+            ) : !canEdit ? (
+              <LockedFeatureCard
+                title="Consistency governance"
+                description={
+                  mutationsAllowed
+                    ? "Upgrade to edit canonical phrases and block policies."
+                    : "Update billing to resume consistency governance edits."
+                }
+                pricingPath={pricingPath}
+                ctaLabel={mutationsAllowed ? "Upgrade plan" : "Update billing"}
+                badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
+              />
+            ) : dataLoadError ? (
+              (() => {
+                const errorView = resolveDashboardErrorView(dataLoadError, {
+                  title: "Unable to load consistency data",
+                  description:
+                    "We could not complete your request. You can retry or return to the dashboard.",
+                  message: "Unable to load consistency data.",
+                });
+
+                return (
+                  <ErrorStateCard
+                    title={errorView.title}
+                    description={errorView.description}
+                    message={errorView.message}
+                    actions={
+                      <Button asChild variant="outline">
+                        <Link href="/dashboard">Back to dashboard</Link>
+                      </Button>
+                    }
+                  />
+                );
+              })()
+            ) : (
+              <ConsistencyManager
+                siteId={site.id}
+                sourceLang={selectedLocaleScope.sourceLang}
+                targetLang={selectedLocaleScope.targetLang}
+                canMutate={canEdit}
+                cpmEntries={cpmEntries}
+                blocks={blocks}
+                overrideWarnings={overrideWarnings}
+              />
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <LockedFeatureCard
-          title="Glossary"
-          description={
-            mutationsAllowed
-              ? "Upgrade to manage glossary entries and keep terminology consistent."
-              : "Update billing to resume glossary management."
-          }
-          pricingPath={pricingPath}
-          ctaLabel={lockCtaLabel}
-          badgeLabel={lockBadgeLabel}
-        />
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {canOverrides ? (
-          <OverrideForm siteId={site.id} />
-        ) : (
-          <LockedFeatureCard
-            title="Manual overrides"
-            description={
-              mutationsAllowed
-                ? "Upgrade to override individual translations."
-                : "Update billing to resume manual overrides."
-            }
-            pricingPath={pricingPath}
-            ctaLabel={lockCtaLabel}
-            badgeLabel={lockBadgeLabel}
-          />
-        )}
-        {canSlugs ? (
-          <SlugForm siteId={site.id} />
-        ) : (
-          <LockedFeatureCard
-            title="Localized slugs"
-            description={
-              mutationsAllowed
-                ? "Upgrade to customize translated URL slugs."
-                : "Update billing to resume localized slug edits."
-            }
-            pricingPath={pricingPath}
-            ctaLabel={lockCtaLabel}
-            badgeLabel={lockBadgeLabel}
-          />
-        )}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Consistency governance</CardTitle>
-          <CardDescription>
-            Review canonical phrases, blocks, and override conflicts for the selected locale pair.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!selectedLocaleScope ? (
-            <p className="text-sm text-muted-foreground">
-              Add at least one target locale before using consistency governance.
-            </p>
-          ) : !canEdit ? (
-            <LockedFeatureCard
-              title="Consistency governance"
-              description={
-                mutationsAllowed
-                  ? "Upgrade to edit canonical phrases and block policies."
-                  : "Update billing to resume consistency governance edits."
-              }
-              pricingPath={pricingPath}
-              ctaLabel={mutationsAllowed ? "Upgrade plan" : "Update billing"}
-              badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
-            />
-          ) : dataLoadError ? (
-            (() => {
-              const errorView = resolveDashboardErrorView(dataLoadError, {
-                title: "Unable to load consistency data",
-                description:
-                  "We could not complete your request. You can retry or return to the dashboard.",
-                message: "Unable to load consistency data.",
-              });
-
-              return (
-                <ErrorStateCard
-                  title={errorView.title}
-                  description={errorView.description}
-                  message={errorView.message}
-                  actions={
-                    <Button asChild variant="outline">
-                      <Link href="/dashboard">Back to dashboard</Link>
-                    </Button>
-                  }
-                />
-              );
-            })()
-          ) : (
-            <ConsistencyManager
-              siteId={site.id}
-              sourceLang={selectedLocaleScope.sourceLang}
-              targetLang={selectedLocaleScope.targetLang}
-              canMutate={canEdit}
-              cpmEntries={cpmEntries}
-              blocks={blocks}
-              overrideWarnings={overrideWarnings}
-            />
-          )}
-        </CardContent>
-      </Card>
+      </section>
     </div>
   );
 }

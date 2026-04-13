@@ -1688,6 +1688,26 @@ function resolveDashboardE2eMockPayload(input: {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
   }
 
+  const glossaryMatch = pathname.match(/^\/sites\/([^/]+)\/glossary$/);
+  if (glossaryMatch && method === "GET") {
+    return {
+      entries: [],
+      crawlStatus: null,
+      retranslateStatus: null,
+    };
+  }
+  if (glossaryMatch && method === "PUT") {
+    const payload = getBodyRecord(input.body);
+    const entries = Array.isArray(payload.entries)
+      ? payload.entries.filter((value): value is Record<string, unknown> => isRecord(value))
+      : [];
+    return {
+      entries,
+      crawlStatus: null,
+      retranslateStatus: null,
+    };
+  }
+
   const siteShowcaseMatch = pathname.match(/^\/sites\/([^/]+)\/showcase$/);
   if (siteShowcaseMatch && method === "GET") {
     return createDashboardE2eMockSiteShowcase(siteShowcaseMatch[1]);
