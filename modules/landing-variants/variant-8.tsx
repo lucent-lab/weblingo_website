@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Cardo, Cinzel } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-8.module.css";
-
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const cardo = Cardo({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant8({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant8({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, cinzel.variable, cardo.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.rays} />
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-background/70 backdrop-blur">

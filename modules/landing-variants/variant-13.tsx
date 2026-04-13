@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Chivo, Epilogue } from "next/font/google";
 import { ArrowRight, BarChart3, Cloud, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,22 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-13.module.css";
-
-const epilogue = Epilogue({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const chivo = Chivo({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 const capabilityItems = [
   { titleKey: "home.features.ai.title", descriptionKey: "home.features.ai.description", icon: Zap },
@@ -47,7 +30,7 @@ export function LandingVariant13({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, epilogue.variable, chivo.variable, "min-h-screen font-sans")}>
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.lines} />
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">

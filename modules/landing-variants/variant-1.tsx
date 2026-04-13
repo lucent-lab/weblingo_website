@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Fraunces, Spline_Sans } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-1.module.css";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const splineSans = Spline_Sans({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant1({
   locale,
@@ -34,7 +18,7 @@ export function LandingVariant1({
   variantSwitcherCurrent = "1",
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, fraunces.variable, splineSans.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href={`/${locale}`} className="group inline-flex items-baseline gap-3">

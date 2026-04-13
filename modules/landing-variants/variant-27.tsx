@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Unbounded, Red_Hat_Mono } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-27.module.css";
-
-const unbounded = Unbounded({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const redHatMono = Red_Hat_Mono({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-mono",
-});
 
 export function LandingVariant27({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant27({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, unbounded.variable, redHatMono.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.neonGlow} />
 
       <header className="sticky top-0 z-40 px-4 pt-3 sm:px-6">

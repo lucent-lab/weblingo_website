@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Archivo, Bai_Jamjuree } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,22 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-16.module.css";
-
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const bai = Bai_Jamjuree({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant16({
   locale,
@@ -33,7 +16,7 @@ export function LandingVariant16({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, archivo.variable, bai.variable, "min-h-screen font-sans")}>
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <header className="sticky top-0 z-40 border-b-2 border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href={`/${locale}`} className="inline-flex items-center gap-3">

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Bricolage_Grotesque, Karla } from "next/font/google";
 import { ArrowRight, BarChart3, Cloud, Sparkles } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-20.module.css";
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const karla = Karla({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 const featureItems = [
   {
@@ -49,7 +34,7 @@ export function LandingVariant20({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, bricolage.variable, karla.variable, "min-h-screen font-sans")}>
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.glow} />
       <div aria-hidden className={styles.noise} />
 
