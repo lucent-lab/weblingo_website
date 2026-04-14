@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
 
+import { AnalyticsPageView } from "@/components/analytics-page-view";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
+} from "@internal/analytics/events";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 import { pricingTiers } from "@modules/pricing";
 
@@ -256,9 +262,18 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
       answer: t("pricing.faq.items.agencies.answer"),
     },
   ];
+  const pricingPagePath = `/${locale}/pricing`;
 
   return (
     <div className="min-h-screen bg-background">
+      <AnalyticsPageView
+        event={ANALYTICS_EVENTS.pricingPageView}
+        properties={buildPageAnalyticsProperties({
+          locale,
+          pagePath: pricingPagePath,
+          pageType: "pricing",
+        })}
+      />
       <section className="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
         <div className="mx-auto max-w-4xl text-center">
@@ -273,13 +288,36 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Button asChild size="lg">
-              <Link href={`/${locale}/login`}>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: "pricing_header_start_free",
+                  locale,
+                  pagePath: pricingPagePath,
+                  pageType: "pricing",
+                  targetHref: `/${locale}/login`,
+                })}
+                event={ANALYTICS_EVENTS.pricingCtaClicked}
+                href={`/${locale}/login`}
+              >
                 {t("pricing.free.cta")}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </AnalyticsTrackedLink>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <a href="mailto:contact@weblingo.app">{t("pricing.header.contactCta")}</a>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: "pricing_header_contact",
+                  locale,
+                  pagePath: pricingPagePath,
+                  pageType: "pricing",
+                  targetHref: "mailto:contact@weblingo.app",
+                })}
+                event={ANALYTICS_EVENTS.pricingCtaClicked}
+                external
+                href="mailto:contact@weblingo.app"
+              >
+                {t("pricing.header.contactCta")}
+              </AnalyticsTrackedLink>
             </Button>
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -319,13 +357,37 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
               </div>
               <div className="flex shrink-0 flex-col gap-3">
                 <Button asChild size="default">
-                  <Link href={`/${locale}/login`}>
+                  <AnalyticsTrackedLink
+                    analyticsProperties={buildCtaAnalyticsProperties({
+                      ctaId: "pricing_free_plan_start_free",
+                      locale,
+                      pagePath: pricingPagePath,
+                      pageType: "pricing",
+                      targetHref: `/${locale}/login`,
+                      planId: "free",
+                    })}
+                    event={ANALYTICS_EVENTS.pricingCtaClicked}
+                    href={`/${locale}/login`}
+                  >
                     {t("pricing.free.cta")}
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  </AnalyticsTrackedLink>
                 </Button>
                 <Button asChild size="default" variant="outline">
-                  <Link href={`/${locale}/try`}>{t("pricing.free.previewCta")}</Link>
+                  <AnalyticsTrackedLink
+                    analyticsProperties={buildCtaAnalyticsProperties({
+                      ctaId: "pricing_free_plan_try_preview",
+                      locale,
+                      pagePath: pricingPagePath,
+                      pageType: "pricing",
+                      targetHref: `/${locale}/try`,
+                      planId: "free",
+                    })}
+                    event={ANALYTICS_EVENTS.pricingCtaClicked}
+                    href={`/${locale}/try`}
+                  >
+                    {t("pricing.free.previewCta")}
+                  </AnalyticsTrackedLink>
                 </Button>
                 <p className="max-w-xs text-xs text-muted-foreground">{t("pricing.free.note")}</p>
               </div>
@@ -383,9 +445,36 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                       variant={highlight ? "default" : "outline"}
                     >
                       {plan.ctaExternal ? (
-                        <a href={plan.ctaHref}>{plan.ctaLabel}</a>
+                        <AnalyticsTrackedLink
+                          analyticsProperties={buildCtaAnalyticsProperties({
+                            ctaId: `pricing_paid_${planId}_cta`,
+                            locale,
+                            pagePath: pricingPagePath,
+                            pageType: "pricing",
+                            targetHref: plan.ctaHref,
+                            planId,
+                          })}
+                          event={ANALYTICS_EVENTS.pricingCtaClicked}
+                          external
+                          href={plan.ctaHref}
+                        >
+                          {plan.ctaLabel}
+                        </AnalyticsTrackedLink>
                       ) : (
-                        <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
+                        <AnalyticsTrackedLink
+                          analyticsProperties={buildCtaAnalyticsProperties({
+                            ctaId: `pricing_paid_${planId}_cta`,
+                            locale,
+                            pagePath: pricingPagePath,
+                            pageType: "pricing",
+                            targetHref: plan.ctaHref,
+                            planId,
+                          })}
+                          event={ANALYTICS_EVENTS.pricingCtaClicked}
+                          href={plan.ctaHref}
+                        >
+                          {plan.ctaLabel}
+                        </AnalyticsTrackedLink>
                       )}
                     </Button>
                     <p className="text-xs font-semibold uppercase text-muted-foreground">
@@ -487,13 +576,35 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           <p className="mb-12 text-lg text-muted-foreground">{t("pricing.final.description")}</p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Button asChild size="lg">
-              <Link href={`/${locale}/login`}>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: "pricing_final_start_free",
+                  locale,
+                  pagePath: pricingPagePath,
+                  pageType: "pricing",
+                  targetHref: `/${locale}/login`,
+                })}
+                event={ANALYTICS_EVENTS.pricingCtaClicked}
+                href={`/${locale}/login`}
+              >
                 {t("pricing.final.cta")}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </AnalyticsTrackedLink>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={`/${locale}/try`}>{t("pricing.free.previewCta")}</Link>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: "pricing_final_try_preview",
+                  locale,
+                  pagePath: pricingPagePath,
+                  pageType: "pricing",
+                  targetHref: `/${locale}/try`,
+                })}
+                event={ANALYTICS_EVENTS.pricingCtaClicked}
+                href={`/${locale}/try`}
+              >
+                {t("pricing.free.previewCta")}
+              </AnalyticsTrackedLink>
             </Button>
           </div>
         </div>

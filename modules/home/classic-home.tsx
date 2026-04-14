@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
+import { AnalyticsPageView } from "@/components/analytics-page-view";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { TryForm } from "@/components/try-form";
 import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
+import {
+  ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
+} from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
@@ -65,6 +71,15 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
 
   return (
     <div className="min-h-screen bg-background">
+      <AnalyticsPageView
+        event={ANALYTICS_EVENTS.marketingPageView}
+        properties={buildPageAnalyticsProperties({
+          locale,
+          pagePath: baseHref,
+          pageType: "home",
+          variant: "classic",
+        })}
+      />
       <section
         id="try"
         className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
@@ -115,13 +130,22 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
           <p className="mb-12 text-lg text-muted-foreground">{t("home.problem.description")}</p>
           <div className="rounded-lg border border-border bg-card p-8">
             <p className="mb-6 text-foreground">{t("home.problem.solution")}</p>
-            <Link
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "classic_home_problem_how_it_works",
+                locale,
+                pagePath: baseHref,
+                pageType: "home",
+                targetHref: howItWorksHref,
+                variant: "classic",
+              })}
+              event={ANALYTICS_EVENTS.marketingCtaClicked}
               href={howItWorksHref}
               className="inline-flex items-center gap-2 font-medium text-primary transition hover:text-primary/80"
             >
               {t("home.problem.cta")}
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </AnalyticsTrackedLink>
           </div>
         </div>
       </section>
@@ -197,10 +221,21 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
           </h2>
           <p className="mb-12 text-lg text-muted-foreground">{t("home.final.subtitle")}</p>
           <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-            <Link href={tryHref}>
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "classic_home_final_try",
+                locale,
+                pagePath: baseHref,
+                pageType: "home",
+                targetHref: tryHref,
+                variant: "classic",
+              })}
+              event={ANALYTICS_EVENTS.marketingCtaClicked}
+              href={tryHref}
+            >
               {t("home.final.cta")}
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
+            </AnalyticsTrackedLink>
           </Button>
         </div>
       </section>

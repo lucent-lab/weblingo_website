@@ -10,7 +10,10 @@ import {
 
 export {
   ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
   buildPreviewAnalyticsProperties,
+  extractLinkTargetContext,
   extractPublicUrlContext,
   type AnalyticsEventName,
   type AnalyticsProperties,

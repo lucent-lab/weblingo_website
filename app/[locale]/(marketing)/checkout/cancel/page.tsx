@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AnalyticsPageView } from "@/components/analytics-page-view";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Button } from "@/components/ui/button";
+import {
+  ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
+} from "@internal/analytics/events";
 import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutCancelPage({
@@ -16,9 +22,18 @@ export default async function CheckoutCancelPage({
     notFound();
   }
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const checkoutCancelPath = `/${locale}/checkout/cancel`;
 
   return (
     <div className="bg-background py-24">
+      <AnalyticsPageView
+        event={ANALYTICS_EVENTS.checkoutCancelView}
+        properties={buildPageAnalyticsProperties({
+          locale,
+          pagePath: checkoutCancelPath,
+          pageType: "checkout_cancel",
+        })}
+      />
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 text-center">
         <span className="text-sm uppercase tracking-[0.3em] text-primary">
           {t("checkout.cancel.tagline")}
@@ -27,10 +42,34 @@ export default async function CheckoutCancelPage({
         <p className="text-base text-muted-foreground">{t("checkout.cancel.description")}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-4">
           <Button asChild size="lg">
-            <Link href={`/${locale}/pricing`}>{t("checkout.cancel.backPricing")}</Link>
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "checkout_cancel_back_pricing",
+                locale,
+                pagePath: checkoutCancelPath,
+                pageType: "checkout_cancel",
+                targetHref: `/${locale}/pricing`,
+              })}
+              event={ANALYTICS_EVENTS.checkoutCtaClicked}
+              href={`/${locale}/pricing`}
+            >
+              {t("checkout.cancel.backPricing")}
+            </AnalyticsTrackedLink>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href={`/${locale}/contact`}>{t("checkout.cancel.contact")}</Link>
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "checkout_cancel_contact",
+                locale,
+                pagePath: checkoutCancelPath,
+                pageType: "checkout_cancel",
+                targetHref: `/${locale}/contact`,
+              })}
+              event={ANALYTICS_EVENTS.checkoutCtaClicked}
+              href={`/${locale}/contact`}
+            >
+              {t("checkout.cancel.contact")}
+            </AnalyticsTrackedLink>
           </Button>
         </div>
       </div>

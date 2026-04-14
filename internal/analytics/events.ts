@@ -17,6 +17,7 @@ export const ANALYTICS_EVENTS = {
   pricingCtaClicked: "pricing_cta_clicked",
   checkoutSuccessView: "checkout_success_view",
   checkoutCancelView: "checkout_cancel_view",
+  checkoutCtaClicked: "checkout_cta_clicked",
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
@@ -39,9 +40,30 @@ type PreviewAnalyticsInput = {
   fieldLayout?: string | null;
 };
 
+type PageAnalyticsInput = {
+  locale?: string | null;
+  pageType?: string | null;
+  pagePath?: string | null;
+  variant?: string | null;
+  segment?: string | null;
+  sessionPresent?: boolean | null;
+};
+
+type CtaAnalyticsInput = PageAnalyticsInput & {
+  ctaId?: string | null;
+  targetHref?: string | null;
+  planId?: string | null;
+};
+
 type PublicUrlContext = {
   sourceHost: string | null;
   sourcePath: string | null;
+};
+
+type LinkTargetContext = {
+  targetKind: string | null;
+  targetHost: string | null;
+  targetPath: string | null;
 };
 
 function normalizeTrimmed(value: string | null | undefined): string | null {
@@ -61,6 +83,14 @@ function normalizeSourcePath(pathname: string): string | null {
   return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
 }
 
+function normalizeAnchorTarget(target: string): string | null {
+  const trimmed = normalizeTrimmed(target);
+  if (!trimmed || !trimmed.startsWith("#")) {
+    return null;
+  }
+  return trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
+}
+
 export function extractPublicUrlContext(sourceUrl?: string | null): PublicUrlContext {
   const trimmed = normalizeTrimmed(sourceUrl);
   if (!trimmed) {
@@ -78,6 +108,52 @@ export function extractPublicUrlContext(sourceUrl?: string | null): PublicUrlCon
     };
   } catch {
     return { sourceHost: null, sourcePath: null };
+  }
+}
+
+export function extractLinkTargetContext(targetHref?: string | null): LinkTargetContext {
+  const trimmed = normalizeTrimmed(targetHref);
+  if (!trimmed) {
+    return { targetKind: null, targetHost: null, targetPath: null };
+  }
+
+  if (trimmed.startsWith("#")) {
+    return {
+      targetKind: "anchor",
+      targetHost: null,
+      targetPath: normalizeAnchorTarget(trimmed),
+    };
+  }
+
+  if (trimmed.startsWith("/")) {
+    return {
+      targetKind: "internal",
+      targetHost: null,
+      targetPath: normalizeSourcePath(trimmed.split("#", 1)[0]?.split("?", 1)[0] || trimmed),
+    };
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "mailto:") {
+      return {
+        targetKind: "mailto",
+        targetHost: null,
+        targetPath: null,
+      };
+    }
+
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.hostname) {
+      return { targetKind: null, targetHost: null, targetPath: null };
+    }
+
+    return {
+      targetKind: "external",
+      targetHost: parsed.hostname.trim().toLowerCase() || null,
+      targetPath: normalizeSourcePath(parsed.pathname || "/"),
+    };
+  } catch {
+    return { targetKind: null, targetHost: null, targetPath: null };
   }
 }
 
@@ -106,5 +182,32 @@ export function buildPreviewAnalyticsProperties(
     error_stage: normalizeTrimmed(input.errorStage),
     retry_hint_reason: normalizeTrimmed(input.retryHintReason),
     field_layout: normalizeTrimmed(input.fieldLayout),
+  });
+}
+
+export function buildPageAnalyticsProperties(
+  input: PageAnalyticsInput,
+): Record<string, SanitizedAnalyticsPropertyValue> {
+  return sanitizeAnalyticsProperties({
+    locale: normalizeTrimmed(input.locale),
+    page_type: normalizeTrimmed(input.pageType),
+    page_path: normalizeSourcePath(input.pagePath ?? ""),
+    variant: normalizeTrimmed(input.variant),
+    segment: normalizeTrimmed(input.segment),
+    session_present: input.sessionPresent ?? undefined,
+  });
+}
+
+export function buildCtaAnalyticsProperties(
+  input: CtaAnalyticsInput,
+): Record<string, SanitizedAnalyticsPropertyValue> {
+  const { targetKind, targetHost, targetPath } = extractLinkTargetContext(input.targetHref);
+  return sanitizeAnalyticsProperties({
+    ...buildPageAnalyticsProperties(input),
+    cta_id: normalizeTrimmed(input.ctaId),
+    plan_id: normalizeTrimmed(input.planId),
+    target_kind: targetKind,
+    target_host: targetHost,
+    target_path: targetPath,
   });
 }
