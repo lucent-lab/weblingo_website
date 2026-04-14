@@ -83,13 +83,13 @@ This milestone should prefer client wrappers around the specific CTA surfaces in
 
 ### Milestone 3: First-Party PostHog Proxy Host
 
-Move ingestion from direct `app.posthog.com` usage to a WebLingo-controlled host.
+Move ingestion from direct PostHog browser calls to a first-party WebLingo route.
 
 Recommended approach:
 
 - introduce a dedicated public env for the first-party analytics host
-- keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the first-party host
-- proxy analytics traffic upstream to PostHog from the website deployment
+- keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the upstream PostHog ingestion host
+- proxy analytics traffic through a first-party `/_analytics/posthog` route in the website deployment
 - keep the dashboard auth proxy behavior intact
 - document the required domain + deployment configuration in `README.md`
 

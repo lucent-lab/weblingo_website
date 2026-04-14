@@ -100,10 +100,13 @@ SUPABASE_AUTH_TIMEOUT_MS=15000
 
 # Analytics (optional)
 NEXT_PUBLIC_POSTHOG_KEY=phc_...
-NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+# Upstream ingestion host. Browser requests are proxied through /_analytics/posthog.
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
 `PUBLIC_PORTAL_MODE=disabled` hides the login CTA, disables signup/login actions, blocks checkout, and returns 404 for the login and dashboard onboarding screens. Set it to `enabled` to expose the portal.
+
+PostHog traffic is proxied through the first-party `/_analytics/posthog` route. Keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the upstream PostHog ingestion host (for example `https://eu.i.posthog.com`), not the browser-facing proxy path.
 
 ## Running Locally
 
