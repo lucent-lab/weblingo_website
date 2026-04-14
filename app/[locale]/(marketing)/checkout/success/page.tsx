@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AnalyticsPageView } from "@/components/analytics-page-view";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Button } from "@/components/ui/button";
+import {
+  ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
+} from "@internal/analytics/events";
 import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutSuccessPage({
@@ -24,9 +30,19 @@ export default async function CheckoutSuccessPage({
       ? resolvedSearchParams.session_id
       : undefined;
   const maskedSessionId = sessionId ? `${sessionId.slice(0, 6)}…${sessionId.slice(-4)}` : undefined;
+  const checkoutSuccessPath = `/${locale}/checkout/success`;
 
   return (
     <div className="bg-background py-24">
+      <AnalyticsPageView
+        event={ANALYTICS_EVENTS.checkoutSuccessView}
+        properties={buildPageAnalyticsProperties({
+          locale,
+          pagePath: checkoutSuccessPath,
+          pageType: "checkout_success",
+          sessionPresent: Boolean(sessionId),
+        })}
+      />
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 text-center">
         <span className="text-sm uppercase tracking-[0.3em] text-primary">
           {t("checkout.success.tagline")}
@@ -40,10 +56,34 @@ export default async function CheckoutSuccessPage({
         ) : null}
         <div className="mt-4 flex flex-wrap justify-center gap-4">
           <Button asChild variant="outline" size="lg">
-            <Link href={`/${locale}`}>{t("checkout.success.backHome")}</Link>
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "checkout_success_back_home",
+                locale,
+                pagePath: checkoutSuccessPath,
+                pageType: "checkout_success",
+                targetHref: `/${locale}`,
+              })}
+              event={ANALYTICS_EVENTS.checkoutCtaClicked}
+              href={`/${locale}`}
+            >
+              {t("checkout.success.backHome")}
+            </AnalyticsTrackedLink>
           </Button>
           <Button asChild size="lg">
-            <Link href={`/${locale}/pricing`}>{t("checkout.success.reviewPricing")}</Link>
+            <AnalyticsTrackedLink
+              analyticsProperties={buildCtaAnalyticsProperties({
+                ctaId: "checkout_success_review_pricing",
+                locale,
+                pagePath: checkoutSuccessPath,
+                pageType: "checkout_success",
+                targetHref: `/${locale}/pricing`,
+              })}
+              event={ANALYTICS_EVENTS.checkoutCtaClicked}
+              href={`/${locale}/pricing`}
+            >
+              {t("checkout.success.reviewPricing")}
+            </AnalyticsTrackedLink>
           </Button>
         </div>
       </div>

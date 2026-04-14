@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { AnalyticsPageView } from "@/components/analytics-page-view";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { TryForm } from "@/components/try-form";
 import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  ANALYTICS_EVENTS,
+  buildCtaAnalyticsProperties,
+  buildPageAnalyticsProperties,
+} from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
@@ -18,10 +24,12 @@ type TryFormFieldLayout = "legacy" | "funnel";
 
 export async function LandingSegmentPage({
   locale,
+  pagePath,
   segment,
   tryFormFieldLayout = "legacy",
 }: {
   locale: string;
+  pagePath?: string;
   segment: LandingSegment;
   tryFormFieldLayout?: TryFormFieldLayout;
 }) {
@@ -30,6 +38,7 @@ export async function LandingSegmentPage({
   const hasPreviewConfig =
     Boolean(process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE) && Boolean(process.env.TRY_NOW_TOKEN);
   const supportedLanguages = SUPPORTED_LANGUAGES_STATIC;
+  const resolvedPagePath = pagePath ?? `/${locale}/landing/${segment}`;
   const shouldRotateHeroTitle = segment === "expansion";
   const heroOutcomes = content.hero.rotatorOutcomeKeys.map((outcomeKey) => t(outcomeKey));
   const howSteps = content.how.items.map((item) => ({
@@ -39,6 +48,16 @@ export async function LandingSegmentPage({
 
   return (
     <div className="min-h-screen bg-background">
+      <AnalyticsPageView
+        event={ANALYTICS_EVENTS.marketingPageView}
+        properties={buildPageAnalyticsProperties({
+          locale,
+          pagePath: resolvedPagePath,
+          pageType: "landing",
+          segment,
+          variant: segment === "expansion" ? "expansion" : undefined,
+        })}
+      />
       <section
         id="try"
         className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
@@ -285,13 +304,40 @@ export async function LandingSegmentPage({
               size="lg"
               className={cn("bg-primary hover:bg-primary/90", styles.buttonMicro)}
             >
-              <Link href={`/${locale}#try`}>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: `landing_${segment}_primary_try`,
+                  locale,
+                  pagePath: resolvedPagePath,
+                  pageType: "landing",
+                  segment,
+                  targetHref: `/${locale}#try`,
+                  variant: segment === "expansion" ? "expansion" : undefined,
+                })}
+                event={ANALYTICS_EVENTS.marketingCtaClicked}
+                href={`/${locale}#try`}
+              >
                 {t(content.cta.primaryKey)}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </AnalyticsTrackedLink>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <a href="mailto:contact@weblingo.app">{t(content.cta.secondaryKey)}</a>
+              <AnalyticsTrackedLink
+                analyticsProperties={buildCtaAnalyticsProperties({
+                  ctaId: `landing_${segment}_secondary_contact`,
+                  locale,
+                  pagePath: resolvedPagePath,
+                  pageType: "landing",
+                  segment,
+                  targetHref: "mailto:contact@weblingo.app",
+                  variant: segment === "expansion" ? "expansion" : undefined,
+                })}
+                event={ANALYTICS_EVENTS.marketingCtaClicked}
+                external
+                href="mailto:contact@weblingo.app"
+              >
+                {t(content.cta.secondaryKey)}
+              </AnalyticsTrackedLink>
             </Button>
           </div>
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">

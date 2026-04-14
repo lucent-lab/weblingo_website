@@ -16,7 +16,9 @@ export default async function LocaleHomePage({ params }: { params: Promise<{ loc
   }
 
   if (envServer.HOME_PAGE_VARIANT === "expansion") {
-    return <LandingSegmentPage locale={locale} segment={expansionSegment} />;
+    return (
+      <LandingSegmentPage locale={locale} pagePath={`/${locale}`} segment={expansionSegment} />
+    );
   }
 
   return <ClassicHomePage locale={locale} />;
