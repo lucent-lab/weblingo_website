@@ -91,6 +91,23 @@ type ResolvedPreviewError = {
 
 const emailSchema = z.email();
 
+function isAbortLikeError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
+function buildPreviewAnalyticsSignature(job: PreviewStatusCenterJob): string {
+  return JSON.stringify({
+    status: job.status,
+    stage: job.stage ?? null,
+    errorCode: job.errorCode ?? null,
+    errorStage: job.errorStage ?? null,
+    retryHintReason: job.retryHint?.reason ?? null,
+  });
+}
+
 export type TryFormMode =
   | "idle"
   | "creating"
@@ -391,6 +408,9 @@ export function TryForm({
     if (restoreAttemptedRef.current) {
       return;
     }
+    if (lastRequestKey) {
+      return;
+    }
     if (jobs.length === 0) {
       return;
     }
@@ -400,6 +420,22 @@ export function TryForm({
       selectLatestActivePreviewStatusCenterJob(jobs) ?? selectPreferredPreviewStatusCenterJob(jobs);
     if (!restoredJob) {
       return;
+    }
+
+    trackedPreviewIdsRef.current.add(restoredJob.previewId);
+    if (
+      restoredJob.status === "ready" ||
+      restoredJob.status === "failed" ||
+      restoredJob.status === "expired"
+    ) {
+      trackedPreviewTerminalRef.current.add(restoredJob.previewId);
+      trackedPreviewStatusSignaturesRef.current.set(
+        restoredJob.previewId,
+        buildPreviewAnalyticsSignature(restoredJob),
+      );
+    } else {
+      trackedPreviewTerminalRef.current.delete(restoredJob.previewId);
+      trackedPreviewStatusSignaturesRef.current.delete(restoredJob.previewId);
     }
 
     setLastRequestKey(restoredJob.requestKey);
@@ -416,7 +452,7 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [jobs]);
+  }, [jobs, lastRequestKey]);
 
   useEffect(() => {
     if (
@@ -461,13 +497,7 @@ export function TryForm({
       return;
     }
 
-    const signature = JSON.stringify({
-      status: trackedJob.status,
-      stage: trackedJob.stage ?? null,
-      errorCode: trackedJob.errorCode ?? null,
-      errorStage: trackedJob.errorStage ?? null,
-      retryHintReason: trackedJob.retryHint?.reason ?? null,
-    });
+    const signature = buildPreviewAnalyticsSignature(trackedJob);
     const previousSignature = trackedPreviewStatusSignaturesRef.current.get(trackedJob.previewId);
     if (previousSignature === signature) {
       return;
@@ -971,6 +1001,28 @@ export function TryForm({
     }
 
     let requestAttempted = false;
+    let previewCreateFailureTracked = false;
+    const trackPreviewCreateFailed = (overrides?: {
+      previewId?: string | null;
+      errorCode?: string | null;
+      errorStage?: string | null;
+    }) => {
+      previewCreateFailureTracked = true;
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.previewCreateFailed,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trimmedUrl,
+          sourceLang: normalizedSourceLang,
+          targetLang: normalizedTargetLang,
+          previewId: overrides?.previewId ?? null,
+          errorCode: overrides?.errorCode ?? null,
+          errorStage: overrides?.errorStage ?? null,
+          fieldLayout,
+        }),
+      );
+    };
+
     try {
       if (!isValidHttpUrl(trimmedUrl)) {
         const message = t("try.form.invalidUrl");
@@ -1040,18 +1092,10 @@ export function TryForm({
           const payload = await response.json().catch(() => null);
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
-          captureAnalyticsEvent(
-            ANALYTICS_EVENTS.previewCreateFailed,
-            buildPreviewAnalyticsProperties({
-              locale,
-              sourceUrl: trimmedUrl,
-              sourceLang: normalizedSourceLang,
-              targetLang: normalizedTargetLang,
-              errorCode: typeof payload?.errorCode === "string" ? payload.errorCode : null,
-              errorStage: typeof payload?.errorStage === "string" ? payload.errorStage : null,
-              fieldLayout,
-            }),
-          );
+          trackPreviewCreateFailed({
+            errorCode: typeof payload?.errorCode === "string" ? payload.errorCode : null,
+            errorStage: typeof payload?.errorStage === "string" ? payload.errorStage : null,
+          });
           setSubmissionError(resolveErrorMessage(null, reason));
           return;
         }
@@ -1101,18 +1145,10 @@ export function TryForm({
               },
             );
           } else {
-            captureAnalyticsEvent(
-              ANALYTICS_EVENTS.previewCreateFailed,
-              buildPreviewAnalyticsProperties({
-                locale,
-                sourceUrl: trimmedUrl,
-                sourceLang: normalizedSourceLang,
-                targetLang: normalizedTargetLang,
-                errorCode: resolved.code,
-                errorStage: resolved.stage,
-                fieldLayout,
-              }),
-            );
+            trackPreviewCreateFailed({
+              errorCode: resolved.code,
+              errorStage: resolved.stage,
+            });
             setSubmissionError(resolved.message);
           }
           return;
@@ -1120,16 +1156,7 @@ export function TryForm({
 
         if (payload?.status === "ready") {
           if (!previewId || !statusToken) {
-            captureAnalyticsEvent(
-              ANALYTICS_EVENTS.previewCreateFailed,
-              buildPreviewAnalyticsProperties({
-                locale,
-                sourceUrl: trimmedUrl,
-                sourceLang: normalizedSourceLang,
-                targetLang: normalizedTargetLang,
-                fieldLayout,
-              }),
-            );
+            trackPreviewCreateFailed();
             setSubmissionError(t("try.error.default"));
             return;
           }
@@ -1165,30 +1192,11 @@ export function TryForm({
         }
 
         if (!previewId) {
-          captureAnalyticsEvent(
-            ANALYTICS_EVENTS.previewCreateFailed,
-            buildPreviewAnalyticsProperties({
-              locale,
-              sourceUrl: trimmedUrl,
-              sourceLang: normalizedSourceLang,
-              targetLang: normalizedTargetLang,
-              fieldLayout,
-            }),
-          );
+          trackPreviewCreateFailed();
           throw new Error("Preview was created but no ID was returned.");
         }
         if (!statusToken) {
-          captureAnalyticsEvent(
-            ANALYTICS_EVENTS.previewCreateFailed,
-            buildPreviewAnalyticsProperties({
-              locale,
-              sourceUrl: trimmedUrl,
-              sourceLang: normalizedSourceLang,
-              targetLang: normalizedTargetLang,
-              previewId,
-              fieldLayout,
-            }),
-          );
+          trackPreviewCreateFailed({ previewId });
           throw new Error("Preview was created but no status token was returned.");
         }
 
@@ -1230,21 +1238,16 @@ export function TryForm({
         }
       }
     } catch (error) {
-      if (requestAttempted) {
-        captureAnalyticsEvent(
-          ANALYTICS_EVENTS.previewCreateFailed,
-          buildPreviewAnalyticsProperties({
-            locale,
-            sourceUrl: trimmedUrl,
-            sourceLang: normalizedSourceLang,
-            targetLang: normalizedTargetLang,
-            fieldLayout,
-          }),
-        );
+      if (isAbortLikeError(error)) {
+        return;
+      }
+      if (requestAttempted && !previewCreateFailureTracked) {
+        trackPreviewCreateFailed();
       }
       const message = error instanceof Error ? error.message : "Failed to generate preview.";
       setSubmissionError(message);
     } finally {
+      trackedTryStartRef.current = false;
       setIsCreating(false);
     }
   }

@@ -91,6 +91,20 @@ function normalizeAnchorTarget(target: string): string | null {
   return trimmed.length > 160 ? `${trimmed.slice(0, 157)}...` : trimmed;
 }
 
+function combinePathWithHash(pathname: string, hash: string): string | null {
+  const normalizedPath = normalizeSourcePath(pathname);
+  const normalizedHash = normalizeAnchorTarget(hash);
+
+  if (!normalizedPath) {
+    return normalizedHash;
+  }
+  if (!normalizedHash) {
+    return normalizedPath;
+  }
+
+  return normalizeSourcePath(`${normalizedPath}${normalizedHash}`);
+}
+
 export function extractPublicUrlContext(sourceUrl?: string | null): PublicUrlContext {
   const trimmed = normalizeTrimmed(sourceUrl);
   if (!trimmed) {
@@ -126,10 +140,11 @@ export function extractLinkTargetContext(targetHref?: string | null): LinkTarget
   }
 
   if (trimmed.startsWith("/")) {
+    const parsed = new URL(trimmed, "https://weblingo.app");
     return {
       targetKind: "internal",
       targetHost: null,
-      targetPath: normalizeSourcePath(trimmed.split("#", 1)[0]?.split("?", 1)[0] || trimmed),
+      targetPath: combinePathWithHash(parsed.pathname || "/", parsed.hash),
     };
   }
 
@@ -150,7 +165,7 @@ export function extractLinkTargetContext(targetHref?: string | null): LinkTarget
     return {
       targetKind: "external",
       targetHost: parsed.hostname.trim().toLowerCase() || null,
-      targetPath: normalizeSourcePath(parsed.pathname || "/"),
+      targetPath: combinePathWithHash(parsed.pathname || "/", parsed.hash),
     };
   } catch {
     return { targetKind: null, targetHost: null, targetPath: null };

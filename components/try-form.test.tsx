@@ -317,11 +317,12 @@ describe("TryForm preview status", () => {
   it("captures preview create failures when a 2xx response body is malformed", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response("not-json", {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response("not-json", {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
       ),
     );
 
@@ -342,6 +343,33 @@ describe("TryForm preview status", () => {
           target_lang: "fr",
         }),
       );
+    });
+  });
+
+  it("does not double-count preview create failures for malformed success payloads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          status: "processing",
+          statusToken: "status-token",
+        }),
+      ),
+    );
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com/docs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(
+        captureAnalyticsEvent.mock.calls.filter(
+          ([event]) => event === ANALYTICS_EVENTS.previewCreateFailed,
+        ),
+      ).toHaveLength(1);
     });
   });
 
@@ -388,6 +416,41 @@ describe("TryForm preview status", () => {
           preview_id: "abababab-abab-abab-abab-abababababab",
         }),
       );
+    });
+  });
+
+  it("re-emits try form started on a retry attempt after a failed request", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            error: "Preview failed.",
+          },
+          500,
+        ),
+      ),
+    );
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com/docs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry preview" }));
+
+    await waitFor(() => {
+      expect(
+        captureAnalyticsEvent.mock.calls.filter(
+          ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
+        ),
+      ).toHaveLength(2);
     });
   });
 
@@ -828,6 +891,107 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
+  });
+
+  it("tracks restored previews and later terminal transitions", async () => {
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "restored-analytics-2222-2222-2222-222222222222",
+          requestKey: "https://restore.example.com|en|fr|",
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: Date.now() - 1_000,
+          updatedAt: Date.now() - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Date.now() + 5_000,
+        },
+      ]),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewStatusTransition,
+        expect.objectContaining({
+          preview_id: "restored-analytics-2222-2222-2222-222222222222",
+          stage: "translating",
+          status: "processing",
+        }),
+      );
+    });
+
+    markPreviewStatusCenterJobTerminal("restored-analytics-2222-2222-2222-222222222222", "ready", {
+      previewUrl: "https://preview.example.com/p/restored",
+    });
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewReady,
+        expect.objectContaining({
+          preview_id: "restored-analytics-2222-2222-2222-222222222222",
+          status: "ready",
+        }),
+      );
+    });
+  });
+
+  it("does not report aborted preview create requests as failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) !== "/api/previews") {
+          return Promise.resolve(jsonResponse({ status: "processing" }));
+        }
+
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("The operation was aborted.", "AbortError")),
+            { once: true },
+          );
+        });
+      }),
+    );
+
+    const rendered = render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com/docs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Creating preview...")).toBeTruthy();
+    });
+
+    rendered.unmount();
+
+    await Promise.resolve();
+
+    expect(
+      captureAnalyticsEvent.mock.calls.filter(
+        ([event]) => event === ANALYTICS_EVENTS.previewCreateFailed,
+      ),
+    ).toHaveLength(0);
   });
 
   it("shows a basic request summary while a request is in flight", async () => {

@@ -76,7 +76,7 @@ describe("analytics events helpers", () => {
     expect(extractLinkTargetContext("/fr/pricing?coupon=secret#plans")).toEqual({
       targetKind: "internal",
       targetHost: null,
-      targetPath: "/fr/pricing",
+      targetPath: "/fr/pricing#plans",
     });
     expect(extractLinkTargetContext("#try")).toEqual({
       targetKind: "anchor",
@@ -147,7 +147,7 @@ describe("analytics events helpers", () => {
       page_path: "/en/pricing",
       page_type: "pricing",
       target_kind: "internal",
-      target_path: "/en/try",
+      target_path: "/en/try#panel",
     });
   });
 });
