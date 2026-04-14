@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  ANALYTICS_EVENTS,
+  buildPreviewAnalyticsProperties,
+  captureAnalyticsEvent,
+} from "@internal/analytics/client";
+import {
   createClientTranslator,
   createLanguageNameResolver,
   getBaseLangTag,
@@ -208,6 +213,10 @@ export function TryForm({
   const timedOutRef = useRef(false);
   const submittedEmailRef = useRef("");
   const restoreAttemptedRef = useRef(false);
+  const trackedTryStartRef = useRef(false);
+  const trackedPreviewIdsRef = useRef<Set<string>>(new Set());
+  const trackedPreviewStatusSignaturesRef = useRef<Map<string, string>>(new Map());
+  const trackedPreviewTerminalRef = useRef<Set<string>>(new Set());
 
   const trimmedUrl = url.trim();
   const submittedEmail = submittedEmailRef.current;
@@ -443,6 +452,86 @@ export function TryForm({
   useEffect(() => {
     setHasCopied(false);
   }, [trackedJob?.previewUrl]);
+
+  useEffect(() => {
+    if (!trackedJob) {
+      return;
+    }
+    if (!trackedPreviewIdsRef.current.has(trackedJob.previewId)) {
+      return;
+    }
+
+    const signature = JSON.stringify({
+      status: trackedJob.status,
+      stage: trackedJob.stage ?? null,
+      errorCode: trackedJob.errorCode ?? null,
+      errorStage: trackedJob.errorStage ?? null,
+      retryHintReason: trackedJob.retryHint?.reason ?? null,
+    });
+    const previousSignature = trackedPreviewStatusSignaturesRef.current.get(trackedJob.previewId);
+    if (previousSignature === signature) {
+      return;
+    }
+
+    trackedPreviewStatusSignaturesRef.current.set(trackedJob.previewId, signature);
+    captureAnalyticsEvent(
+      ANALYTICS_EVENTS.previewStatusTransition,
+      buildPreviewAnalyticsProperties({
+        locale,
+        sourceUrl: trackedJob.sourceUrl,
+        sourceLang: trackedJob.sourceLang,
+        targetLang: trackedJob.targetLang,
+        previewId: trackedJob.previewId,
+        status: trackedJob.status,
+        stage: trackedJob.stage,
+        errorCode: trackedJob.errorCode,
+        errorStage: trackedJob.errorStage,
+        retryHintReason: trackedJob.retryHint?.reason ?? null,
+        fieldLayout,
+      }),
+    );
+
+    if (trackedPreviewTerminalRef.current.has(trackedJob.previewId)) {
+      return;
+    }
+
+    if (trackedJob.status === "ready") {
+      trackedPreviewTerminalRef.current.add(trackedJob.previewId);
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.previewReady,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trackedJob.sourceUrl,
+          sourceLang: trackedJob.sourceLang,
+          targetLang: trackedJob.targetLang,
+          previewId: trackedJob.previewId,
+          status: trackedJob.status,
+          stage: trackedJob.stage,
+          fieldLayout,
+        }),
+      );
+      return;
+    }
+
+    if (trackedJob.status === "failed" || trackedJob.status === "expired") {
+      trackedPreviewTerminalRef.current.add(trackedJob.previewId);
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.previewFailed,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trackedJob.sourceUrl,
+          sourceLang: trackedJob.sourceLang,
+          targetLang: trackedJob.targetLang,
+          previewId: trackedJob.previewId,
+          status: trackedJob.status,
+          stage: trackedJob.stage,
+          errorCode: trackedJob.errorCode,
+          errorStage: trackedJob.errorStage,
+          fieldLayout,
+        }),
+      );
+    }
+  }, [fieldLayout, locale, trackedJob]);
 
   function closeEventSource() {
     if (eventSourceRef.current) {
@@ -855,11 +944,33 @@ export function TryForm({
     connectSSE(previewId, statusToken);
   }
 
+  function trackTryFormStarted(overrides?: {
+    sourceUrl?: string;
+    sourceLang?: string;
+    targetLang?: string;
+  }) {
+    if (trackedTryStartRef.current) {
+      return;
+    }
+    trackedTryStartRef.current = true;
+    captureAnalyticsEvent(
+      ANALYTICS_EVENTS.tryFormStarted,
+      buildPreviewAnalyticsProperties({
+        locale,
+        sourceUrl: overrides?.sourceUrl ?? trimmedUrl,
+        sourceLang: overrides?.sourceLang ?? normalizedSourceLang,
+        targetLang: overrides?.targetLang ?? normalizedTargetLang,
+        fieldLayout,
+      }),
+    );
+  }
+
   async function handleGenerate() {
     if (!trimmedUrl || disabled) {
       return;
     }
 
+    let requestAttempted = false;
     try {
       if (!isValidHttpUrl(trimmedUrl)) {
         const message = t("try.form.invalidUrl");
@@ -877,6 +988,17 @@ export function TryForm({
       setUrlError(null);
       setSubmissionError(null);
       setIsCreating(true);
+      trackTryFormStarted();
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.tryFormSubmitted,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trimmedUrl,
+          sourceLang: normalizedSourceLang,
+          targetLang: normalizedTargetLang,
+          fieldLayout,
+        }),
+      );
       setTimedOut(false);
       setTimedOutWithEmail(false);
       timedOutRef.current = false;
@@ -899,6 +1021,7 @@ export function TryForm({
       abortControllerRef.current = controller;
 
       try {
+        requestAttempted = true;
         const response = await fetch("/api/previews", {
           method: "POST",
           headers: {
@@ -917,6 +1040,18 @@ export function TryForm({
           const payload = await response.json().catch(() => null);
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
+          captureAnalyticsEvent(
+            ANALYTICS_EVENTS.previewCreateFailed,
+            buildPreviewAnalyticsProperties({
+              locale,
+              sourceUrl: trimmedUrl,
+              sourceLang: normalizedSourceLang,
+              targetLang: normalizedTargetLang,
+              errorCode: typeof payload?.errorCode === "string" ? payload.errorCode : null,
+              errorStage: typeof payload?.errorStage === "string" ? payload.errorStage : null,
+              fieldLayout,
+            }),
+          );
           setSubmissionError(resolveErrorMessage(null, reason));
           return;
         }
@@ -928,8 +1063,25 @@ export function TryForm({
           typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
 
         if (payload?.status === "failed") {
+          if (previewId) {
+            trackedPreviewIdsRef.current.add(previewId);
+          }
           const resolved = resolveErrorFromPayload(payload);
           if (previewId && statusToken) {
+            captureAnalyticsEvent(
+              ANALYTICS_EVENTS.previewCreateSucceeded,
+              buildPreviewAnalyticsProperties({
+                locale,
+                sourceUrl: trimmedUrl,
+                sourceLang: normalizedSourceLang,
+                targetLang: normalizedTargetLang,
+                previewId,
+                status: "failed",
+                errorCode: resolved.code,
+                errorStage: resolved.stage,
+                fieldLayout,
+              }),
+            );
             upsertPreviewStatusCenterJob({
               previewId,
               requestKey,
@@ -949,6 +1101,18 @@ export function TryForm({
               },
             );
           } else {
+            captureAnalyticsEvent(
+              ANALYTICS_EVENTS.previewCreateFailed,
+              buildPreviewAnalyticsProperties({
+                locale,
+                sourceUrl: trimmedUrl,
+                sourceLang: normalizedSourceLang,
+                targetLang: normalizedTargetLang,
+                errorCode: resolved.code,
+                errorStage: resolved.stage,
+                fieldLayout,
+              }),
+            );
             setSubmissionError(resolved.message);
           }
           return;
@@ -956,10 +1120,35 @@ export function TryForm({
 
         if (payload?.status === "ready") {
           if (!previewId || !statusToken) {
+            captureAnalyticsEvent(
+              ANALYTICS_EVENTS.previewCreateFailed,
+              buildPreviewAnalyticsProperties({
+                locale,
+                sourceUrl: trimmedUrl,
+                sourceLang: normalizedSourceLang,
+                targetLang: normalizedTargetLang,
+                fieldLayout,
+              }),
+            );
             setSubmissionError(t("try.error.default"));
             return;
           }
 
+          trackedPreviewIdsRef.current.add(previewId);
+          trackedPreviewTerminalRef.current.delete(previewId);
+          trackedPreviewStatusSignaturesRef.current.delete(previewId);
+          captureAnalyticsEvent(
+            ANALYTICS_EVENTS.previewCreateSucceeded,
+            buildPreviewAnalyticsProperties({
+              locale,
+              sourceUrl: trimmedUrl,
+              sourceLang: normalizedSourceLang,
+              targetLang: normalizedTargetLang,
+              previewId,
+              status: "ready",
+              fieldLayout,
+            }),
+          );
           upsertPreviewStatusCenterJob({
             previewId,
             requestKey,
@@ -976,12 +1165,53 @@ export function TryForm({
         }
 
         if (!previewId) {
+          captureAnalyticsEvent(
+            ANALYTICS_EVENTS.previewCreateFailed,
+            buildPreviewAnalyticsProperties({
+              locale,
+              sourceUrl: trimmedUrl,
+              sourceLang: normalizedSourceLang,
+              targetLang: normalizedTargetLang,
+              fieldLayout,
+            }),
+          );
           throw new Error("Preview was created but no ID was returned.");
         }
         if (!statusToken) {
+          captureAnalyticsEvent(
+            ANALYTICS_EVENTS.previewCreateFailed,
+            buildPreviewAnalyticsProperties({
+              locale,
+              sourceUrl: trimmedUrl,
+              sourceLang: normalizedSourceLang,
+              targetLang: normalizedTargetLang,
+              previewId,
+              fieldLayout,
+            }),
+          );
           throw new Error("Preview was created but no status token was returned.");
         }
 
+        trackedPreviewIdsRef.current.add(previewId);
+        trackedPreviewTerminalRef.current.delete(previewId);
+        trackedPreviewStatusSignaturesRef.current.delete(previewId);
+        captureAnalyticsEvent(
+          ANALYTICS_EVENTS.previewCreateSucceeded,
+          buildPreviewAnalyticsProperties({
+            locale,
+            sourceUrl: trimmedUrl,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
+            previewId,
+            status:
+              payload?.status === "pending" || payload?.status === "processing"
+                ? payload.status
+                : "pending",
+            stage: isPreviewStage(payload?.stage) ? payload.stage : null,
+            retryHintReason: resolvePreviewRetryHint(payload)?.reason ?? null,
+            fieldLayout,
+          }),
+        );
         connectStatusUpdates(previewId, statusToken, requestKey, {
           sourceUrl: trimmedUrl,
           sourceLang: normalizedSourceLang,
@@ -1000,6 +1230,18 @@ export function TryForm({
         }
       }
     } catch (error) {
+      if (requestAttempted) {
+        captureAnalyticsEvent(
+          ANALYTICS_EVENTS.previewCreateFailed,
+          buildPreviewAnalyticsProperties({
+            locale,
+            sourceUrl: trimmedUrl,
+            sourceLang: normalizedSourceLang,
+            targetLang: normalizedTargetLang,
+            fieldLayout,
+          }),
+        );
+      }
       const message = error instanceof Error ? error.message : "Failed to generate preview.";
       setSubmissionError(message);
     } finally {
@@ -1014,6 +1256,18 @@ export function TryForm({
     }
     try {
       await navigator.clipboard.writeText(previewUrl);
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.previewCopyClicked,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trackedJob?.sourceUrl ?? trimmedUrl,
+          sourceLang: trackedJob?.sourceLang ?? normalizedSourceLang,
+          targetLang: trackedJob?.targetLang ?? normalizedTargetLang,
+          previewId: trackedJob?.previewId ?? null,
+          status: trackedJob?.status ?? null,
+          fieldLayout,
+        }),
+      );
       setHasCopied(true);
       if (copyTimerRef.current) {
         clearTimeout(copyTimerRef.current);
@@ -1051,6 +1305,18 @@ export function TryForm({
         return;
       }
       submittedEmailRef.current = trimmedPendingEmail;
+      captureAnalyticsEvent(
+        ANALYTICS_EVENTS.previewEmailSaved,
+        buildPreviewAnalyticsProperties({
+          locale,
+          sourceUrl: trackedJob?.sourceUrl ?? trimmedUrl,
+          sourceLang: trackedJob?.sourceLang ?? normalizedSourceLang,
+          targetLang: trackedJob?.targetLang ?? normalizedTargetLang,
+          previewId,
+          status: trackedJob?.status ?? null,
+          fieldLayout,
+        }),
+      );
       setPendingEmailStatus("saved");
     } catch {
       setPendingEmailStatus("error");
@@ -1127,6 +1393,9 @@ export function TryForm({
                     value={url}
                     onChange={(event) => {
                       const value = event.currentTarget.value;
+                      trackTryFormStarted({
+                        sourceUrl: value,
+                      });
                       setUrl(value);
                       if (urlError) {
                         setUrlError(validateUrl(value));
@@ -1156,7 +1425,12 @@ export function TryForm({
                   <span className="font-medium text-foreground">{t("try.form.sourceLabel")}</span>
                   <LanguageTagCombobox
                     value={sourceLang}
-                    onValueChange={setSourceLang}
+                    onValueChange={(value) => {
+                      trackTryFormStarted({
+                        sourceLang: normalizeLangTag(value) ?? value.trim(),
+                      });
+                      setSourceLang(value);
+                    }}
                     supportedLanguages={supportedLanguages}
                     displayLocale={locale}
                     disabled={inputsDisabled}
@@ -1168,7 +1442,12 @@ export function TryForm({
                   <span className="font-medium text-foreground">{t("try.form.targetLabel")}</span>
                   <LanguageTagCombobox
                     value={targetLang}
-                    onValueChange={setTargetLang}
+                    onValueChange={(value) => {
+                      trackTryFormStarted({
+                        targetLang: normalizeLangTag(value) ?? value.trim(),
+                      });
+                      setTargetLang(value);
+                    }}
                     supportedLanguages={supportedLanguages}
                     displayLocale={locale}
                     disabled={inputsDisabled}
@@ -1274,7 +1553,10 @@ export function TryForm({
                       </p>
                       <Input
                         value={pendingEmail}
-                        onChange={(event) => setPendingEmail(event.currentTarget.value)}
+                        onChange={(event) => {
+                          trackTryFormStarted();
+                          setPendingEmail(event.currentTarget.value);
+                        }}
                         placeholder={t("try.form.emailPlaceholder")}
                         type="email"
                         autoComplete="email"
@@ -1326,7 +1608,10 @@ export function TryForm({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                 <Input
                   value={pendingEmail}
-                  onChange={(event) => setPendingEmail(event.currentTarget.value)}
+                  onChange={(event) => {
+                    trackTryFormStarted();
+                    setPendingEmail(event.currentTarget.value);
+                  }}
                   placeholder={t("try.form.emailPlaceholder")}
                   type="email"
                   autoComplete="email"
@@ -1405,7 +1690,25 @@ export function TryForm({
               {trackedJob.previewUrl ? (
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button asChild size="sm" variant="secondary" className="justify-center">
-                    <a href={trackedJob.previewUrl} target="_blank" rel="noreferrer">
+                    <a
+                      href={trackedJob.previewUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => {
+                        captureAnalyticsEvent(
+                          ANALYTICS_EVENTS.previewOpenClicked,
+                          buildPreviewAnalyticsProperties({
+                            locale,
+                            sourceUrl: trackedJob.sourceUrl,
+                            sourceLang: trackedJob.sourceLang,
+                            targetLang: trackedJob.targetLang,
+                            previewId: trackedJob.previewId,
+                            status: trackedJob.status,
+                            fieldLayout,
+                          }),
+                        );
+                      }}
+                    >
                       {t("try.preview.openOverlay")}
                     </a>
                   </Button>

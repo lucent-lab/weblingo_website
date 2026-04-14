@@ -2,12 +2,26 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PreviewStatusCenter } from "./preview-status-center";
+import { ANALYTICS_EVENTS } from "@internal/analytics/client";
 import {
   buildPreviewStatusCenterRequestKey,
   markPreviewStatusCenterJobTerminal,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
+
+const { captureAnalyticsEvent } = vi.hoisted(() => ({
+  captureAnalyticsEvent: vi.fn(),
+}));
+vi.mock("@internal/analytics/client", async () => {
+  const actual = await vi.importActual<typeof import("@internal/analytics/client")>(
+    "@internal/analytics/client",
+  );
+  return {
+    ...actual,
+    captureAnalyticsEvent,
+  };
+});
 
 const messages = {
   "try.center.capacityHint": "Capacity hint",
@@ -38,6 +52,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 beforeEach(() => {
   resetPreviewStatusCenterStoreForTests();
   window.localStorage.clear();
+  captureAnalyticsEvent.mockReset();
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
@@ -108,7 +123,26 @@ describe("PreviewStatusCenter", () => {
       expect(screen.getByRole("button", { name: "Dismiss" })).toBeTruthy();
     });
 
+    const openPreviewLink = screen.getByRole("link", { name: "Open preview" });
+    openPreviewLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(openPreviewLink);
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+      ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+      expect.objectContaining({
+        preview_id: "22222222-2222-2222-2222-222222222222",
+        status: "ready",
+      }),
+    );
+
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+      ANALYTICS_EVENTS.previewStatusCenterDismissed,
+      expect.objectContaining({
+        preview_id: "22222222-2222-2222-2222-222222222222",
+        status: "ready",
+      }),
+    );
 
     await waitFor(() => {
       expect(screen.queryByText("Ready")).toBeNull();

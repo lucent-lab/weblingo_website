@@ -2,9 +2,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PreviewStatusCenter } from "./preview-status-center";
-import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
-import { TryForm, resolveTryFormMode } from "./try-form";
+import { ANALYTICS_EVENTS } from "@internal/analytics/client";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,
   markPreviewStatusCenterJobTerminal,
@@ -12,6 +12,20 @@ import {
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
+import { TryForm, resolveTryFormMode } from "./try-form";
+
+const { captureAnalyticsEvent } = vi.hoisted(() => ({
+  captureAnalyticsEvent: vi.fn(),
+}));
+vi.mock("@internal/analytics/client", async () => {
+  const actual = await vi.importActual<typeof import("@internal/analytics/client")>(
+    "@internal/analytics/client",
+  );
+  return {
+    ...actual,
+    captureAnalyticsEvent,
+  };
+});
 
 vi.mock("next/dynamic", async () => {
   const React = await import("react");
@@ -176,6 +190,7 @@ beforeEach(() => {
   window.localStorage.clear();
   MockEventSource.instances = [];
   globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
+  captureAnalyticsEvent.mockReset();
 });
 
 afterEach(() => {
@@ -188,6 +203,194 @@ afterEach(() => {
 });
 
 describe("TryForm preview status", () => {
+  it("captures try form start, submit, create success, and terminal ready lifecycle events", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          previewId: "99999999-9999-9999-9999-999999999999",
+          statusToken: "status-token",
+          status: "processing",
+          stage: "translating",
+        }),
+      ),
+    );
+
+    renderTryForm();
+
+    const urlInput = screen.getByPlaceholderText("https://example.com");
+    fireEvent.change(urlInput, { target: { value: "https://example.com/docs?secret=1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.tryFormStarted,
+        expect.objectContaining({
+          source_host: "example.com",
+          source_path: "/docs",
+          source_lang: "en",
+          target_lang: "fr",
+        }),
+      );
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.tryFormSubmitted,
+        expect.objectContaining({
+          source_host: "example.com",
+          source_path: "/docs",
+        }),
+      );
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewCreateSucceeded,
+        expect.objectContaining({
+          preview_id: "99999999-9999-9999-9999-999999999999",
+          status: "processing",
+          stage: "translating",
+        }),
+      );
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewStatusTransition,
+        expect.objectContaining({
+          preview_id: "99999999-9999-9999-9999-999999999999",
+          status: "processing",
+          stage: "translating",
+        }),
+      );
+    });
+
+    const eventSource = MockEventSource.instances[0];
+    expect(eventSource).toBeTruthy();
+    eventSource?.emit("complete", {
+      previewUrl: "https://preview.example.com/p/9999",
+    });
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewReady,
+        expect.objectContaining({
+          preview_id: "99999999-9999-9999-9999-999999999999",
+          status: "ready",
+        }),
+      );
+    });
+  });
+
+  it("captures preview terminal failures from the create response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          previewId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+          statusToken: "status-token",
+          status: "failed",
+          errorCode: "render_failed",
+          errorStage: "generating_preview",
+        }),
+      ),
+    );
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://broken.example.com/" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewCreateSucceeded,
+        expect.objectContaining({
+          preview_id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        }),
+      );
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewFailed,
+        expect.objectContaining({
+          preview_id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+          status: "failed",
+          error_code: "render_failed",
+          error_stage: "generating_preview",
+        }),
+      );
+    });
+  });
+
+  it("captures preview create failures when a 2xx response body is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response("not-json", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com/docs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewCreateFailed,
+        expect.objectContaining({
+          source_host: "example.com",
+          source_path: "/docs",
+          source_lang: "en",
+          target_lang: "fr",
+        }),
+      );
+    });
+  });
+
+  it("captures preview open and copy actions after a ready result", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          previewId: "abababab-abab-abab-abab-abababababab",
+          statusToken: "status-token",
+          status: "ready",
+          previewUrl: "https://preview.example.com/p/abab",
+        }),
+      ),
+    );
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    const openButton = await screen.findByRole("link", { name: "Open overlay preview" });
+    openButton.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(openButton);
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+
+    await waitFor(() => {
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewOpenClicked,
+        expect.objectContaining({
+          preview_id: "abababab-abab-abab-abab-abababababab",
+        }),
+      );
+      expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+        ANALYTICS_EVENTS.previewCopyClicked,
+        expect.objectContaining({
+          preview_id: "abababab-abab-abab-abab-abababababab",
+        }),
+      );
+    });
+  });
+
   it("maps preview phases to deterministic modes", () => {
     expect(resolveTryFormMode(false, null)).toBe("idle");
     expect(resolveTryFormMode(true, null)).toBe("creating");

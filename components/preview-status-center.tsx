@@ -2,6 +2,11 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ANALYTICS_EVENTS,
+  buildPreviewAnalyticsProperties,
+  captureAnalyticsEvent,
+} from "@internal/analytics/client";
 import { createClientTranslator, type ClientMessages } from "@internal/i18n";
 import {
   resolvePreviewStatusCenterCapacityHint,
@@ -88,7 +93,24 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
             <div className="mt-3 flex items-center gap-2">
               {job.status === "ready" && job.previewUrl ? (
                 <Button asChild size="sm" variant="secondary">
-                  <a href={job.previewUrl} target="_blank" rel="noreferrer">
+                  <a
+                    href={job.previewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => {
+                      captureAnalyticsEvent(
+                        ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+                        buildPreviewAnalyticsProperties({
+                          sourceUrl: job.sourceUrl,
+                          sourceLang: job.sourceLang,
+                          targetLang: job.targetLang,
+                          previewId: job.previewId,
+                          status: job.status,
+                          stage: job.stage,
+                        }),
+                      );
+                    }}
+                  >
                     {t("try.preview.open")}
                   </a>
                 </Button>
@@ -99,6 +121,19 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
                   size="sm"
                   variant="ghost"
                   onClick={() => {
+                    captureAnalyticsEvent(
+                      ANALYTICS_EVENTS.previewStatusCenterDismissed,
+                      buildPreviewAnalyticsProperties({
+                        sourceUrl: job.sourceUrl,
+                        sourceLang: job.sourceLang,
+                        targetLang: job.targetLang,
+                        previewId: job.previewId,
+                        status: job.status,
+                        stage: job.stage,
+                        errorCode: job.errorCode,
+                        errorStage: job.errorStage,
+                      }),
+                    );
                     removePreviewStatusCenterJob(job.previewId);
                   }}
                 >
