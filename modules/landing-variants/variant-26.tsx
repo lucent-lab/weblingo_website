@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Cormorant_Garamond, Libre_Franklin } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-26.module.css";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const libreFranklin = Libre_Franklin({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant26({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant26({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, cormorant.variable, libreFranklin.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <header className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <Link href={`/${locale}`} className="inline-flex items-baseline gap-3">

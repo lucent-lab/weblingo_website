@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Hanken_Grotesk, Unbounded } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-6.module.css";
-
-const unbounded = Unbounded({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const hanken = Hanken_Grotesk({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant6({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant6({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, unbounded.variable, hanken.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.grid} />
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">

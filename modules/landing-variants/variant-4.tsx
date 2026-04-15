@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Alegreya_Sans, Cormorant_Garamond } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-4.module.css";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const alegreyaSans = Alegreya_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 function WaveDivider({ className }: { className?: string }) {
   return (
@@ -49,7 +33,7 @@ export function LandingVariant4({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, cormorant.variable, alegreyaSans.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.topo} />
 
       <header className="sticky top-0 z-40 px-4 pt-4 sm:px-6">

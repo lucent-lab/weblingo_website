@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Fira_Code, Space_Mono } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-24.module.css";
-
-const firaCode = Fira_Code({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const spaceMono = Space_Mono({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant24({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant24({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, firaCode.variable, spaceMono.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.scanlines} />
       <div aria-hidden className={styles.crt} />
 

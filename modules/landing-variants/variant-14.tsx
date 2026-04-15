@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Assistant, Newsreader } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-14.module.css";
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const assistant = Assistant({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant14({
   locale,
@@ -32,9 +16,7 @@ export function LandingVariant14({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div
-      className={cn(styles.root, newsreader.variable, assistant.variable, "min-h-screen font-sans")}
-    >
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.paper} />
       <div aria-hidden className={styles.grain} />
 

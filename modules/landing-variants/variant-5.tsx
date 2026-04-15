@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Instrument_Sans, Instrument_Serif } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,22 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-5.module.css";
-
-const instrumentSans = Instrument_Sans({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
 
 export function LandingVariant5({
   locale,
@@ -33,9 +16,7 @@ export function LandingVariant5({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div
-      className={cn(styles.root, instrumentSans.variable, instrumentSerif.variable, "min-h-screen")}
-    >
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.grid} />
       <div aria-hidden className={styles.noise} />
 

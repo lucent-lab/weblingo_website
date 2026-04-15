@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { JetBrains_Mono, Recursive } from "next/font/google";
 import { ArrowRight, BarChart3, Cloud, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-15.module.css";
-
-const recursive = Recursive({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 const featureItems = [
   { titleKey: "home.features.ai.title", descriptionKey: "home.features.ai.description", icon: Zap },
@@ -46,9 +30,7 @@ export function LandingVariant15({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div
-      className={cn(styles.root, recursive.variable, jetbrains.variable, "min-h-screen font-sans")}
-    >
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.grid} />
 
       <header className="sticky top-0 z-40 px-4 pt-4 sm:px-6">

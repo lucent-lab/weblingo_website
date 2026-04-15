@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { IBM_Plex_Mono, Saira_Extra_Condensed } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-2.module.css";
-
-const saira = Saira_Extra_Condensed({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant2({
   locale,
@@ -34,7 +19,7 @@ export function LandingVariant2({
   const tapeB = t("home.hero.trust");
 
   return (
-    <div className={cn(styles.root, saira.variable, plexMono.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <header className="border-b-2 border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href={`/${locale}`} className="flex items-baseline gap-3">

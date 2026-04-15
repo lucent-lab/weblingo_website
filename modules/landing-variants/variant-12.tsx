@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { IBM_Plex_Sans, Syne } from "next/font/google";
 import { ArrowRight, BarChart3, Cloud, ShieldCheck, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-12.module.css";
-
-const syne = Syne({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 const featureItems = [
   {
@@ -50,7 +34,7 @@ export function LandingVariant12({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, syne.variable, plexSans.variable, "min-h-screen font-sans")}>
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.noise} />
 
       <header className="sticky top-0 z-40 px-4 pt-4 sm:px-6">

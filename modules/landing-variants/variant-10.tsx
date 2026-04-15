@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Azeret_Mono, Bungee } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-10.module.css";
-
-const bungee = Bungee({
-  subsets: ["latin"],
-  weight: ["400"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const azeret = Azeret_Mono({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant10({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant10({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, bungee.variable, azeret.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.halftone} />
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">

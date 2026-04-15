@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-23.module.css";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const sourceSans = Source_Sans_3({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant23({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant23({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, playfair.variable, sourceSans.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href={`/${locale}`} className="inline-flex items-baseline gap-2">

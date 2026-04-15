@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parsePreviewRetryHint,
   reducePreviewJob,
   resolveNextPreviewJobPhase,
   type PreviewJob,
@@ -152,5 +153,41 @@ describe("preview-job-machine", () => {
   it("keeps non-terminal rank progression", () => {
     expect(resolveNextPreviewJobPhase("pending", "processing")).toBe("processing");
     expect(resolveNextPreviewJobPhase("processing", "pending")).toBe("processing");
+  });
+
+  it("rejects invalid retry hints with fractional or negative retry seconds", () => {
+    expect(
+      parsePreviewRetryHint({
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 1.5,
+        emailRecommended: true,
+      }),
+    ).toEqual({
+      reason: "browser_capacity_exhausted",
+      retryAfterSeconds: null,
+      emailRecommended: true,
+    });
+    expect(
+      parsePreviewRetryHint({
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: -1,
+        emailRecommended: true,
+      }),
+    ).toEqual({
+      reason: "browser_capacity_exhausted",
+      retryAfterSeconds: null,
+      emailRecommended: true,
+    });
+    expect(
+      parsePreviewRetryHint({
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 60,
+        emailRecommended: true,
+      }),
+    ).toEqual({
+      reason: "browser_capacity_exhausted",
+      retryAfterSeconds: 60,
+      emailRecommended: true,
+    });
   });
 });

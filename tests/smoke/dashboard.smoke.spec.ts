@@ -14,13 +14,13 @@ test.describe("dashboard smoke", () => {
 
   test("loads the dashboard overview shell", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "All sites" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: "Manage" })).toBeVisible();
   });
 
   test("navigates site detail and pages pagination", async ({ page }) => {
     await page.goto(`/dashboard/sites/${SITE_ID}`);
-    await expect(page.getByRole("heading", { name: "Configuration" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Site workspace" })).toBeVisible();
 
     await page.goto(`/dashboard/sites/${SITE_ID}/pages`);
     await expect(page.getByRole("heading", { name: "Pages summary" })).toBeVisible();

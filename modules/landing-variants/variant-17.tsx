@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Prata, Urbanist } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-17.module.css";
-
-const prata = Prata({
-  subsets: ["latin"],
-  weight: ["400"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const urbanist = Urbanist({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant17({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant17({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, prata.variable, urbanist.variable, "min-h-screen font-sans")}>
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.grain} />
 
       <header className="sticky top-0 z-40 px-4 pt-4 sm:px-6">

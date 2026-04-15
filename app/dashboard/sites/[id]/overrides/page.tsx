@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { GlossaryEditor } from "../glossary-editor";
@@ -36,6 +37,10 @@ import {
   type ConsistencyOverrideHygieneWarning,
 } from "@internal/dashboard/webhooks";
 import { ConsistencyManager } from "../consistency/consistency-manager";
+
+type WebhooksAuthContext = NonNullable<
+  Awaited<ReturnType<typeof requireDashboardAuth>>["webhooksAuth"]
+>;
 
 export const metadata = {
   title: "Translation rules",
@@ -157,47 +162,6 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
     sourceLang: resolvedSearchParams?.sourceLang,
     targetLang: resolvedSearchParams?.targetLang,
   });
-
-  let cpmEntries: ConsistencyCpmEntry[] = [];
-  let blocks: ConsistencyBlock[] = [];
-  let overrideWarnings: ConsistencyOverrideHygieneWarning[] = [];
-  let dataLoadError: unknown = null;
-
-  if (selectedLocaleScope) {
-    const [cpmResult, blocksResult, warningsResult] = await Promise.allSettled([
-      fetchConsistencyCpm(authToken, site.id, {
-        targetLang: selectedLocaleScope.targetLang,
-        sourceLang: selectedLocaleScope.sourceLang,
-        limit: 100,
-        offset: 0,
-      }),
-      fetchConsistencyBlocks(authToken, site.id),
-      fetchConsistencyOverrideHygiene(authToken, site.id, {
-        targetLang: selectedLocaleScope.targetLang,
-        sourceLang: selectedLocaleScope.sourceLang,
-        limit: 100,
-        offset: 0,
-      }),
-    ]);
-
-    if (cpmResult.status === "fulfilled") {
-      cpmEntries = cpmResult.value.entries;
-    } else {
-      dataLoadError = cpmResult.reason;
-    }
-
-    if (blocksResult.status === "fulfilled") {
-      blocks = blocksResult.value.blocks;
-    } else {
-      dataLoadError = dataLoadError ?? blocksResult.reason;
-    }
-
-    if (warningsResult.status === "fulfilled") {
-      overrideWarnings = warningsResult.value.warnings;
-    } else {
-      dataLoadError = dataLoadError ?? warningsResult.reason;
-    }
-  }
 
   return (
     <div className="space-y-8">
@@ -346,66 +310,154 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       </div>
 
       <section id="consistency-governance" className="scroll-mt-24">
-        <Card>
-          <CardHeader>
-            <CardTitle>Consistency governance</CardTitle>
-            <CardDescription>
-              Review canonical phrases, blocks, and override conflicts for the selected locale pair.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!selectedLocaleScope ? (
-              <p className="text-sm text-muted-foreground">
-                Add at least one target locale before using consistency governance.
-              </p>
-            ) : !canEdit ? (
-              <LockedFeatureCard
-                title="Consistency governance"
-                description={
-                  mutationsAllowed
-                    ? "Upgrade to edit canonical phrases and block policies."
-                    : "Update billing to resume consistency governance edits."
-                }
-                pricingPath={pricingPath}
-                ctaLabel={mutationsAllowed ? "Upgrade plan" : "Update billing"}
-                badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
-              />
-            ) : dataLoadError ? (
-              (() => {
-                const errorView = resolveDashboardErrorView(dataLoadError, {
-                  title: "Unable to load consistency data",
-                  description:
-                    "We could not complete your request. You can retry or return to the dashboard.",
-                  message: "Unable to load consistency data.",
-                });
-
-                return (
-                  <ErrorStateCard
-                    title={errorView.title}
-                    description={errorView.description}
-                    message={errorView.message}
-                    actions={
-                      <Button asChild variant="outline">
-                        <Link href="/dashboard">Back to dashboard</Link>
-                      </Button>
-                    }
-                  />
-                );
-              })()
-            ) : (
-              <ConsistencyManager
-                siteId={site.id}
-                sourceLang={selectedLocaleScope.sourceLang}
-                targetLang={selectedLocaleScope.targetLang}
-                canMutate={canEdit}
-                cpmEntries={cpmEntries}
-                blocks={blocks}
-                overrideWarnings={overrideWarnings}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <Suspense fallback={<ConsistencyGovernanceSkeleton />}>
+          <ConsistencyGovernanceSection
+            authToken={authToken}
+            canEdit={canEdit}
+            mutationsAllowed={mutationsAllowed}
+            pricingPath={pricingPath}
+            selectedLocaleScope={selectedLocaleScope}
+            siteId={site.id}
+          />
+        </Suspense>
       </section>
     </div>
+  );
+}
+
+async function ConsistencyGovernanceSection({
+  authToken,
+  canEdit,
+  mutationsAllowed,
+  pricingPath,
+  selectedLocaleScope,
+  siteId,
+}: {
+  authToken: WebhooksAuthContext;
+  canEdit: boolean;
+  mutationsAllowed: boolean;
+  pricingPath: string;
+  selectedLocaleScope: { sourceLang: string; targetLang: string } | null;
+  siteId: string;
+}) {
+  let cpmEntries: ConsistencyCpmEntry[] = [];
+  let blocks: ConsistencyBlock[] = [];
+  let overrideWarnings: ConsistencyOverrideHygieneWarning[] = [];
+  let dataLoadError: unknown = null;
+
+  if (selectedLocaleScope && canEdit) {
+    const [cpmResult, blocksResult, warningsResult] = await Promise.allSettled([
+      fetchConsistencyCpm(authToken, siteId, {
+        targetLang: selectedLocaleScope.targetLang,
+        sourceLang: selectedLocaleScope.sourceLang,
+        limit: 100,
+        offset: 0,
+      }),
+      fetchConsistencyBlocks(authToken, siteId),
+      fetchConsistencyOverrideHygiene(authToken, siteId, {
+        targetLang: selectedLocaleScope.targetLang,
+        sourceLang: selectedLocaleScope.sourceLang,
+        limit: 100,
+        offset: 0,
+      }),
+    ]);
+
+    if (cpmResult.status === "fulfilled") {
+      cpmEntries = cpmResult.value.entries;
+    } else {
+      dataLoadError = cpmResult.reason;
+    }
+
+    if (blocksResult.status === "fulfilled") {
+      blocks = blocksResult.value.blocks;
+    } else {
+      dataLoadError = dataLoadError ?? blocksResult.reason;
+    }
+
+    if (warningsResult.status === "fulfilled") {
+      overrideWarnings = warningsResult.value.warnings;
+    } else {
+      dataLoadError = dataLoadError ?? warningsResult.reason;
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Consistency governance</CardTitle>
+        <CardDescription>
+          Review canonical phrases, blocks, and override conflicts for the selected locale pair.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!selectedLocaleScope ? (
+          <p className="text-sm text-muted-foreground">
+            Add at least one target locale before using consistency governance.
+          </p>
+        ) : !canEdit ? (
+          <LockedFeatureCard
+            title="Consistency governance"
+            description={
+              mutationsAllowed
+                ? "Upgrade to edit canonical phrases and block policies."
+                : "Update billing to resume consistency governance edits."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={mutationsAllowed ? "Upgrade plan" : "Update billing"}
+            badgeLabel={mutationsAllowed ? "Locked" : "Billing issue"}
+          />
+        ) : dataLoadError ? (
+          (() => {
+            const errorView = resolveDashboardErrorView(dataLoadError, {
+              title: "Unable to load consistency data",
+              description:
+                "We could not complete your request. You can retry or return to the dashboard.",
+              message: "Unable to load consistency data.",
+            });
+
+            return (
+              <ErrorStateCard
+                title={errorView.title}
+                description={errorView.description}
+                message={errorView.message}
+                actions={
+                  <Button asChild variant="outline">
+                    <Link href="/dashboard">Back to dashboard</Link>
+                  </Button>
+                }
+              />
+            );
+          })()
+        ) : (
+          <ConsistencyManager
+            siteId={siteId}
+            sourceLang={selectedLocaleScope.sourceLang}
+            targetLang={selectedLocaleScope.targetLang}
+            canMutate={canEdit}
+            cpmEntries={cpmEntries}
+            blocks={blocks}
+            overrideWarnings={overrideWarnings}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConsistencyGovernanceSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Consistency governance</CardTitle>
+        <CardDescription>Loading consistency data...</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="h-10 animate-pulse rounded-md bg-muted/40" />
+          <div className="h-28 animate-pulse rounded-md bg-muted/30" />
+          <div className="h-20 animate-pulse rounded-md bg-muted/30" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }

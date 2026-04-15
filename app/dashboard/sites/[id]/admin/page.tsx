@@ -170,6 +170,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     acc[locale.targetLang] = locale.alias ?? null;
     return acc;
   }, {});
+  const sourceLang = site.routeConfig?.sourceLang ?? site.locales[0]?.sourceLang ?? "";
   const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
   const hasVerifiedDomain = verifiedDomains > 0;
   const servingLive = deployments.some((deployment) => deployment.servingStatus === "serving");
@@ -368,7 +369,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
         <SiteAdminForm
           siteId={site.id}
           sourceUrl={site.sourceUrl}
-          sourceLang={site.locales[0]?.sourceLang ?? ""}
+          sourceLang={sourceLang}
           targets={targetLangs}
           aliases={localeAliases}
           pattern={site.routeConfig?.pattern ?? null}
