@@ -2,12 +2,18 @@ name: ci
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
     env:
       HOME_PAGE_VARIANT: expansion
       UPSTASH_REDIS__KV_REST_API_TOKEN: dummy
@@ -65,9 +71,6 @@ jobs:
 
       - name: Build
         run: corepack pnpm build
-
-      - name: Install Playwright browser
-        run: corepack pnpm exec playwright install --with-deps chromium
 
       - name: Dashboard smoke (mock auth)
         run: corepack pnpm test:e2e:smoke
