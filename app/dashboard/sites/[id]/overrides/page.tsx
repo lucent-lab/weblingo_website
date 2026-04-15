@@ -74,6 +74,13 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const activateHelp = t("dashboard.site.status.activateHelp");
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
+  const pageNavTitle = t("dashboard.site.overrides.pageNav.title");
+  const pageNavDescription = t("dashboard.site.overrides.pageNav.description");
+  const pageNavLocaleScope = t("dashboard.site.overrides.pageNav.localeScope");
+  const pageNavGlossary = t("dashboard.site.overrides.pageNav.glossary");
+  const pageNavManualOverrides = t("dashboard.site.overrides.pageNav.manualOverrides");
+  const pageNavLocalizedSlugs = t("dashboard.site.overrides.pageNav.localizedSlugs");
+  const pageNavConsistencyGovernance = t("dashboard.site.overrides.pageNav.consistencyGovernance");
 
   let site: Site | null = null;
   let glossary: GlossaryEntry[] = [];
@@ -188,14 +195,14 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       </Card>
 
       <PageSectionNav
-        title="On this page"
-        description="Jump directly to the rules surface you need."
+        title={pageNavTitle}
+        description={pageNavDescription}
         links={[
-          { href: "#locale-scope", label: "Locale scope" },
-          { href: "#glossary", label: "Glossary" },
-          { href: "#manual-overrides", label: "Manual overrides" },
-          { href: "#localized-slugs", label: "Localized slugs" },
-          { href: "#consistency-governance", label: "Consistency governance" },
+          { href: "#locale-scope", label: pageNavLocaleScope },
+          { href: "#glossary", label: pageNavGlossary },
+          { href: "#manual-overrides", label: pageNavManualOverrides },
+          { href: "#localized-slugs", label: pageNavLocalizedSlugs },
+          { href: "#consistency-governance", label: pageNavConsistencyGovernance },
         ]}
       />
 

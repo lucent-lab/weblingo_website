@@ -231,6 +231,14 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const servingActionEnable = t("dashboard.serving.action.enable");
   const servingActionDisable = t("dashboard.serving.action.disable");
   const servingActionView = t("dashboard.serving.action.view");
+  const pageNavTitle = t("dashboard.site.admin.pageNav.title");
+  const pageNavDescription = t("dashboard.site.admin.pageNav.description");
+  const pageNavSiteSettings = t("dashboard.site.admin.pageNav.siteSettings");
+  const pageNavLocalization = t("dashboard.site.admin.pageNav.localization");
+  const pageNavServing = t("dashboard.site.admin.pageNav.serving");
+  const pageNavDeployments = t("dashboard.site.admin.pageNav.deployments");
+  const pageNavDeploymentHistory = t("dashboard.site.admin.pageNav.deploymentHistory");
+  const pageNavCrawlControl = t("dashboard.site.admin.pageNav.crawlControl");
   const crawlCaptureTitle = t("dashboard.site.settings.crawlCapture.title");
   const crawlCaptureDescription = t("dashboard.site.settings.crawlCapture.description");
   const crawlCaptureLabel = t("dashboard.site.settings.crawlCapture.label");
@@ -319,15 +327,15 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       </div>
 
       <PageSectionNav
-        title="On this page"
-        description="Jump directly to the settings section you need."
+        title={pageNavTitle}
+        description={pageNavDescription}
         links={[
-          { href: "#site-settings", label: "Site settings" },
-          { href: "#localization", label: "Localization" },
-          { href: "#serving", label: "Serving" },
-          { href: "#deployments", label: "Deployments" },
-          { href: "#deployment-history", label: "Deployment history" },
-          { href: "#crawl-control", label: "Crawl control" },
+          { href: "#site-settings", label: pageNavSiteSettings },
+          { href: "#localization", label: pageNavLocalization },
+          { href: "#serving", label: pageNavServing },
+          { href: "#deployments", label: pageNavDeployments },
+          { href: "#deployment-history", label: pageNavDeploymentHistory },
+          { href: "#crawl-control", label: pageNavCrawlControl },
         ]}
       />
 
