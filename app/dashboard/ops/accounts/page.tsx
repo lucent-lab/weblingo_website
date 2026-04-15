@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listAdminAccounts, type ManagedAccountPlan } from "@internal/dashboard/webhooks";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 import { setWorkspaceAction } from "../../_lib/workspace-actions";
 
 export async function generateMetadata() {
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   return {
     title: t("dashboard.ops.accounts.meta.title", "Managed accounts"),
     robots: { index: false, follow: false },
@@ -120,9 +120,8 @@ export default async function OpsAccountsPage({ searchParams }: AccountsPageProp
         offset + PAGE_LIMIT,
       )
     : null;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const heading = t("dashboard.ops.accounts.heading", "Managed accounts");
   const badgeLabel = t("dashboard.ops.badge.internalAdmin", "Internal admin");
   const intro = t(
@@ -317,7 +316,7 @@ export default async function OpsAccountsPage({ searchParams }: AccountsPageProp
                     </Button>
                     <form action={setWorkspaceAction}>
                       <input name="subjectAccountId" type="hidden" value={account.accountId} />
-                      <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+                      <input name="redirectTo" type="hidden" value="/dashboard" />
                       <Button type="submit" variant="outline" className="w-full">
                         {openWorkspaceLabel}
                       </Button>

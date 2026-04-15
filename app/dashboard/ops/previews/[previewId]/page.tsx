@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 import {
   getAdminPreview,
   WebhooksApiError,
@@ -28,9 +29,8 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 export async function generateMetadata() {
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   return {
     title: t("dashboard.ops.previewDetail.meta.title", "Preview review detail"),
     robots: { index: false, follow: false },
@@ -58,9 +58,8 @@ export default async function OpsPreviewDetailPage({ params }: OpsPreviewDetailP
     throw error;
   }
 
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const preview = payload.preview;
 
   return (

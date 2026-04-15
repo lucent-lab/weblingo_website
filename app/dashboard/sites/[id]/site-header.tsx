@@ -7,6 +7,7 @@ import { SiteStatusToggleForm } from "@/components/dashboard/site-status-toggle-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Site } from "@internal/dashboard/webhooks";
 
 export function SiteHeader({
@@ -62,15 +63,16 @@ export function SiteHeader({
                 </Button>
               ) : null}
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    aria-label={activateHelpLabel}
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
+                <PopoverTrigger
+                  aria-label={activateHelpLabel}
+                  className={buttonVariants({
+                    variant: "ghost",
+                    size: "icon",
+                    className: "h-9 w-9 text-muted-foreground hover:text-foreground",
+                  })}
+                  type="button"
+                >
+                  <Info className="h-4 w-4" />
                 </PopoverTrigger>
                 <PopoverContent className="max-w-xs text-sm text-muted-foreground">
                   {activateHelp}
@@ -104,8 +106,8 @@ export function SiteHeader({
           </Link>
         </Button>
         <Button asChild variant="link">
-          <Link href="/dashboard/sites" title="Back to list">
-            Back to list
+          <Link href="/dashboard" title="Back to dashboard">
+            Back to dashboard
           </Link>
         </Button>
       </div>

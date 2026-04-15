@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import {
@@ -21,12 +22,15 @@ import { LockedFeatureCard } from "./locked-feature-card";
 import { Info } from "lucide-react";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getSiteDashboardCached } from "@internal/dashboard/data";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   WebhooksApiError,
   type Deployment,
@@ -34,7 +38,7 @@ import {
   type SitePageSummary,
 } from "@internal/dashboard/webhooks";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 type SitePageProps = {
   params: Promise<{ id: string }>;
@@ -47,10 +51,9 @@ export default async function SitePage({ params }: SitePageProps) {
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${locale}/pricing`;
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
@@ -75,7 +78,7 @@ export default async function SitePage({ params }: SitePageProps) {
   let site: Site | null = null;
   let deployments: Deployment[] = [];
   let pages: SitePageSummary[] = [];
-  let error: string | null = null;
+  let error: unknown = null;
 
   try {
     const payload = await getSiteDashboardCached(authToken, id, {
@@ -88,7 +91,7 @@ export default async function SitePage({ params }: SitePageProps) {
     deployments = payload.deployments;
     pages = payload.pages ?? [];
   } catch (err) {
-    error = err instanceof Error ? err.message : "Unable to load site.";
+    error = err;
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSiteDashboard failed", {
         siteId: id,
@@ -109,18 +112,23 @@ export default async function SitePage({ params }: SitePageProps) {
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the dashboard.",
+        message: "Unable to load site pages.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Back to dashboard</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();
@@ -154,7 +162,7 @@ export default async function SitePage({ params }: SitePageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Configuration</CardTitle>
+          <CardTitle>Site workspace</CardTitle>
           <CardDescription>
             Source, languages, and route pattern captured from onboarding.
           </CardDescription>
@@ -421,15 +429,16 @@ function DomainSection({
                           <span className="inline-flex items-center gap-1">
                             <span>Cloudflare</span>
                             <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  aria-label={cloudflareStatusHelpLabel}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-5 w-5 text-muted-foreground"
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                </Button>
+                              <PopoverTrigger
+                                aria-label={cloudflareStatusHelpLabel}
+                                className={buttonVariants({
+                                  variant: "ghost",
+                                  size: "icon",
+                                  className: "h-5 w-5 text-muted-foreground",
+                                })}
+                                type="button"
+                              >
+                                <Info className="h-3.5 w-3.5" />
                               </PopoverTrigger>
                               <PopoverContent className="max-w-xs text-xs text-muted-foreground">
                                 <div className="space-y-2">

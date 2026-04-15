@@ -15,6 +15,7 @@ import {
   type AgencyCustomersResponse,
 } from "./webhooks";
 import { createHas, type HasCheck } from "./entitlements";
+import { resolveStripeBillingRuntime, type StripeBillingRuntimeState } from "./billing-runtime";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import { readSubjectAccountId } from "./workspace";
 
@@ -47,6 +48,7 @@ export type DashboardAuth = {
   subjectPlanActive: boolean;
   mutationsAllowed: boolean;
   billingIssue: BillingIssue | null;
+  stripeBillingRuntime: StripeBillingRuntimeState | null;
   has: (requirement: HasCheck) => boolean;
 };
 
@@ -317,6 +319,7 @@ function buildDashboardE2eMockAuth(): DashboardAuth {
     subjectPlanActive: true,
     mutationsAllowed: true,
     billingIssue: null,
+    stripeBillingRuntime: null,
     has: createHas(account),
   };
 }
@@ -452,6 +455,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       subjectPlanActive: false,
       mutationsAllowed: false,
       billingIssue: null,
+      stripeBillingRuntime: null,
       has: () => false,
     };
   }
@@ -493,6 +497,8 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       subjectFallbackToActor = true;
       console.warn("[dashboard] subject account exchange failed:", error);
     }
+  } else if (requestedSubjectId && requestedSubjectId !== actorBootstrap.subjectAccountId) {
+    subjectFallbackToActor = true;
   }
 
   const actorPlanActive = actorAccount.planStatus === "active";
@@ -503,6 +509,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       ? ({ scope: "subject", status: subjectAccount.planStatus } as const)
       : null;
   const mutationsAllowed = actorPlanActive && subjectPlanActive;
+  const stripeBillingRuntime = resolveStripeBillingRuntime(user.user_metadata);
 
   return {
     user,
@@ -521,6 +528,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     subjectPlanActive,
     mutationsAllowed,
     billingIssue,
+    stripeBillingRuntime,
     has: createHas(subjectAccount),
   };
 });

@@ -1,13 +1,17 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Suspense, cache } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
-import { i18nConfig } from "@internal/i18n";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
+import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
+import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
@@ -32,13 +36,16 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const onboardingState = resolveDashboardOnboardingState(auth, t);
+  const pricingPath = `/${locale}/pricing`;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Overview</h2>
+          <h2 className="text-2xl font-semibold">Dashboard</h2>
           <p className="text-sm text-muted-foreground">
             Welcome back. Set up a new site or check deployment health.
           </p>
@@ -52,6 +59,26 @@ export default async function DashboardPage() {
           <OverviewActions auth={auth} pricingPath={pricingPath} />
         </Suspense>
       </div>
+
+      {onboardingState.stage === "claimed_free_account" ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>{onboardingState.title}</CardTitle>
+              <CardDescription>{onboardingState.description}</CardDescription>
+            </div>
+            <Badge variant="outline">{onboardingState.badge}</Badge>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/dashboard/sites/new">Start onboarding</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={pricingPath}>Review pricing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Suspense fallback={<OverviewSitesSkeleton />}>
         <OverviewSites auth={auth} pricingPath={pricingPath} />
@@ -77,9 +104,6 @@ async function OverviewActions({
       <div className="flex flex-wrap gap-3">
         <Button disabled variant="outline">
           Add a site
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/sites">All sites</Link>
         </Button>
       </div>
     );
@@ -119,9 +143,6 @@ async function OverviewActions({
           </Button>
         </div>
       )}
-      <Button asChild variant="outline">
-        <Link href="/dashboard/sites">All sites</Link>
-      </Button>
     </div>
   );
 }
@@ -137,22 +158,24 @@ async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; prici
     canCreateSite = data.canCreateSite;
     billingBlocked = data.billingBlocked;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to load sites from the webhooks worker.";
+    const errorView = resolveDashboardErrorView(error, {
+      title: "Could not load sites",
+      description:
+        "We could not complete your request. You can retry or return to the dashboard home.",
+      message: "Unable to load sites from the webhooks worker.",
+    });
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
-        <CardHeader>
-          <CardTitle className="text-destructive">Could not load sites</CardTitle>
-          <CardDescription>{message}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Check that{" "}
-            <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
-            reachable and that your Supabase session is valid.
-          </p>
-        </CardContent>
-      </Card>
+      <ErrorStateCard
+        title={errorView.title}
+        description={errorView.description}
+        message={errorView.message}
+      >
+        <p className="text-sm text-muted-foreground">
+          Check that{" "}
+          <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
+          reachable and that your Supabase session is valid.
+        </p>
+      </ErrorStateCard>
     );
   }
 
@@ -197,7 +220,7 @@ function OverviewActionsSkeleton() {
         Add a site
       </Button>
       <Button disabled variant="outline">
-        All sites
+        Dashboard
       </Button>
     </div>
   );

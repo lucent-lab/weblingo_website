@@ -8,6 +8,7 @@ import { SiteAdminForm } from "./site-admin-form";
 import { SiteShowcaseCard } from "./site-showcase-card";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DeploymentCompletenessBadge } from "@/components/dashboard/deployment-completeness-badge";
 import { DeploymentHistoryTable } from "@/components/dashboard/deployment-history-table";
 
@@ -24,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import {
   getSiteDashboardCached,
@@ -31,6 +33,7 @@ import {
   listSupportedLanguagesCached,
 } from "@internal/dashboard/data";
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchDeploymentHistory,
   getSiteShowcase,
@@ -41,10 +44,10 @@ import {
   type SiteShowcaseResponse,
   type SupportedLanguage,
 } from "@internal/dashboard/webhooks";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
-  title: "Site settings",
+  title: "Settings",
   robots: { index: false, follow: false },
 };
 
@@ -64,16 +67,15 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && !billingBlocked;
   const canActivate = auth.has({ feature: "edit" }) && !billingBlocked;
   const canToggleServing = auth.has({ allFeatures: ["edit", "serve"] }) && !billingBlocked;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const displayLocale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${displayLocale}/pricing`;
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale: displayLocale }));
   let site: Site | null = null;
   let deployments: Deployment[] = [];
   let deploymentHistory: DeploymentHistoryByLocale[] = [];
   let deploymentHistoryLimit: number | null = null;
   let activeSiteCount: number | null = null;
-  let error: string | null = null;
+  let error: unknown = null;
   let supportedLanguages: SupportedLanguage[] = [];
   let showcaseState: SiteShowcaseResponse | null = null;
   let showcaseError: string | null = null;
@@ -100,10 +102,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     site = siteDashboardResult.value.site;
     deployments = siteDashboardResult.value.deployments;
   } else {
-    error =
-      siteDashboardResult.reason instanceof Error
-        ? siteDashboardResult.reason.message
-        : "Unable to load site settings.";
+    error = siteDashboardResult.reason;
   }
 
   if (deploymentHistoryResult.status === "fulfilled") {
@@ -143,29 +142,34 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the dashboard.",
+        message: "Unable to load site settings.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Back to dashboard</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();
   }
 
-  const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
   const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
   const localeAliases = site.locales.reduce<Record<string, string | null>>((acc, locale) => {
     acc[locale.targetLang] = locale.alias ?? null;
     return acc;
   }, {});
+  const sourceLang = site.routeConfig?.sourceLang ?? site.locales[0]?.sourceLang ?? "";
   const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
   const hasVerifiedDomain = verifiedDomains > 0;
   const servingLive = deployments.some((deployment) => deployment.servingStatus === "serving");
@@ -303,13 +307,13 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Site settings</h2>
+          <h2 className="text-2xl font-semibold">Settings</h2>
           <p className="text-sm text-muted-foreground">
             Manage languages, routing, and translation context for this site.
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href={`/dashboard/sites/${site.id}`}>Back to site</Link>
+          <Link href={`/dashboard/sites/${site.id}`}>Back to workspace</Link>
         </Button>
       </div>
 
@@ -330,7 +334,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
               <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`/dashboard/sites/${site.id}`}>Back to site</Link>
+              <Link href={`/dashboard/sites/${site.id}`}>Back to workspace</Link>
             </Button>
           </CardContent>
         </Card>
@@ -350,7 +354,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
       <SiteAdminForm
         siteId={site.id}
         sourceUrl={site.sourceUrl}
-        sourceLang={site.locales[0]?.sourceLang ?? ""}
+        sourceLang={sourceLang}
         targets={targetLangs}
         aliases={localeAliases}
         pattern={site.routeConfig?.pattern ?? null}
@@ -935,11 +939,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   );
 }
 
-function pickPreferredLocale(acceptLanguageHeader: string): string {
-  const first = acceptLanguageHeader.split(",")[0]?.split(";")[0]?.trim();
-  return first && first.length ? first : "en";
-}
-
 function formatPlanLabel(planType: string | null): string | null {
   if (!planType) {
     return null;
@@ -983,15 +982,16 @@ function InfoHeader({
     <span className="inline-flex items-center gap-1">
       <span>{label}</span>
       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            aria-label={helpLabel}
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5 text-muted-foreground"
-          >
-            <Info className="h-3.5 w-3.5" />
-          </Button>
+        <PopoverTrigger
+          aria-label={helpLabel}
+          className={buttonVariants({
+            variant: "ghost",
+            size: "icon",
+            className: "h-5 w-5 text-muted-foreground",
+          })}
+          type="button"
+        >
+          <Info className="h-3.5 w-3.5" />
         </PopoverTrigger>
         <PopoverContent className="max-w-xs text-xs text-muted-foreground">
           {helpText}

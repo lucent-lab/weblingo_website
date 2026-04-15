@@ -191,6 +191,45 @@ describe("dashboard capability actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1");
   });
 
+  it("blocks site settings edits through the shared access helper when billing is blocked", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(),
+    });
+    deriveSiteSettingsAccess.mockReturnValue({
+      billingBlocked: true,
+      canEditBasics: false,
+      canEditLocales: false,
+      canEditServingMode: false,
+      canEditCrawlCaptureMode: false,
+      canEditClientRuntime: false,
+      canEditSpaRefresh: false,
+      canEditTranslatableAttributes: false,
+      canEditProfile: false,
+    });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+
+    const result = await updateSiteSettingsAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Your plan is not active. Update billing to edit site settings.",
+      meta: undefined,
+    });
+    expect(deriveSiteSettingsAccess).toHaveBeenCalledWith({
+      has: expect.any(Function),
+      mutationsAllowed: false,
+    });
+    expect(buildSiteSettingsUpdatePayload).not.toHaveBeenCalled();
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
   it("updates locale summary preferences and invalidates site dashboard cache", async () => {
     setTranslationSummaryPreference.mockResolvedValue({
       siteId: "site-1",

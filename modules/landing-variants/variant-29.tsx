@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Orbitron, Exo_2 } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-29.module.css";
-
-const orbitron = Orbitron({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const exo2 = Exo_2({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant29({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant29({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, orbitron.variable, exo2.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.gridFloor} />
       <div aria-hidden className={styles.sunGlow} />
 

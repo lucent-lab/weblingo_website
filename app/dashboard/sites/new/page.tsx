@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 
 export const metadata = {
   title: "New site",
@@ -16,7 +16,8 @@ export const metadata = {
 export default async function NewSitePage() {
   const auth = await requireDashboardAuth();
   const billingBlocked = !auth.mutationsAllowed;
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const pricingPath = `/${locale}/pricing`;
   const maxSites = auth.account?.featureFlags.maxSites ?? null;
   let activeSites = 0;
   if (auth.webhooksAuth) {
@@ -52,7 +53,7 @@ export default async function NewSitePage() {
             <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard/sites">Back to sites</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </CardContent>
       </Card>
@@ -60,7 +61,7 @@ export default async function NewSitePage() {
   }
   const maxLocales = auth.account!.featureFlags.maxLocales;
   const supportedLanguages = await listSupportedLanguagesCached();
-  const displayLocale = pickPreferredLocale((await headers()).get("accept-language") ?? "");
+  const displayLocale = locale;
 
   return (
     <div className="space-y-6">
@@ -77,9 +78,4 @@ export default async function NewSitePage() {
       />
     </div>
   );
-}
-
-function pickPreferredLocale(acceptLanguageHeader: string): string {
-  const first = acceptLanguageHeader.split(",")[0]?.split(";")[0]?.trim();
-  return first && first.length ? first : "en";
 }

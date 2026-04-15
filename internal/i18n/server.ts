@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { i18nConfig, type Locale } from "./config";
+import { getBaseLangTag } from "./lang-tag";
 
 export type Messages = Record<string, string>;
 
@@ -15,6 +16,47 @@ export function normalizeLocale(locale: string): Locale {
     return locale as Locale;
   }
   return i18nConfig.defaultLocale;
+}
+
+export function resolvePreferredLocale(acceptLanguageHeader: string | null | undefined): Locale {
+  const parsedRanges = parseAcceptLanguageRanges(acceptLanguageHeader);
+  for (const range of parsedRanges) {
+    const baseTag = getBaseLangTag(range.tag);
+    if (baseTag && i18nConfig.locales.includes(baseTag as Locale)) {
+      return baseTag as Locale;
+    }
+  }
+  return i18nConfig.defaultLocale;
+}
+
+function parseAcceptLanguageRanges(
+  acceptLanguageHeader: string | null | undefined,
+): Array<{ tag: string; quality: number; index: number }> {
+  if (!acceptLanguageHeader?.trim()) {
+    return [];
+  }
+
+  return acceptLanguageHeader
+    .split(",")
+    .map((entry, index) => {
+      const [range, ...params] = entry.split(";");
+      const tag = range.trim();
+      if (!tag) {
+        return null;
+      }
+      const qualityParam = params.find((param) => param.trim().startsWith("q="));
+      const parsedQuality = qualityParam ? Number.parseFloat(qualityParam.trim().slice(2)) : 1;
+      const quality = Number.isFinite(parsedQuality) ? parsedQuality : 1;
+      return { tag, quality, index };
+    })
+    .filter((range): range is { tag: string; quality: number; index: number } => range !== null)
+    .filter((range) => range.quality > 0)
+    .sort((left, right) => {
+      if (right.quality !== left.quality) {
+        return right.quality - left.quality;
+      }
+      return left.index - right.index;
+    });
 }
 
 const cache: Partial<Record<Locale, Messages>> = {};

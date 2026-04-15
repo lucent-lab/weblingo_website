@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { triggerManagedDemoForceCrawlAction, triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
@@ -13,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { getSiteDashboardCached } from "@internal/dashboard/data";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   WebhooksApiError,
   type Deployment,
@@ -20,10 +23,10 @@ import {
   type SitePageSummary,
   type SitePagesSummary,
 } from "@internal/dashboard/webhooks";
-import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
+import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
-  title: "Site pages",
+  title: "Pages & crawl",
   robots: { index: false, follow: false },
 };
 
@@ -43,9 +46,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const { t } = await resolveLocaleTranslator(
-    Promise.resolve({ locale: i18nConfig.defaultLocale }),
-  );
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
@@ -117,7 +119,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let pageHasMore = false;
   let deployments: Deployment[] = [];
   let pagesSummary: SitePagesSummary | null = null;
-  let error: string | null = null;
+  let error: unknown = null;
 
   try {
     const payload = await getSiteDashboardCached(authToken, id, {
@@ -133,7 +135,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     deployments = payload.deployments ?? [];
     pagesSummary = payload.pagesSummary ?? null;
   } catch (err) {
-    error = err instanceof Error ? err.message : "Unable to load site pages.";
+    error = err;
     if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchSiteDashboard failed", {
         siteId: id,
@@ -154,18 +156,23 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
 
   if (!site) {
     if (error) {
+      const errorView = resolveDashboardErrorView(error, {
+        title: "Unable to load site",
+        description:
+          "We could not complete your request. You can retry or return to the dashboard.",
+        message: "Unable to load site pages.",
+      });
       return (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">Unable to load site</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link className="text-sm text-primary underline" href="/dashboard/sites">
-              Back to sites
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorStateCard
+          title={errorView.title}
+          description={errorView.description}
+          message={errorView.message}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Back to dashboard</Link>
+            </Button>
+          }
+        />
       );
     }
     notFound();
@@ -258,7 +265,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
               remainingPageCrawlsToday: pagesSummaryRemainingLabel,
               unavailable: pagesSummaryUnavailableLabel,
             }}
-            locale={i18nConfig.defaultLocale}
+            locale={locale}
           />
         </CardContent>
       </Card>

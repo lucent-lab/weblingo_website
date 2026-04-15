@@ -6,6 +6,7 @@ test-results/.last-run.json
 
 # Local/ephemeral review scratchpad (untracked, can exist during audits)
 review.md
+.playwright-cli/
 
 # Supabase generated types
 types/database.ts

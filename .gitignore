@@ -47,3 +47,4 @@ test-results/
 .vercel/
 *.log
 review.md
+.playwright-cli/

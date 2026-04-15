@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResponse } from "@/app/dashboard/actions";
+import { invalidateDashboardBootstrapCache } from "@/internal/dashboard/auth";
 import { envServer } from "@internal/core/env-server";
 import { FetchTimeoutError, fetchWithTimeout } from "@internal/core/fetch-timeout";
 
@@ -78,9 +80,12 @@ export async function claimAccount(
   }
 
   if (shouldRedirectToDashboard) {
-    return succeeded("Account linked. Redirecting to dashboard.", {
+    await invalidateDashboardBootstrapCache(session.access_token);
+    revalidatePath("/dashboard");
+    return succeeded("Dashboard access linked. Redirecting to dashboard.", {
       redirectTo: "/dashboard",
       refresh: false,
+      onboardingState: "claimed_free_account",
     });
   }
 

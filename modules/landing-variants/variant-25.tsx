@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Archivo_Black, Work_Sans } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-25.module.css";
-
-const archivoBlack = Archivo_Black({
-  subsets: ["latin"],
-  weight: ["400"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant25({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant25({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, archivoBlack.variable, workSans.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.geo} />
 
       <header className="sticky top-0 z-40 border-b-3 border-border bg-background/90 backdrop-blur-sm">

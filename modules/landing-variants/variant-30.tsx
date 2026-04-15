@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Noto_Serif_Display, Zen_Kaku_Gothic_New } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-30.module.css";
-
-const notoSerifDisplay = Noto_Serif_Display({
-  subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const zenKaku = Zen_Kaku_Gothic_New({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant30({
   locale,
@@ -32,7 +16,7 @@ export function LandingVariant30({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, notoSerifDisplay.variable, zenKaku.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.inkWash} />
 
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm">

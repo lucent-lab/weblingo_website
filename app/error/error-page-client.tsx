@@ -6,7 +6,8 @@ import { useEffect, useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 
 export default function ErrorPageClient() {
   const searchParams = useSearchParams();
@@ -14,12 +15,15 @@ export default function ErrorPageClient() {
   const trace = searchParams.get("trace");
   const isProd = process.env.NODE_ENV === "production";
 
-  const title = useMemo(() => {
-    if (message && /account not found/i.test(message)) {
-      return "Account not provisioned";
-    }
-    return "Something went wrong";
-  }, [message]);
+  const errorView = useMemo(
+    () =>
+      resolveDashboardErrorView(message ? new Error(message) : null, {
+        title: "Something went wrong",
+        description:
+          "We hit an unexpected issue while processing your request. You can retry, sign in again, or head back to the dashboard/homepage.",
+      }),
+    [message],
+  );
 
   const safeTrace = useMemo(() => {
     if (!trace || isProd) {
@@ -57,25 +61,13 @@ export default function ErrorPageClient() {
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col gap-6 px-4 py-12">
-      <Card className="border-destructive/40 bg-destructive/5">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>
-                We hit an unexpected issue while processing your request. You can retry, sign in
-                again, or head back to the dashboard/homepage.
-              </CardDescription>
-            </div>
-            <Badge variant="outline">Status: error</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border border-border bg-background px-4 py-3 text-sm text-destructive">
-            {message ?? "Sorry, something went wrong."}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
+      <ErrorStateCard
+        title={errorView.title}
+        description={errorView.description}
+        message={errorView.message}
+        headerBadge={<Badge variant="outline">Status: error</Badge>}
+        actions={
+          <>
             <Button asChild>
               <Link href="/">Go home</Link>
             </Button>
@@ -88,20 +80,20 @@ export default function ErrorPageClient() {
             <Button asChild size="sm" variant="link">
               <a href="mailto:contact@weblingo.app">Contact support</a>
             </Button>
+          </>
+        }
+      >
+        {safeTrace ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              User-provided debug info
+            </p>
+            <pre className="max-h-[320px] overflow-auto rounded-lg border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
+              {safeTrace}
+            </pre>
           </div>
-
-          {safeTrace ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                User-provided debug info
-              </p>
-              <pre className="max-h-[320px] overflow-auto rounded-lg border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-                {safeTrace}
-              </pre>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+        ) : null}
+      </ErrorStateCard>
     </div>
   );
 }

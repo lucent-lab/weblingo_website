@@ -74,7 +74,7 @@ export default async function AgencyOverviewPage() {
                 </div>
                 <form action={setWorkspaceAction}>
                   <input name="subjectAccountId" type="hidden" value={customer.customerAccountId} />
-                  <input name="redirectTo" type="hidden" value="/dashboard/sites" />
+                  <input name="redirectTo" type="hidden" value="/dashboard" />
                   <Button type="submit" variant="outline">
                     View sites
                   </Button>

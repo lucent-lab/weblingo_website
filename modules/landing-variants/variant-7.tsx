@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Atkinson_Hyperlegible, Baloo_2 } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-7.module.css";
-
-const baloo = Baloo_2({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const atkinson = Atkinson_Hyperlegible({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 export function LandingVariant7({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant7({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, baloo.variable, atkinson.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.dots} />
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">

@@ -191,7 +191,6 @@ export function SiteAdminForm({
     Boolean(normalizedInitialUrl) &&
     normalizedSourceUrl !== normalizedInitialUrl;
   const requiresResetConfirm = canEditBasics && sourceUrlChanged && sourceUrlValid;
-
   const subdomainPattern = useMemo(() => {
     if (!trimmedHost || !normalizedSubdomainToken) {
       return "";

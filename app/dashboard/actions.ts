@@ -376,7 +376,6 @@ export async function createSiteAction(
       invalidateSitesList: true,
     });
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${site.id}`);
 
     return succeeded(toast ?? "Site created. Verify domains and activate to start crawling.", {
@@ -582,13 +581,13 @@ export async function updateSiteSettingsAction(
     if (!auth.account || !auth.webhooksAuth) {
       return failed("Unable to resolve account entitlements.");
     }
-    if (!auth.mutationsAllowed) {
-      return failed(formatBillingBlockMessage(auth, "edit site settings"));
-    }
     const access = deriveSiteSettingsAccess({
       has: auth.has,
       mutationsAllowed: auth.mutationsAllowed,
     });
+    if (access.billingBlocked) {
+      return failed(formatBillingBlockMessage(auth, "edit site settings"));
+    }
     const update = buildSiteSettingsUpdatePayload(formData, access);
     if (!update.ok) {
       return failed(update.error);
@@ -600,7 +599,6 @@ export async function updateSiteSettingsAction(
       invalidateSitesList: true,
     });
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
 
@@ -772,7 +770,6 @@ export async function translateAndServeAction(
     if (shouldActivate) {
       revalidatePath(`/dashboard/sites/${siteId}/admin`);
       revalidatePath("/dashboard");
-      revalidatePath("/dashboard/sites");
     }
     const activationPrefix = shouldActivate ? "Localization enabled. " : "";
     const crawlEnqueued = Boolean(result.crawlEnqueued);
@@ -1312,7 +1309,7 @@ export async function upsertConsistencyCpmEntryAction(
       });
       await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
     });
-    revalidatePath(`/dashboard/sites/${siteId}/consistency`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Canonical phrase updated.");
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1356,7 +1353,7 @@ export async function updateConsistencyBlockAction(
       });
       await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
     });
-    revalidatePath(`/dashboard/sites/${siteId}/consistency`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Consistency block updated.");
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1460,7 +1457,6 @@ export async function updateSiteStatusAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
     return succeeded(
       updated.status === "active" ? "Localization reactivated." : "Localization deactivated.",
     );
@@ -1528,7 +1524,6 @@ export async function deactivateSiteAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
     return succeeded("Localization paused. You can re-enable it anytime from this page.");
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1558,7 +1553,6 @@ export async function activateSiteAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/sites");
     return succeeded("Localization enabled.");
   } catch (error) {
     if (isNextRedirectError(error)) {

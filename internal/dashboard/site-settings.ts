@@ -58,6 +58,13 @@ export type SiteSettingsUpdateResult =
   | { ok: true; payload: SiteSettingsUpdatePayload }
   | { ok: false; error: string };
 
+export function requiresSourceUrlReactivation(options: {
+  siteStatus: "active" | "inactive";
+  sourceUrlChanged: boolean;
+}): boolean {
+  return options.siteStatus === "active" && options.sourceUrlChanged;
+}
+
 export function deriveSiteSettingsAccess(options: {
   has: (check: HasCheck) => boolean;
   mutationsAllowed: boolean;

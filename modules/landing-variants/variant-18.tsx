@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Public_Sans, Spectral } from "next/font/google";
 import { ArrowRight, BarChart3, Cloud, ShieldCheck, Zap } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,21 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-18.module.css";
-
-const spectral = Spectral({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const publicSans = Public_Sans({
-  subsets: ["latin"],
-  weight: "variable",
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-sans",
-});
 
 const featureItems = [
   {
@@ -50,9 +34,7 @@ export function LandingVariant18({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div
-      className={cn(styles.root, spectral.variable, publicSans.variable, "min-h-screen font-sans")}
-    >
+    <div className={cn(styles.root, "min-h-screen font-sans")}>
       <div aria-hidden className={styles.hatch} />
 
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur">

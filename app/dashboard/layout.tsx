@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Briefcase, Globe, LayoutDashboard, MonitorPlay, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
@@ -28,8 +29,9 @@ import {
   requireDashboardAuth,
   type DashboardAuth,
 } from "@internal/dashboard/auth";
+import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
 import { listSitesCached } from "@internal/dashboard/data";
-import { i18nConfig } from "@internal/i18n";
+import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
@@ -43,14 +45,15 @@ type DashboardLayoutProps = {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const auth = await requireDashboardAuth();
+  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const email = auth.user?.email ?? "—";
   const isAgency = auth.actorAccount?.planType === "agency";
   const canAccessInternalOps = hasActorInternalOps(auth);
-  const pricingPath = `/${i18nConfig.defaultLocale}/pricing`;
+  const pricingPath = `/${locale}/pricing`;
   const navItems = [
     {
       href: "/dashboard",
-      label: "Overview",
+      label: "Dashboard",
       icon: <LayoutDashboard className="h-4 w-4" />,
     },
     ...(isAgency
@@ -127,6 +130,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const statusTone = resolveStatusTone(rawStatusLabel);
 
   const billingBanner = resolveBillingBanner(auth);
+  const stripeBillingLabel = formatStripeBillingStatusLabel(auth.stripeBillingRuntime);
   const subjectFallbackNotice = auth.subjectFallbackToActor
     ? "We couldn't switch to the selected workspace. Showing your main account instead."
     : null;
@@ -242,6 +246,14 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                     Signed in
                   </span>
                   <span className="text-sm font-medium">{email}</span>
+                  {stripeBillingLabel ? (
+                    <Badge
+                      variant="outline"
+                      className="mt-2 w-fit text-[10px] uppercase tracking-wide"
+                    >
+                      {stripeBillingLabel}
+                    </Badge>
+                  ) : null}
                 </div>
                 <form action={logout}>
                   <Button size="sm" variant="outline" type="submit">

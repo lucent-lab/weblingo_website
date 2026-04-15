@@ -103,7 +103,12 @@ Other scripts:
 
 ### Contact Form Logging
 
-- Contact logging currently depends on the Supabase service role key via server actions. Once we add an email provider/webhook, replace this with a scoped RPC or queue so the service role key isn’t used per request.
+- Contact logging currently depends on the Supabase service role key via server actions. This is intentionally a website-owned lead-capture path, not a backend public-form proxy.
+- Keep the contact and waitlist ingestion semantics aligned where practical:
+  - rate limit before persistence
+  - validate inputs locally before insert
+  - log only structured failure summaries
+- Once we add an email provider/webhook, replace this with a scoped RPC or queue so the service role key isn’t used per request.
 
 - The contact page currently logs submissions to a `contact_messages` table.
 - Suggested schema:
@@ -121,7 +126,7 @@ Other scripts:
   );
   ```
 
-- Submissions are inserted via Supabase service role credentials and the form redirects to `/[locale]/contact?submitted=1` on success. Once an email provider is in place, replace this logging step with the real notification flow and update the docs accordingly.
+- Submissions are inserted via Supabase service role credentials and the form redirects to `/[locale]/contact?submitted=1` on success. The `submitted=1` and `error=*` query params are UX-only state, not operator truth. Once an email provider is in place, replace this logging step with the real notification flow and update the docs accordingly.
 
 ## Adding New Internal Modules
 

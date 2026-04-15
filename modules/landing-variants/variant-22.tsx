@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Sora, JetBrains_Mono } from "next/font/google";
 import { ArrowRight } from "lucide-react";
 
 import { TryForm } from "@/components/try-form";
@@ -7,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LANDING_FAQ_ITEMS, VariantSwitcher, type LandingVariantProps } from "./shared";
 import styles from "./variant-22.module.css";
-
-const sora = Sora({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: "variable",
-  display: "swap",
-  variable: "--font-mono",
-});
 
 export function LandingVariant22({
   locale,
@@ -31,7 +16,7 @@ export function LandingVariant22({
   hasPreviewConfig,
 }: LandingVariantProps) {
   return (
-    <div className={cn(styles.root, sora.variable, jetbrainsMono.variable, "min-h-screen")}>
+    <div className={cn(styles.root, "min-h-screen")}>
       <div aria-hidden className={styles.aurora} />
       <div aria-hidden className={styles.stars} />
 

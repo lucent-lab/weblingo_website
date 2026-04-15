@@ -4,7 +4,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Command,
   CommandEmpty,
@@ -174,29 +174,30 @@ export function LanguageTagCombobox({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-required={required}
-          aria-invalid={invalid || undefined}
-          disabled={disabled}
-          onFocus={handleTriggerFocus}
-          onKeyDown={handleTriggerKeyDown}
-          onPointerDown={handleTriggerPointerDown}
-          className={cn(
+      <PopoverTrigger
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        aria-required={required}
+        aria-invalid={invalid || undefined}
+        disabled={disabled}
+        onFocus={handleTriggerFocus}
+        onKeyDown={handleTriggerKeyDown}
+        onPointerDown={handleTriggerPointerDown}
+        className={buttonVariants({
+          variant: "outline",
+          className: cn(
             "w-full justify-between",
             invalid ? "border-destructive focus-visible:ring-destructive" : "",
             className,
-          )}
-        >
-          <span className={cn("truncate", value ? "text-foreground" : "text-muted-foreground")}>
-            {displayValue}
-          </span>
-          <ChevronsUpDown className="h-4 w-4 opacity-50" />
-        </Button>
+          ),
+        })}
+        type="button"
+      >
+        <span className={cn("truncate", value ? "text-foreground" : "text-muted-foreground")}>
+          {displayValue}
+        </span>
+        <ChevronsUpDown className="h-4 w-4 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
