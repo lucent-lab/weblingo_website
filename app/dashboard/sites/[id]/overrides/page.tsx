@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { GlossaryEditor } from "../glossary-editor";
 import { LockedFeatureCard } from "../locked-feature-card";
+import { PageSectionNav } from "../page-section-nav";
 import { SiteHeader } from "../site-header";
 import { OverrideForm, SlugForm } from "../translation-forms";
 
@@ -73,6 +74,13 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const activateHelp = t("dashboard.site.status.activateHelp");
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
+  const pageNavTitle = t("dashboard.site.overrides.pageNav.title");
+  const pageNavDescription = t("dashboard.site.overrides.pageNav.description");
+  const pageNavLocaleScope = t("dashboard.site.overrides.pageNav.localeScope");
+  const pageNavGlossary = t("dashboard.site.overrides.pageNav.glossary");
+  const pageNavManualOverrides = t("dashboard.site.overrides.pageNav.manualOverrides");
+  const pageNavLocalizedSlugs = t("dashboard.site.overrides.pageNav.localizedSlugs");
+  const pageNavConsistencyGovernance = t("dashboard.site.overrides.pageNav.consistencyGovernance");
 
   let site: Site | null = null;
   let glossary: GlossaryEntry[] = [];
@@ -110,7 +118,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
     glossary = glossaryResult.value;
   } else {
     const err = glossaryResult.reason;
-    if (err instanceof WebhooksApiError) {
+    if (err instanceof WebhooksApiError && err.status === 404) {
+      glossary = [];
+    } else if (err instanceof WebhooksApiError) {
       console.warn("[dashboard] fetchGlossary failed", {
         siteId: id,
         status: err.status,
@@ -184,114 +194,140 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         </CardHeader>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Locale scope</CardTitle>
-          <CardDescription>
-            Switch locale pair to review canonicals, blocks, and override conflicts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {localeScopes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Add at least one target locale before using consistency governance.
-            </p>
-          ) : (
-            localeScopes.map((scope) => {
-              const active =
-                selectedLocaleScope !== null &&
-                scope.targetLang === selectedLocaleScope.targetLang &&
-                scope.sourceLang === selectedLocaleScope.sourceLang;
-              const params = new URLSearchParams({
-                sourceLang: scope.sourceLang,
-                targetLang: scope.targetLang,
-              });
-              const href =
-                scope.sourceLang === localeScopes[0]?.sourceLang &&
-                scope.targetLang === localeScopes[0]?.targetLang
-                  ? `/dashboard/sites/${site.id}/overrides`
-                  : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
-              return (
-                <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
-                  <Badge variant={active ? "default" : "secondary"}>
-                    {formatConsistencyLocaleScopeLabel(scope)}
-                  </Badge>
-                </Link>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+      <PageSectionNav
+        title={pageNavTitle}
+        description={pageNavDescription}
+        links={[
+          { href: "#locale-scope", label: pageNavLocaleScope },
+          { href: "#glossary", label: pageNavGlossary },
+          { href: "#manual-overrides", label: pageNavManualOverrides },
+          { href: "#localized-slugs", label: pageNavLocalizedSlugs },
+          { href: "#consistency-governance", label: pageNavConsistencyGovernance },
+        ]}
+      />
 
-      {canGlossary ? (
+      <section id="locale-scope" className="scroll-mt-24">
         <Card>
           <CardHeader>
-            <CardTitle>Glossary</CardTitle>
+            <CardTitle>Locale scope</CardTitle>
             <CardDescription>
-              Maintain terminology control and optionally retranslate after glossary updates.
+              Switch locale pair to review canonicals, blocks, and override conflicts.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <GlossaryEditor initialEntries={glossary} siteId={site.id} targetLangs={targetLangs} />
+          <CardContent className="flex flex-wrap gap-2">
+            {localeScopes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Add at least one target locale before using consistency governance.
+              </p>
+            ) : (
+              localeScopes.map((scope) => {
+                const active =
+                  selectedLocaleScope !== null &&
+                  scope.targetLang === selectedLocaleScope.targetLang &&
+                  scope.sourceLang === selectedLocaleScope.sourceLang;
+                const params = new URLSearchParams({
+                  sourceLang: scope.sourceLang,
+                  targetLang: scope.targetLang,
+                });
+                const href =
+                  scope.sourceLang === localeScopes[0]?.sourceLang &&
+                  scope.targetLang === localeScopes[0]?.targetLang
+                    ? `/dashboard/sites/${site.id}/overrides`
+                    : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
+                return (
+                  <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                    <Badge variant={active ? "default" : "secondary"}>
+                      {formatConsistencyLocaleScopeLabel(scope)}
+                    </Badge>
+                  </Link>
+                );
+              })
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <LockedFeatureCard
-          title="Glossary"
-          description={
-            mutationsAllowed
-              ? "Upgrade to manage glossary entries and keep terminology consistent."
-              : "Update billing to resume glossary management."
-          }
-          pricingPath={pricingPath}
-          ctaLabel={lockCtaLabel}
-          badgeLabel={lockBadgeLabel}
-        />
-      )}
+      </section>
+
+      <section id="glossary" className="scroll-mt-24">
+        {canGlossary ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Glossary</CardTitle>
+              <CardDescription>
+                Maintain terminology control and optionally retranslate after glossary updates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GlossaryEditor
+                initialEntries={glossary}
+                siteId={site.id}
+                targetLangs={targetLangs}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <LockedFeatureCard
+            title="Glossary"
+            description={
+              mutationsAllowed
+                ? "Upgrade to manage glossary entries and keep terminology consistent."
+                : "Update billing to resume glossary management."
+            }
+            pricingPath={pricingPath}
+            ctaLabel={lockCtaLabel}
+            badgeLabel={lockBadgeLabel}
+          />
+        )}
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {canOverrides ? (
-          <OverrideForm siteId={site.id} />
-        ) : (
-          <LockedFeatureCard
-            title="Manual overrides"
-            description={
-              mutationsAllowed
-                ? "Upgrade to override individual translations."
-                : "Update billing to resume manual overrides."
-            }
-            pricingPath={pricingPath}
-            ctaLabel={lockCtaLabel}
-            badgeLabel={lockBadgeLabel}
-          />
-        )}
-        {canSlugs ? (
-          <SlugForm siteId={site.id} />
-        ) : (
-          <LockedFeatureCard
-            title="Localized slugs"
-            description={
-              mutationsAllowed
-                ? "Upgrade to customize translated URL slugs."
-                : "Update billing to resume localized slug edits."
-            }
-            pricingPath={pricingPath}
-            ctaLabel={lockCtaLabel}
-            badgeLabel={lockBadgeLabel}
-          />
-        )}
+        <section id="manual-overrides" className="scroll-mt-24">
+          {canOverrides ? (
+            <OverrideForm siteId={site.id} />
+          ) : (
+            <LockedFeatureCard
+              title="Manual overrides"
+              description={
+                mutationsAllowed
+                  ? "Upgrade to override individual translations."
+                  : "Update billing to resume manual overrides."
+              }
+              pricingPath={pricingPath}
+              ctaLabel={lockCtaLabel}
+              badgeLabel={lockBadgeLabel}
+            />
+          )}
+        </section>
+        <section id="localized-slugs" className="scroll-mt-24">
+          {canSlugs ? (
+            <SlugForm siteId={site.id} />
+          ) : (
+            <LockedFeatureCard
+              title="Localized slugs"
+              description={
+                mutationsAllowed
+                  ? "Upgrade to customize translated URL slugs."
+                  : "Update billing to resume localized slug edits."
+              }
+              pricingPath={pricingPath}
+              ctaLabel={lockCtaLabel}
+              badgeLabel={lockBadgeLabel}
+            />
+          )}
+        </section>
       </div>
 
-      <Suspense fallback={<ConsistencyGovernanceSkeleton />}>
-        <ConsistencyGovernanceSection
-          authToken={authToken}
-          canEdit={canEdit}
-          mutationsAllowed={mutationsAllowed}
-          pricingPath={pricingPath}
-          selectedLocaleScope={selectedLocaleScope}
-          siteId={site.id}
-        />
-      </Suspense>
+      <section id="consistency-governance" className="scroll-mt-24">
+        <Suspense fallback={<ConsistencyGovernanceSkeleton />}>
+          <ConsistencyGovernanceSection
+            authToken={authToken}
+            canEdit={canEdit}
+            mutationsAllowed={mutationsAllowed}
+            pricingPath={pricingPath}
+            selectedLocaleScope={selectedLocaleScope}
+            siteId={site.id}
+          />
+        </Suspense>
+      </section>
     </div>
   );
 }
