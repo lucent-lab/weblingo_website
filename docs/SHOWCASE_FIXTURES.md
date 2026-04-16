@@ -6,15 +6,21 @@ The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo sh
 
 - `/fixtures/showcase/marketing`
   - Sales landing page.
-  - Includes a `<base>` tag, canonical and hreflang tags, root-relative CSS/JS/image assets, same-page query links, relative links, a form action, an external link, and a source-only fallback link.
+  - Includes a `<base>` tag, canonical and hreflang tags, root-relative CSS/JS/image assets, preload/modulepreload tags, responsive images, same-page query links, query-only links, relative links, a real form action, an external link, and a source-only fallback link.
 - `/fixtures/showcase/marketing/pricing`
   - Deep internal sales page.
   - Keeps query-string and fragment behavior covered.
 - `/fixtures/showcase/marketing/about`
   - Relative sibling target for link rewriting checks.
+- `/fixtures/showcase/marketing/contact/thanks`
+  - Form submission target.
+  - The route handler redirects valid marketing form submissions here with the source query string and final `#thanks` fragment preserved. The form action itself deliberately omits the fragment so strict `form-action 'self'` CSP remains browser-compatible.
 - `/fixtures/showcase/docs/start`
   - Nested documentation page.
-  - Covers section anchors, parent-relative links, and a source-only docs fallback.
+  - Covers section anchors, parent-relative links, deep `../..` relative links, and a source-only docs fallback.
+- `/fixtures/showcase/docs`
+  - Docs root page.
+  - Exists so `<base href="/fixtures/showcase/docs/">` plus `href="#authentication"` follows browser URL semantics to a routable page instead of a 404. Next.js then canonicalizes the final browser URL to `/fixtures/showcase/docs#authentication`.
 - `/fixtures/showcase/docs/api`
   - Nested docs sibling target.
 - `/fixtures/showcase/app/dashboard`
@@ -28,6 +34,8 @@ The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo sh
 
 The backend live suite is `corepack pnpm test:playwright:showcase:live` in the `weblingo` repo. It runs only when configured with live showcase URLs.
 
+For release gates, use `corepack pnpm test:playwright:showcase:live:required` in the backend repo or set `PLAYWRIGHT_LIVE_SHOWCASE_REQUIRED=1`. That turns a missing live fixture configuration into a hard failure instead of a skip.
+
 Minimal single-fixture example:
 
 ```sh
@@ -37,7 +45,72 @@ PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_TEXT="Translate product pages without losing t
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_INTERNAL_HREF="https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/pricing?utm=nav#buy" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_SOURCE_FALLBACK_HREF="https://weblingo.app/fixtures/showcase/original-only?from=marketing#faq" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_DEPLOYMENT_ID="deployment-id-from-publish" \
+PLAYWRIGHT_LIVE_SHOWCASE_REQUIRED=1 \
 corepack pnpm test:playwright:showcase:live
 ```
 
-For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, optional `expectedDeploymentId`, optional `allowedAssetOrigins`, optional control-plane config, and optional log-health config.
+For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, `expectedDeploymentId`, optional `allowedAssetOrigins`, optional control-plane config, and optional log-health config.
+
+Same-origin showcase assets are expected to include the configured deployment header by default. Use `expectedAssetDeploymentHeaders: false` only when a fixture intentionally validates source-origin/live assets instead of deployment-scoped immutable snapshots.
+
+Matrix example:
+
+```json
+[
+  {
+    "name": "marketing",
+    "pageUrl": "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing",
+    "sourceOrigin": "https://weblingo.app",
+    "expectedText": ["Translate product pages without losing the buyer path"],
+    "expectedInternalHrefs": [
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/pricing?utm=nav#buy",
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/docs/start?from=marketing#setup"
+    ],
+    "expectedSourceFallbackHrefs": [
+      "https://weblingo.app/fixtures/showcase/original-only?from=marketing#faq"
+    ],
+    "expectedAssetUrls": [
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/showcase.css?v=20260416",
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/widget.js?v=20260416"
+    ],
+    "expectedDeploymentId": "deployment-id-from-publish"
+  },
+  {
+    "name": "docs",
+    "pageUrl": "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/docs/start",
+    "sourceOrigin": "https://weblingo.app",
+    "expectedText": ["Set up translated docs without breaking references"],
+    "expectedInternalHrefs": [
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/docs/api?topic=keys#authentication",
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/docs/#authentication"
+    ],
+    "expectedSourceFallbackHrefs": [
+      "https://weblingo.app/fixtures/showcase/docs/source-only?from=docs#legacy"
+    ],
+    "expectedDeploymentId": "deployment-id-from-publish"
+  },
+  {
+    "name": "app",
+    "pageUrl": "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/app/dashboard",
+    "sourceOrigin": "https://weblingo.app",
+    "expectedText": ["Localized app dashboard controls"],
+    "expectedInternalHrefs": [
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/docs/start?from=dashboard#authentication"
+    ],
+    "expectedSourceFallbackHrefs": [
+      "https://weblingo.app/fixtures/showcase/app/source-only?from=dashboard#settings"
+    ],
+    "expectedDeploymentId": "deployment-id-from-publish"
+  }
+]
+```
+
+## Website CI Smoke
+
+The website repo runs the source fixture browser suite in CI:
+
+```sh
+corepack pnpm test:showcase:fixtures
+```
+
+That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, and fails on any `/fixtures/showcase/*` response or request failure.

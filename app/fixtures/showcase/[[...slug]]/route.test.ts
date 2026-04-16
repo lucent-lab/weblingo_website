@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { GET } from "./route";
+import { GET, POST } from "./route";
 
 const BASE_URL = "https://weblingo.app";
 
-function requestFor(path: string): Request {
-  return new Request(`${BASE_URL}${path}`, { method: "GET" });
+function requestFor(path: string, init: RequestInit = { method: "GET" }): Request {
+  return new Request(`${BASE_URL}${path}`, init);
 }
 
 function routeContext(slug?: string[]) {
@@ -35,9 +35,12 @@ describe("showcase fixture pages", () => {
     expect(html).toContain('hreflang="fr"');
     expect(html).toContain('href="./about?tab=story#team"');
     expect(html).toContain('href="/fixtures/showcase/original-only?from=marketing#faq"');
+    expect(html).toContain('rel="preload" as="image"');
+    expect(html).toContain('rel="modulepreload"');
+    expect(html).toContain('data-check="responsive-image"');
     expect(html).toContain('href="/fixtures/showcase/showcase.css?v=20260416"');
     expect(html).toContain('src="/fixtures/showcase/widget.js?v=20260416"');
-    expect(html).toContain('action="/fixtures/showcase/marketing/contact?source=form#thanks"');
+    expect(html).toContain('action="/fixtures/showcase/marketing/contact?source=form"');
   });
 
   it("serves nested docs fixture pages with base-url and source-only sentinels", async () => {
@@ -54,8 +57,21 @@ describe("showcase fixture pages", () => {
     expect(html).toContain('<base href="/fixtures/showcase/docs/"');
     expect(html).toContain('href="./api?topic=keys#authentication"');
     expect(html).toContain('href="../marketing?from=docs"');
+    expect(html).toContain('href="../../showcase/marketing/pricing?from=docs#buy"');
     expect(html).toContain('href="/fixtures/showcase/docs/source-only?from=docs#legacy"');
     expect(html).toContain('href="#authentication"');
+  });
+
+  it("serves the docs root used by base-fragment browser navigation", async () => {
+    const response = await GET(requestFor("/fixtures/showcase/docs"), routeContext(["docs"]));
+
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("docs");
+    expect(response.headers.get("x-weblingo-showcase-page")).toBe("docs-root");
+    expect(html).toContain("Docs fixture root with anchor target");
+    expect(html).toContain('id="authentication"');
   });
 
   it("serves an app-style fixture with interactive controls", async () => {
@@ -83,6 +99,41 @@ describe("showcase fixture pages", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-root");
     expect(html).toContain("Translate product pages without losing the buyer path");
+  });
+
+  it("redirects valid marketing form submissions to a stable thank-you fixture", async () => {
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact?source=form", {
+        method: "POST",
+        body: new URLSearchParams({ email: "buyer@example.com" }),
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+      routeContext(["marketing", "contact"]),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(
+      "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
+    );
+  });
+
+  it("rejects invalid marketing form submissions without rendering user input", async () => {
+    const payload = "<script>alert(1)</script>";
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact", {
+        method: "POST",
+        body: new URLSearchParams({ email: payload }),
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+      routeContext(["marketing", "contact"]),
+    );
+
+    const body = await response.text();
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(body).toBe("A valid work email is required.");
+    expect(body).not.toContain(payload);
   });
 
   it("returns a sanitized 404 for unknown fixture pages", async () => {

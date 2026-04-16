@@ -31,6 +31,7 @@ const PAGES: Record<string, FixturePage> = {
       </section>
       <nav class="fixture-nav" aria-label="Fixture navigation">
         <a data-check="same-page-query" href="?ref=nav#overview">Overview</a>
+        <a data-check="query-only" href="?audience=buyers#overview">Audience query</a>
         <a data-check="relative-sibling" href="./about?tab=story#team">About relative</a>
         <a data-check="parent-relative" href="../docs/start?from=marketing#setup">Docs relative</a>
         <a data-check="source-fallback-root" href="/fixtures/showcase/original-only?from=marketing#faq">Original only</a>
@@ -39,15 +40,42 @@ const PAGES: Record<string, FixturePage> = {
       <article id="overview" class="fixture-panel">
         <h2 data-fixture-accent>Preserve the sales path</h2>
         <p>Buyer journeys need localized canonical tags, stable assets, and translated internal links.</p>
-        <img src="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}" width="96" height="96" alt="WebLingo fixture logo" />
+        <picture data-check="responsive-image" class="fixture-picture">
+          <source
+            media="(min-width: 700px)"
+            srcset="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}&variant=wide 1x"
+          />
+          <img
+            src="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}"
+            srcset="/fixtures/showcase/logo.svg?v=${ASSET_VERSION} 1x, /fixtures/showcase/logo.svg?v=${ASSET_VERSION}&density=2 2x"
+            sizes="96px"
+            width="96"
+            height="96"
+            alt="WebLingo fixture logo"
+          />
+        </picture>
       </article>
-      <form action="/fixtures/showcase/marketing/contact?source=form#thanks" method="post" data-check="lead-form">
+      <form action="/fixtures/showcase/marketing/contact?source=form" method="post" data-check="lead-form">
         <label>
           Work email
-          <input name="email" type="email" value="buyer@example.com" />
+          <input name="email" type="email" value="buyer@example.com" required />
         </label>
         <button type="submit">Request localized preview</button>
       </form>
+    `,
+  },
+  "marketing/contact/thanks": {
+    scenario: "marketing",
+    pageId: "marketing-contact-thanks",
+    title: "Showcase Fixture: lead form submitted",
+    description: "A thank-you page fixture used to prove showcase form actions stay routable.",
+    canonicalPath: "/fixtures/showcase/marketing/contact/thanks",
+    heading: "Preview request received",
+    bodyHtml: `
+      <section class="fixture-panel" id="thanks">
+        <p>The form action kept its query string and landed on a stable showcase route.</p>
+        <a data-check="thanks-back" href="/fixtures/showcase/marketing?from=thanks#overview">Back to overview</a>
+      </section>
     `,
   },
   "marketing/pricing": {
@@ -91,6 +119,7 @@ const PAGES: Record<string, FixturePage> = {
       <aside class="fixture-nav" aria-label="Docs navigation">
         <a data-check="docs-api" href="./api?topic=keys#authentication">API reference</a>
         <a data-check="docs-marketing" href="../marketing?from=docs">Marketing home</a>
+        <a data-check="docs-deep-relative" href="../../showcase/marketing/pricing?from=docs#buy">Pricing from docs</a>
         <a data-check="docs-source-fallback" href="/fixtures/showcase/docs/source-only?from=docs#legacy">Legacy source only</a>
         <a data-check="docs-fragment" href="#authentication">Jump to authentication</a>
       </aside>
@@ -98,6 +127,22 @@ const PAGES: Record<string, FixturePage> = {
         <h2>Authentication references</h2>
         <p>Nested docs paths exercise base URL behavior and section-scoped relative navigation.</p>
         <code>curl https://api.example.test/v1/locales</code>
+      </section>
+    `,
+  },
+  docs: {
+    scenario: "docs",
+    pageId: "docs-root",
+    title: "Showcase Fixture: docs root",
+    description: "A docs root page used to settle base-fragment navigation behavior.",
+    canonicalPath: "/fixtures/showcase/docs",
+    baseHref: "/fixtures/showcase/docs/",
+    heading: "Docs fixture root with anchor target",
+    bodyHtml: `
+      <section class="fixture-panel" id="authentication">
+        <h2>Authentication references</h2>
+        <p>Fragment-only links under the docs base resolve here by browser URL rules.</p>
+        <a data-check="docs-root-start" href="./start?from=root#authentication">Back to docs start</a>
       </section>
     `,
   },
@@ -228,6 +273,8 @@ ${baseTag}    <title>${escapeHtml(page.title)}</title>
     <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateEnglish)}" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
     <meta name="twitter:url" content="${escapeHtml(canonicalUrl)}" />
+    <link rel="preload" as="image" href="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}" />
+    <link rel="modulepreload" href="/fixtures/showcase/widget.js?v=${ASSET_VERSION}&modulepreload=1" />
     <link rel="stylesheet" href="/fixtures/showcase/showcase.css?v=${ASSET_VERSION}" />
     <script defer src="/fixtures/showcase/widget.js?v=${ASSET_VERSION}"></script>
   </head>
@@ -268,6 +315,51 @@ export async function GET(
       "content-security-policy": STRICT_CSP,
       "x-weblingo-showcase-scenario": page.scenario,
       "x-weblingo-showcase-page": page.pageId,
+    },
+  });
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ slug?: string[] }> },
+): Promise<Response> {
+  const { slug } = await context.params;
+  const normalized = normalizeSlug(slug);
+
+  if (normalized !== "marketing/contact") {
+    return new Response("Unknown showcase fixture form.", {
+      status: 404,
+      headers: {
+        ...RESPONSE_HEADERS,
+        "content-type": "text/plain; charset=utf-8",
+        "content-security-policy": "default-src 'none'; base-uri 'none';",
+        "x-weblingo-showcase-scenario": "unknown",
+      },
+    });
+  }
+
+  const formData = await request.formData();
+  const email = formData.get("email");
+  if (typeof email !== "string" || email.trim().length === 0 || !email.includes("@")) {
+    return new Response("A valid work email is required.", {
+      status: 400,
+      headers: {
+        ...RESPONSE_HEADERS,
+        "content-type": "text/plain; charset=utf-8",
+        "content-security-policy": "default-src 'none'; base-uri 'none';",
+        "x-weblingo-showcase-scenario": "marketing",
+        "x-weblingo-showcase-page": "marketing-contact",
+      },
+    });
+  }
+
+  return new Response(null, {
+    status: 303,
+    headers: {
+      ...RESPONSE_HEADERS,
+      location: "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
+      "x-weblingo-showcase-scenario": "marketing",
+      "x-weblingo-showcase-page": "marketing-contact",
     },
   });
 }

@@ -78,6 +78,9 @@ jobs:
       - name: Dashboard smoke (mock auth)
         run: corepack pnpm test:e2e:smoke
 
+      - name: Showcase fixture regression smoke
+        run: corepack pnpm test:showcase:fixtures
+
   docs-sync-token-check:
     runs-on: ubuntu-latest
     outputs:

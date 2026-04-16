@@ -85,6 +85,12 @@
   color: #8b2f52;
 }
 
+.fixture-picture {
+  display: inline-flex;
+  width: 96px;
+  height: 96px;
+}
+
 [data-fixture-output] {
   padding: 10px 12px;
   border-radius: 6px;
