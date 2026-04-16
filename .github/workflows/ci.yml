@@ -40,6 +40,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Trust checkout for git-based tests
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
