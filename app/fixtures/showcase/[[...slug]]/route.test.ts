@@ -32,6 +32,12 @@ describe("showcase fixture pages", () => {
     expect(html).toContain(
       'rel="canonical" href="https://weblingo.app/fixtures/showcase/marketing"',
     );
+    expect(html).toContain(
+      'property="og:url" content="https://weblingo.app/fixtures/showcase/marketing"',
+    );
+    expect(html).toContain(
+      'name="twitter:url" content="https://weblingo.app/fixtures/showcase/marketing"',
+    );
     expect(html).toContain('hreflang="fr"');
     expect(html).toContain('href="./about?tab=story#team"');
     expect(html).toContain('href="/fixtures/showcase/original-only?from=marketing#faq"');
@@ -134,6 +140,26 @@ describe("showcase fixture pages", () => {
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
     expect(body).toBe("A valid work email is required.");
     expect(body).not.toContain(payload);
+  });
+
+  it("rejects malformed marketing form bodies without throwing", async () => {
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact", {
+        method: "POST",
+        body: JSON.stringify({ email: "buyer@example.com" }),
+        headers: { "content-type": "application/json" },
+      }),
+      routeContext(["marketing", "contact"]),
+    );
+
+    const body = await response.text();
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; base-uri 'none';",
+    );
+    expect(body).toBe("Malformed showcase fixture form.");
   });
 
   it("returns a sanitized 404 for unknown fixture pages", async () => {

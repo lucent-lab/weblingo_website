@@ -32,9 +32,9 @@ The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo sh
 
 ## Backend Live Suite
 
-The backend live suite is `corepack pnpm test:playwright:showcase:live` in the `weblingo` repo. It runs only when configured with live showcase URLs.
+The backend live suite is `corepack pnpm test:playwright:showcase:live` in the `weblingo` repo. It is the release-gate command and fails when no live showcase URLs are configured.
 
-For release gates, use `corepack pnpm test:playwright:showcase:live:required` in the backend repo or set `PLAYWRIGHT_LIVE_SHOWCASE_REQUIRED=1`. That turns a missing live fixture configuration into a hard failure instead of a skip.
+For local smoke runs that may skip when live credentials are absent, use `corepack pnpm test:playwright:showcase:live:optional`. `corepack pnpm test:playwright:showcase:live:required` remains as an explicit alias for the required release behavior.
 
 Minimal single-fixture example:
 
@@ -113,4 +113,4 @@ The website repo runs the source fixture browser suite in CI:
 corepack pnpm test:showcase:fixtures
 ```
 
-That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, and fails on any `/fixtures/showcase/*` response or request failure.
+That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, asserts canonical/OG/Twitter URL metadata, checks that the external reference remains external without loading it, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.

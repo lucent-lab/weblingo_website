@@ -235,6 +235,19 @@ const RESPONSE_HEADERS = {
   "x-weblingo-showcase-fixture": "1",
 };
 
+function formError(message: string): Response {
+  return new Response(message, {
+    status: 400,
+    headers: {
+      ...RESPONSE_HEADERS,
+      "content-type": "text/plain; charset=utf-8",
+      "content-security-policy": "default-src 'none'; base-uri 'none';",
+      "x-weblingo-showcase-scenario": "marketing",
+      "x-weblingo-showcase-page": "marketing-contact",
+    },
+  });
+}
+
 function normalizeSlug(slug: string[] | undefined): string {
   if (!slug || slug.length === 0) {
     return "marketing";
@@ -338,19 +351,16 @@ export async function POST(
     });
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return formError("Malformed showcase fixture form.");
+  }
+
   const email = formData.get("email");
   if (typeof email !== "string" || email.trim().length === 0 || !email.includes("@")) {
-    return new Response("A valid work email is required.", {
-      status: 400,
-      headers: {
-        ...RESPONSE_HEADERS,
-        "content-type": "text/plain; charset=utf-8",
-        "content-security-policy": "default-src 'none'; base-uri 'none';",
-        "x-weblingo-showcase-scenario": "marketing",
-        "x-weblingo-showcase-page": "marketing-contact",
-      },
-    });
+    return formError("A valid work email is required.");
   }
 
   return new Response(null, {

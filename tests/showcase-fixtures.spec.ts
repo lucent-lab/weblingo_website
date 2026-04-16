@@ -1,33 +1,91 @@
 import { expect, test, type Page } from "@playwright/test";
 
-type FixtureFailure = {
+const FIXTURE_BASE_ORIGIN = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  .origin;
+
+type FixtureRequestIssue = {
   url: string;
   status?: number;
   resourceType?: string;
   failure?: string | null;
+  reason: string;
 };
 
-function collectFixtureFailures(page: Page): FixtureFailure[] {
-  const failures: FixtureFailure[] = [];
+function normalizeUrlForAssertion(value: string): string {
+  const url = new URL(value, FIXTURE_BASE_ORIGIN);
+  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+    url.pathname = url.pathname.slice(0, -1);
+  }
+  const sortedParams = Array.from(url.searchParams.entries()).sort(
+    ([leftKey, leftValue], [rightKey, rightValue]) =>
+      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue),
+  );
+  url.search = "";
+  for (const [key, paramValue] of sortedParams) {
+    url.searchParams.append(key, paramValue);
+  }
+  return url.toString();
+}
+
+function expectUrlEquivalent(actual: string, expected: string): void {
+  expect(normalizeUrlForAssertion(actual)).toBe(normalizeUrlForAssertion(expected));
+}
+
+async function expectPageUrlEquivalent(page: Page, expectedUrl: string): Promise<void> {
+  await expect
+    .poll(() => normalizeUrlForAssertion(page.url()))
+    .toBe(normalizeUrlForAssertion(expectedUrl));
+}
+
+function classifyFixtureRequest(value: string, status?: number): string | null {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return null;
+  }
+  if (url.pathname === "/favicon.ico") {
+    return null;
+  }
+  if (url.origin !== FIXTURE_BASE_ORIGIN) {
+    return `unexpected origin ${url.origin}`;
+  }
+  if (url.pathname !== "/fixtures/showcase" && !url.pathname.startsWith("/fixtures/showcase/")) {
+    return `unexpected path ${url.pathname}`;
+  }
+  if (status !== undefined && status >= 400) {
+    return `HTTP ${status}`;
+  }
+  return null;
+}
+
+function collectFixtureRequestIssues(page: Page): FixtureRequestIssue[] {
+  const issues: FixtureRequestIssue[] = [];
 
   page.on("response", (response) => {
     const url = response.url();
-    if (url.includes("/fixtures/showcase/") && response.status() >= 400) {
-      failures.push({ url, status: response.status() });
+    const reason = classifyFixtureRequest(url, response.status());
+    if (reason) {
+      issues.push({ url, status: response.status(), reason });
     }
   });
   page.on("requestfailed", (request) => {
     const url = request.url();
-    if (url.includes("/fixtures/showcase/")) {
-      failures.push({
-        url,
-        resourceType: request.resourceType(),
-        failure: request.failure()?.errorText ?? null,
-      });
+    const parsed = new URL(url);
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      parsed.pathname === "/favicon.ico"
+    ) {
+      return;
     }
+    const reason = classifyFixtureRequest(url) ?? "request failed";
+    issues.push({
+      url,
+      resourceType: request.resourceType(),
+      failure: request.failure()?.errorText ?? null,
+      reason,
+    });
   });
 
-  return failures;
+  return issues;
 }
 
 async function clickAndExpect(
@@ -37,12 +95,12 @@ async function clickAndExpect(
   heading: string,
 ): Promise<void> {
   await page.locator(selector).click();
-  await expect(page).toHaveURL(expectedUrl);
+  await expectPageUrlEquivalent(page, expectedUrl);
   await expect(page.getByRole("heading", { name: heading })).toBeVisible();
 }
 
 test("showcase marketing fixture exposes link, metadata, and asset sentinels", async ({ page }) => {
-  const fixtureFailures = collectFixtureFailures(page);
+  const fixtureIssues = collectFixtureRequestIssues(page);
 
   await page.goto("/fixtures/showcase/marketing");
   await page.waitForLoadState("networkidle");
@@ -55,6 +113,14 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
 
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
+    "https://weblingo.app/fixtures/showcase/marketing",
+  );
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    "https://weblingo.app/fixtures/showcase/marketing",
+  );
+  await expect(page.locator('meta[name="twitter:url"]')).toHaveAttribute(
+    "content",
     "https://weblingo.app/fixtures/showcase/marketing",
   );
   await expect(page.locator('link[rel="alternate"][hreflang="fr"]')).toHaveAttribute(
@@ -73,30 +139,41 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   const relativeSiblingHref = await page
     .locator('[data-check="relative-sibling"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(relativeSiblingHref).toBe(
+  expectUrlEquivalent(
+    relativeSiblingHref,
     new URL("/fixtures/showcase/marketing/about?tab=story#team", page.url()).toString(),
   );
 
   const parentRelativeHref = await page
     .locator('[data-check="parent-relative"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(parentRelativeHref).toBe(
+  expectUrlEquivalent(
+    parentRelativeHref,
     new URL("/fixtures/showcase/docs/start?from=marketing#setup", page.url()).toString(),
   );
 
   const queryOnlyHref = await page
     .locator('[data-check="query-only"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(queryOnlyHref).toBe(
+  expectUrlEquivalent(
+    queryOnlyHref,
     new URL("/fixtures/showcase/marketing/?audience=buyers#overview", page.url()).toString(),
   );
 
   const sourceFallbackHref = await page
     .locator('[data-check="source-fallback-root"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(sourceFallbackHref).toBe(
+  expectUrlEquivalent(
+    sourceFallbackHref,
     new URL("/fixtures/showcase/original-only?from=marketing#faq", page.url()).toString(),
   );
+
+  const externalHref = await page
+    .locator('[data-check="external"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  const externalUrl = new URL(externalHref);
+  expect(externalUrl.origin).toBe("https://developer.mozilla.org");
+  expect(externalUrl.origin).not.toBe(FIXTURE_BASE_ORIGIN);
 
   const responsiveImageCurrentSrc = await page
     .locator('[data-check="responsive-image"] img')
@@ -142,7 +219,10 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   await page.goto("/fixtures/showcase/marketing");
   await page.locator('input[name="email"]').fill("not-an-email");
   await page.getByRole("button", { name: "Request localized preview" }).click();
-  await expect(page).toHaveURL(new URL("/fixtures/showcase/marketing", page.url()).toString());
+  await expectPageUrlEquivalent(
+    page,
+    new URL("/fixtures/showcase/marketing", page.url()).toString(),
+  );
   await expect
     .poll(() =>
       page
@@ -153,7 +233,8 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
 
   await page.locator('input[name="email"]').fill("buyer@example.com");
   await page.locator('input[name="email"]').press("Enter");
-  await expect(page).toHaveURL(
+  await expectPageUrlEquivalent(
+    page,
     new URL(
       "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
       page.url(),
@@ -161,11 +242,11 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   );
   await expect(page.getByRole("heading", { name: "Preview request received" })).toBeVisible();
 
-  expect(fixtureFailures).toEqual([]);
+  expect(fixtureIssues).toEqual([]);
 });
 
 test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
-  const fixtureFailures = collectFixtureFailures(page);
+  const fixtureIssues = collectFixtureRequestIssues(page);
 
   await page.goto("/fixtures/showcase/app/dashboard");
   await page.waitForLoadState("networkidle");
@@ -189,13 +270,13 @@ test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
 
   await expect(page.locator("[data-fixture-toggle]")).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-fixture-output]")).toHaveText("Drawer open");
-  expect(fixtureFailures).toEqual([]);
+  expect(fixtureIssues).toEqual([]);
 });
 
 test("showcase docs fixture resolves nested base and relative links in the browser", async ({
   page,
 }) => {
-  const fixtureFailures = collectFixtureFailures(page);
+  const fixtureIssues = collectFixtureRequestIssues(page);
 
   await page.goto("/fixtures/showcase/docs/start");
   await page.waitForLoadState("networkidle");
@@ -209,33 +290,40 @@ test("showcase docs fixture resolves nested base and relative links in the brows
   const apiHref = await page
     .locator('[data-check="docs-api"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(apiHref).toBe(
+  expectUrlEquivalent(
+    apiHref,
     new URL("/fixtures/showcase/docs/api?topic=keys#authentication", page.url()).toString(),
   );
 
   const parentHref = await page
     .locator('[data-check="docs-marketing"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(parentHref).toBe(new URL("/fixtures/showcase/marketing?from=docs", page.url()).toString());
+  expectUrlEquivalent(
+    parentHref,
+    new URL("/fixtures/showcase/marketing?from=docs", page.url()).toString(),
+  );
 
   const deepRelativeHref = await page
     .locator('[data-check="docs-deep-relative"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(deepRelativeHref).toBe(
+  expectUrlEquivalent(
+    deepRelativeHref,
     new URL("/fixtures/showcase/marketing/pricing?from=docs#buy", page.url()).toString(),
   );
 
   const sourceOnlyHref = await page
     .locator('[data-check="docs-source-fallback"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(sourceOnlyHref).toBe(
+  expectUrlEquivalent(
+    sourceOnlyHref,
     new URL("/fixtures/showcase/docs/source-only?from=docs#legacy", page.url()).toString(),
   );
 
   const fragmentHref = await page
     .locator('[data-check="docs-fragment"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
-  expect(fragmentHref).toBe(
+  expectUrlEquivalent(
+    fragmentHref,
     new URL("/fixtures/showcase/docs/#authentication", page.url()).toString(),
   );
 
@@ -270,5 +358,5 @@ test("showcase docs fixture resolves nested base and relative links in the brows
     "Docs fixture root with anchor target",
   );
 
-  expect(fixtureFailures).toEqual([]);
+  expect(fixtureIssues).toEqual([]);
 });
