@@ -14,13 +14,13 @@ The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo sh
   - Relative sibling target for link rewriting checks.
 - `/fixtures/showcase/marketing/multipart`
   - Browser multipart form fixture.
-  - Submits `enctype="multipart/form-data"` to `/fixtures/showcase/marketing/contact-multipart` and redirects to the same thank-you page with `source=multipart`.
+  - Submits `enctype="multipart/form-data"` to `/fixtures/showcase/marketing/contact-multipart`, asserts the browser sends a `multipart/form-data; boundary=...` request, and redirects to the same thank-you page with `source=multipart`.
 - `/fixtures/showcase/marketing/contact/thanks`
   - Form submission target.
   - The route handler redirects valid marketing form submissions here with the source query string and final `#thanks` fragment preserved. The form action itself deliberately omits the fragment so strict `form-action 'self'` CSP remains browser-compatible.
 - `/fixtures/showcase/root-base`
   - Root-base fixture with `<base href="/">`.
-  - Uses base-relative links and image assets such as `fixtures/showcase/...` so deployed showcase tests can catch trailing-slash namespace regressions on untouched browser-relative URLs.
+  - Uses base-relative links, stylesheet, script, and image assets such as `fixtures/showcase/...` so deployed showcase tests can catch trailing-slash namespace regressions on untouched browser-relative URLs.
 - `/fixtures/showcase/docs/start`
   - Nested documentation page.
   - Covers section anchors, parent-relative links, deep `../..` relative links, and a source-only docs fallback.
@@ -140,7 +140,7 @@ The website repo runs the source fixture browser suite in CI:
 corepack pnpm test:showcase:fixtures
 ```
 
-That Playwright suite submits urlencoded and multipart marketing forms, clicks representative internal/source-only links, checks responsive/preloaded/root-base assets, verifies docs base-fragment and root-base behavior, asserts canonical/OG/Twitter URL metadata, checks page and static fixture asset cache headers, confirms the external reference does not prefetch and then clicks it through a local route interception, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
+That Playwright suite submits urlencoded and multipart marketing forms, asserts multipart requests are sent with browser-generated boundaries, clicks representative internal/source-only links, checks responsive/preloaded/root-base CSS/JS/image assets, verifies docs base-fragment and root-base behavior, asserts canonical/OG/Twitter URL metadata, checks page and static fixture asset cache headers, confirms the external reference does not prefetch and then clicks it through a local route interception, rejects malformed form bodies on both form endpoints, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
 
 For a production-server smoke of the same fixture suite, run:
 

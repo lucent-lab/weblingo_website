@@ -18,6 +18,10 @@ type FixtureRequestIssue = {
   reason: string;
 };
 
+type CollectFixtureRequestIssueOptions = {
+  allowedExternalUrls?: ReadonlySet<string>;
+};
+
 function normalizeUrlForAssertion(value: string): string {
   const url = new URL(value, FIXTURE_BASE_ORIGIN);
   if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
@@ -44,9 +48,16 @@ async function expectPageUrlEquivalent(page: Page, expectedUrl: string): Promise
     .toBe(normalizeUrlForAssertion(expectedUrl));
 }
 
-function classifyFixtureRequest(value: string, status?: number): string | null {
+function classifyFixtureRequest(
+  value: string,
+  status?: number,
+  options: CollectFixtureRequestIssueOptions = {},
+): string | null {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return null;
+  }
+  if (options.allowedExternalUrls?.has(url.toString())) {
     return null;
   }
   if (url.pathname === "/favicon.ico") {
@@ -85,12 +96,15 @@ function expectedFixtureCacheControl(response: Response): string | null {
   return null;
 }
 
-function collectFixtureRequestIssues(page: Page): FixtureRequestIssue[] {
+function collectFixtureRequestIssues(
+  page: Page,
+  options: CollectFixtureRequestIssueOptions = {},
+): FixtureRequestIssue[] {
   const issues: FixtureRequestIssue[] = [];
 
   page.on("response", (response) => {
     const url = response.url();
-    const reason = classifyFixtureRequest(url, response.status());
+    const reason = classifyFixtureRequest(url, response.status(), options);
     if (reason) {
       issues.push({ url, status: response.status(), reason });
       return;
@@ -114,7 +128,7 @@ function collectFixtureRequestIssues(page: Page): FixtureRequestIssue[] {
     ) {
       return;
     }
-    const reason = classifyFixtureRequest(url) ?? "request failed";
+    const reason = classifyFixtureRequest(url, undefined, options) ?? "request failed";
     issues.push({
       url,
       resourceType: request.resourceType(),
@@ -149,7 +163,10 @@ async function gotoFixture(page: Page, path: string): Promise<Response> {
 }
 
 test("showcase marketing fixture exposes link, metadata, and asset sentinels", async ({ page }) => {
-  const fixtureIssues = collectFixtureRequestIssues(page);
+  const externalReferenceUrl = "https://developer.mozilla.org/en-US/";
+  const fixtureIssues = collectFixtureRequestIssues(page, {
+    allowedExternalUrls: new Set([externalReferenceUrl]),
+  });
   const interceptedExternalRequests: string[] = [];
   await page.route("https://developer.mozilla.org/**", async (route) => {
     const request = route.request();
@@ -241,6 +258,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
   const externalUrl = new URL(externalHref);
   expect(externalUrl.origin).toBe("https://developer.mozilla.org");
+  expect(externalUrl.toString()).toBe(externalReferenceUrl);
   expect(externalUrl.origin).not.toBe(FIXTURE_BASE_ORIGIN);
   expect(interceptedExternalRequests).toEqual([]);
 
@@ -318,11 +336,12 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   expect(fixtureIssues).toEqual([]);
   expect(interceptedExternalRequests).toEqual([]);
   await Promise.all([
-    page.waitForURL("https://developer.mozilla.org/en-US/"),
+    page.waitForURL(externalReferenceUrl),
     page.locator('[data-check="external"]').click(),
   ]);
-  expect(interceptedExternalRequests).toEqual(["GET https://developer.mozilla.org/en-US/"]);
+  expect(interceptedExternalRequests).toEqual([`GET ${externalReferenceUrl}`]);
   await expect(page.getByRole("heading", { name: "Intercepted external reference" })).toBeVisible();
+  expect(fixtureIssues).toEqual([]);
 });
 
 test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
@@ -369,6 +388,14 @@ test("showcase root-base fixture resolves base-relative assets and links", async
     "href",
     "fixtures/showcase/marketing/pricing?from=root-base#buy",
   );
+  await expect(page.locator('[data-check="root-base-relative-stylesheet"]')).toHaveAttribute(
+    "href",
+    "fixtures/showcase/showcase.css?v=20260416&root-base=1",
+  );
+  await expect(page.locator('[data-check="root-base-relative-script"]')).toHaveAttribute(
+    "src",
+    "fixtures/showcase/widget.js?v=20260416&root-base=1",
+  );
   const pricingHref = await page
     .locator('[data-check="root-base-pricing"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);
@@ -399,6 +426,20 @@ test("showcase root-base fixture resolves base-relative assets and links", async
   expectUrlEquivalent(
     relativeImageCurrentSrc,
     new URL("/fixtures/showcase/logo.svg?v=20260416&root-base=1", page.url()).toString(),
+  );
+  const relativeStylesheetHref = await page
+    .locator('[data-check="root-base-relative-stylesheet"]')
+    .evaluate((link: HTMLLinkElement) => link.href);
+  expectUrlEquivalent(
+    relativeStylesheetHref,
+    new URL("/fixtures/showcase/showcase.css?v=20260416&root-base=1", page.url()).toString(),
+  );
+  const relativeScriptSrc = await page
+    .locator('[data-check="root-base-relative-script"]')
+    .evaluate((script: HTMLScriptElement) => script.src);
+  expectUrlEquivalent(
+    relativeScriptSrc,
+    new URL("/fixtures/showcase/widget.js?v=20260416&root-base=1", page.url()).toString(),
   );
 
   await clickAndExpect(
@@ -441,7 +482,17 @@ test("showcase multipart fixture submits browser multipart forms", async ({ page
   );
 
   await page.locator('input[name="email"]').fill("buyer@example.com");
+  const multipartRequestPromise = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      request.method() === "POST" &&
+      url.origin === FIXTURE_BASE_ORIGIN &&
+      url.pathname === "/fixtures/showcase/marketing/contact-multipart"
+    );
+  });
   await page.getByRole("button", { name: "Request multipart preview" }).click();
+  const multipartRequest = await multipartRequestPromise;
+  expect(multipartRequest.headers()["content-type"]).toMatch(/^multipart\/form-data; boundary=/);
   await expectPageUrlEquivalent(
     page,
     new URL(

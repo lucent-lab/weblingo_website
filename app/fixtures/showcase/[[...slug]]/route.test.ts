@@ -131,6 +131,12 @@ describe("showcase fixture pages", () => {
     expect(html).toContain(
       'name="twitter:url" content="https://weblingo.app/fixtures/showcase/root-base"',
     );
+    expect(html).toContain(
+      'data-check="root-base-relative-stylesheet" rel="stylesheet" href="fixtures/showcase/showcase.css?v=20260416&root-base=1"',
+    );
+    expect(html).toContain(
+      'data-check="root-base-relative-script" defer src="fixtures/showcase/widget.js?v=20260416&root-base=1"',
+    );
     expect(html).toContain('href="fixtures/showcase/marketing/pricing?from=root-base#buy"');
     expect(html).toContain('href="fixtures/showcase/docs/start?from=root-base#authentication"');
     expect(html).toContain('href="fixtures/showcase/original-only?from=root-base#faq"');
@@ -288,6 +294,28 @@ describe("showcase fixture pages", () => {
     expect(response.headers.get("content-security-policy")).toBe(
       "default-src 'none'; base-uri 'none';",
     );
+    expect(body).toBe("Malformed showcase fixture form.");
+  });
+
+  it("rejects malformed multipart bodies on the multipart endpoint without throwing", async () => {
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact-multipart", {
+        method: "POST",
+        body: "not a multipart body",
+        headers: { "content-type": "multipart/form-data; boundary=fixture-boundary" },
+      }),
+      routeContext(["marketing", "contact-multipart"]),
+    );
+
+    const body = await response.text();
+
+    expect(response.status).toBe(400);
+    expectNoStoreFixtureCache(response);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; base-uri 'none';",
+    );
+    expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-contact-multipart");
     expect(body).toBe("Malformed showcase fixture form.");
   });
 

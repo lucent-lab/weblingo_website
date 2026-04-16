@@ -5,6 +5,7 @@ type FixturePage = {
   description: string;
   canonicalPath: string;
   baseHref?: string;
+  headHtml?: string;
   heading: string;
   bodyHtml: string;
 };
@@ -207,6 +208,9 @@ const PAGES: Record<string, FixturePage> = {
     description: "A root-base fixture that proves relative URLs stay inside showcase namespaces.",
     canonicalPath: "/fixtures/showcase/root-base",
     baseHref: "/",
+    headHtml: `
+    <link data-check="root-base-relative-stylesheet" rel="stylesheet" href="fixtures/showcase/showcase.css?v=${ASSET_VERSION}&root-base=1" />
+    <script data-check="root-base-relative-script" defer src="fixtures/showcase/widget.js?v=${ASSET_VERSION}&root-base=1"></script>`,
     heading: "Root base showcase links stay in namespace",
     bodyHtml: `
       <section class="fixture-panel" id="root-base">
@@ -288,7 +292,7 @@ const FORM_RESPONSE_HEADERS = {
   "cache-control": "no-store",
 };
 
-function formError(message: string): Response {
+function formError(message: string, pageId = "marketing-contact"): Response {
   return new Response(message, {
     status: 400,
     headers: {
@@ -296,7 +300,7 @@ function formError(message: string): Response {
       "content-type": "text/plain; charset=utf-8",
       "content-security-policy": "default-src 'none'; base-uri 'none';",
       "x-weblingo-showcase-scenario": "marketing",
-      "x-weblingo-showcase-page": "marketing-contact",
+      "x-weblingo-showcase-page": pageId,
     },
   });
 }
@@ -343,6 +347,7 @@ ${baseTag}    <title>${escapeHtml(page.title)}</title>
     <link rel="modulepreload" href="/fixtures/showcase/widget.js?v=${ASSET_VERSION}&modulepreload=1" />
     <link rel="stylesheet" href="/fixtures/showcase/showcase.css?v=${ASSET_VERSION}" />
     <script defer src="/fixtures/showcase/widget.js?v=${ASSET_VERSION}"></script>
+${page.headHtml ?? ""}
   </head>
   <body data-fixture-page="${page.pageId}">
     <main class="fixture-shell">
@@ -396,6 +401,10 @@ export async function POST(
     normalized === "marketing/contact" || normalized === "marketing/contact-multipart"
       ? normalized
       : null;
+  const contactPageId =
+    contactPage === "marketing/contact-multipart"
+      ? "marketing-contact-multipart"
+      : "marketing-contact";
 
   if (!contactPage) {
     return new Response("Unknown showcase fixture form.", {
@@ -413,12 +422,12 @@ export async function POST(
   try {
     formData = await request.formData();
   } catch {
-    return formError("Malformed showcase fixture form.");
+    return formError("Malformed showcase fixture form.", contactPageId);
   }
 
   const email = formData.get("email");
   if (typeof email !== "string" || email.trim().length === 0 || !email.includes("@")) {
-    return formError("A valid work email is required.");
+    return formError("A valid work email is required.", contactPageId);
   }
 
   return new Response(null, {
@@ -430,10 +439,7 @@ export async function POST(
           ? "/fixtures/showcase/marketing/contact/thanks?source=multipart#thanks"
           : "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
       "x-weblingo-showcase-scenario": "marketing",
-      "x-weblingo-showcase-page":
-        contactPage === "marketing/contact-multipart"
-          ? "marketing-contact-multipart"
-          : "marketing-contact",
+      "x-weblingo-showcase-page": contactPageId,
     },
   });
 }
