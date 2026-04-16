@@ -61,3 +61,51 @@ test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
   await expect(page.locator("[data-fixture-toggle]")).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-fixture-output]")).toHaveText("Drawer open");
 });
+
+test("showcase docs fixture resolves nested base and relative links in the browser", async ({
+  page,
+}) => {
+  const failedFixtureAssets: Array<{ url: string; status: number }> = [];
+  page.on("response", (response) => {
+    const url = response.url();
+    if (url.includes("/fixtures/showcase/") && response.status() >= 400) {
+      failedFixtureAssets.push({ url, status: response.status() });
+    }
+  });
+
+  await page.goto("/fixtures/showcase/docs/start");
+  await page.waitForLoadState("networkidle");
+
+  await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "docs");
+  await expect(page.locator("html")).toHaveAttribute("data-fixture-script-ready", "1");
+  await expect(
+    page.getByRole("heading", { name: "Set up translated docs without breaking references" }),
+  ).toBeVisible();
+
+  const apiHref = await page
+    .locator('[data-check="docs-api"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expect(apiHref).toBe(
+    new URL("/fixtures/showcase/docs/api?topic=keys#authentication", page.url()).toString(),
+  );
+
+  const parentHref = await page
+    .locator('[data-check="docs-marketing"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expect(parentHref).toBe(new URL("/fixtures/showcase/marketing?from=docs", page.url()).toString());
+
+  const sourceOnlyHref = await page
+    .locator('[data-check="docs-source-fallback"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expect(sourceOnlyHref).toBe(
+    new URL("/fixtures/showcase/docs/source-only?from=docs#legacy", page.url()).toString(),
+  );
+
+  const fragmentHref = await page
+    .locator('[data-check="docs-fragment"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expect(fragmentHref).toBe(
+    new URL("/fixtures/showcase/docs/#authentication", page.url()).toString(),
+  );
+  expect(failedFixtureAssets).toEqual([]);
+});

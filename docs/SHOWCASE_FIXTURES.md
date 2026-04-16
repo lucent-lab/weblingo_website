@@ -36,7 +36,8 @@ PLAYWRIGHT_LIVE_SHOWCASE_SOURCE_ORIGIN="https://weblingo.app" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_TEXT="Translate product pages without losing the buyer path" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_INTERNAL_HREF="https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/pricing?utm=nav#buy" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_SOURCE_FALLBACK_HREF="https://weblingo.app/fixtures/showcase/original-only?from=marketing#faq" \
+PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_DEPLOYMENT_ID="deployment-id-from-publish" \
 corepack pnpm test:playwright:showcase:live
 ```
 
-For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, optional control-plane config, and optional log-health config.
+For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, optional `expectedDeploymentId`, optional `allowedAssetOrigins`, optional control-plane config, and optional log-health config.
