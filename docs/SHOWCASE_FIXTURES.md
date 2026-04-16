@@ -44,12 +44,13 @@ PLAYWRIGHT_LIVE_SHOWCASE_SOURCE_ORIGIN="https://weblingo.app" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_TEXT="Translate product pages without losing the buyer path" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_INTERNAL_HREF="https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/pricing?utm=nav#buy" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_SOURCE_FALLBACK_HREF="https://weblingo.app/fixtures/showcase/original-only?from=marketing#faq" \
+PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_FORM_ACTION="https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/contact?source=form" \
 PLAYWRIGHT_LIVE_SHOWCASE_EXPECTED_DEPLOYMENT_ID="deployment-id-from-publish" \
 PLAYWRIGHT_LIVE_SHOWCASE_REQUIRED=1 \
 corepack pnpm test:playwright:showcase:live
 ```
 
-For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, `expectedDeploymentId`, optional `allowedAssetOrigins`, optional control-plane config, and optional log-health config.
+For multiple live showcase scenarios, set `PLAYWRIGHT_LIVE_SHOWCASE_MATRIX` to a JSON array with `pageUrl`, `sourceOrigin`, expected text, internal links, source fallback links, expected form actions, `expectedDeploymentId`, optional `allowedAssetOrigins`, optional control-plane config, and optional log-health config.
 
 Same-origin showcase assets are expected to include the configured deployment header by default. Use `expectedAssetDeploymentHeaders: false` only when a fixture intentionally validates source-origin/live assets instead of deployment-scoped immutable snapshots.
 
@@ -68,6 +69,9 @@ Matrix example:
     ],
     "expectedSourceFallbackHrefs": [
       "https://weblingo.app/fixtures/showcase/original-only?from=marketing#faq"
+    ],
+    "expectedFormActions": [
+      "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/marketing/contact?source=form"
     ],
     "expectedAssetUrls": [
       "https://t2.weblingo.app/weblingo.app/en/fixtures/showcase/showcase.css?v=20260416",
@@ -113,4 +117,12 @@ The website repo runs the source fixture browser suite in CI:
 corepack pnpm test:showcase:fixtures
 ```
 
-That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, asserts canonical/OG/Twitter URL metadata, checks that the external reference remains external without loading it, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
+That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, asserts canonical/OG/Twitter URL metadata, checks page cache headers, checks that the external reference remains external without loading it, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
+
+For a production-server smoke of the same fixture suite, run:
+
+```sh
+corepack pnpm test:showcase:fixtures:production
+```
+
+That command builds the Next.js app and runs the fixture suite against `next start`. It complements the source fixture smoke; the backend deployed live showcase gate is still the coverage that validates translated showcase serving and immutable deployment assets.

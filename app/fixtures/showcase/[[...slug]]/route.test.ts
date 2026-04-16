@@ -11,6 +11,14 @@ function routeContext(slug?: string[]) {
   return { params: Promise.resolve({ slug }) };
 }
 
+function expectPublicFixtureCache(response: Response): void {
+  expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+}
+
+function expectNoStoreFixtureCache(response: Response): void {
+  expect(response.headers.get("cache-control")).toBe("no-store");
+}
+
 describe("showcase fixture pages", () => {
   it("serves the marketing fixture with link and asset sentinels", async () => {
     const response = await GET(
@@ -22,6 +30,7 @@ describe("showcase fixture pages", () => {
     const csp = response.headers.get("content-security-policy") ?? "";
 
     expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-fixture")).toBe("1");
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("marketing");
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-root");
@@ -58,6 +67,7 @@ describe("showcase fixture pages", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("docs");
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("docs-start");
     expect(html).toContain('<base href="/fixtures/showcase/docs/"');
@@ -74,6 +84,7 @@ describe("showcase fixture pages", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("docs");
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("docs-root");
     expect(html).toContain("Docs fixture root with anchor target");
@@ -89,6 +100,7 @@ describe("showcase fixture pages", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("app");
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("app-dashboard");
     expect(html).toContain("data-fixture-widget");
@@ -103,6 +115,7 @@ describe("showcase fixture pages", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-root");
     expect(html).toContain("Translate product pages without losing the buyer path");
   });
@@ -118,7 +131,7 @@ describe("showcase fixture pages", () => {
     );
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectNoStoreFixtureCache(response);
     expect(response.headers.get("location")).toBe(
       "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
     );
@@ -138,13 +151,13 @@ describe("showcase fixture pages", () => {
     const body = await response.text();
 
     expect(response.status).toBe(400);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectNoStoreFixtureCache(response);
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
     expect(body).toBe("A valid work email is required.");
     expect(body).not.toContain(payload);
   });
 
-  it("rejects malformed marketing form bodies without throwing", async () => {
+  it("rejects unsupported marketing form bodies without throwing", async () => {
     const response = await POST(
       requestFor("/fixtures/showcase/marketing/contact", {
         method: "POST",
@@ -157,7 +170,28 @@ describe("showcase fixture pages", () => {
     const body = await response.text();
 
     expect(response.status).toBe(400);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectNoStoreFixtureCache(response);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; base-uri 'none';",
+    );
+    expect(body).toBe("Malformed showcase fixture form.");
+  });
+
+  it("rejects malformed multipart marketing form bodies without throwing", async () => {
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact", {
+        method: "POST",
+        body: "not a multipart body",
+        headers: { "content-type": "multipart/form-data; boundary=fixture-boundary" },
+      }),
+      routeContext(["marketing", "contact"]),
+    );
+
+    const body = await response.text();
+
+    expect(response.status).toBe(400);
+    expectNoStoreFixtureCache(response);
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
     expect(response.headers.get("content-security-policy")).toBe(
       "default-src 'none'; base-uri 'none';",
@@ -172,6 +206,7 @@ describe("showcase fixture pages", () => {
     const body = await response.text();
 
     expect(response.status).toBe(404);
+    expectPublicFixtureCache(response);
     expect(response.headers.get("x-weblingo-showcase-fixture")).toBe("1");
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("unknown");
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");

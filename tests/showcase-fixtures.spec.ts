@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Response } from "@playwright/test";
 
 const FIXTURE_BASE_ORIGIN = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
   .origin;
@@ -99,10 +99,19 @@ async function clickAndExpect(
   await expect(page.getByRole("heading", { name: heading })).toBeVisible();
 }
 
+async function gotoFixture(page: Page, path: string): Promise<Response> {
+  const response = await page.goto(path);
+  expect(response, `${path} should return a document response`).not.toBeNull();
+  expect(response!.status(), `${path} document status`).toBeGreaterThanOrEqual(200);
+  expect(response!.status(), `${path} document status`).toBeLessThan(400);
+  expect(response!.headers()["cache-control"], `${path} cache-control`).toBe("public, max-age=60");
+  return response!;
+}
+
 test("showcase marketing fixture exposes link, metadata, and asset sentinels", async ({ page }) => {
   const fixtureIssues = collectFixtureRequestIssues(page);
 
-  await page.goto("/fixtures/showcase/marketing");
+  await gotoFixture(page, "/fixtures/showcase/marketing");
   await page.waitForLoadState("networkidle");
 
   await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "marketing");
@@ -192,7 +201,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     "Pricing that keeps translated links stable",
   );
 
-  await page.goto("/fixtures/showcase/marketing");
+  await gotoFixture(page, "/fixtures/showcase/marketing");
   await clickAndExpect(
     page,
     '[data-check="relative-sibling"]',
@@ -200,7 +209,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     "About the localized showcase fixture",
   );
 
-  await page.goto("/fixtures/showcase/marketing");
+  await gotoFixture(page, "/fixtures/showcase/marketing");
   await clickAndExpect(
     page,
     '[data-check="parent-relative"]',
@@ -208,7 +217,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     "Set up translated docs without breaking references",
   );
 
-  await page.goto("/fixtures/showcase/marketing");
+  await gotoFixture(page, "/fixtures/showcase/marketing");
   await clickAndExpect(
     page,
     '[data-check="source-fallback-root"]',
@@ -216,7 +225,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     "Source-only original page",
   );
 
-  await page.goto("/fixtures/showcase/marketing");
+  await gotoFixture(page, "/fixtures/showcase/marketing");
   await page.locator('input[name="email"]').fill("not-an-email");
   await page.getByRole("button", { name: "Request localized preview" }).click();
   await expectPageUrlEquivalent(
@@ -248,7 +257,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
 test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
   const fixtureIssues = collectFixtureRequestIssues(page);
 
-  await page.goto("/fixtures/showcase/app/dashboard");
+  await gotoFixture(page, "/fixtures/showcase/app/dashboard");
   await page.waitForLoadState("networkidle");
 
   await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "app");
@@ -278,7 +287,7 @@ test("showcase docs fixture resolves nested base and relative links in the brows
 }) => {
   const fixtureIssues = collectFixtureRequestIssues(page);
 
-  await page.goto("/fixtures/showcase/docs/start");
+  await gotoFixture(page, "/fixtures/showcase/docs/start");
   await page.waitForLoadState("networkidle");
 
   await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "docs");
@@ -334,7 +343,7 @@ test("showcase docs fixture resolves nested base and relative links in the brows
     "API reference for localized docs",
   );
 
-  await page.goto("/fixtures/showcase/docs/start");
+  await gotoFixture(page, "/fixtures/showcase/docs/start");
   await clickAndExpect(
     page,
     '[data-check="docs-deep-relative"]',
@@ -342,7 +351,7 @@ test("showcase docs fixture resolves nested base and relative links in the brows
     "Pricing that keeps translated links stable",
   );
 
-  await page.goto("/fixtures/showcase/docs/start");
+  await gotoFixture(page, "/fixtures/showcase/docs/start");
   await clickAndExpect(
     page,
     '[data-check="docs-source-fallback"]',
@@ -350,7 +359,7 @@ test("showcase docs fixture resolves nested base and relative links in the brows
     "Legacy docs source-only page",
   );
 
-  await page.goto("/fixtures/showcase/docs/start");
+  await gotoFixture(page, "/fixtures/showcase/docs/start");
   await clickAndExpect(
     page,
     '[data-check="docs-fragment"]',
