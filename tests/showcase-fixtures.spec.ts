@@ -34,6 +34,13 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
     new URL("/fixtures/showcase/marketing/about?tab=story#team", page.url()).toString(),
   );
 
+  const parentRelativeHref = await page
+    .locator('[data-check="parent-relative"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expect(parentRelativeHref).toBe(
+    new URL("/fixtures/showcase/docs/start?from=marketing#setup", page.url()).toString(),
+  );
+
   const sourceFallbackHref = await page
     .locator('[data-check="source-fallback-root"]')
     .evaluate((anchor: HTMLAnchorElement) => anchor.href);

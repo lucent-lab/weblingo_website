@@ -32,7 +32,7 @@ const PAGES: Record<string, FixturePage> = {
       <nav class="fixture-nav" aria-label="Fixture navigation">
         <a data-check="same-page-query" href="?ref=nav#overview">Overview</a>
         <a data-check="relative-sibling" href="./about?tab=story#team">About relative</a>
-        <a data-check="parent-relative" href="../showcase/docs/start?from=marketing#setup">Docs relative</a>
+        <a data-check="parent-relative" href="../docs/start?from=marketing#setup">Docs relative</a>
         <a data-check="source-fallback-root" href="/fixtures/showcase/original-only?from=marketing#faq">Original only</a>
         <a data-check="external" href="https://developer.mozilla.org/en-US/">External reference</a>
       </nav>
