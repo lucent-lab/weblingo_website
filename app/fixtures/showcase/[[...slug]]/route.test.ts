@@ -109,6 +109,54 @@ describe("showcase fixture pages", () => {
     expect(html).toContain('href="/fixtures/showcase/app/source-only?from=dashboard#settings"');
   });
 
+  it("serves a root-base fixture with root-resolved relative URLs", async () => {
+    const response = await GET(
+      requestFor("/fixtures/showcase/root-base"),
+      routeContext(["root-base"]),
+    );
+
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
+    expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("root-base");
+    expect(response.headers.get("x-weblingo-showcase-page")).toBe("root-base");
+    expect(html).toContain('<base href="/"');
+    expect(html).toContain(
+      'rel="canonical" href="https://weblingo.app/fixtures/showcase/root-base"',
+    );
+    expect(html).toContain(
+      'property="og:url" content="https://weblingo.app/fixtures/showcase/root-base"',
+    );
+    expect(html).toContain(
+      'name="twitter:url" content="https://weblingo.app/fixtures/showcase/root-base"',
+    );
+    expect(html).toContain('href="fixtures/showcase/marketing/pricing?from=root-base#buy"');
+    expect(html).toContain('href="fixtures/showcase/docs/start?from=root-base#authentication"');
+    expect(html).toContain('href="fixtures/showcase/original-only?from=root-base#faq"');
+    expect(html).toContain('src="fixtures/showcase/logo.svg?v=20260416&root-base=1"');
+  });
+
+  it("serves a multipart marketing form fixture", async () => {
+    const response = await GET(
+      requestFor("/fixtures/showcase/marketing/multipart"),
+      routeContext(["marketing", "multipart"]),
+    );
+
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expectPublicFixtureCache(response);
+    expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("marketing");
+    expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-multipart");
+    expect(html).toContain("Multipart lead form fixture");
+    expect(html).toContain('method="post"');
+    expect(html).toContain('enctype="multipart/form-data"');
+    expect(html).toContain(
+      'action="/fixtures/showcase/marketing/contact-multipart?source=multipart"',
+    );
+  });
+
   it("uses the marketing fixture as the default optional catch-all page", async () => {
     const response = await GET(requestFor("/fixtures/showcase"), routeContext());
 
@@ -135,6 +183,27 @@ describe("showcase fixture pages", () => {
     expect(response.headers.get("location")).toBe(
       "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
     );
+  });
+
+  it("redirects valid multipart marketing form submissions to a stable thank-you fixture", async () => {
+    const formData = new FormData();
+    formData.set("email", "buyer@example.com");
+    formData.set("company", "WebLingo Fixture Co");
+
+    const response = await POST(
+      requestFor("/fixtures/showcase/marketing/contact-multipart?source=multipart", {
+        method: "POST",
+        body: formData,
+      }),
+      routeContext(["marketing", "contact-multipart"]),
+    );
+
+    expect(response.status).toBe(303);
+    expectNoStoreFixtureCache(response);
+    expect(response.headers.get("location")).toBe(
+      "/fixtures/showcase/marketing/contact/thanks?source=multipart#thanks",
+    );
+    expect(response.headers.get("x-weblingo-showcase-page")).toBe("marketing-contact-multipart");
   });
 
   it("rejects invalid marketing form submissions without rendering user input", async () => {

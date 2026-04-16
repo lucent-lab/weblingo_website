@@ -1,5 +1,5 @@
 type FixturePage = {
-  scenario: "marketing" | "docs" | "app";
+  scenario: "marketing" | "docs" | "app" | "root-base";
   pageId: string;
   title: string;
   description: string;
@@ -107,6 +107,30 @@ const PAGES: Record<string, FixturePage> = {
       </section>
     `,
   },
+  "marketing/multipart": {
+    scenario: "marketing",
+    pageId: "marketing-multipart",
+    title: "Showcase Fixture: multipart form",
+    description: "A multipart lead-form fixture used to exercise browser form encoding.",
+    canonicalPath: "/fixtures/showcase/marketing/multipart",
+    heading: "Multipart lead form fixture",
+    bodyHtml: `
+      <section class="fixture-panel" id="multipart">
+        <p>This page submits a browser-generated multipart body to the showcase fixture handler.</p>
+        <form action="/fixtures/showcase/marketing/contact-multipart?source=multipart" method="post" enctype="multipart/form-data" data-check="multipart-lead-form">
+          <label>
+            Work email
+            <input name="email" type="email" value="buyer@example.com" required />
+          </label>
+          <label>
+            Company
+            <input name="company" value="WebLingo Fixture Co" />
+          </label>
+          <button type="submit">Request multipart preview</button>
+        </form>
+      </section>
+    `,
+  },
   "docs/start": {
     scenario: "docs",
     pageId: "docs-start",
@@ -173,6 +197,30 @@ const PAGES: Record<string, FixturePage> = {
         <output data-fixture-output>Drawer closed</output>
         <a data-check="app-docs" href="/fixtures/showcase/docs/start?from=dashboard#authentication">Read setup docs</a>
         <a data-check="app-source-fallback" href="/fixtures/showcase/app/source-only?from=dashboard#settings">Original settings</a>
+      </section>
+    `,
+  },
+  "root-base": {
+    scenario: "root-base",
+    pageId: "root-base",
+    title: "Showcase Fixture: root base",
+    description: "A root-base fixture that proves relative URLs stay inside showcase namespaces.",
+    canonicalPath: "/fixtures/showcase/root-base",
+    baseHref: "/",
+    heading: "Root base showcase links stay in namespace",
+    bodyHtml: `
+      <section class="fixture-panel" id="root-base">
+        <p>This page uses <code>&lt;base href="/"&gt;</code> plus root-base relative URLs.</p>
+        <a data-check="root-base-pricing" href="fixtures/showcase/marketing/pricing?from=root-base#buy">Pricing through root base</a>
+        <a data-check="root-base-docs" href="fixtures/showcase/docs/start?from=root-base#authentication">Docs through root base</a>
+        <a data-check="root-base-source-fallback" href="fixtures/showcase/original-only?from=root-base#faq">Source fallback through root base</a>
+        <img
+          data-check="root-base-relative-image"
+          src="fixtures/showcase/logo.svg?v=${ASSET_VERSION}&root-base=1"
+          width="96"
+          height="96"
+          alt="Root-base relative fixture logo"
+        />
       </section>
     `,
   },
@@ -344,7 +392,12 @@ export async function POST(
   const { slug } = await context.params;
   const normalized = normalizeSlug(slug);
 
-  if (normalized !== "marketing/contact") {
+  const contactPage =
+    normalized === "marketing/contact" || normalized === "marketing/contact-multipart"
+      ? normalized
+      : null;
+
+  if (!contactPage) {
     return new Response("Unknown showcase fixture form.", {
       status: 404,
       headers: {
@@ -372,9 +425,15 @@ export async function POST(
     status: 303,
     headers: {
       ...FORM_RESPONSE_HEADERS,
-      location: "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
+      location:
+        contactPage === "marketing/contact-multipart"
+          ? "/fixtures/showcase/marketing/contact/thanks?source=multipart#thanks"
+          : "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
       "x-weblingo-showcase-scenario": "marketing",
-      "x-weblingo-showcase-page": "marketing-contact",
+      "x-weblingo-showcase-page":
+        contactPage === "marketing/contact-multipart"
+          ? "marketing-contact-multipart"
+          : "marketing-contact",
     },
   });
 }

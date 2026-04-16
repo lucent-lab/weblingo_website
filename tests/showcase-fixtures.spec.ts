@@ -353,6 +353,106 @@ test("showcase app fixture runs non-eval interactivity", async ({ page }) => {
   expect(fixtureIssues).toEqual([]);
 });
 
+test("showcase root-base fixture resolves base-relative assets and links", async ({ page }) => {
+  const fixtureIssues = collectFixtureRequestIssues(page);
+
+  await gotoFixture(page, "/fixtures/showcase/root-base");
+  await page.waitForLoadState("networkidle");
+
+  await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "root-base");
+  await expect(page.locator("base")).toHaveAttribute("href", "/");
+  await expect(
+    page.getByRole("heading", { name: "Root base showcase links stay in namespace" }),
+  ).toBeVisible();
+
+  await expect(page.locator('[data-check="root-base-pricing"]')).toHaveAttribute(
+    "href",
+    "fixtures/showcase/marketing/pricing?from=root-base#buy",
+  );
+  const pricingHref = await page
+    .locator('[data-check="root-base-pricing"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expectUrlEquivalent(
+    pricingHref,
+    new URL("/fixtures/showcase/marketing/pricing?from=root-base#buy", page.url()).toString(),
+  );
+
+  const docsHref = await page
+    .locator('[data-check="root-base-docs"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expectUrlEquivalent(
+    docsHref,
+    new URL("/fixtures/showcase/docs/start?from=root-base#authentication", page.url()).toString(),
+  );
+
+  const sourceFallbackHref = await page
+    .locator('[data-check="root-base-source-fallback"]')
+    .evaluate((anchor: HTMLAnchorElement) => anchor.href);
+  expectUrlEquivalent(
+    sourceFallbackHref,
+    new URL("/fixtures/showcase/original-only?from=root-base#faq", page.url()).toString(),
+  );
+
+  const relativeImageCurrentSrc = await page
+    .locator('[data-check="root-base-relative-image"]')
+    .evaluate((image: HTMLImageElement) => image.currentSrc);
+  expectUrlEquivalent(
+    relativeImageCurrentSrc,
+    new URL("/fixtures/showcase/logo.svg?v=20260416&root-base=1", page.url()).toString(),
+  );
+
+  await clickAndExpect(
+    page,
+    '[data-check="root-base-pricing"]',
+    new URL("/fixtures/showcase/marketing/pricing?from=root-base#buy", page.url()).toString(),
+    "Pricing that keeps translated links stable",
+  );
+
+  await gotoFixture(page, "/fixtures/showcase/root-base");
+  await clickAndExpect(
+    page,
+    '[data-check="root-base-docs"]',
+    new URL("/fixtures/showcase/docs/start?from=root-base#authentication", page.url()).toString(),
+    "Set up translated docs without breaking references",
+  );
+
+  await gotoFixture(page, "/fixtures/showcase/root-base");
+  await clickAndExpect(
+    page,
+    '[data-check="root-base-source-fallback"]',
+    new URL("/fixtures/showcase/original-only?from=root-base#faq", page.url()).toString(),
+    "Source-only original page",
+  );
+
+  expect(fixtureIssues).toEqual([]);
+});
+
+test("showcase multipart fixture submits browser multipart forms", async ({ page }) => {
+  const fixtureIssues = collectFixtureRequestIssues(page);
+
+  await gotoFixture(page, "/fixtures/showcase/marketing/multipart");
+  await page.waitForLoadState("networkidle");
+
+  await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "marketing");
+  await expect(page.getByRole("heading", { name: "Multipart lead form fixture" })).toBeVisible();
+  await expect(page.locator('[data-check="multipart-lead-form"]')).toHaveAttribute(
+    "enctype",
+    "multipart/form-data",
+  );
+
+  await page.locator('input[name="email"]').fill("buyer@example.com");
+  await page.getByRole("button", { name: "Request multipart preview" }).click();
+  await expectPageUrlEquivalent(
+    page,
+    new URL(
+      "/fixtures/showcase/marketing/contact/thanks?source=multipart#thanks",
+      page.url(),
+    ).toString(),
+  );
+  await expect(page.getByRole("heading", { name: "Preview request received" })).toBeVisible();
+  expect(fixtureIssues).toEqual([]);
+});
+
 test("showcase docs fixture resolves nested base and relative links in the browser", async ({
   page,
 }) => {
