@@ -235,11 +235,16 @@ const RESPONSE_HEADERS = {
   "x-weblingo-showcase-fixture": "1",
 };
 
+const FORM_RESPONSE_HEADERS = {
+  ...RESPONSE_HEADERS,
+  "cache-control": "no-store",
+};
+
 function formError(message: string): Response {
   return new Response(message, {
     status: 400,
     headers: {
-      ...RESPONSE_HEADERS,
+      ...FORM_RESPONSE_HEADERS,
       "content-type": "text/plain; charset=utf-8",
       "content-security-policy": "default-src 'none'; base-uri 'none';",
       "x-weblingo-showcase-scenario": "marketing",
@@ -343,7 +348,7 @@ export async function POST(
     return new Response("Unknown showcase fixture form.", {
       status: 404,
       headers: {
-        ...RESPONSE_HEADERS,
+        ...FORM_RESPONSE_HEADERS,
         "content-type": "text/plain; charset=utf-8",
         "content-security-policy": "default-src 'none'; base-uri 'none';",
         "x-weblingo-showcase-scenario": "unknown",
@@ -366,7 +371,7 @@ export async function POST(
   return new Response(null, {
     status: 303,
     headers: {
-      ...RESPONSE_HEADERS,
+      ...FORM_RESPONSE_HEADERS,
       location: "/fixtures/showcase/marketing/contact/thanks?source=form#thanks",
       "x-weblingo-showcase-scenario": "marketing",
       "x-weblingo-showcase-page": "marketing-contact",
