@@ -2,6 +2,13 @@ import { expect, test, type Page, type Response } from "@playwright/test";
 
 const FIXTURE_BASE_ORIGIN = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
   .origin;
+const FIXTURE_PAGE_CACHE_CONTROL = "public, max-age=60";
+const FIXTURE_STATIC_ASSET_CACHE_CONTROL = "public, max-age=0";
+const STATIC_FIXTURE_ASSET_PATHS = new Set([
+  "/fixtures/showcase/logo.svg",
+  "/fixtures/showcase/showcase.css",
+  "/fixtures/showcase/widget.js",
+]);
 
 type FixtureRequestIssue = {
   url: string;
@@ -57,6 +64,27 @@ function classifyFixtureRequest(value: string, status?: number): string | null {
   return null;
 }
 
+function expectedFixtureCacheControl(response: Response): string | null {
+  if (response.status() < 200 || response.status() >= 300) {
+    return null;
+  }
+  const url = new URL(response.url());
+  if (url.origin !== FIXTURE_BASE_ORIGIN) {
+    return null;
+  }
+  if (STATIC_FIXTURE_ASSET_PATHS.has(url.pathname)) {
+    return FIXTURE_STATIC_ASSET_CACHE_CONTROL;
+  }
+  if (
+    response.request().method() === "GET" &&
+    response.request().resourceType() === "document" &&
+    (url.pathname === "/fixtures/showcase" || url.pathname.startsWith("/fixtures/showcase/"))
+  ) {
+    return FIXTURE_PAGE_CACHE_CONTROL;
+  }
+  return null;
+}
+
 function collectFixtureRequestIssues(page: Page): FixtureRequestIssue[] {
   const issues: FixtureRequestIssue[] = [];
 
@@ -65,6 +93,16 @@ function collectFixtureRequestIssues(page: Page): FixtureRequestIssue[] {
     const reason = classifyFixtureRequest(url, response.status());
     if (reason) {
       issues.push({ url, status: response.status(), reason });
+      return;
+    }
+    const expectedCacheControl = expectedFixtureCacheControl(response);
+    const actualCacheControl = response.headers()["cache-control"] ?? null;
+    if (expectedCacheControl && actualCacheControl !== expectedCacheControl) {
+      issues.push({
+        url,
+        status: response.status(),
+        reason: `cache-control ${actualCacheControl ?? "<missing>"} !== ${expectedCacheControl}`,
+      });
     }
   });
   page.on("requestfailed", (request) => {
@@ -104,15 +142,36 @@ async function gotoFixture(page: Page, path: string): Promise<Response> {
   expect(response, `${path} should return a document response`).not.toBeNull();
   expect(response!.status(), `${path} document status`).toBeGreaterThanOrEqual(200);
   expect(response!.status(), `${path} document status`).toBeLessThan(400);
-  expect(response!.headers()["cache-control"], `${path} cache-control`).toBe("public, max-age=60");
+  expect(response!.headers()["cache-control"], `${path} cache-control`).toBe(
+    FIXTURE_PAGE_CACHE_CONTROL,
+  );
   return response!;
 }
 
 test("showcase marketing fixture exposes link, metadata, and asset sentinels", async ({ page }) => {
   const fixtureIssues = collectFixtureRequestIssues(page);
+  const interceptedExternalRequests: string[] = [];
+  await page.route("https://developer.mozilla.org/**", async (route) => {
+    const request = route.request();
+    interceptedExternalRequests.push(`${request.method()} ${request.url()}`);
+    await route.fulfill({
+      body: [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head><title>Intercepted external reference</title>",
+        '<link rel="icon" href="data:,">',
+        "</head>",
+        "<body><h1>Intercepted external reference</h1></body>",
+        "</html>",
+      ].join(""),
+      contentType: "text/html; charset=utf-8",
+      status: 200,
+    });
+  });
 
   await gotoFixture(page, "/fixtures/showcase/marketing");
   await page.waitForLoadState("networkidle");
+  expect(interceptedExternalRequests).toEqual([]);
 
   await expect(page.locator("html")).toHaveAttribute("data-weblingo-showcase-fixture", "marketing");
   await expect(page.locator("html")).toHaveAttribute("data-fixture-script-ready", "1");
@@ -183,6 +242,7 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   const externalUrl = new URL(externalHref);
   expect(externalUrl.origin).toBe("https://developer.mozilla.org");
   expect(externalUrl.origin).not.toBe(FIXTURE_BASE_ORIGIN);
+  expect(interceptedExternalRequests).toEqual([]);
 
   const responsiveImageCurrentSrc = await page
     .locator('[data-check="responsive-image"] img')
@@ -252,6 +312,17 @@ test("showcase marketing fixture exposes link, metadata, and asset sentinels", a
   await expect(page.getByRole("heading", { name: "Preview request received" })).toBeVisible();
 
   expect(fixtureIssues).toEqual([]);
+
+  await gotoFixture(page, "/fixtures/showcase/marketing");
+  await page.waitForLoadState("networkidle");
+  expect(fixtureIssues).toEqual([]);
+  expect(interceptedExternalRequests).toEqual([]);
+  await Promise.all([
+    page.waitForURL("https://developer.mozilla.org/en-US/"),
+    page.locator('[data-check="external"]').click(),
+  ]);
+  expect(interceptedExternalRequests).toEqual(["GET https://developer.mozilla.org/en-US/"]);
+  await expect(page.getByRole("heading", { name: "Intercepted external reference" })).toBeVisible();
 });
 
 test("showcase app fixture runs non-eval interactivity", async ({ page }) => {

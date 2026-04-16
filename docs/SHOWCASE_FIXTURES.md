@@ -117,7 +117,7 @@ The website repo runs the source fixture browser suite in CI:
 corepack pnpm test:showcase:fixtures
 ```
 
-That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, asserts canonical/OG/Twitter URL metadata, checks page cache headers, checks that the external reference remains external without loading it, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
+That Playwright suite submits the marketing form, clicks representative internal/source-only links, checks responsive/preloaded assets, verifies docs base-fragment behavior, asserts canonical/OG/Twitter URL metadata, checks page and static fixture asset cache headers, confirms the external reference does not prefetch and then clicks it through a local route interception, rejects malformed form bodies, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
 
 For a production-server smoke of the same fixture suite, run:
 
