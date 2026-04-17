@@ -41,6 +41,7 @@ describe("showcase fixture pages", () => {
     expect(html).toContain(
       'rel="canonical" href="https://weblingo.app/fixtures/showcase/marketing"',
     );
+    expect(html).toContain('<link rel="icon" href="data:,"');
     expect(html).toContain(
       'property="og:url" content="https://weblingo.app/fixtures/showcase/marketing"',
     );
@@ -71,6 +72,8 @@ describe("showcase fixture pages", () => {
     expect(response.headers.get("x-weblingo-showcase-scenario")).toBe("docs");
     expect(response.headers.get("x-weblingo-showcase-page")).toBe("docs-start");
     expect(html).toContain('<base href="/fixtures/showcase/docs/"');
+    expect(html).toContain('<link rel="icon" href="data:,"');
+    expect(html).not.toContain('rel="preload" as="image"');
     expect(html).toContain('href="./api?topic=keys#authentication"');
     expect(html).toContain('href="../marketing?from=docs"');
     expect(html).toContain('href="../../showcase/marketing/pricing?from=docs#buy"');

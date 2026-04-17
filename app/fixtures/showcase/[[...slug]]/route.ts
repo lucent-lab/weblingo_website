@@ -23,6 +23,7 @@ const PAGES: Record<string, FixturePage> = {
     description: "A sales landing page fixture with source-only and translated navigation cases.",
     canonicalPath: "/fixtures/showcase/marketing",
     baseHref: "/fixtures/showcase/marketing/",
+    headHtml: `    <link rel="preload" as="image" href="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}" />`,
     heading: "Translate product pages without losing the buyer path",
     bodyHtml: `
       <section class="fixture-hero" data-fixture-section="hero">
@@ -336,6 +337,7 @@ function buildFixtureHtml(page: FixturePage): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 ${baseTag}    <title>${escapeHtml(page.title)}</title>
+    <link rel="icon" href="data:," />
     <meta name="description" content="${escapeHtml(page.description)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
     <link rel="alternate" hreflang="en" href="${escapeHtml(alternateEnglish)}" />
@@ -343,7 +345,6 @@ ${baseTag}    <title>${escapeHtml(page.title)}</title>
     <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateEnglish)}" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
     <meta name="twitter:url" content="${escapeHtml(canonicalUrl)}" />
-    <link rel="preload" as="image" href="/fixtures/showcase/logo.svg?v=${ASSET_VERSION}" />
     <link rel="modulepreload" href="/fixtures/showcase/widget.js?v=${ASSET_VERSION}&modulepreload=1" />
     <link rel="stylesheet" href="/fixtures/showcase/showcase.css?v=${ASSET_VERSION}" />
     <script defer src="/fixtures/showcase/widget.js?v=${ASSET_VERSION}"></script>

@@ -85,6 +85,7 @@
       "qs": "6.14.2",
       "flatted": "3.4.2",
       "fast-xml-parser": "5.5.10",
+      "protobufjs": "7.5.5",
       "picomatch@2.3.1": "2.3.2",
       "picomatch@4.0.3": "4.0.4",
       "happy-dom": "20.8.9",
