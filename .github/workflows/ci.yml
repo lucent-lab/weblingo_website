@@ -40,8 +40,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Trust checkout for git-based tests
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Setup PNPM
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
         with:
           version: 9.12.0
 
@@ -74,6 +77,9 @@ jobs:
 
       - name: Dashboard smoke (mock auth)
         run: corepack pnpm test:e2e:smoke
+
+      - name: Showcase fixture regression smoke
+        run: corepack pnpm test:showcase:fixtures
 
   docs-sync-token-check:
     runs-on: ubuntu-latest
@@ -129,7 +135,7 @@ jobs:
           token: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN }}
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
         with:
           version: 9.12.0
 

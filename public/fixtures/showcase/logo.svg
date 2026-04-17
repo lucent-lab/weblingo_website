@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">WebLingo fixture logo</title>
+  <desc id="desc">A geometric mark used by showcase regression fixtures.</desc>
+  <rect width="96" height="96" rx="16" fill="#18324f" />
+  <path d="M20 50c0-17 13-30 30-30h26v14H50c-9 0-16 7-16 16s7 16 16 16h26v14H50c-17 0-30-13-30-30Z" fill="#ffffff" />
+  <path d="M44 34h32v14H44V34Zm0 20h24v14H44V54Z" fill="#2cb6a3" />
+</svg>
