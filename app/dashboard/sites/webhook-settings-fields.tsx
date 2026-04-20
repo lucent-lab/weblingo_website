@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { WEBHOOK_EVENT_TYPES, type NotifyWebhookEventType } from "@internal/dashboard/webhooks";
+import { WEBHOOK_EVENT_TYPES, type KnownWebhookEventType } from "@internal/dashboard/webhooks";
 
-const WEBHOOK_EVENT_LABELS: Record<NotifyWebhookEventType, string> = {
+const WEBHOOK_EVENT_LABELS: Record<KnownWebhookEventType, string> = {
   "translation.completed": "Translation completed",
   "translation.failed": "Translation failed",
   "translation.summary": "Translation summary",
@@ -27,8 +27,8 @@ type WebhookSettingsFieldsProps = {
   onWebhookUrlChange: (value: string) => void;
   webhookSecret: string;
   onWebhookSecretChange: (value: string) => void;
-  webhookEvents: NotifyWebhookEventType[];
-  onWebhookEventsChange: (value: NotifyWebhookEventType[]) => void;
+  webhookEvents: KnownWebhookEventType[];
+  onWebhookEventsChange: (value: KnownWebhookEventType[]) => void;
   canEdit: boolean;
 };
 
@@ -55,7 +55,7 @@ export function WebhookSettingsFields({
   const anySelected = webhookEvents.length > 0;
   const webhookEventsJson = JSON.stringify(webhookEvents);
 
-  function toggleEvent(eventType: NotifyWebhookEventType): void {
+  function toggleEvent(eventType: KnownWebhookEventType): void {
     if (webhookEvents.includes(eventType)) {
       onWebhookEventsChange(webhookEvents.filter((entry) => entry !== eventType));
       return;

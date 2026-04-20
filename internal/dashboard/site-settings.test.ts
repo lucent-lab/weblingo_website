@@ -215,6 +215,18 @@ describe("buildSiteSettingsUpdatePayload", () => {
     }
   });
 
+  it("rejects unrecognized webhook events when parsing updates", () => {
+    const formData = new FormData();
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookSecret", "secret-123");
+    formData.set("webhookEvents", JSON.stringify(["translation.completed", "translation.beta"]));
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditWebhooks: true }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/unsupported event/i);
+    }
+  });
+
   it("treats an empty webhook allowlist as explicit disable", () => {
     const formData = new FormData();
     formData.set("webhookUrl", "https://hooks.example.com/weblingo");

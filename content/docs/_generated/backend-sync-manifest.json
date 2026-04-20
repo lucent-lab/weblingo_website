@@ -6,8 +6,8 @@
       "sha256": "ae709eeb6bb93559601e672fd883bf40cf01050b5ab66c2c96eb5b7a90b2e471"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 343517,
-      "sha256": "8bb92edfde1611ca6a7ace4b311a0f9d1d2f4fdcb6234b9e13472c564c9b2bf6"
+      "bytes": 343219,
+      "sha256": "380bb863dc324674d9fda8290cc18f8f6358f6d04c6c4bd11344d2f4bb789c3a"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
       "bytes": 7095,
@@ -28,8 +28,8 @@
       "sha256": "0fe451fc26f0964c79ba679a0432cd8eaa132cc56132606d7493ccbced996571"
     },
     "docs/reference/openapi.json": {
-      "bytes": 269937,
-      "sha256": "d1b9b67c39a32d4ac6b6b363f75eec99579df0f8b0a6461c1840d628ac06f639"
+      "bytes": 269715,
+      "sha256": "f284c9127ddc86baf025d204b5bdbd4d70cf3024d21618f4cb2eba445cbc1880"
     }
   },
   "sourceRepoCommitTimestamp": "2026-04-20T13:55:27+09:00",

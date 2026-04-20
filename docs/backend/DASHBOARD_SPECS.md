@@ -58,7 +58,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `servingMode`: `"strict" | "tolerant"`.
   - `maxLocales`: number or `null` (null = no cap).
   - `webhookUrl`, `webhookSecret`: string or `null`.
-  - `webhookEvents`: `["translation.completed", "translation.failed", "translation.summary"]` or an empty array when delivery is disabled.
+  - `webhookEvents`: array of currently supported event names, or an empty array when delivery is disabled.
   - `routeConfig`: `RouteConfig` or `null`.
   - `locales`: `[{ sourceLang, targetLang, alias?, serveEnabled }]`.
   - `domains`: `[{ domain, status, verificationToken, verifiedAt?, lastCheckedAt?, dnsInstructions?, cloudflare? }]`.
@@ -219,6 +219,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 - Website mapping:
   - `/dashboard/sites/:id/admin` and the onboarding form should expose `webhookUrl`, `webhookSecret`, and the event allowlist together as one integrations block.
+  - The dashboard should preserve raw webhook event values from the API, even if the current UI cannot label them yet.
 
 `POST /api/sites/:id/crawl`
 

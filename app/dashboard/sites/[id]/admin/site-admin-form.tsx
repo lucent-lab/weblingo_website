@@ -24,7 +24,7 @@ import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
   CrawlCaptureMode,
-  NotifyWebhookEventType,
+  KnownWebhookEventType,
   SpaRefreshFallback,
   SpaRefreshSettings,
   SupportedLanguage,
@@ -73,7 +73,7 @@ type SiteAdminFormProps = {
   canEditProfile: boolean;
   webhookUrl: string | null;
   webhookSecret: string | null;
-  webhookEvents: NotifyWebhookEventType[];
+  webhookEvents: KnownWebhookEventType[];
   canEditWebhooks: boolean;
   clientRuntimeCopy: {
     title: string;
@@ -183,7 +183,7 @@ export function SiteAdminForm({
   );
   const [webhookUrl, setWebhookUrl] = useState<string>(initialWebhookUrl ?? "");
   const [webhookSecret, setWebhookSecret] = useState<string>(initialWebhookSecret ?? "");
-  const [webhookEvents, setWebhookEvents] = useState<NotifyWebhookEventType[]>(
+  const [webhookEvents, setWebhookEvents] = useState<KnownWebhookEventType[]>(
     () => initialWebhookEvents,
   );
 

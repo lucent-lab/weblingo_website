@@ -25,6 +25,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "translation.failed",
   "translation.summary",
 ] as const;
+export type KnownWebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
 type RequestTimeoutProfile = keyof typeof REQUEST_TIMEOUT_MS;
 

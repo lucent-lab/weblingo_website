@@ -107,7 +107,7 @@ export function parseWebhookEvents(
 ): NotifyWebhookEventType[] | string {
   const normalized = typeof raw === "string" ? raw.trim() : "";
   if (!normalized) {
-    return [...WEBHOOK_EVENT_TYPES];
+    return [];
   }
   let parsed: unknown;
   try {
@@ -120,15 +120,21 @@ export function parseWebhookEvents(
   }
   const events: NotifyWebhookEventType[] = [];
   for (const entry of parsed) {
-    if (
-      typeof entry !== "string" ||
-      !WEBHOOK_EVENT_TYPES.includes(entry as NotifyWebhookEventType)
-    ) {
-      return "Webhook events must only include supported events.";
+    if (typeof entry !== "string") {
+      return "Webhook events must be an array of strings.";
     }
-    events.push(entry as NotifyWebhookEventType);
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      return "Webhook events must not contain empty strings.";
+    }
+    if (!WEBHOOK_EVENT_TYPES.includes(trimmed as NotifyWebhookEventType)) {
+      return `Webhook events contains an unsupported event: ${trimmed}.`;
+    }
+    if (!events.includes(trimmed as NotifyWebhookEventType)) {
+      events.push(trimmed as NotifyWebhookEventType);
+    }
   }
-  return Array.from(new Set(events));
+  return events;
 }
 
 export function buildSiteSettingsUpdatePayload(

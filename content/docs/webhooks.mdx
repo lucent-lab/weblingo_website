@@ -8,7 +8,7 @@ export const metadata = {
 Webhooks let WebLingo notify your system when a site emits important translation events.
 They are site-scoped, signed, and intentionally simple: one destination per site for now.
 
-## Supported events
+## Currently supported events
 
 - `translation.completed`
 - `translation.failed`
@@ -24,9 +24,9 @@ From the site admin page, set:
 
 Behavior to know:
 
-- If `webhookEvents` is omitted, WebLingo enables all supported events.
+- If `webhookEvents` is omitted, WebLingo enables all currently supported events.
 - If `webhookEvents` is an empty array, delivery is disabled for that site.
-- The dashboard uses the same shape for new site setup and later edits.
+- Only currently supported events are configurable in the UI.
 
 ## Delivery contract
 

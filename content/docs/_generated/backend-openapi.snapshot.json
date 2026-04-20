@@ -1877,17 +1877,10 @@
             "type": "string"
           },
           "webhookEvents": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/NotifyWebhookEventType"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "items": {
+              "$ref": "#/components/schemas/NotifyWebhookEventType"
+            },
+            "type": "array"
           },
           "webhookSecret": {
             "type": [
@@ -6043,17 +6036,10 @@
             "type": "string"
           },
           "webhookEvents": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/NotifyWebhookEventType"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "items": {
+              "$ref": "#/components/schemas/NotifyWebhookEventType"
+            },
+            "type": "array"
           },
           "webhookSecret": {
             "type": [
