@@ -48,6 +48,7 @@ import {
   deriveSiteSettingsAccess,
   parseJsonObject,
   parseLocaleAliases,
+  parseWebhookEvents,
   validateSourceUrl,
 } from "@internal/dashboard/site-settings";
 
@@ -290,6 +291,9 @@ export async function createSiteAction(
   const localeAliasesRaw = formData.get("localeAliases")?.toString().trim() ?? "";
   const glossaryEntriesRaw = formData.get("glossaryEntries")?.toString().trim() ?? "";
   const servingMode = formData.get("servingMode")?.toString().trim() ?? "";
+  const webhookUrlRaw = formData.get("webhookUrl")?.toString().trim() ?? "";
+  const webhookSecretRaw = formData.get("webhookSecret")?.toString().trim() ?? "";
+  const webhookEventsRaw = formData.get("webhookEvents")?.toString();
 
   const uniqueTargets = Array.from(new Set(targetLangs));
 
@@ -314,6 +318,23 @@ export async function createSiteAction(
   if (typeof localeAliases === "string") {
     return failed(localeAliases);
   }
+  const webhookEvents = parseWebhookEvents(webhookEventsRaw);
+  if (typeof webhookEvents === "string") {
+    return failed(webhookEvents);
+  }
+  let webhookUrl: string | null = null;
+  if (webhookUrlRaw) {
+    try {
+      const parsedUrl = new URL(webhookUrlRaw);
+      if (parsedUrl.protocol !== "https:") {
+        return failed("Webhook URL must use https://.");
+      }
+      webhookUrl = parsedUrl.toString();
+    } catch {
+      return failed("Webhook URL must be a valid HTTPS URL.");
+    }
+  }
+  const webhookSecret = webhookSecretRaw.length > 0 ? webhookSecretRaw : null;
 
   let normalizedGlossary: GlossaryEntry[] = [];
   if (glossaryEntriesRaw) {
@@ -356,6 +377,9 @@ export async function createSiteAction(
       siteProfile,
       maxLocales,
       servingMode,
+      webhookUrl,
+      webhookSecret,
+      webhookEvents,
     });
 
     let toast: string | null = null;

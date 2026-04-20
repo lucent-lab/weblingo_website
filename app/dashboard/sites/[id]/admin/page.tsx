@@ -304,7 +304,8 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     !settingsAccess.canEditClientRuntime ||
     !settingsAccess.canEditSpaRefresh ||
     !settingsAccess.canEditTranslatableAttributes ||
-    !settingsAccess.canEditProfile;
+    !settingsAccess.canEditProfile ||
+    !settingsAccess.canEditWebhooks;
   const deploymentsByLang = new Map(
     deployments.map((deployment) => [deployment.targetLang, deployment]),
   );
@@ -426,6 +427,10 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
             help: translatableAttributesHelp,
             placeholder: translatableAttributesPlaceholder,
           }}
+          webhookUrl={site.webhookUrl ?? ""}
+          webhookSecret={site.webhookSecret ?? ""}
+          webhookEvents={site.webhookEvents}
+          canEditWebhooks={settingsAccess.canEditWebhooks}
           lockedHelp={lockedHelp}
           canEditBasics={settingsAccess.canEditBasics}
           canEditLocales={settingsAccess.canEditLocales}

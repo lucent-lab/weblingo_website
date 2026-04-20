@@ -24,10 +24,12 @@ import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
   CrawlCaptureMode,
+  KnownWebhookEventType,
   SpaRefreshFallback,
   SpaRefreshSettings,
   SupportedLanguage,
 } from "@internal/dashboard/webhooks";
+import { WebhookSettingsFields } from "../../webhook-settings-fields";
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
 const LanguageTagCombobox = dynamic(
@@ -69,6 +71,10 @@ type SiteAdminFormProps = {
   translatableAttributes: string[] | null;
   canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
+  webhookUrl: string | null;
+  webhookSecret: string | null;
+  webhookEvents: KnownWebhookEventType[];
+  canEditWebhooks: boolean;
   clientRuntimeCopy: {
     title: string;
     description: string;
@@ -126,6 +132,10 @@ export function SiteAdminForm({
   translatableAttributes: initialTranslatableAttributes,
   canEditTranslatableAttributes,
   canEditProfile,
+  webhookUrl: initialWebhookUrl,
+  webhookSecret: initialWebhookSecret,
+  webhookEvents: initialWebhookEvents,
+  canEditWebhooks,
   clientRuntimeCopy,
   spaRefreshCopy,
   translatableAttributesCopy,
@@ -170,6 +180,11 @@ export function SiteAdminForm({
   );
   const [translatableAttributes, setTranslatableAttributes] = useState<string>(() =>
     (initialTranslatableAttributes ?? []).join(", "),
+  );
+  const [webhookUrl, setWebhookUrl] = useState<string>(initialWebhookUrl ?? "");
+  const [webhookSecret, setWebhookSecret] = useState<string>(initialWebhookSecret ?? "");
+  const [webhookEvents, setWebhookEvents] = useState<KnownWebhookEventType[]>(
+    () => initialWebhookEvents,
   );
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
@@ -257,7 +272,8 @@ export function SiteAdminForm({
     canEditClientRuntime ||
     canEditSpaRefresh ||
     canEditTranslatableAttributes ||
-    canEditProfile;
+    canEditProfile ||
+    canEditWebhooks;
   const basicsInvalid =
     canEditBasics && (!patternIsValid || !sourceUrlValid || resetConfirmationError);
   const localesInvalid = canEditLocales && (targets.length === 0 || hasInvalidAlias);
@@ -278,6 +294,9 @@ export function SiteAdminForm({
   const translatableAttributesHelpText = canEditTranslatableAttributes
     ? translatableAttributesCopy.help
     : `${translatableAttributesCopy.help} ${lockedHelp}`;
+  const webhookHelpText = canEditWebhooks
+    ? "Configure where WebLingo should POST signed events for this site."
+    : `Configure where WebLingo should POST signed events for this site. ${lockedHelp}`;
 
   return (
     <Card>
@@ -778,6 +797,26 @@ export function SiteAdminForm({
               />
             </Field>
           </section>
+
+          <WebhookSettingsFields
+            title="Webhook integrations"
+            description="Send signed lifecycle events to your systems. Clear all events to disable delivery for this site."
+            urlLabel="Webhook URL"
+            urlHelp={webhookHelpText}
+            secretLabel="Signing secret"
+            secretHelp="Use the same shared secret in your receiver to verify WebLingo signatures."
+            eventsLabel="Events"
+            eventsHelp="Choose which event types this site should emit."
+            selectAllLabel="Select all"
+            disableAllLabel="Disable all"
+            webhookUrl={webhookUrl}
+            onWebhookUrlChange={setWebhookUrl}
+            webhookSecret={webhookSecret}
+            onWebhookSecretChange={setWebhookSecret}
+            webhookEvents={webhookEvents}
+            onWebhookEventsChange={setWebhookEvents}
+            canEdit={canEditWebhooks}
+          />
 
           <section className="space-y-3 border-t border-border/60 pt-6">
             <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">

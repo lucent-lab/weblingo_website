@@ -64,6 +64,7 @@ const makeSite = (accountId: string): Site => ({
   servingMode: "strict",
   maxLocales: null,
   siteProfile: null,
+  webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
   locales: [],
   domains: [],
   latestCrawlRun: null,

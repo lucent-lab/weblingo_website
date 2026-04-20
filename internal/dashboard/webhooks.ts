@@ -20,6 +20,12 @@ const REQUEST_TIMEOUT_MS = {
 const DASHBOARD_E2E_MOCK_SITE_ID = "site-smoke-1";
 const DASHBOARD_E2E_MOCK_ACCOUNT_ID = "acct-e2e-smoke";
 const DASHBOARD_E2E_MOCK_SOURCE_URL = "https://source.example.test";
+export const WEBHOOK_EVENT_TYPES = [
+  "translation.completed",
+  "translation.failed",
+  "translation.summary",
+] as const;
+export type KnownWebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
 type RequestTimeoutProfile = keyof typeof REQUEST_TIMEOUT_MS;
 
@@ -72,6 +78,8 @@ const supportedLanguagesResponseSchema = z
     languages: z.array(supportedLanguageSchema),
   })
   .strict();
+
+const webhookEventTypeSchema = z.enum(WEBHOOK_EVENT_TYPES);
 
 const dnsInstructionsSchema = z
   .object({
@@ -164,6 +172,7 @@ const siteSchema = z.object({
   siteProfile: siteProfileSchema,
   webhookUrl: z.string().nullable().optional(),
   webhookSecret: z.string().nullable().optional(),
+  webhookEvents: z.array(webhookEventTypeSchema),
   locales: z.array(
     z.object({
       sourceLang: z.string(),
@@ -1054,6 +1063,7 @@ export type CrawlCaptureMode = z.infer<typeof crawlCaptureModeSchema>;
 export type SpaRefreshSettings = z.infer<typeof spaRefreshSchema>;
 export type SpaRefreshFallback = z.infer<typeof spaRefreshFallbackSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
+export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type DeploymentCompleteness = z.infer<typeof deploymentCompletenessSchema>;
 export type DeploymentHistoryEntry = z.infer<typeof deploymentHistoryEntrySchema>;
@@ -1251,6 +1261,7 @@ function createDashboardE2eMockSite(siteId: string) {
     servingMode: "strict" as const,
     maxLocales: null,
     siteProfile: null,
+    webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
     locales: [
       { sourceLang: "en", targetLang: "fr", alias: null, serveEnabled: true },
       { sourceLang: "en", targetLang: "ja", alias: null, serveEnabled: true },
@@ -2574,6 +2585,9 @@ export type CreateSitePayload = {
   clientRuntimeEnabled?: boolean;
   translatableAttributes?: string[] | null;
   spaRefresh?: SpaRefreshSettings | null;
+  webhookUrl?: string | null;
+  webhookSecret?: string | null;
+  webhookEvents?: NotifyWebhookEventType[];
 };
 
 export async function createSite(auth: AuthInput, payload: CreateSitePayload) {

@@ -1,3 +1,5 @@
+import { WEBHOOK_EVENT_TYPES, type NotifyWebhookEventType } from "./webhooks";
+
 export type SiteSettingsFeature =
   | "edit"
   | "locale_update"
@@ -34,6 +36,7 @@ export type SiteSettingsAccess = {
   canEditSpaRefresh: boolean;
   canEditTranslatableAttributes: boolean;
   canEditProfile: boolean;
+  canEditWebhooks: boolean;
 };
 
 export type SiteSettingsUpdatePayload = Partial<{
@@ -52,6 +55,9 @@ export type SiteSettingsUpdatePayload = Partial<{
     errorFallback?: SpaRefreshFallback;
     enableSectionScope?: boolean;
   };
+  webhookUrl: string | null;
+  webhookSecret: string | null;
+  webhookEvents: NotifyWebhookEventType[];
 }>;
 
 export type SiteSettingsUpdateResult =
@@ -81,6 +87,7 @@ export function deriveSiteSettingsAccess(options: {
   const canEditTranslatableAttributes =
     options.has({ allFeatures: ["edit", "translatable_attributes"] }) && !billingBlocked;
   const canEditProfile = options.has({ feature: "edit" }) && !billingBlocked;
+  const canEditWebhooks = options.has({ feature: "edit" }) && !billingBlocked;
   return {
     billingBlocked,
     canEditBasics,
@@ -91,7 +98,43 @@ export function deriveSiteSettingsAccess(options: {
     canEditSpaRefresh,
     canEditTranslatableAttributes,
     canEditProfile,
+    canEditWebhooks,
   };
+}
+
+export function parseWebhookEvents(
+  raw: string | null | undefined,
+): NotifyWebhookEventType[] | string {
+  const normalized = typeof raw === "string" ? raw.trim() : "";
+  if (!normalized) {
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(normalized);
+  } catch {
+    return "Webhook events must be valid JSON.";
+  }
+  if (!Array.isArray(parsed)) {
+    return "Webhook events must be a JSON array.";
+  }
+  const events: NotifyWebhookEventType[] = [];
+  for (const entry of parsed) {
+    if (typeof entry !== "string") {
+      return "Webhook events must be an array of strings.";
+    }
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      return "Webhook events must not contain empty strings.";
+    }
+    if (!WEBHOOK_EVENT_TYPES.includes(trimmed as NotifyWebhookEventType)) {
+      return `Webhook events contains an unsupported event: ${trimmed}.`;
+    }
+    if (!events.includes(trimmed as NotifyWebhookEventType)) {
+      events.push(trimmed as NotifyWebhookEventType);
+    }
+  }
+  return events;
 }
 
 export function buildSiteSettingsUpdatePayload(
@@ -112,6 +155,8 @@ export function buildSiteSettingsUpdatePayload(
   const hasSpaRefresh = formData.has("spaRefreshEnabled");
   const hasTranslatableAttributes = formData.has("translatableAttributes");
   const hasProfile = formData.has("siteProfile");
+  const hasWebhooks =
+    formData.has("webhookUrl") || formData.has("webhookSecret") || formData.has("webhookEvents");
 
   if (hasBasics && !access.canEditBasics) {
     return { ok: false, error: "Source URL and routing are locked for this account." };
@@ -136,6 +181,9 @@ export function buildSiteSettingsUpdatePayload(
   }
   if (hasProfile && !access.canEditProfile) {
     return { ok: false, error: "Site profile updates are locked for this account." };
+  }
+  if (hasWebhooks && !access.canEditWebhooks) {
+    return { ok: false, error: "Webhook settings are locked for this account." };
   }
 
   if (hasBasics) {
@@ -262,6 +310,32 @@ export function buildSiteSettingsUpdatePayload(
       return { ok: false, error: "Site profile must be a non-empty JSON object." };
     }
     payload.siteProfile = siteProfile;
+  }
+
+  if (hasWebhooks) {
+    const webhookUrlRaw = formData.get("webhookUrl")?.toString().trim() ?? "";
+    if (webhookUrlRaw) {
+      try {
+        const url = new URL(webhookUrlRaw);
+        if (url.protocol !== "https:") {
+          return { ok: false, error: "Webhook URL must use https://." };
+        }
+        payload.webhookUrl = url.toString();
+      } catch {
+        return { ok: false, error: "Webhook URL must be a valid HTTPS URL." };
+      }
+    } else {
+      payload.webhookUrl = null;
+    }
+
+    const webhookSecretRaw = formData.get("webhookSecret")?.toString().trim() ?? "";
+    payload.webhookSecret = webhookSecretRaw.length > 0 ? webhookSecretRaw : null;
+
+    const webhookEvents = parseWebhookEvents(formData.get("webhookEvents")?.toString());
+    if (typeof webhookEvents === "string") {
+      return { ok: false, error: webhookEvents };
+    }
+    payload.webhookEvents = webhookEvents;
   }
 
   if (Object.keys(payload).length === 0) {

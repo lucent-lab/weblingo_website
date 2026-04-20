@@ -86,12 +86,14 @@ const buildSiteSettingsUpdatePayload = vi.fn();
 const deriveSiteSettingsAccess = vi.fn();
 const parseJsonObject = vi.fn();
 const parseLocaleAliases = vi.fn();
+const parseWebhookEvents = vi.fn();
 const validateSourceUrl = vi.fn();
 vi.mock("@internal/dashboard/site-settings", () => ({
   buildSiteSettingsUpdatePayload,
   deriveSiteSettingsAccess,
   parseJsonObject,
   parseLocaleAliases,
+  parseWebhookEvents,
   validateSourceUrl,
 }));
 
@@ -104,6 +106,11 @@ describe("dashboard capability actions", () => {
     hasActorInternalOps.mockReturnValue(true);
     validateSourceUrl.mockReturnValue(null);
     parseLocaleAliases.mockImplementation((raw: string) => (raw ? JSON.parse(raw) : undefined));
+    parseWebhookEvents.mockImplementation((raw: string | null | undefined) =>
+      raw
+        ? JSON.parse(raw)
+        : ["translation.completed", "translation.failed", "translation.summary"],
+    );
   });
 
   it("queues crawl+translate with parsed csv payload and force flag", async () => {
@@ -209,6 +216,7 @@ describe("dashboard capability actions", () => {
       canEditSpaRefresh: false,
       canEditTranslatableAttributes: false,
       canEditProfile: false,
+      canEditWebhooks: false,
     });
 
     const { updateSiteSettingsAction } = await import("./actions");
@@ -228,6 +236,58 @@ describe("dashboard capability actions", () => {
     });
     expect(buildSiteSettingsUpdatePayload).not.toHaveBeenCalled();
     expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("creates a site with webhook settings and allowlisted events", async () => {
+    createSite.mockResolvedValue({
+      id: "site-created",
+      crawlStatus: { enqueued: false },
+    });
+    requireDashboardAuth.mockResolvedValue({
+      account: {
+        accountId: "acct-1",
+        planType: "pro",
+        featureFlags: { maxLocales: null },
+      },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(
+        (check: { feature?: string; allFeatures?: string[] }) =>
+          check.feature === "site_create" || check.feature === "edit",
+      ),
+    });
+
+    const { createSiteAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.example.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.example.com");
+    formData.set("servingMode", "strict");
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookSecret", "secret-123");
+    formData.set("webhookEvents", JSON.stringify(["translation.completed", "translation.summary"]));
+
+    const result = await createSiteAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: true,
+      message: "Site created. Verify domains and activate to start crawling.",
+    });
+    expect(createSite).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      expect.objectContaining({
+        sourceUrl: "https://www.example.com",
+        sourceLang: "en",
+        targetLangs: ["fr"],
+        subdomainPattern: "https://{lang}.example.com",
+        servingMode: "strict",
+        webhookUrl: "https://hooks.example.com/weblingo",
+        webhookSecret: "secret-123",
+        webhookEvents: ["translation.completed", "translation.summary"],
+      }),
+    );
   });
 
   it("updates locale summary preferences and invalidates site dashboard cache", async () => {

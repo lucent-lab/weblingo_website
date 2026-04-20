@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import GettingStarted, { metadata as gettingStartedMeta } from "./getting-started.mdx";
 import SiteSetup, { metadata as siteSetupMeta } from "./site-setup.mdx";
+import Webhooks, { metadata as webhooksMeta } from "./webhooks.mdx";
 import TranslationPipeline, {
   metadata as translationPipelineMeta,
 } from "./translation-pipeline.mdx";
@@ -32,6 +33,14 @@ const docEntries: DocEntry[] = [
     section: siteSetupMeta.section ?? "Basics",
     order: siteSetupMeta.order ?? 0,
     component: SiteSetup,
+  },
+  {
+    slug: ["webhooks"],
+    title: webhooksMeta.title,
+    description: webhooksMeta.description ?? "",
+    section: webhooksMeta.section ?? "Pipeline",
+    order: webhooksMeta.order ?? 0,
+    component: Webhooks,
   },
   {
     slug: ["translation-pipeline"],

@@ -58,6 +58,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `servingMode`: `"strict" | "tolerant"`.
   - `maxLocales`: number or `null` (null = no cap).
   - `webhookUrl`, `webhookSecret`: string or `null`.
+  - `webhookEvents`: array of currently supported event names, or an empty array when delivery is disabled.
   - `routeConfig`: `RouteConfig` or `null`.
   - `locales`: `[{ sourceLang, targetLang, alias?, serveEnabled }]`.
   - `domains`: `[{ domain, status, verificationToken, verifiedAt?, lastCheckedAt?, dnsInstructions?, cloudflare? }]`.
@@ -173,7 +174,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - Payload (required): `{ sourceUrl, sourceLang, targetLangs: [...], subdomainPattern, servingMode, maxLocales }`.
   - `subdomainPattern` must contain `{lang}`; it can be a bare host (`{lang}.example.com`) or include scheme/path (`https://www.example.com/{lang}/docs`). Hostnames derived from this pattern seed `site_domains`; path segments become `routePrefix` per locale.
   - Optional: `siteProfile` (object or `null`), `localeAliases` map of `{ [targetLang]: "alias" | null }` to override the `{lang}` token per locale (lowercase letters/numbers/hyphens only).
-  - Optional: `crawlCaptureMode`, `clientRuntimeEnabled`, `translatableAttributes`, `spaRefresh`, `webhookUrl`, `webhookSecret`.
+  - Optional: `crawlCaptureMode`, `clientRuntimeEnabled`, `translatableAttributes`, `spaRefresh`, `webhookUrl`, `webhookSecret`, `webhookEvents`.
   - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
 - Behavior: validates `sourceUrl` (HTTP 200), reads robots/sitemaps to seed initial pages, creates site + locales + route config, inserts domain records with verification tokens, and sets the site to `inactive` until activation.
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
@@ -209,12 +210,16 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 `PATCH /api/sites/:id`
 
-- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, localeAliases?, status? ("active"|"inactive"), siteProfile? (object|null), servingMode?, maxLocales?, crawlCaptureMode?, clientRuntimeEnabled?, translatableAttributes?, spaRefresh?, webhookUrl?, webhookSecret? }`.
+- Payload (any subset): `{ sourceUrl?, targetLangs?, subdomainPattern?, localeAliases?, status? ("active"|"inactive"), siteProfile? (object|null), servingMode?, maxLocales?, crawlCaptureMode?, clientRuntimeEnabled?, translatableAttributes?, spaRefresh?, webhookUrl?, webhookSecret?, webhookEvents? }`.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
   - **Warning:** changing `sourceUrl` is destructive. It wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling. UI should require explicit confirmation.
   - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
 - Response `200`: updated `Site`.
+
+- Website mapping:
+  - `/dashboard/sites/:id/admin` and the onboarding form should expose `webhookUrl`, `webhookSecret`, and the event allowlist together as one integrations block.
+  - The dashboard should preserve raw webhook event values from the API, even if the current UI cannot label them yet.
 
 `POST /api/sites/:id/crawl`
 

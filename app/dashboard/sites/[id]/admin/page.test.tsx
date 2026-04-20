@@ -91,6 +91,7 @@ describe("SiteAdminPage", () => {
         servingMode: "strict",
         maxLocales: null,
         siteProfile: {},
+        webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
         routeConfig: {
           sourceLang: "ja",
           sourceOrigin: "https://example.com/",

@@ -1,4 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_123";
+  process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://posthog.example.com";
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example.com";
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_anon_key";
+  process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://api.weblingo.example/api";
+  process.env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS = "15000";
+  return null;
+});
 
 import {
   REQUIRED_FIELDS_MESSAGE,
@@ -33,6 +45,7 @@ function makeAccess(overrides: Partial<SiteSettingsAccess> = {}): SiteSettingsAc
     canEditSpaRefresh: false,
     canEditTranslatableAttributes: false,
     canEditProfile: false,
+    canEditWebhooks: false,
     ...overrides,
   };
 }
@@ -47,6 +60,7 @@ describe("deriveSiteSettingsAccess", () => {
         "crawl_capture_mode",
         "client_runtime_toggle",
         "translatable_attributes",
+        "edit",
       ]),
       mutationsAllowed: false,
     });
@@ -58,6 +72,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditClientRuntime).toBe(false);
     expect(access.canEditSpaRefresh).toBe(false);
     expect(access.canEditTranslatableAttributes).toBe(false);
+    expect(access.canEditWebhooks).toBe(false);
   });
 
   it("enables section access per feature when billing is ok", () => {
@@ -69,6 +84,7 @@ describe("deriveSiteSettingsAccess", () => {
         "crawl_capture_mode",
         "client_runtime_toggle",
         "translatable_attributes",
+        "edit",
       ]),
       mutationsAllowed: true,
     });
@@ -79,6 +95,7 @@ describe("deriveSiteSettingsAccess", () => {
     expect(access.canEditClientRuntime).toBe(true);
     expect(access.canEditSpaRefresh).toBe(true);
     expect(access.canEditTranslatableAttributes).toBe(true);
+    expect(access.canEditWebhooks).toBe(true);
   });
 });
 
@@ -179,6 +196,46 @@ describe("buildSiteSettingsUpdatePayload", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toMatch(/data-\* and aria-\*/i);
+    }
+  });
+
+  it("parses webhook settings and allows clearing the allowlist", () => {
+    const formData = new FormData();
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookSecret", "secret-123");
+    formData.set("webhookEvents", JSON.stringify(["translation.completed", "translation.summary"]));
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditWebhooks: true }));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toEqual({
+        webhookUrl: "https://hooks.example.com/weblingo",
+        webhookSecret: "secret-123",
+        webhookEvents: ["translation.completed", "translation.summary"],
+      });
+    }
+  });
+
+  it("rejects unrecognized webhook events when parsing updates", () => {
+    const formData = new FormData();
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookSecret", "secret-123");
+    formData.set("webhookEvents", JSON.stringify(["translation.completed", "translation.beta"]));
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditWebhooks: true }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/unsupported event/i);
+    }
+  });
+
+  it("treats an empty webhook allowlist as explicit disable", () => {
+    const formData = new FormData();
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookSecret", "secret-123");
+    formData.set("webhookEvents", JSON.stringify([]));
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditWebhooks: true }));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.webhookEvents).toEqual([]);
     }
   });
 });
