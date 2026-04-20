@@ -45,6 +45,7 @@ describe("webhooks request wrapper", () => {
         servingMode: "strict",
         maxLocales: null,
         siteProfile: null,
+        webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
         locales: [],
         domains: [],
         latestCrawlRun: null,
@@ -106,6 +107,7 @@ describe("webhooks request wrapper", () => {
             servingMode: "strict",
             maxLocales: null,
             siteProfile: null,
+            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
             locales: [
               {
                 sourceLang: "en",
@@ -174,6 +176,7 @@ describe("webhooks request wrapper", () => {
             servingMode: "strict",
             maxLocales: null,
             siteProfile: null,
+            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
             locales: [],
             domains: [],
             latestCrawlRun: null,
@@ -236,6 +239,7 @@ describe("webhooks request wrapper", () => {
             servingMode: "strict",
             maxLocales: null,
             siteProfile: null,
+            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
             locales: [],
             domains: [],
             latestCrawlRun: null,
@@ -492,6 +496,7 @@ describe("webhooks request wrapper", () => {
         subdomainPattern: "https://{lang}.autotrim.com",
         servingMode: "strict",
         maxLocales: null,
+        webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
       },
       showcase: {
         defaultLang: "fr",

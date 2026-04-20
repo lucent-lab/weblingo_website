@@ -1,0 +1,94 @@
+export const metadata = {
+  title: "Webhooks",
+  description: "Configure signed webhook delivery for translation events.",
+  section: "Pipeline",
+  order: 2,
+};
+
+Webhooks let WebLingo notify your system when a site emits important translation events.
+They are site-scoped, signed, and intentionally simple: one destination per site for now.
+
+## Supported events
+
+- `translation.completed`
+- `translation.failed`
+- `translation.summary`
+
+## Configuration
+
+From the site admin page, set:
+
+- Webhook URL
+- Signing secret
+- Event allowlist
+
+Behavior to know:
+
+- If `webhookEvents` is omitted, WebLingo enables all supported events.
+- If `webhookEvents` is an empty array, delivery is disabled for that site.
+- The dashboard uses the same shape for new site setup and later edits.
+
+## Delivery contract
+
+Every delivery is a signed `POST` to your endpoint.
+
+Headers include:
+
+- `X-WebLingo-Delivery-Id`
+- `X-WebLingo-Timestamp`
+- `X-WebLingo-Signature`
+- `X-WebLingo-Signature-V2`
+
+Use the signature headers to verify the payload and reject replays outside your allowed time
+window. WebLingo delivers events at least once, so your receiver should be idempotent.
+
+## What the payload looks like
+
+The exact JSON body depends on the event, but the receiver should expect:
+
+- an event name
+- a delivery id
+- a timestamp
+- site context
+- event-specific data
+
+Example shape:
+
+```json
+{
+  "event": "translation.completed",
+  "deliveryId": "del_123",
+  "timestamp": "2026-04-20T10:00:00.000Z",
+  "siteId": "site_123",
+  "payload": {
+    "targetLang": "fr",
+    "runId": "run_123"
+  }
+}
+```
+
+## Setup checklist
+
+1. Create or edit the site.
+2. Enter the webhook URL.
+3. Set a signing secret.
+4. Select the events you want.
+5. Verify your receiver checks the signature headers.
+6. Make the receiver idempotent.
+
+## Troubleshooting
+
+- No events arrive:
+  - confirm the URL is HTTPS and publicly reachable
+  - confirm at least one event is selected
+  - confirm the site is active
+- Duplicate deliveries:
+  - this is expected with at-least-once delivery; dedupe by delivery id
+- Signature mismatch:
+  - confirm the shared secret matches the site setting
+
+## Related docs
+
+- [Site Setup](../site-setup)
+- [Translation Pipeline](../translation-pipeline)
+- [API Reference](../api-reference)

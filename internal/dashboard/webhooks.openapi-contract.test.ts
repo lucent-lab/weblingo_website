@@ -563,6 +563,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         siteProfile: null,
         webhookUrl: null,
         webhookSecret: null,
+        webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
         locales: [
           {
             sourceLang: "en",

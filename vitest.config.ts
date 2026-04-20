@@ -17,6 +17,7 @@ const config: ViteUserConfig = {
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx"],
+    setupFiles: ["./tests/vitest.setup.ts"],
   },
 };
 

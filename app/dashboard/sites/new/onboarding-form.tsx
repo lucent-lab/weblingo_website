@@ -25,7 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import {
+  WEBHOOK_EVENT_TYPES,
+  type NotifyWebhookEventType,
+  type SupportedLanguage,
+} from "@internal/dashboard/webhooks";
+import { WebhookSettingsFields } from "../webhook-settings-fields";
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.
 const LanguageTagCombobox = dynamic(
@@ -53,6 +58,11 @@ export function OnboardingForm(props: {
   const [sourceUrl, setSourceUrl] = useState("");
   const [subdomainToken, setSubdomainToken] = useState("{lang}");
   const [patternEditing, setPatternEditing] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookEvents, setWebhookEvents] = useState<NotifyWebhookEventType[]>([
+    ...WEBHOOK_EVENT_TYPES,
+  ]);
 
   useEffect(() => {
     const siteIdRaw = state.meta?.siteId;
@@ -254,6 +264,27 @@ export function OnboardingForm(props: {
                 </Field>
               </div>
             </section>
+
+            <WebhookSettingsFields
+              title="Webhook integrations"
+              description="Optional. Configure a destination to receive signed lifecycle events when translations complete or fail."
+              urlLabel="Webhook URL"
+              urlHelp="Use a publicly reachable HTTPS endpoint that can verify WebLingo signatures."
+              secretLabel="Signing secret"
+              secretHelp="Create a shared secret now or replace it later from site settings."
+              eventsLabel="Events"
+              eventsHelp="Select the lifecycle events this site should emit."
+              selectAllLabel="Select all"
+              disableAllLabel="Disable all"
+              webhookUrl={webhookUrl}
+              onWebhookUrlChange={setWebhookUrl}
+              webhookSecret={webhookSecret}
+              onWebhookSecretChange={setWebhookSecret}
+              webhookEvents={webhookEvents}
+              onWebhookEventsChange={setWebhookEvents}
+              canEdit
+            />
+
             {state.message && !state.ok ? (
               <div
                 className={cn(

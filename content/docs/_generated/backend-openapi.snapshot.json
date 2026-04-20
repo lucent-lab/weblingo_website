@@ -1876,6 +1876,19 @@
             ],
             "type": "string"
           },
+          "webhookEvents": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NotifyWebhookEventType"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "webhookSecret": {
             "type": [
               "string",
@@ -3846,6 +3859,14 @@
         ],
         "type": "object"
       },
+      "NotifyWebhookEventType": {
+        "enum": [
+          "translation.completed",
+          "translation.failed",
+          "translation.summary"
+        ],
+        "type": "string"
+      },
       "PipelineStage": {
         "enum": [
           "crawl",
@@ -4818,6 +4839,12 @@
             ],
             "type": "string"
           },
+          "webhookEvents": {
+            "items": {
+              "$ref": "#/components/schemas/NotifyWebhookEventType"
+            },
+            "type": "array"
+          },
           "webhookSecret": {
             "type": [
               "string",
@@ -4838,6 +4865,7 @@
           "status",
           "servingMode",
           "maxLocales",
+          "webhookEvents",
           "locales",
           "domains"
         ],
@@ -5468,6 +5496,12 @@
             ],
             "type": "string"
           },
+          "webhookEvents": {
+            "items": {
+              "$ref": "#/components/schemas/NotifyWebhookEventType"
+            },
+            "type": "array"
+          },
           "webhookSecret": {
             "type": [
               "string",
@@ -5490,7 +5524,8 @@
           "maxLocales",
           "servingMode",
           "sourceUrl",
-          "status"
+          "status",
+          "webhookEvents"
         ],
         "type": "object"
       },
@@ -6006,6 +6041,19 @@
               "translated"
             ],
             "type": "string"
+          },
+          "webhookEvents": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NotifyWebhookEventType"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "webhookSecret": {
             "type": [
@@ -6863,7 +6911,10 @@
                     "maxLocales": 1,
                     "servingMode": "strict",
                     "sourceUrl": "string",
-                    "status": "active"
+                    "status": "active",
+                    "webhookEvents": [
+                      "translation.completed"
+                    ]
                   }
                 },
                 "schema": {
@@ -8642,7 +8693,10 @@
                   "maxLocales": 1,
                   "servingMode": "strict",
                   "sourceUrl": "string",
-                  "status": "active"
+                  "status": "active",
+                  "webhookEvents": [
+                    "translation.completed"
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/SiteWithCrawlStatus"
@@ -8740,7 +8794,10 @@
                   "maxLocales": 1,
                   "servingMode": "strict",
                   "sourceUrl": "string",
-                  "status": "active"
+                  "status": "active",
+                  "webhookEvents": [
+                    "translation.completed"
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Site"
@@ -8854,7 +8911,10 @@
                   "maxLocales": 1,
                   "servingMode": "strict",
                   "sourceUrl": "string",
-                  "status": "active"
+                  "status": "active",
+                  "webhookEvents": [
+                    "translation.completed"
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Site"
@@ -9967,7 +10027,10 @@
                     "maxLocales": 1,
                     "servingMode": "strict",
                     "sourceUrl": "string",
-                    "status": "active"
+                    "status": "active",
+                    "webhookEvents": [
+                      "translation.completed"
+                    ]
                   }
                 },
                 "schema": {
