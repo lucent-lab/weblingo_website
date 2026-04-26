@@ -1197,6 +1197,38 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("maps status polling 404 responses to preview-not-found copy", async () => {
+    vi.stubGlobal("EventSource", undefined);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "33333333-3333-3333-3333-333333333333",
+          statusToken: "poll-token",
+          status: "pending",
+        });
+      }
+      if (url === "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token") {
+        return jsonResponse({ error: "Not found" }, 404);
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token",
+      );
+      expect(screen.getByText("Preview not found")).toBeTruthy();
+    });
+  });
+
   it("closes SSE and uses a single status check when stream errors", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

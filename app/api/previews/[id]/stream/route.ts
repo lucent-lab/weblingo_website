@@ -1,101 +1,66 @@
 import type { NextRequest } from "next/server";
 
-import { envServer } from "@internal/core/env-server";
-import { buildErrorLogFields } from "@internal/core/error-log";
-import { redis } from "@internal/core/redis";
-import { getClientIp } from "@internal/core/request-ip";
-import { rateLimitFixedWindow } from "@internal/core/rate-limit";
-import { fetchWithTimeout, FetchTimeoutError } from "@internal/core/fetch-timeout";
+import {
+  buildPreviewIpRateLimitKey,
+  createPreviewFetchErrorResponse,
+  enforcePreviewRateLimit,
+  getPreviewProxyConfig,
+  readPreviewStatusToken,
+  validatePreviewId,
+} from "@internal/api/previews-proxy";
+import { fetchWithTimeout } from "@internal/core/fetch-timeout";
 
 export const runtime = "nodejs";
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const apiBase = envServer.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
-  const previewToken = envServer.TRY_NOW_TOKEN;
-  if (!apiBase || !previewToken) {
-    return new Response("Preview service is not configured.", { status: 500 });
+  const configResult = getPreviewProxyConfig("text");
+  if (!configResult.ok) {
+    return configResult.response;
+  }
+  const { config } = configResult;
+
+  const invalidIdResponse = validatePreviewId(id, "text");
+  if (invalidIdResponse) {
+    return invalidIdResponse;
   }
 
-  if (!id || !isUuid(id)) {
-    return new Response("Invalid preview id", { status: 400 });
+  const tokenResult = readPreviewStatusToken(request, "text");
+  if (!tokenResult.ok) {
+    return tokenResult.response;
   }
 
-  const statusToken = request.nextUrl.searchParams.get("token")?.trim() ?? "";
-  if (!statusToken) {
-    return new Response("Missing preview status token", { status: 400 });
-  }
-
-  const windowMs = Number(envServer.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS);
-  const maxPerWindow = Number(envServer.WEBSITE_PREVIEW_STREAM_MAX_PER_WINDOW);
-  const upstreamConnectTimeoutMs = Number(
-    envServer.WEBSITE_PREVIEW_UPSTREAM_STREAM_CONNECT_TIMEOUT_MS,
-  );
-
-  const ip = getClientIp(request);
-  try {
-    const ipLimit = await rateLimitFixedWindow(redis, {
-      key: `rl:v1:preview:stream:ip:${encodeURIComponent(ip)}`,
-      limit: maxPerWindow,
-      windowMs,
-    });
-    if (!ipLimit.allowed) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAtMs - Date.now()) / 1000));
-      return new Response("Too many stream requests. Please try again shortly.", {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfterSeconds),
-          "Content-Type": "text/plain",
-        },
-      });
-    }
-  } catch (error) {
-    console.error(
-      JSON.stringify(
-        {
-          level: "error",
-          message: "Rate limit backend failed (preview stream ip)",
-          ...buildErrorLogFields(error),
-        },
-        null,
-        0,
-      ),
-    );
-    return new Response("Service temporarily unavailable. Please try again shortly.", {
-      status: 503,
-      headers: { "Content-Type": "text/plain" },
-    });
+  const rateLimitResponse = await enforcePreviewRateLimit({
+    key: buildPreviewIpRateLimitKey(request, "stream"),
+    limit: config.streamMaxPerWindow,
+    windowMs: config.rateLimitWindowMs,
+    responseKind: "text",
+    limitedMessage: "Too many stream requests. Please try again shortly.",
+    backendFailureLogMessage: "Rate limit backend failed (preview stream ip)",
+  });
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   let upstream: Response;
   try {
     upstream = await fetchWithTimeout(
-      `${apiBase}/previews/${encodeURIComponent(id)}/stream`,
+      `${config.apiBase}/previews/${encodeURIComponent(id)}/stream`,
       {
         method: "GET",
         redirect: "manual",
         headers: {
           Accept: "text/event-stream",
-          "x-preview-token": previewToken,
-          "x-preview-status-token": statusToken,
+          "x-preview-token": config.previewToken,
+          "x-preview-status-token": tokenResult.statusToken,
         },
         cache: "no-store",
       },
-      { timeoutMs: upstreamConnectTimeoutMs, signal: request.signal },
+      { timeoutMs: config.upstreamStreamConnectTimeoutMs, signal: request.signal },
     );
   } catch (error) {
-    if (error instanceof FetchTimeoutError) {
-      return new Response("Preview service timed out", {
-        status: 504,
-        headers: { "Content-Type": "text/plain" },
-      });
-    }
-    return new Response("Unable to reach preview service.", { status: 502 });
+    return createPreviewFetchErrorResponse(error, "text");
   }
 
   if (!upstream.ok) {

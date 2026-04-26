@@ -211,6 +211,39 @@ async function invalidateDashboardCaches(
   }
 }
 
+async function runSiteMutation<T>(options: {
+  siteId: string;
+  invalidateSitesList: boolean;
+  revalidatePaths: string[];
+  logLabel: string;
+  fallbackError: string;
+  mutate: (auth: WebhooksAuthContext) => Promise<T>;
+  onSuccess: (result: T) => ActionResponse;
+  formatError?: (error: unknown, fallback: string) => string;
+}): Promise<ActionResponse> {
+  try {
+    const result = await withWebhooksAuth(async (auth) => {
+      const response = await options.mutate(auth);
+      await invalidateDashboardCaches(auth, options.siteId, {
+        invalidateSitesList: options.invalidateSitesList,
+      });
+      return response;
+    });
+    for (const path of options.revalidatePaths) {
+      revalidatePath(path);
+    }
+    return options.onSuccess(result);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error(`[dashboard] ${options.logLabel} failed:`, error);
+    return failed(
+      (options.formatError ?? toFriendlyDashboardActionError)(error, options.fallbackError),
+    );
+  }
+}
+
 async function requireInternalAdminWorkspaceAuth(): Promise<WebhooksAuthContext> {
   const auth = await requireDashboardAuth();
   if (!hasActorInternalOps(auth)) {
@@ -649,27 +682,23 @@ export async function triggerCrawlAction(
     return failed("Site ID is required.");
   }
 
-  try {
-    const status = await withWebhooksAuth(async (auth) => {
-      const response = await triggerCrawl(auth, siteId, force ? { force } : undefined);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    if (status.enqueued) {
-      return succeeded("Crawl enqueued.");
-    }
-    if (status.error) {
-      return failed(status.error);
-    }
-    return succeeded("Crawl is already queued.");
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] triggerCrawlAction failed:", error);
-    return failed(toFriendlyDashboardActionError(error, "Unable to enqueue a crawl right now."));
-  }
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    logLabel: "triggerCrawlAction",
+    fallbackError: "Unable to enqueue a crawl right now.",
+    mutate: (auth) => triggerCrawl(auth, siteId, force ? { force } : undefined),
+    onSuccess: (status) => {
+      if (status.enqueued) {
+        return succeeded("Crawl enqueued.");
+      }
+      if (status.error) {
+        return failed(status.error);
+      }
+      return succeeded("Crawl is already queued.");
+    },
+  });
 }
 
 export async function triggerManagedDemoForceCrawlAction(
@@ -731,36 +760,29 @@ export async function triggerCrawlTranslateAction(
     return failed("At least one target language is required.");
   }
 
-  try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await triggerCrawlTranslate(auth, siteId, {
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
+    logLabel: "triggerCrawlTranslateAction",
+    fallbackError: "Unable to queue crawl + translate right now.",
+    mutate: (auth) =>
+      triggerCrawlTranslate(auth, siteId, {
         targetLangs,
         ...(pageIds.length ? { pageIds } : {}),
         ...(sourcePaths.length ? { sourcePaths } : {}),
         ...(force ? { force: true } : {}),
-      });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/pages`);
-    return succeeded(
-      `Crawl + translate queued (${result.enqueuedCount}/${result.selectedCount} pages).`,
-      {
-        crawlId: result.crawlId,
-        selectedCount: result.selectedCount,
-        enqueuedCount: result.enqueuedCount,
-      },
-    );
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] triggerCrawlTranslateAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to queue crawl + translate right now."),
-    );
-  }
+      }),
+    onSuccess: (result) =>
+      succeeded(
+        `Crawl + translate queued (${result.enqueuedCount}/${result.selectedCount} pages).`,
+        {
+          crawlId: result.crawlId,
+          selectedCount: result.selectedCount,
+          enqueuedCount: result.enqueuedCount,
+        },
+      ),
+  });
 }
 
 export async function translateAndServeAction(
@@ -777,44 +799,37 @@ export async function translateAndServeAction(
 
   const shouldActivate = siteStatus === "inactive";
 
-  try {
-    const result = await withWebhooksAuth(async (auth) => {
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: shouldActivate,
+    revalidatePaths: shouldActivate
+      ? [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`, "/dashboard"]
+      : [`/dashboard/sites/${siteId}`],
+    logLabel: "translateAndServeAction",
+    fallbackError: "Unable to start translation and serving right now.",
+    formatError: toTranslateAndServeError,
+    mutate: async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
       }
-      const response = await translateSite(auth, siteId, targetLang, {
+      return translateSite(auth, siteId, targetLang, {
         intent: "translate_and_serve",
       });
-      await invalidateDashboardCaches(auth, siteId, {
-        invalidateSitesList: shouldActivate,
-      });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    if (shouldActivate) {
-      revalidatePath(`/dashboard/sites/${siteId}/admin`);
-      revalidatePath("/dashboard");
-    }
-    const activationPrefix = shouldActivate ? "Localization enabled. " : "";
-    const crawlEnqueued = Boolean(result.crawlEnqueued);
-    const missingSnapshots = result.missingSnapshots ?? 0;
-    const runStarted = Boolean(result.run);
-    let toast = "Translation run started.";
-    if (!runStarted && crawlEnqueued) {
-      toast = "Crawl queued. Translation will start once snapshots are ready.";
-    } else if (runStarted && crawlEnqueued && missingSnapshots > 0) {
-      toast = "Translation started for available snapshots. Crawl queued for missing pages.";
-    }
-    return succeeded(`${activationPrefix}${toast}`);
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] translateAndServeAction failed:", error);
-    return failed(
-      toTranslateAndServeError(error, "Unable to start translation and serving right now."),
-    );
-  }
+    },
+    onSuccess: (result) => {
+      const activationPrefix = shouldActivate ? "Localization enabled. " : "";
+      const crawlEnqueued = Boolean(result.crawlEnqueued);
+      const missingSnapshots = result.missingSnapshots ?? 0;
+      const runStarted = Boolean(result.run);
+      let toast = "Translation run started.";
+      if (!runStarted && crawlEnqueued) {
+        toast = "Crawl queued. Translation will start once snapshots are ready.";
+      } else if (runStarted && crawlEnqueued && missingSnapshots > 0) {
+        toast = "Translation started for available snapshots. Crawl queued for missing pages.";
+      }
+      return succeeded(`${activationPrefix}${toast}`);
+    },
+  });
 }
 
 export async function upsertDigestSubscriptionAction(
@@ -983,21 +998,15 @@ export async function cancelTranslationRunAction(
     return failed("Site ID and run ID are required.");
   }
 
-  try {
-    await withWebhooksAuth(async (auth) => {
-      await cancelTranslationRun(auth, siteId, runId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
-    return succeeded("Translation run cancelled.");
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] cancelTranslationRunAction failed:", error);
-    return failed(toFriendlyDashboardActionError(error, "Unable to cancel the translation run."));
-  }
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    logLabel: "cancelTranslationRunAction",
+    fallbackError: "Unable to cancel the translation run.",
+    mutate: (auth) => cancelTranslationRun(auth, siteId, runId),
+    onSuccess: () => succeeded("Translation run cancelled."),
+  });
 }
 
 function buildResumeToast(
@@ -1033,23 +1042,15 @@ export async function resumeTranslationRunAction(
     return failed("Site ID and run ID are required.");
   }
 
-  try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await resumeTranslationRun(auth, siteId, runId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
-    const message = buildResumeToast("resume", result);
-    return succeeded(message);
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] resumeTranslationRunAction failed:", error);
-    return failed(toFriendlyDashboardActionError(error, "Unable to resume the translation run."));
-  }
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    logLabel: "resumeTranslationRunAction",
+    fallbackError: "Unable to resume the translation run.",
+    mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
+    onSuccess: (result) => succeeded(buildResumeToast("resume", result)),
+  });
 }
 
 export async function retryFailedTranslationRunAction(
@@ -1063,23 +1064,15 @@ export async function retryFailedTranslationRunAction(
     return failed("Site ID and run ID are required.");
   }
 
-  try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await resumeTranslationRun(auth, siteId, runId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
-    const message = buildResumeToast("retry", result);
-    return succeeded(message);
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] retryFailedTranslationRunAction failed:", error);
-    return failed(toFriendlyDashboardActionError(error, "Unable to retry failed pages right now."));
-  }
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    logLabel: "retryFailedTranslationRunAction",
+    fallbackError: "Unable to retry failed pages right now.",
+    mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
+    onSuccess: (result) => succeeded(buildResumeToast("retry", result)),
+  });
 }
 
 export async function triggerPageCrawlAction(
@@ -1093,29 +1086,23 @@ export async function triggerPageCrawlAction(
     return failed("Site ID and page ID are required.");
   }
 
-  try {
-    const status = await withWebhooksAuth(async (auth) => {
-      const response = await triggerPageCrawl(auth, siteId, pageId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
-    });
-    revalidatePath(`/dashboard/sites/${siteId}`);
-    if (status.enqueued) {
-      return succeeded("Page crawl enqueued.");
-    }
-    if (status.error) {
-      return failed(status.error);
-    }
-    return succeeded("Page crawl is already queued.");
-  } catch (error) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
-    console.error("[dashboard] triggerPageCrawlAction failed:", error);
-    return failed(
-      toFriendlyDashboardActionError(error, "Unable to enqueue a page crawl right now."),
-    );
-  }
+  return runSiteMutation({
+    siteId,
+    invalidateSitesList: false,
+    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    logLabel: "triggerPageCrawlAction",
+    fallbackError: "Unable to enqueue a page crawl right now.",
+    mutate: (auth) => triggerPageCrawl(auth, siteId, pageId),
+    onSuccess: (status) => {
+      if (status.enqueued) {
+        return succeeded("Page crawl enqueued.");
+      }
+      if (status.error) {
+        return failed(status.error);
+      }
+      return succeeded("Page crawl is already queued.");
+    },
+  });
 }
 
 export async function verifyDomainAction(

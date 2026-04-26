@@ -25,13 +25,14 @@ import {
   type ClientMessages,
 } from "@internal/i18n";
 import {
-  hasExplicitFailure,
-  isPreviewErrorCode,
   isPreviewStage,
-  resolveStatusCheckFailure,
   type PreviewErrorCode,
   type PreviewStage,
 } from "@internal/previews/preview-sse";
+import {
+  resolvePreviewErrorPayload,
+  resolvePreviewStatusDecision,
+} from "@internal/previews/preview-status-decision";
 import {
   parsePreviewRetryHint,
   type PreviewRetryHint,
@@ -81,12 +82,6 @@ type ConnectStatusUpdatesOptions = {
   initialStage?: PreviewStage | null;
   initialPreviewUrl?: string;
   initialRetryHint?: PreviewRetryHint | null;
-};
-
-type ResolvedPreviewError = {
-  code: PreviewErrorCode | null;
-  stage: PreviewStage | null;
-  message: string;
 };
 
 const emailSchema = z.email();
@@ -607,36 +602,12 @@ export function TryForm({
     return t("try.error.default");
   }
 
-  function resolveErrorFromPayload(
-    data: Record<string, unknown>,
-    fallback?: string,
-  ): ResolvedPreviewError {
-    const details =
-      data.details && typeof data.details === "object"
-        ? (data.details as Record<string, unknown>)
-        : null;
-    const code = isPreviewErrorCode(data.errorCode)
-      ? data.errorCode
-      : details && isPreviewErrorCode(details.errorCode)
-        ? details.errorCode
-        : null;
-    const stage = isPreviewStage(data.errorStage)
-      ? data.errorStage
-      : details && isPreviewStage(details.errorStage)
-        ? details.errorStage
-        : null;
-    const message = resolveErrorMessage(
-      code,
-      (data.error as string | undefined) ??
-        (data.message as string | undefined) ??
-        fallback ??
-        null,
+  function resolveErrorFromPayload(data: Record<string, unknown>, fallback?: string) {
+    return resolvePreviewErrorPayload(
+      data,
+      fallback ?? t("try.error.default"),
+      resolveErrorMessage,
     );
-    return {
-      code,
-      stage,
-      message,
-    };
   }
 
   function syncStatusCenterActiveState(
@@ -702,47 +673,20 @@ export function TryForm({
         }
       }
 
-      if (!response.ok) {
-        const decision = resolveStatusCheckFailure(response.status, payload);
-        if (decision === "processing") {
-          syncStatusCenterActiveState(
-            previewId,
-            "processing",
-            null,
-            resolvePreviewRetryHint(payload),
-          );
-          return false;
-        }
-
-        const reason =
-          (payload && typeof payload.error === "string" ? payload.error : "") ||
-          (payload && typeof payload.message === "string" ? payload.message : "") ||
-          t("try.error.default");
-        const resolved = resolveErrorFromPayload(payload ?? {}, reason);
-        syncStatusCenterTerminalState(
-          previewId,
-          resolved.code === "preview_expired" ? "expired" : "failed",
-          {
-            error: resolved.message,
-            errorCode: resolved.code,
-            errorStage: resolved.stage,
-          },
-        );
-        setSubmissionError(null);
-        timedOutRef.current = false;
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
-      }
-
-      if (!payload || typeof payload !== "object") {
-        syncStatusCenterActiveState(previewId, "processing", null);
-        return false;
-      }
-
-      if (payload.status === "ready") {
-        syncStatusCenterTerminalState(previewId, "ready", {
-          previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : null,
+      const decision = resolvePreviewStatusDecision({
+        responseOk: response.ok,
+        responseStatus: response.status,
+        payload,
+        defaultErrorMessage: t("try.error.default"),
+        resolveErrorMessage,
+        mapNotFoundToErrorCode: true,
+      });
+      if (decision.kind === "terminal") {
+        syncStatusCenterTerminalState(previewId, decision.status, {
+          previewUrl: decision.previewUrl,
+          error: decision.error,
+          errorCode: decision.errorCode,
+          errorStage: decision.errorStage,
         });
         setSubmissionError(null);
         timedOutRef.current = false;
@@ -751,30 +695,7 @@ export function TryForm({
         return true;
       }
 
-      if (payload.status === "failed" || hasExplicitFailure(payload)) {
-        const resolved = resolveErrorFromPayload(payload, t("try.error.default"));
-        syncStatusCenterTerminalState(
-          previewId,
-          resolved.code === "preview_expired" ? "expired" : "failed",
-          {
-            error: resolved.message,
-            errorCode: resolved.code,
-            errorStage: resolved.stage,
-          },
-        );
-        setSubmissionError(null);
-        timedOutRef.current = false;
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
-        return true;
-      }
-
-      syncStatusCenterActiveState(
-        previewId,
-        payload.status === "pending" ? "pending" : "processing",
-        isPreviewStage(payload.stage) ? payload.stage : null,
-        resolvePreviewRetryHint(payload),
-      );
+      syncStatusCenterActiveState(previewId, decision.status, decision.stage, decision.retryHint);
       return false;
     } catch {
       syncStatusCenterActiveState(previewId, "processing", null);
@@ -825,37 +746,25 @@ export function TryForm({
         });
       }
 
-      if (data.status === "ready") {
-        syncStatusCenterTerminalState(previewId, "ready", {
-          previewUrl: typeof data.previewUrl === "string" ? data.previewUrl : null,
+      const decision = resolvePreviewStatusDecision({
+        responseOk: true,
+        responseStatus: 200,
+        payload: data,
+        defaultErrorMessage: t("try.error.default"),
+        resolveErrorMessage,
+      });
+      if (decision.kind === "terminal") {
+        syncStatusCenterTerminalState(previewId, decision.status, {
+          previewUrl: decision.previewUrl,
+          error: decision.error,
+          errorCode: decision.errorCode,
+          errorStage: decision.errorStage,
         });
         closeEventSource();
         return;
       }
 
-      if (data.status === "failed" || hasExplicitFailure(data)) {
-        const resolved = resolveErrorFromPayload(data);
-        syncStatusCenterTerminalState(
-          previewId,
-          resolved.code === "preview_expired" ? "expired" : "failed",
-          {
-            error: resolved.message,
-            errorCode: resolved.code,
-            errorStage: resolved.stage,
-          },
-        );
-        closeEventSource();
-        return;
-      }
-
-      if (data.status === "pending" || data.status === "processing") {
-        syncStatusCenterActiveState(
-          previewId,
-          data.status,
-          isPreviewStage(data.stage) ? data.stage : null,
-          resolvePreviewRetryHint(data),
-        );
-      }
+      syncStatusCenterActiveState(previewId, decision.status, decision.stage, decision.retryHint);
     };
 
     const parseEventPayload = (event: MessageEvent | Event): Record<string, unknown> | null => {
