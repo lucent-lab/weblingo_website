@@ -1591,14 +1591,19 @@
       "CrawlTriggerRequest": {
         "additionalProperties": false,
         "example": {
+          "docsOnly": true,
           "force": true
         },
         "examples": [
           {
+            "docsOnly": true,
             "force": true
           }
         ],
         "properties": {
+          "docsOnly": {
+            "type": "boolean"
+          },
           "force": {
             "type": "boolean"
           }
@@ -7012,6 +7017,7 @@
           "content": {
             "application/json": {
               "example": {
+                "docsOnly": true,
                 "force": true
               },
               "schema": {
@@ -9732,6 +9738,7 @@
           "content": {
             "application/json": {
               "example": {
+                "docsOnly": true,
                 "force": true
               },
               "schema": {
