@@ -75,7 +75,7 @@ export function WebhookSettingsFields({
         </div>
       </div>
 
-      <input name="webhookEvents" type="hidden" value={webhookEventsJson} />
+      {canEdit ? <input name="webhookEvents" type="hidden" value={webhookEventsJson} /> : null}
 
       <Field label={urlLabel} htmlFor="webhookUrl" description={urlHelp}>
         <Input

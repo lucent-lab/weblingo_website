@@ -2,15 +2,6 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
-  hasExplicitFailure,
-  isPreviewErrorCode,
-  isPreviewStage,
-  resolveStatusCheckFailure,
-  type PreviewErrorCode,
-  type PreviewStage,
-} from "./preview-sse";
-import { parsePreviewRetryHint, type PreviewRetryHint } from "./preview-job-machine";
-import {
   calculatePreviewStatusCenterRetryDelayMs,
   cleanupPreviewStatusCenterJobs,
   DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
@@ -25,50 +16,13 @@ import {
   updatePreviewStatusCenterJob,
   type PreviewStatusCenterJob,
 } from "./status-center-store";
+import { resolvePreviewStatusDecision } from "./preview-status-decision";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
 let previewStatusRuntimeOwner: symbol | null = null;
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
-}
-
-function resolveErrorPayload(payload: Record<string, unknown> | null): {
-  code: PreviewErrorCode | null;
-  stage: PreviewStage | null;
-  message: string;
-} {
-  const details =
-    payload && typeof payload.details === "object" && payload.details !== null
-      ? (payload.details as Record<string, unknown>)
-      : null;
-
-  const code = isPreviewErrorCode(payload?.errorCode)
-    ? payload.errorCode
-    : details && isPreviewErrorCode(details.errorCode)
-      ? details.errorCode
-      : null;
-
-  const stage = isPreviewStage(payload?.errorStage)
-    ? payload.errorStage
-    : details && isPreviewStage(details.errorStage)
-      ? details.errorStage
-      : null;
-
-  const message =
-    (payload?.error as string | undefined) ||
-    (payload?.message as string | undefined) ||
-    "Unable to check preview status.";
-
-  return {
-    code,
-    stage,
-    message,
-  };
-}
-
-function resolveRetryHint(payload: Record<string, unknown> | null): PreviewRetryHint | null {
-  return parsePreviewRetryHint(payload?.retryHint);
 }
 
 export function usePreviewStatusRuntime() {
@@ -144,95 +98,31 @@ export function usePreviewStatusRuntime() {
           }
         }
 
-        if (!response.ok) {
-          if (response.status === 410) {
-            markPreviewStatusCenterJobTerminal(job.previewId, "expired", {
-              errorCode: "preview_expired",
-              error: null,
-              errorStage: null,
-            });
-            return;
-          }
-
-          if (response.status === 404) {
-            markPreviewStatusCenterJobTerminal(job.previewId, "failed", {
-              errorCode: "preview_not_found",
-              error: null,
-              errorStage: null,
-            });
-            return;
-          }
-
-          const decision = resolveStatusCheckFailure(response.status, payload);
-          if (decision === "processing") {
-            updatePreviewStatusCenterJob(job.previewId, {
-              status: "processing",
-              error: null,
-              errorCode: null,
-              errorStage: null,
-              retryHint: null,
-            });
-            resetPreviewStatusCenterJobRetry(job.previewId);
-            return;
-          }
-
-          const resolved = resolveErrorPayload(payload);
-          markPreviewStatusCenterJobTerminal(
-            job.previewId,
-            resolved.code === "preview_expired" ? "expired" : "failed",
-            {
-              error: resolved.message,
-              errorCode: resolved.code,
-              errorStage: resolved.stage,
-            },
-          );
-          return;
-        }
-
-        if (!payload) {
-          updatePreviewStatusCenterJob(job.previewId, {
-            status: "processing",
-            error: null,
-            errorCode: null,
-            errorStage: null,
-            retryHint: null,
+        const decision = resolvePreviewStatusDecision({
+          responseOk: response.ok,
+          responseStatus: response.status,
+          payload,
+          defaultErrorMessage: "Unable to check preview status.",
+          mapNotFoundToErrorCode: true,
+        });
+        if (decision.kind === "terminal") {
+          markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
+            previewUrl: decision.previewUrl,
+            error: decision.error,
+            errorCode: decision.errorCode,
+            errorStage: decision.errorStage,
           });
-          resetPreviewStatusCenterJobRetry(job.previewId);
-          return;
-        }
-
-        if (payload.status === "ready") {
-          markPreviewStatusCenterJobTerminal(job.previewId, "ready", {
-            previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : null,
-            error: null,
-            errorCode: null,
-            errorStage: null,
-          });
-          return;
-        }
-
-        if (payload.status === "failed" || hasExplicitFailure(payload)) {
-          const resolved = resolveErrorPayload(payload);
-          markPreviewStatusCenterJobTerminal(
-            job.previewId,
-            resolved.code === "preview_expired" ? "expired" : "failed",
-            {
-              error: resolved.message,
-              errorCode: resolved.code,
-              errorStage: resolved.stage,
-            },
-          );
           return;
         }
 
         updatePreviewStatusCenterJob(job.previewId, {
-          status: payload.status === "pending" ? "pending" : "processing",
-          stage: isPreviewStage(payload.stage) ? payload.stage : undefined,
-          previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
+          status: decision.status,
+          stage: decision.stage ?? undefined,
+          previewUrl: decision.previewUrl,
           error: null,
           errorCode: null,
           errorStage: null,
-          retryHint: resolveRetryHint(payload),
+          retryHint: decision.retryHint,
         });
         resetPreviewStatusCenterJobRetry(job.previewId);
       } catch {
