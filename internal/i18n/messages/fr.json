@@ -662,6 +662,7 @@
   "try.center.retryHint": "Relancez depuis le formulaire d'aperçu.",
   "try.center.capacityHint": "La capacité de rendu est temporairement saturée. Nous continuons à réessayer automatiquement.",
   "try.action.retry": "Relancer l'aperçu",
+  "try.action.startAnother": "Lancer un autre aperçu",
   "try.action.checkStatus": "Vérifier le statut",
   "try.action.checkingStatus": "Vérification...",
   "try.pending.emailPrompt": "Recevez une notification quand votre aperçu est prêt",

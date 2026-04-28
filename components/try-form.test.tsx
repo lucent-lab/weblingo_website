@@ -84,6 +84,7 @@ const messages = {
   "try.progress.ready": "Ready",
   "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
   "try.action.retry": "Retry preview",
+  "try.action.startAnother": "Start another preview",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
   "try.pending.emailPrompt": "Get notified when your preview is ready",
@@ -631,6 +632,14 @@ describe("TryForm preview status", () => {
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start another preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
     });
   });
 

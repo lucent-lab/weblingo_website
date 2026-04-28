@@ -662,6 +662,7 @@
   "try.center.retryHint": "プレビューフォームから再試行してください。",
   "try.center.capacityHint": "レンダリング容量が一時的にいっぱいです。自動で再試行を続けます。",
   "try.action.retry": "プレビューを再試行",
+  "try.action.startAnother": "別のプレビューを開始",
   "try.action.checkStatus": "ステータスを確認",
   "try.action.checkingStatus": "確認中...",
   "try.pending.emailPrompt": "プレビューの準備ができたら通知を受け取る",
