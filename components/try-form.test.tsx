@@ -733,8 +733,11 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("keeps restored sessions in checking state for transient status failures", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ error: "Unavailable" }, 503));
+  it("shows retry and escape actions when restored status fetch fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network unavailable"))
+      .mockResolvedValueOnce(jsonResponse({ status: "processing", stage: "translating" }));
     vi.stubGlobal("fetch", fetchMock);
     storeRestoredActiveJob({
       previewId: "transient-3333-3333-3333-333333333333",
@@ -749,8 +752,16 @@ describe("TryForm preview status", () => {
       );
       expect(screen.getByText("Checking preview status...")).toBeTruthy();
       expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Retry preview" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
     });
   });
 

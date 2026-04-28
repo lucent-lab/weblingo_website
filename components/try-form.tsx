@@ -214,6 +214,9 @@ export function TryForm({
   const [pendingEmailStatus, setPendingEmailStatus] = useState<
     "idle" | "submitting" | "saved" | "error"
   >("idle");
+  const [restoredStatusRetryPreviewIds, setRestoredStatusRetryPreviewIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const baseLocale = getBaseLangTag(locale) ?? locale.trim().toLowerCase();
   const defaultTargetLang = baseLocale === "en" ? "fr" : "en";
   const [sourceLang, setSourceLang] = useState<string>(locale);
@@ -285,6 +288,10 @@ export function TryForm({
   const isRequestInFlight = isPreviewRunning || isRestoredStatusChecking;
   const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking && !timedOut;
   const showRestoredStatusCheckingCard = isRestoredStatusChecking && !timedOut;
+  const canRetryRestoredStatusCheck =
+    trackedJob !== null &&
+    isRestoredStatusChecking &&
+    restoredStatusRetryPreviewIds.has(trackedJob.previewId);
   const showGeneratingState = isSameRequest && mode === "creating";
   const showEditableControls = !isRequestInFlight;
   const isSameLanguage =
@@ -659,10 +666,32 @@ export function TryForm({
     });
   }
 
+  function markRestoredStatusCheckRetryAvailable(previewId: string) {
+    restoredStatusCheckStartedRef.current.delete(previewId);
+    setRestoredStatusRetryPreviewIds((current) => {
+      const next = new Set(current);
+      next.add(previewId);
+      return next;
+    });
+  }
+
+  function clearRestoredStatusCheckRetry(previewId: string) {
+    setRestoredStatusRetryPreviewIds((current) => {
+      if (!current.has(previewId)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.delete(previewId);
+      return next;
+    });
+  }
+
   function handleStartAnotherPreview() {
     closeEventSource();
     if (trackedJob) {
       removePreviewStatusCenterJob(trackedJob.previewId);
+      clearRestoredStatusCheckRetry(trackedJob.previewId);
+      restoredStatusCheckStartedRef.current.delete(trackedJob.previewId);
     }
     setLastRequestKey(null);
     setSubmissionError(null);
@@ -720,6 +749,7 @@ export function TryForm({
         timedOutRef.current = false;
         setTimedOut(false);
         setTimedOutWithEmail(false);
+        clearRestoredStatusCheckRetry(previewId);
         return true;
       }
 
@@ -730,9 +760,15 @@ export function TryForm({
         decision.retryHint,
         decision.remoteStatusVerified,
       );
+      if (decision.remoteStatusVerified) {
+        clearRestoredStatusCheckRetry(previewId);
+      } else {
+        markRestoredStatusCheckRetryAvailable(previewId);
+      }
       return false;
     } catch {
       syncStatusCenterActiveState(previewId, "processing", null, null, false);
+      markRestoredStatusCheckRetryAvailable(previewId);
       return false;
     } finally {
       if (mountedRef.current) {
@@ -753,13 +789,26 @@ export function TryForm({
     if (checkingStatus) {
       return;
     }
+    if (restoredStatusRetryPreviewIds.has(trackedJob.previewId)) {
+      return;
+    }
     if (restoredStatusCheckStartedRef.current.has(trackedJob.previewId)) {
       return;
     }
 
     restoredStatusCheckStartedRef.current.add(trackedJob.previewId);
     void handleCheckStatusRef.current(trackedJob.previewId, trackedJob.statusToken);
-  }, [checkingStatus, trackedJob]);
+  }, [checkingStatus, restoredStatusRetryPreviewIds, trackedJob]);
+
+  function handleRetryRestoredStatusCheck() {
+    if (!trackedJob || !isRestoredStatusChecking) {
+      return;
+    }
+    const previewId = trackedJob.previewId;
+    clearRestoredStatusCheckRetry(previewId);
+    restoredStatusCheckStartedRef.current.add(previewId);
+    void handleCheckStatus(trackedJob.previewId, trackedJob.statusToken);
+  }
 
   function connectSSE(previewId: string, statusToken: string) {
     closeEventSource();
@@ -1438,6 +1487,22 @@ export function TryForm({
             <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
               {processingHintMessage}
             </p>
+            {canRetryRestoredStatusCheck ? (
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRetryRestoredStatusCheck}
+                  disabled={checkingStatus}
+                >
+                  {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={handleStartAnotherPreview}>
+                  {t("try.action.startAnother")}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
