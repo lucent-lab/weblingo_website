@@ -171,6 +171,7 @@
   "try.center.retryHint": "Retry from the Try form.",
   "try.center.capacityHint": "Rendering capacity is temporarily full. We'll keep retrying automatically.",
   "try.action.retry": "Retry preview",
+  "try.action.startAnother": "Start another preview",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking...",
   "try.pending.emailPrompt": "Get notified when your preview is ready",

@@ -77,6 +77,7 @@ describe("status-center-store", () => {
     const afterHydrate = getPreviewStatusCenterSnapshot();
     expect(afterHydrate.jobs).toHaveLength(1);
     expect(afterHydrate.jobs[0].sourceUrl).toBe("https://example.com");
+    expect(afterHydrate.jobs[0].nextPollAt).toBeLessThanOrEqual(Date.now());
   });
 
   it("marks a job terminal and supports dismissing it", () => {

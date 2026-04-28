@@ -346,9 +346,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
     retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
-    nextPollAt: isFiniteNumber(value.nextPollAt)
-      ? value.nextPollAt
-      : Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+    nextPollAt: isPreviewStatusCenterJobTerminal(status) ? Number.POSITIVE_INFINITY : Date.now(),
   });
 }
 
@@ -394,9 +392,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
     retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
-    nextPollAt: isFiniteNumber(value.nextPollAt)
-      ? value.nextPollAt
-      : Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+    nextPollAt: isPreviewStatusCenterJobTerminal(status) ? Number.POSITIVE_INFINITY : Date.now(),
   });
 }
 

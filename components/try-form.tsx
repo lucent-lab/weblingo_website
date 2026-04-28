@@ -644,6 +644,16 @@ export function TryForm({
     });
   }
 
+  function handleStartAnotherPreview() {
+    closeEventSource();
+    setLastRequestKey(null);
+    setSubmissionError(null);
+    timedOutRef.current = false;
+    setTimedOut(false);
+    setTimedOutWithEmail(false);
+    setPendingEmailStatus("idle");
+  }
+
   async function handleCheckStatus(
     previewIdOverride?: string,
     statusTokenOverride?: string,
@@ -1499,6 +1509,16 @@ export function TryForm({
                   )}
                 </div>
               ) : null}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleStartAnotherPreview}
+                className="w-fit"
+              >
+                {t("try.action.startAnother")}
+              </Button>
             </div>
           </div>
         </div>
