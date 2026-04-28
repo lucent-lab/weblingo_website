@@ -115,6 +115,7 @@
   "try.status.creating": "プレビューを作成中...",
   "try.status.pending": "翻訳キューに追加されました...",
   "try.status.processing": "ページを翻訳中...",
+  "try.status.restoring": "プレビューのステータスを確認中...",
   "try.status.ready": "プレビューの準備ができました。以下のリンクを開くかコピーしてください。",
   "try.progress.label": "プレビューの進行状況",
   "try.progress.queued": "キュー待ち",

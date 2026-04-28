@@ -240,6 +240,7 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
         : Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
     stage: terminal ? null : job.stage,
     retryHint: terminal ? null : job.retryHint,
+    remoteStatusVerified: terminal ? true : job.remoteStatusVerified,
   };
 }
 
@@ -342,6 +343,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
     retryHint: parsePreviewRetryHint(value.retryHint),
+    remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
@@ -388,6 +390,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage: legacyStage,
     retryHint: null,
+    remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
@@ -593,6 +596,7 @@ function migrateLegacyJobsFromStorage(now: number): {
         ? existing.status
         : resolveNextPreviewJobPhase(existing.status, "processing"),
       stage: terminal ? null : existing.stage,
+      remoteStatusVerified: terminal,
       updatedAt: Math.max(existing.updatedAt, pending.updatedAt),
       nextPollAt: terminal
         ? Number.POSITIVE_INFINITY
@@ -615,6 +619,7 @@ function migrateLegacyJobsFromStorage(now: number): {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: false,
         createdAt: pending.updatedAt,
         updatedAt: pending.updatedAt,
         expiresAt: null,

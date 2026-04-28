@@ -115,6 +115,16 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
+        const retryCount = decision.remoteStatusVerified ? 0 : job.retryCount + 1;
+        if (!decision.remoteStatusVerified && retryCount > MAX_STATUS_RETRY_ATTEMPTS) {
+          markPreviewStatusCenterJobTerminal(job.previewId, "failed", {
+            errorCode: "unknown",
+            error: "Unable to check preview status.",
+            errorStage: null,
+          });
+          return;
+        }
+
         updatePreviewStatusCenterJob(job.previewId, {
           status: decision.status,
           stage: decision.stage ?? undefined,
@@ -123,8 +133,15 @@ export function usePreviewStatusRuntime() {
           errorCode: null,
           errorStage: null,
           retryHint: decision.retryHint,
+          remoteStatusVerified: decision.remoteStatusVerified,
+          retryCount,
+          nextPollAt: decision.remoteStatusVerified
+            ? undefined
+            : Date.now() + calculatePreviewStatusCenterRetryDelayMs(retryCount),
         });
-        resetPreviewStatusCenterJobRetry(job.previewId);
+        if (decision.remoteStatusVerified) {
+          resetPreviewStatusCenterJobRetry(job.previewId);
+        }
       } catch {
         const retryCount = job.retryCount + 1;
         if (retryCount > MAX_STATUS_RETRY_ATTEMPTS) {

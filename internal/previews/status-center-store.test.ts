@@ -78,6 +78,7 @@ describe("status-center-store", () => {
     expect(afterHydrate.jobs).toHaveLength(1);
     expect(afterHydrate.jobs[0].sourceUrl).toBe("https://example.com");
     expect(afterHydrate.jobs[0].nextPollAt).toBeLessThanOrEqual(Date.now());
+    expect(afterHydrate.jobs[0].remoteStatusVerified).toBe(false);
   });
 
   it("marks a job terminal and supports dismissing it", () => {
@@ -248,6 +249,7 @@ describe("status-center-store", () => {
       errorCode: null,
       errorStage: null,
       retryHint: null,
+      remoteStatusVerified: true,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -266,6 +268,7 @@ describe("status-center-store", () => {
       errorCode: null,
       errorStage: null,
       retryHint: null,
+      remoteStatusVerified: true,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,

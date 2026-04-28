@@ -22,6 +22,7 @@ export type PreviewJob = {
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
   retryHint: PreviewRetryHint | null;
+  remoteStatusVerified: boolean;
   createdAt: number;
   updatedAt: number;
   expiresAt: number | null;
@@ -43,6 +44,7 @@ export type PreviewJobUpsertInput = {
   errorCode?: PreviewErrorCode | null;
   errorStage?: PreviewStage | null;
   retryHint?: PreviewRetryHint | null;
+  remoteStatusVerified?: boolean;
   expiresAt?: number | null;
   retryCount?: number;
   nextPollAt?: number;
@@ -61,6 +63,7 @@ export type PreviewJobPatch = Partial<{
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
   retryHint: PreviewRetryHint | null;
+  remoteStatusVerified: boolean;
   expiresAt: number | null;
   retryCount: number;
   nextPollAt: number;
@@ -231,6 +234,9 @@ function reduceUpsert(
       : input.retryHint === undefined
         ? (existing?.retryHint ?? null)
         : input.retryHint,
+    remoteStatusVerified: terminal
+      ? true
+      : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true),
     createdAt: existing?.createdAt ?? context.now,
     updatedAt: context.now,
     expiresAt: input.expiresAt ?? existing?.expiresAt ?? null,
@@ -277,6 +283,9 @@ function reducePatch(
       : patch.retryHint === undefined
         ? existing.retryHint
         : patch.retryHint,
+    remoteStatusVerified: terminal
+      ? true
+      : (patch.remoteStatusVerified ?? existing.remoteStatusVerified),
     expiresAt: patch.expiresAt === undefined ? existing.expiresAt : patch.expiresAt,
     updatedAt: context.now,
     retryCount: terminal
@@ -315,6 +324,7 @@ export function reducePreviewJob(
         retryCount: 0,
         nextPollAt: Number.POSITIVE_INFINITY,
         stage: null,
+        remoteStatusVerified: true,
       },
       context,
     );

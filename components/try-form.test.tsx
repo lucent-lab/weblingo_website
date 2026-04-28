@@ -74,6 +74,7 @@ const messages = {
   "try.status.capacityEmailHint": "Capacity email hint",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing preview...",
+  "try.status.restoring": "Checking preview status...",
   "try.status.processingHint": "Processing hint",
   "try.status.ready": "Ready",
   "try.progress.label": "Preview progress",
@@ -182,6 +183,54 @@ function upsertDefaultJob(
     status,
     ...overrides,
   });
+}
+
+function storeRestoredActiveJob(
+  overrides: Partial<Record<string, unknown>> & {
+    previewId?: string;
+    requestKey?: string;
+    statusToken?: string;
+    sourceUrl?: string;
+    sourceLang?: string;
+    targetLang?: string;
+    status?: "pending" | "processing";
+    stage?: string | null;
+  } = {},
+) {
+  const now = Date.now();
+  const sourceUrl = overrides.sourceUrl ?? "https://restore.example.com";
+  const sourceLang = overrides.sourceLang ?? "en";
+  const targetLang = overrides.targetLang ?? "fr";
+  window.localStorage.setItem(
+    PREVIEW_STATUS_CENTER_STORAGE_KEY,
+    JSON.stringify([
+      {
+        previewId: overrides.previewId ?? "restore-1111-1111-1111-111111111111",
+        requestKey:
+          overrides.requestKey ??
+          buildPreviewStatusCenterRequestKey({
+            sourceUrl,
+            sourceLang,
+            targetLang,
+          }),
+        statusToken: overrides.statusToken ?? "restore-token",
+        sourceUrl,
+        sourceLang,
+        targetLang,
+        status: overrides.status ?? "processing",
+        stage: overrides.stage ?? "translating",
+        previewUrl: null,
+        error: null,
+        errorCode: null,
+        errorStage: null,
+        createdAt: now - 2_000,
+        updatedAt: now - 1_000,
+        expiresAt: null,
+        retryCount: 0,
+        nextPollAt: now + 5_000,
+      },
+    ]),
+  );
 }
 
 const originalEventSource = globalThis.EventSource;
@@ -474,6 +523,7 @@ describe("TryForm preview status", () => {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: true,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -496,6 +546,7 @@ describe("TryForm preview status", () => {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: true,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -518,6 +569,7 @@ describe("TryForm preview status", () => {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: true,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -540,6 +592,7 @@ describe("TryForm preview status", () => {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: true,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -562,6 +615,7 @@ describe("TryForm preview status", () => {
         errorCode: null,
         errorStage: null,
         retryHint: null,
+        remoteStatusVerified: true,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -594,6 +648,13 @@ describe("TryForm preview status", () => {
   });
 
   it("shows summary while restoring a running job", async () => {
+    let resolveStatus: (value: Response) => void = () => undefined;
+    const statusPromise = new Promise<Response>((resolve) => {
+      resolveStatus = resolve;
+    });
+    const fetchMock = vi.fn(async () => statusPromise);
+    vi.stubGlobal("fetch", fetchMock);
+
     const now = Date.now();
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -627,11 +688,19 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByText("Checking preview status...")).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
       expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
+    });
+
+    resolveStatus(jsonResponse({ status: "processing", stage: "translating" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Start another preview" }));
@@ -640,6 +709,59 @@ describe("TryForm preview status", () => {
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
       expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
+    });
+  });
+
+  it("renders a terminal restored-session error before allowing another preview", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ error: "Not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "not-found-2222-2222-2222-222222222222",
+      sourceUrl: "https://missing.example.com",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/not-found-2222-2222-2222-222222222222?token=restore-token",
+      );
+      expect(screen.getByText("Preview not found")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
+    });
+  });
+
+  it("shows retry and escape actions when restored status fetch fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network unavailable"))
+      .mockResolvedValueOnce(jsonResponse({ status: "processing", stage: "translating" }));
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "transient-3333-3333-3333-333333333333",
+      sourceUrl: "https://transient.example.com",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/transient-3333-3333-3333-333333333333?token=restore-token",
+      );
+      expect(screen.getByText("Checking preview status...")).toBeTruthy();
+      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
     });
   });
 
@@ -805,6 +927,7 @@ describe("TryForm preview status", () => {
                 : null,
           errorStage: phase.status === "failed" ? "generating_preview" : null,
           retryHint: null,
+          remoteStatusVerified: true,
           createdAt: 1,
           updatedAt: 1,
           expiresAt: null,
@@ -903,6 +1026,11 @@ describe("TryForm preview status", () => {
   });
 
   it("tracks restored previews and later terminal transitions", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ status: "processing" })),
+    );
+
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
@@ -1004,6 +1132,11 @@ describe("TryForm preview status", () => {
   });
 
   it("shows a basic request summary while a request is in flight", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ status: "pending" })),
+    );
+
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
@@ -1042,6 +1175,11 @@ describe("TryForm preview status", () => {
   });
 
   it("renders a compact progress stepper for running previews", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ status: "processing", stage: "translating" })),
+    );
+
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
