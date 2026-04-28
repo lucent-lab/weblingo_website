@@ -39,6 +39,7 @@ const messages = {
   "try.stage.saving": "Saving",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing",
+  "try.status.restoring": "Checking preview status...",
   "try.status.ready": "Ready",
 } as const;
 

@@ -115,6 +115,7 @@
   "try.status.creating": "Création de la prévisualisation...",
   "try.status.pending": "En file d'attente pour traduction...",
   "try.status.processing": "Traduction de votre page en cours...",
+  "try.status.restoring": "Vérification du statut de l'aperçu...",
   "try.status.ready": "Prévisualisation prête. Ouvrez ou copiez le lien ci-dessous.",
   "try.progress.label": "Progression de l'aperçu",
   "try.progress.queued": "En attente",

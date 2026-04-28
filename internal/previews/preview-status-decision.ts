@@ -21,6 +21,7 @@ export type PreviewStatusDecision =
       stage: PreviewStage | null;
       previewUrl?: string;
       retryHint: PreviewRetryHint | null;
+      remoteStatusVerified: boolean;
     }
   | {
       kind: "terminal";
@@ -113,6 +114,7 @@ export function resolvePreviewStatusDecision({
         status: "processing",
         stage: null,
         retryHint: null,
+        remoteStatusVerified: false,
       };
     }
 
@@ -132,6 +134,7 @@ export function resolvePreviewStatusDecision({
       status: "processing",
       stage: null,
       retryHint: null,
+      remoteStatusVerified: false,
     };
   }
 
@@ -163,5 +166,6 @@ export function resolvePreviewStatusDecision({
     stage: isPreviewStage(payload.stage) ? payload.stage : null,
     previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
     retryHint: parsePreviewRetryHint(payload.retryHint),
+    remoteStatusVerified: true,
   };
 }

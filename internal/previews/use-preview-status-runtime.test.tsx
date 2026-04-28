@@ -222,4 +222,85 @@ describe("usePreviewStatusRuntime", () => {
       });
     });
   });
+
+  it("keeps empty successful status responses unverified and schedules a retry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("", {
+            status: 200,
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "55555555-5555-5555-5555-555555555555",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+      remoteStatusVerified: false,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "55555555-5555-5555-5555-555555555555",
+      );
+      expect(job?.status).toBe("processing");
+      expect(job?.remoteStatusVerified).toBe(false);
+      expect(job?.retryCount).toBe(1);
+      expect(job?.nextPollAt).toBeGreaterThan(Date.now());
+    });
+  });
+
+  it("terminalizes restored jobs after repeated transient status failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Unavailable" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "66666666-6666-6666-6666-666666666666",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      retryCount: 4,
+      nextPollAt: 0,
+      remoteStatusVerified: false,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "66666666-6666-6666-6666-666666666666",
+      );
+      expect(job?.status).toBe("failed");
+      expect(job?.errorCode).toBe("unknown");
+      expect(job?.remoteStatusVerified).toBe(true);
+    });
+  });
 });

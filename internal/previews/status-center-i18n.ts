@@ -61,6 +61,7 @@ export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.status.pending",
   "try.status.processing",
   "try.status.ready",
+  "try.status.restoring",
 ];
 
 type PreviewStatusCenterTranslator = (
@@ -93,6 +94,9 @@ export function resolvePreviewStatusCenterMessage(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string {
+  if (!job.remoteStatusVerified && (job.status === "pending" || job.status === "processing")) {
+    return t("try.status.restoring");
+  }
   if (job.status === "pending") {
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.pending");
   }

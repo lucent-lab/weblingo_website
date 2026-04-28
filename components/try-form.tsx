@@ -50,6 +50,7 @@ import {
   hydratePreviewStatusCenterStore,
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
+  removePreviewStatusCenterJob,
   selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   selectPreferredPreviewStatusCenterJob,
@@ -229,6 +230,10 @@ export function TryForm({
   const trackedPreviewIdsRef = useRef<Set<string>>(new Set());
   const trackedPreviewStatusSignaturesRef = useRef<Map<string, string>>(new Map());
   const trackedPreviewTerminalRef = useRef<Set<string>>(new Set());
+  const restoredStatusCheckStartedRef = useRef<Set<string>>(new Set());
+  const handleCheckStatusRef = useRef<
+    (previewIdOverride?: string, statusTokenOverride?: string) => Promise<boolean | null>
+  >(async () => null);
 
   const trimmedUrl = url.trim();
   const submittedEmail = submittedEmailRef.current;
@@ -273,8 +278,13 @@ export function TryForm({
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning =
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
-  const isRequestInFlight = isPreviewRunning;
-  const showInProgressCard = isPreviewRunning && !timedOut;
+  const isRestoredStatusChecking =
+    trackedJob !== null &&
+    (trackedJob.status === "pending" || trackedJob.status === "processing") &&
+    !trackedJob.remoteStatusVerified;
+  const isRequestInFlight = isPreviewRunning || isRestoredStatusChecking;
+  const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking && !timedOut;
+  const showRestoredStatusCheckingCard = isRestoredStatusChecking && !timedOut;
   const showGeneratingState = isSameRequest && mode === "creating";
   const showEditableControls = !isRequestInFlight;
   const isSameLanguage =
@@ -491,6 +501,9 @@ export function TryForm({
     if (!trackedPreviewIdsRef.current.has(trackedJob.previewId)) {
       return;
     }
+    if (!trackedJob.remoteStatusVerified) {
+      return;
+    }
 
     const signature = buildPreviewAnalyticsSignature(trackedJob);
     const previousSignature = trackedPreviewStatusSignaturesRef.current.get(trackedJob.previewId);
@@ -615,6 +628,7 @@ export function TryForm({
     status: "pending" | "processing",
     stage: PreviewStage | null,
     retryHint?: PreviewRetryHint | null,
+    remoteStatusVerified = true,
   ) {
     updatePreviewStatusCenterJob(previewId, {
       status,
@@ -623,6 +637,7 @@ export function TryForm({
       errorCode: null,
       errorStage: null,
       retryHint: retryHint ?? null,
+      remoteStatusVerified,
     });
   }
 
@@ -646,6 +661,9 @@ export function TryForm({
 
   function handleStartAnotherPreview() {
     closeEventSource();
+    if (trackedJob) {
+      removePreviewStatusCenterJob(trackedJob.previewId);
+    }
     setLastRequestKey(null);
     setSubmissionError(null);
     timedOutRef.current = false;
@@ -705,10 +723,16 @@ export function TryForm({
         return true;
       }
 
-      syncStatusCenterActiveState(previewId, decision.status, decision.stage, decision.retryHint);
+      syncStatusCenterActiveState(
+        previewId,
+        decision.status,
+        decision.stage,
+        decision.retryHint,
+        decision.remoteStatusVerified,
+      );
       return false;
     } catch {
-      syncStatusCenterActiveState(previewId, "processing", null);
+      syncStatusCenterActiveState(previewId, "processing", null, null, false);
       return false;
     } finally {
       if (mountedRef.current) {
@@ -716,6 +740,26 @@ export function TryForm({
       }
     }
   }
+
+  handleCheckStatusRef.current = handleCheckStatus;
+
+  useEffect(() => {
+    if (!trackedJob || trackedJob.remoteStatusVerified) {
+      return;
+    }
+    if (trackedJob.status !== "pending" && trackedJob.status !== "processing") {
+      return;
+    }
+    if (checkingStatus) {
+      return;
+    }
+    if (restoredStatusCheckStartedRef.current.has(trackedJob.previewId)) {
+      return;
+    }
+
+    restoredStatusCheckStartedRef.current.add(trackedJob.previewId);
+    void handleCheckStatusRef.current(trackedJob.previewId, trackedJob.statusToken);
+  }, [checkingStatus, trackedJob]);
 
   function connectSSE(previewId: string, statusToken: string) {
     closeEventSource();
@@ -882,6 +926,7 @@ export function TryForm({
       errorStage: null,
       previewUrl: options.initialPreviewUrl,
       retryHint: options.initialRetryHint ?? null,
+      remoteStatusVerified: true,
       retryCount: 0,
     });
 
@@ -1379,6 +1424,21 @@ export function TryForm({
               </div>
             </>
           )}
+        </div>
+      ) : null}
+
+      {statusMessage && showRestoredStatusCheckingCard ? (
+        <div className="space-y-4 pt-1">
+          <p className="break-words text-sm font-medium text-foreground">{requestSummary}</p>
+          <div className="space-y-1 rounded-md border border-border/70 bg-muted/35 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+              <span>{statusMessage}</span>
+            </div>
+            <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
+              {processingHintMessage}
+            </p>
+          </div>
         </div>
       ) : null}
 

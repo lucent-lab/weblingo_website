@@ -129,6 +129,7 @@
   "try.status.capacityEmailHint": "Rendering capacity is temporarily full. We'll keep retrying automatically. Leave your email to be notified when it's ready.",
   "try.status.pending": "Queued for translation...",
   "try.status.processing": "Translating your page...",
+  "try.status.restoring": "Checking preview status...",
   "try.status.ready": "Preview ready. Open or copy the link below.",
   "try.progress.label": "Preview progress",
   "try.progress.queued": "Queued",
