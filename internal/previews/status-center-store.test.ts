@@ -358,29 +358,12 @@ describe("status-center-store", () => {
     expect(selectLatestJobByRequestKey(requestKey)?.statusToken).toBe("first-token");
   });
 
-  it("selects the pinned restorable job before older active jobs", () => {
+  it("selects the pinned active job beyond the auto-restore age cutoff", () => {
     const now = Date.now();
     const jobs: PreviewStatusCenterJob[] = [
       {
         ...buildJob({
-          previewId: "stale-1111-1111-1111-111111111111",
-          sourceUrl: "https://stale.example.com",
-        }),
-        stage: null,
-        previewUrl: null,
-        error: null,
-        errorCode: null,
-        errorStage: null,
-        remoteStatusVerified: false,
-        createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
-        updatedAt: now + 1_000,
-        expiresAt: null,
-        retryCount: 0,
-        nextPollAt: now + 5_000,
-      },
-      {
-        ...buildJob({
-          previewId: "fresh-2222-2222-2222-222222222222",
+          previewId: "fresh-1111-1111-1111-111111111111",
           sourceUrl: "https://fresh.example.com",
         }),
         stage: null,
@@ -395,15 +378,88 @@ describe("status-center-store", () => {
         retryCount: 0,
         nextPollAt: now + 5_000,
       },
+      {
+        ...buildJob({
+          previewId: "stale-2222-2222-2222-222222222222",
+          sourceUrl: "https://stale.example.com",
+        }),
+        stage: null,
+        previewUrl: null,
+        error: null,
+        errorCode: null,
+        errorStage: null,
+        remoteStatusVerified: false,
+        createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
+        updatedAt: now - 250,
+        expiresAt: null,
+        retryCount: 0,
+        nextPollAt: now + 5_000,
+      },
     ];
 
     expect(
       selectRestorablePreviewStatusCenterJob({
         jobs,
-        pinnedPreviewId: "fresh-2222-2222-2222-222222222222",
+        pinnedPreviewId: "stale-2222-2222-2222-222222222222",
         now,
       })?.sourceUrl,
-    ).toBe("https://fresh.example.com");
+    ).toBe("https://stale.example.com");
+  });
+
+  it("falls back to a restorable terminal request-key match when a stale active job is newer", () => {
+    const now = Date.now();
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://same.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    const jobs: PreviewStatusCenterJob[] = [
+      {
+        ...buildJob({
+          previewId: "ready-3333-3333-3333-333333333333",
+          requestKey,
+          sourceUrl: "https://same.example.com",
+          status: "ready",
+        }),
+        stage: null,
+        previewUrl: "https://preview.example.com/ready",
+        error: null,
+        errorCode: null,
+        errorStage: null,
+        remoteStatusVerified: true,
+        createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 10_000,
+        updatedAt: now - 2_000,
+        expiresAt: now + 60_000,
+        retryCount: 0,
+        nextPollAt: Number.POSITIVE_INFINITY,
+      },
+      {
+        ...buildJob({
+          previewId: "stale-4444-4444-4444-444444444444",
+          requestKey,
+          sourceUrl: "https://same.example.com",
+        }),
+        stage: null,
+        previewUrl: null,
+        error: null,
+        errorCode: null,
+        errorStage: null,
+        remoteStatusVerified: false,
+        createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
+        updatedAt: now,
+        expiresAt: null,
+        retryCount: 0,
+        nextPollAt: now + 5_000,
+      },
+    ];
+
+    expect(
+      selectRestorablePreviewStatusCenterJob({
+        jobs,
+        currentRequestKey: requestKey,
+        now,
+      })?.previewId,
+    ).toBe("ready-3333-3333-3333-333333333333");
   });
 
   it("does not restore old active jobs as the primary try-form job", () => {

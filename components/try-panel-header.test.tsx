@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  ACTIVE_PREVIEW_SESSION_STORAGE_KEY,
   buildPreviewStatusCenterRequestKey,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
@@ -23,11 +24,13 @@ const messages = {
 beforeEach(() => {
   resetPreviewStatusCenterStoreForTests();
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   resetPreviewStatusCenterStoreForTests();
 });
 
@@ -79,6 +82,7 @@ describe("TryPanelHeader", () => {
           error: null,
           errorCode: null,
           errorStage: null,
+          remoteStatusVerified: true,
           createdAt: now - 60 * 60 * 1000,
           updatedAt: now,
           expiresAt: null,
@@ -95,5 +99,47 @@ describe("TryPanelHeader", () => {
       expect(screen.getByText("Create a preview")).toBeTruthy();
     });
     expect(screen.queryByRole("heading", { name: "Translating" })).toBeNull();
+  });
+
+  it("keeps showing stale active previews when they are pinned to the current tab", async () => {
+    const now = Date.now();
+    const previewId = "pinned-3333-3333-3333-333333333333";
+    window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId,
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://pinned.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
+          statusToken: "pinned-token",
+          sourceUrl: "https://pinned.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 60 * 60 * 1000,
+          updatedAt: now,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 5_000,
+        },
+      ]),
+    );
+
+    render(<TryPanelHeader messages={messages} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Checking preview status..." })).toBeTruthy();
+      expect(screen.getByText("Processing hint")).toBeTruthy();
+    });
+    expect(screen.queryByRole("heading", { name: "Try WebLingo" })).toBeNull();
   });
 });

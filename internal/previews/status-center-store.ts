@@ -19,6 +19,7 @@ import {
 export const PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-jobs:v2";
 export const LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-status-center:v1";
 export const LEGACY_PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-preview:v1";
+export const ACTIVE_PREVIEW_SESSION_STORAGE_KEY = "weblingo:try-form:active-preview-id:v1";
 export const DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS = 5_000;
 export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
@@ -110,6 +111,48 @@ function emit() {
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function canUseSessionStorage() {
+  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+}
+
+export function readActivePreviewIdFromSession(): string | null {
+  if (!canUseSessionStorage()) {
+    return null;
+  }
+  try {
+    return window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeActivePreviewIdToSession(previewId: string) {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
+  } catch {
+    // Ignore storage failures; local preview status still works without tab pinning.
+  }
+}
+
+export function clearActivePreviewIdFromSession(previewId?: string | null) {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+  try {
+    if (
+      !previewId ||
+      window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY) === previewId
+    ) {
+      window.sessionStorage.removeItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -781,6 +824,10 @@ function isRestorablePreviewStatusCenterJob(job: PreviewStatusCenterJob, now: nu
   );
 }
 
+function isPinnedRestorablePreviewStatusCenterJob(job: PreviewStatusCenterJob): boolean {
+  return isPreviewStatusCenterJobTerminal(job.status) || isPreviewStatusCenterJobActive(job);
+}
+
 export function selectRestorablePreviewStatusCenterJob(
   options: {
     jobs?: PreviewStatusCenterJob[];
@@ -794,14 +841,25 @@ export function selectRestorablePreviewStatusCenterJob(
 
   if (options.pinnedPreviewId) {
     const pinned = jobs.find((job) => job.previewId === options.pinnedPreviewId);
-    if (pinned && isRestorablePreviewStatusCenterJob(pinned, now)) {
+    if (pinned && isPinnedRestorablePreviewStatusCenterJob(pinned)) {
       return pinned;
     }
   }
 
   if (options.currentRequestKey) {
-    const matching = selectLatestJobByRequestKey(options.currentRequestKey, jobs);
-    return matching && isRestorablePreviewStatusCenterJob(matching, now) ? matching : null;
+    let best: PreviewStatusCenterJob | null = null;
+    for (const job of jobs) {
+      if (job.requestKey !== options.currentRequestKey) {
+        continue;
+      }
+      if (!isRestorablePreviewStatusCenterJob(job, now)) {
+        continue;
+      }
+      if (!best || comparePreviewStatusCenterJobs(job, best) < 0) {
+        best = job;
+      }
+    }
+    return best;
   }
 
   let bestActive: PreviewStatusCenterJob | null = null;

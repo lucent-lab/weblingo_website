@@ -45,17 +45,20 @@ import {
 } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,
+  clearActivePreviewIdFromSession,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   hydratePreviewStatusCenterStore,
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
+  readActivePreviewIdFromSession,
   removePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   selectRestorablePreviewStatusCenterJob,
   subscribePreviewStatusCenterStore,
   upsertPreviewStatusCenterJob,
   updatePreviewStatusCenterJob,
+  writeActivePreviewIdToSession,
   type PreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
@@ -85,55 +88,12 @@ type ConnectStatusUpdatesOptions = {
 };
 
 const emailSchema = z.email();
-const ACTIVE_PREVIEW_SESSION_STORAGE_KEY = "weblingo:try-form:active-preview-id:v1";
 
 function isAbortLikeError(error: unknown): boolean {
   return (
     (error instanceof DOMException && error.name === "AbortError") ||
     (error instanceof Error && error.name === "AbortError")
   );
-}
-
-function canUseSessionStorage() {
-  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
-}
-
-function readActivePreviewIdFromSession(): string | null {
-  if (!canUseSessionStorage()) {
-    return null;
-  }
-  try {
-    return window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeActivePreviewIdToSession(previewId: string) {
-  if (!canUseSessionStorage()) {
-    return;
-  }
-  try {
-    window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
-  } catch {
-    // Ignore storage failures; local preview status still works without tab pinning.
-  }
-}
-
-function clearActivePreviewIdFromSession(previewId?: string | null) {
-  if (!canUseSessionStorage()) {
-    return;
-  }
-  try {
-    if (
-      !previewId ||
-      window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY) === previewId
-    ) {
-      window.sessionStorage.removeItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
-    }
-  } catch {
-    // Ignore storage failures.
-  }
 }
 
 function buildPreviewAnalyticsSignature(job: PreviewStatusCenterJob): string {
