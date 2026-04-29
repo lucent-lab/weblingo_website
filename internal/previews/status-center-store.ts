@@ -20,6 +20,7 @@ export const PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-jobs:v2";
 export const LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY = "weblingo:preview-status-center:v1";
 export const LEGACY_PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-preview:v1";
 export const DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS = 5_000;
+export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;
 const STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS = 24 * 60 * 60 * 1000;
@@ -757,6 +758,68 @@ export function selectLatestActivePreviewStatusCenterJob(
     }
   }
   return best;
+}
+
+function isRestorableActivePreviewStatusCenterJob(
+  job: PreviewStatusCenterJob,
+  now: number,
+): boolean {
+  if (!isPreviewStatusCenterJobActive(job)) {
+    return false;
+  }
+  const createdAt = normalizeTimestamp(job.createdAt);
+  return (
+    createdAt !== Number.NEGATIVE_INFINITY &&
+    now - createdAt <= RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS
+  );
+}
+
+function isRestorablePreviewStatusCenterJob(job: PreviewStatusCenterJob, now: number): boolean {
+  return (
+    isPreviewStatusCenterJobTerminal(job.status) ||
+    isRestorableActivePreviewStatusCenterJob(job, now)
+  );
+}
+
+export function selectRestorablePreviewStatusCenterJob(
+  options: {
+    jobs?: PreviewStatusCenterJob[];
+    currentRequestKey?: string | null;
+    pinnedPreviewId?: string | null;
+    now?: number;
+  } = {},
+): PreviewStatusCenterJob | null {
+  const jobs = options.jobs ?? state.jobs;
+  const now = options.now ?? Date.now();
+
+  if (options.pinnedPreviewId) {
+    const pinned = jobs.find((job) => job.previewId === options.pinnedPreviewId);
+    if (pinned && isRestorablePreviewStatusCenterJob(pinned, now)) {
+      return pinned;
+    }
+  }
+
+  if (options.currentRequestKey) {
+    const matching = selectLatestJobByRequestKey(options.currentRequestKey, jobs);
+    return matching && isRestorablePreviewStatusCenterJob(matching, now) ? matching : null;
+  }
+
+  let bestActive: PreviewStatusCenterJob | null = null;
+  let bestTerminal: PreviewStatusCenterJob | null = null;
+  for (const job of jobs) {
+    if (isRestorableActivePreviewStatusCenterJob(job, now)) {
+      if (!bestActive || comparePreviewStatusCenterJobs(job, bestActive) < 0) {
+        bestActive = job;
+      }
+      continue;
+    }
+    if (isPreviewStatusCenterJobTerminal(job.status)) {
+      if (!bestTerminal || comparePreviewStatusCenterJobs(job, bestTerminal) < 0) {
+        bestTerminal = job;
+      }
+    }
+  }
+  return bestActive ?? bestTerminal;
 }
 
 export function selectPreferredPreviewStatusCenterJob(

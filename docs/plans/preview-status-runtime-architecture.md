@@ -18,6 +18,7 @@ Retention and bounds:
 
 - max 20 jobs
 - TTL 24h from `updatedAt`
+- active jobs older than 15 minutes from `createdAt` are kept in storage but are not auto-restored as the primary Try form state
 
 ## One-time migration behavior
 
@@ -77,6 +78,6 @@ All preview job state mutations must go through store events and reducer logic (
 
 - Status center list: `selectJobsForStatusCenter()`
 - Try form binding: `selectLatestJobByRequestKey(requestKey)`
-- Initial restore: `selectLatestActivePreviewStatusCenterJob()`
+- Initial Try form restore: `selectRestorablePreviewStatusCenterJob()`, which prefers the current tab's pinned preview id, then a matching current request key, then a fresh active job, then the latest terminal job.
 
 This keeps form and toast/status-center synchronized from the same source of truth.

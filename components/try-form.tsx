@@ -51,9 +51,8 @@ import {
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
   removePreviewStatusCenterJob,
-  selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
-  selectPreferredPreviewStatusCenterJob,
+  selectRestorablePreviewStatusCenterJob,
   subscribePreviewStatusCenterStore,
   upsertPreviewStatusCenterJob,
   updatePreviewStatusCenterJob,
@@ -86,12 +85,55 @@ type ConnectStatusUpdatesOptions = {
 };
 
 const emailSchema = z.email();
+const ACTIVE_PREVIEW_SESSION_STORAGE_KEY = "weblingo:try-form:active-preview-id:v1";
 
 function isAbortLikeError(error: unknown): boolean {
   return (
     (error instanceof DOMException && error.name === "AbortError") ||
     (error instanceof Error && error.name === "AbortError")
   );
+}
+
+function canUseSessionStorage() {
+  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+}
+
+function readActivePreviewIdFromSession(): string | null {
+  if (!canUseSessionStorage()) {
+    return null;
+  }
+  try {
+    return window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeActivePreviewIdToSession(previewId: string) {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
+  } catch {
+    // Ignore storage failures; local preview status still works without tab pinning.
+  }
+}
+
+function clearActivePreviewIdFromSession(previewId?: string | null) {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+  try {
+    if (
+      !previewId ||
+      window.sessionStorage.getItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY) === previewId
+    ) {
+      window.sessionStorage.removeItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 function buildPreviewAnalyticsSignature(job: PreviewStatusCenterJob): string {
@@ -428,11 +470,15 @@ export function TryForm({
     }
     restoreAttemptedRef.current = true;
 
-    const restoredJob =
-      selectLatestActivePreviewStatusCenterJob(jobs) ?? selectPreferredPreviewStatusCenterJob(jobs);
+    const restoredJob = selectRestorablePreviewStatusCenterJob({
+      jobs,
+      currentRequestKey: trimmedUrl ? currentRequestKey : null,
+      pinnedPreviewId: readActivePreviewIdFromSession(),
+    });
     if (!restoredJob) {
       return;
     }
+    writeActivePreviewIdToSession(restoredJob.previewId);
 
     trackedPreviewIdsRef.current.add(restoredJob.previewId);
     if (
@@ -464,7 +510,7 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [jobs, lastRequestKey]);
+  }, [currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
 
   useEffect(() => {
     if (
@@ -692,6 +738,7 @@ export function TryForm({
       removePreviewStatusCenterJob(trackedJob.previewId);
       clearRestoredStatusCheckRetry(trackedJob.previewId);
       restoredStatusCheckStartedRef.current.delete(trackedJob.previewId);
+      clearActivePreviewIdFromSession(trackedJob.previewId);
     }
     setLastRequestKey(null);
     setSubmissionError(null);
@@ -978,6 +1025,7 @@ export function TryForm({
       remoteStatusVerified: true,
       retryCount: 0,
     });
+    writeActivePreviewIdToSession(previewId);
 
     if (typeof window === "undefined" || typeof window.EventSource !== "function") {
       void handleCheckStatus(previewId, statusToken);
