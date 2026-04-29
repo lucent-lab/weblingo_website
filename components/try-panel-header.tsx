@@ -8,7 +8,8 @@ import {
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   hydratePreviewStatusCenterStore,
-  selectLatestActivePreviewStatusCenterJob,
+  readActivePreviewIdFromSession,
+  selectRestorablePreviewStatusCenterJob,
   subscribePreviewStatusCenterStore,
 } from "@internal/previews/status-center-store";
 
@@ -28,7 +29,14 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
     hydratePreviewStatusCenterStore();
   }, []);
 
-  const activeJob = useMemo(() => selectLatestActivePreviewStatusCenterJob(jobs), [jobs]);
+  const activeJob = useMemo(
+    () =>
+      selectRestorablePreviewStatusCenterJob({
+        jobs,
+        pinnedPreviewId: readActivePreviewIdFromSession(),
+      }),
+    [jobs],
+  );
   const isRunning = activeJob?.status === "pending" || activeJob?.status === "processing";
   const title = isRunning ? resolvePreviewStatusCenterMessage(activeJob, t) : t("try.header.title");
   const description = isRunning ? t("try.status.processingHint") : t("try.header.description");

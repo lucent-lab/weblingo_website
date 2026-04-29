@@ -201,6 +201,8 @@ function storeRestoredActiveJob(
   const sourceUrl = overrides.sourceUrl ?? "https://restore.example.com";
   const sourceLang = overrides.sourceLang ?? "en";
   const targetLang = overrides.targetLang ?? "fr";
+  const createdAt = typeof overrides.createdAt === "number" ? overrides.createdAt : now - 2_000;
+  const updatedAt = typeof overrides.updatedAt === "number" ? overrides.updatedAt : now - 1_000;
   window.localStorage.setItem(
     PREVIEW_STATUS_CENTER_STORAGE_KEY,
     JSON.stringify([
@@ -223,8 +225,8 @@ function storeRestoredActiveJob(
         error: null,
         errorCode: null,
         errorStage: null,
-        createdAt: now - 2_000,
-        updatedAt: now - 1_000,
+        createdAt,
+        updatedAt,
         expiresAt: null,
         retryCount: 0,
         nextPollAt: now + 5_000,
@@ -238,6 +240,7 @@ const originalEventSource = globalThis.EventSource;
 beforeEach(() => {
   resetPreviewStatusCenterStoreForTests();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   MockEventSource.instances = [];
   globalThis.EventSource = MockEventSource as unknown as typeof EventSource;
   captureAnalyticsEvent.mockReset();
@@ -248,6 +251,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   resetPreviewStatusCenterStoreForTests();
   globalThis.EventSource = originalEventSource;
 });
@@ -731,6 +735,102 @@ describe("TryForm preview status", () => {
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
     });
+  });
+
+  it("prefers the tab-pinned fresh preview over an older active preview on refresh", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ status: "processing", stage: "fetching_page" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const now = Date.now();
+    const staleRequestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://stale.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    const freshRequestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://fresh.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "stale-4444-4444-4444-444444444444",
+          requestKey: staleRequestKey,
+          statusToken: "stale-token",
+          sourceUrl: "https://stale.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 60 * 60 * 1000,
+          updatedAt: now + 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 5_000,
+        },
+        {
+          previewId: "fresh-5555-5555-5555-555555555555",
+          requestKey: freshRequestKey,
+          statusToken: "fresh-token",
+          sourceUrl: "https://fresh.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "fetching_page",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 5_000,
+          updatedAt: now - 4_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 5_000,
+        },
+      ]),
+    );
+    window.sessionStorage.setItem(
+      "weblingo:try-form:active-preview-id:v1",
+      "fresh-5555-5555-5555-555555555555",
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/fresh-5555-5555-5555-555555555555?token=fresh-token",
+      );
+      expect(screen.getByText("fresh.example.com • English -> French")).toBeTruthy();
+      expect(screen.queryByText("stale.example.com • English -> French")).toBeNull();
+    });
+  });
+
+  it("does not let an old active preview take over an empty form on refresh", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const now = Date.now();
+    storeRestoredActiveJob({
+      previewId: "old-6666-6666-6666-666666666666",
+      sourceUrl: "https://old.example.com",
+      createdAt: now - 60 * 60 * 1000,
+      updatedAt: now,
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.queryByText("old.example.com • English -> French")).toBeNull();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("shows retry and escape actions when restored status fetch fails", async () => {

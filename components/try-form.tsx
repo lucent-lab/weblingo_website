@@ -45,18 +45,20 @@ import {
 } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,
+  clearActivePreviewIdFromSession,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   hydratePreviewStatusCenterStore,
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
+  readActivePreviewIdFromSession,
   removePreviewStatusCenterJob,
-  selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
-  selectPreferredPreviewStatusCenterJob,
+  selectRestorablePreviewStatusCenterJob,
   subscribePreviewStatusCenterStore,
   upsertPreviewStatusCenterJob,
   updatePreviewStatusCenterJob,
+  writeActivePreviewIdToSession,
   type PreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
 import type { SupportedLanguage } from "@internal/dashboard/webhooks";
@@ -428,11 +430,15 @@ export function TryForm({
     }
     restoreAttemptedRef.current = true;
 
-    const restoredJob =
-      selectLatestActivePreviewStatusCenterJob(jobs) ?? selectPreferredPreviewStatusCenterJob(jobs);
+    const restoredJob = selectRestorablePreviewStatusCenterJob({
+      jobs,
+      currentRequestKey: trimmedUrl ? currentRequestKey : null,
+      pinnedPreviewId: readActivePreviewIdFromSession(),
+    });
     if (!restoredJob) {
       return;
     }
+    writeActivePreviewIdToSession(restoredJob.previewId);
 
     trackedPreviewIdsRef.current.add(restoredJob.previewId);
     if (
@@ -464,7 +470,7 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [jobs, lastRequestKey]);
+  }, [currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
 
   useEffect(() => {
     if (
@@ -692,6 +698,7 @@ export function TryForm({
       removePreviewStatusCenterJob(trackedJob.previewId);
       clearRestoredStatusCheckRetry(trackedJob.previewId);
       restoredStatusCheckStartedRef.current.delete(trackedJob.previewId);
+      clearActivePreviewIdFromSession(trackedJob.previewId);
     }
     setLastRequestKey(null);
     setSubmissionError(null);
@@ -978,6 +985,7 @@ export function TryForm({
       remoteStatusVerified: true,
       retryCount: 0,
     });
+    writeActivePreviewIdToSession(previewId);
 
     if (typeof window === "undefined" || typeof window.EventSource !== "function") {
       void handleCheckStatus(previewId, statusToken);
