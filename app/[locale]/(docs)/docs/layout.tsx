@@ -46,7 +46,7 @@ export default async function DocsLayout({
     supportTitle: t("docs.shell.supportTitle"),
     supportDescription: t("docs.shell.supportDescription"),
     supportCta: t("docs.shell.supportCta"),
-    homeLabel: t("nav.home"),
+    menuLabel: t("nav.menu"),
   };
 
   return (
@@ -55,6 +55,7 @@ export default async function DocsLayout({
       navSections={navSections}
       copy={copy}
       headerLinks={[
+        { href: `/${locale}/pricing`, label: t("nav.pricing") },
         { href: `/${locale}/docs`, label: t("nav.docs") },
         { href: `/${locale}/blog`, label: t("nav.blog") },
       ]}
