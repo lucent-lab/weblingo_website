@@ -22,9 +22,9 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
-      <header className="space-y-3">
-        <h1 className="text-4xl font-semibold text-foreground">{t("docs.title")}</h1>
-        <p className="text-base text-muted-foreground">{t("docs.overview")}</p>
+      <header className="max-w-3xl space-y-4">
+        <h1 className="text-4xl font-semibold text-foreground sm:text-5xl">{t("docs.title")}</h1>
+        <p className="text-lg leading-8 text-muted-foreground">{t("docs.overview")}</p>
         {backendSyncSummary ? (
           <p className="text-xs text-muted-foreground">
             {t("docs.syncedBackendSnapshot")}: <code>{backendSyncSummary.sha}</code> (
@@ -51,7 +51,7 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
                 const href = `/${locale}/docs/${doc.slug.join("/")}`;
                 return (
                   <Link key={href} href={href} className="group">
-                    <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-md">
+                    <Card className="surface-lift h-full">
                       <CardHeader>
                         <CardTitle className="text-xl">{doc.title}</CardTitle>
                         <CardDescription>{doc.description}</CardDescription>
@@ -81,7 +81,7 @@ export default async function DocsPage({ params }: { params: Promise<{ locale: s
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Link href={`/${locale}/docs/workflows`} className="group">
-                <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-md">
+                <Card className="surface-lift h-full">
                   <CardHeader>
                     <CardTitle className="text-xl">Workflow Playbooks</CardTitle>
                     <CardDescription>

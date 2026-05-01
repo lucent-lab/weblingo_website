@@ -23,7 +23,7 @@ export default async function BlogLayout({
   return (
     <div className="bg-muted/30 flex min-h-screen flex-col">
       <header className="border-b bg-background">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 lg:px-6">
           <Link href={`/${locale}`} className="flex items-center gap-2 text-sm font-semibold">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Globe className="h-4 w-4" />
@@ -33,17 +33,20 @@ export default async function BlogLayout({
           <nav className="flex items-center gap-4 text-sm font-medium">
             <Link
               href={`/${locale}/docs`}
-              className="text-muted-foreground transition hover:text-foreground"
+              className="rounded-md px-2 py-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
             >
               {t("nav.docs")}
             </Link>
-            <Link href={`/${locale}/blog`} className="text-foreground">
+            <Link
+              href={`/${locale}/blog`}
+              className="rounded-md bg-primary/10 px-2 py-1 text-primary"
+            >
               {t("nav.blog")}
             </Link>
           </nav>
           <Link
             href={`/${locale}`}
-            className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+            className="hidden text-sm font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
           >
             {t("nav.home")}
           </Link>

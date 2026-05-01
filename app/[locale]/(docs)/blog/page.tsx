@@ -20,25 +20,28 @@ export default async function BlogPage({ params }: { params: Promise<{ locale: s
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
-      <header className="space-y-3">
-        <h1 className="text-4xl font-semibold text-foreground">{t("nav.blog")}</h1>
-        <p className="text-base text-muted-foreground">{t("blog.subtitle")}</p>
+      <header className="max-w-3xl space-y-4">
+        <h1 className="text-4xl font-semibold text-foreground sm:text-5xl">{t("nav.blog")}</h1>
+        <p className="text-lg leading-8 text-muted-foreground">{t("blog.subtitle")}</p>
       </header>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         {posts.map((post) => {
           const href = `/${locale}/blog/${post.slug}`;
           const formattedDate = formatter.format(new Date(post.date));
           return (
             <Link key={post.slug} href={href} className="group">
-              <Card className="transition hover:-translate-y-0.5 hover:shadow-md">
+              <Card className="h-full transition duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-xl">{post.title}</CardTitle>
-                  <CardDescription className="flex flex-col gap-2">
-                    <span>{post.description}</span>
-                    <time dateTime={post.date} className="text-xs uppercase tracking-wide">
-                      {formattedDate}
-                    </time>
+                  <time
+                    dateTime={post.date}
+                    className="text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+                  >
+                    {formattedDate}
+                  </time>
+                  <CardTitle className="text-2xl leading-tight">{post.title}</CardTitle>
+                  <CardDescription className="text-base leading-7">
+                    {post.description}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
