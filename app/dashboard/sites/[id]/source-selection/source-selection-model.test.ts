@@ -9,6 +9,10 @@ function page(sourcePath: string, selected: boolean): SourceSelectionPreviewPage
     sourcePath,
     selected,
     reason: selected ? "included_by_rule" : "excluded_by_rule",
+    effectiveState: selected ? "included" : "excluded",
+    previousSelected: true,
+    previousReason: "included_by_default",
+    changed: !selected,
   };
 }
 

@@ -184,6 +184,7 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     inSync: t("dashboard.sourceSelection.inSync", "Saved state"),
     actionLabel: t("dashboard.sourceSelection.rule.action", "Action"),
     patternLabel: t("dashboard.sourceSelection.rule.pattern", "Pattern"),
+    patternPlaceholder: t("dashboard.sourceSelection.rule.patternPlaceholder", "/blog/*"),
     includeAction: t("dashboard.sourceSelection.rule.include", "Include"),
     excludeAction: t("dashboard.sourceSelection.rule.exclude", "Exclude"),
     addIncludeRule: t("dashboard.sourceSelection.rule.addInclude", "Add include rule"),
@@ -224,6 +225,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     reasonColumn: t("dashboard.sourceSelection.pages.column.reason", "Reason"),
     actionsColumn: t("dashboard.sourceSelection.pages.column.actions", "Actions"),
     selected: t("dashboard.sourceSelection.state.selected", "Selected"),
+    selectedOnPage: t(
+      "dashboard.sourceSelection.state.selectedOnPage",
+      "Selected on this preview page",
+    ),
     excluded: t("dashboard.sourceSelection.state.excluded", "Excluded"),
     mixed: t("dashboard.sourceSelection.state.mixed", "Mixed"),
     defaultState: t("dashboard.sourceSelection.state.default", "Default"),

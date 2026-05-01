@@ -609,6 +609,37 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     expect(parsed.site.showcase?.websitePath).toBe("autotrim.com");
   });
 
+  it("requires backend preview page state fields in source-selection responses", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const result = __webhooksZodContracts.sourceSelectionPreviewResponseSchema.safeParse({
+      sourceSelection: { rules: [] },
+      summary: {
+        knownPagesTotal: 1,
+        knownPagesIncluded: 1,
+        knownPagesExcluded: 0,
+        includedByDefault: 1,
+        includedByRule: 0,
+        excludedByRule: 0,
+        notIncludedByRule: 0,
+        canonicalizedByRule: 0,
+        rulesTotal: 0,
+      },
+      affectedPages: [
+        {
+          sourcePath: "/",
+          selected: true,
+          reason: "included_by_default",
+        },
+      ],
+      pagination: { limit: 100, offset: 0, total: 1, hasMore: false },
+      warnings: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("keeps SiteShowcaseResponse.showcaseServingStatus required and non-null", async () => {
     const spec = readOpenApiSpecFromEnv();
     const openApiSchema = spec.components?.schemas?.SiteShowcaseResponse as

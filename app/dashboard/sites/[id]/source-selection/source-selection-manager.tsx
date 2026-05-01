@@ -47,6 +47,7 @@ export type SourceSelectionCopy = {
   inSync: string;
   actionLabel: string;
   patternLabel: string;
+  patternPlaceholder: string;
   includeAction: string;
   excludeAction: string;
   addIncludeRule: string;
@@ -75,6 +76,7 @@ export type SourceSelectionCopy = {
   reasonColumn: string;
   actionsColumn: string;
   selected: string;
+  selectedOnPage: string;
   excluded: string;
   mixed: string;
   defaultState: string;
@@ -148,6 +150,7 @@ export function SourceSelectionManager({
   );
   const hasUnsavedChanges = draftFingerprint !== persistedFingerprint;
   const previewIsCurrent = lastSuccessfulPreviewFingerprint === draftFingerprint;
+  const currentPreview = previewIsCurrent && !previewError ? preview : null;
   const controlsCanEdit = canEdit && !isSaving;
   const canSave =
     canEdit &&
@@ -274,9 +277,20 @@ export function SourceSelectionManager({
   };
 
   const treeRows = useMemo(
-    () => deriveDisplayTreeFromPreview(preview?.affectedPages ?? [], draftRules),
-    [draftRules, preview?.affectedPages],
+    () => deriveDisplayTreeFromPreview(currentPreview?.affectedPages ?? [], draftRules),
+    [currentPreview?.affectedPages, draftRules],
   );
+
+  const pagination = currentPreview?.pagination ?? null;
+  const paginationStart = currentPreview
+    ? Math.min(currentPreview.pagination.offset + 1, currentPreview.pagination.total)
+    : 0;
+  const paginationEnd = currentPreview
+    ? Math.min(
+        currentPreview.pagination.offset + currentPreview.affectedPages.length,
+        currentPreview.pagination.total,
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -359,8 +373,10 @@ export function SourceSelectionManager({
       </div>
 
       {previewError ? <ValidationAlert copy={copy} error={previewError} /> : null}
-      {preview?.warnings.length ? <WarningsAlert copy={copy} preview={preview} /> : null}
-      {preview ? <PreviewSummary copy={copy} preview={preview} /> : null}
+      {currentPreview?.warnings.length ? (
+        <WarningsAlert copy={copy} preview={currentPreview} />
+      ) : null}
+      {currentPreview ? <PreviewSummary copy={copy} preview={currentPreview} /> : null}
 
       <Card>
         <CardHeader>
@@ -368,38 +384,37 @@ export function SourceSelectionManager({
           <CardDescription>{copy.pagesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          {isPreviewLoading && !preview ? (
+          {isPreviewLoading && !currentPreview ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               {copy.previewLoading}
             </div>
-          ) : treeRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{copy.pagesEmpty}</p>
           ) : (
             <div className="space-y-4">
-              <SourceSelectionTree
-                canEdit={controlsCanEdit}
-                copy={copy}
-                rows={treeRows}
-                onChange={updateDraftRules}
-              />
-              {preview ? (
+              {treeRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{copy.pagesEmpty}</p>
+              ) : (
+                <SourceSelectionTree
+                  canEdit={controlsCanEdit}
+                  copy={copy}
+                  rows={treeRows}
+                  onChange={updateDraftRules}
+                />
+              )}
+              {currentPreview && pagination ? (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
                     {copy.paginationLabel
-                      .replace("{start}", String(preview.pagination.offset + 1))
-                      .replace(
-                        "{end}",
-                        String(preview.pagination.offset + preview.affectedPages.length),
-                      )
-                      .replace("{total}", String(preview.pagination.total))}
+                      .replace("{start}", String(paginationStart))
+                      .replace("{end}", String(paginationEnd))
+                      .replace("{total}", String(pagination.total))}
                   </p>
                   <div className="flex gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={preview.pagination.offset <= 0 || isPreviewLoading}
+                      disabled={pagination.offset <= 0 || isPreviewLoading}
                       onClick={() => setOffset(Math.max(0, offset - PREVIEW_PAGE_SIZE))}
                     >
                       {copy.previousPage}
@@ -408,7 +423,7 @@ export function SourceSelectionManager({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={!preview.pagination.hasMore || isPreviewLoading}
+                      disabled={!pagination.hasMore || isPreviewLoading}
                       onClick={() => setOffset(offset + PREVIEW_PAGE_SIZE)}
                     >
                       {copy.nextPage}
@@ -461,7 +476,7 @@ function RuleEditor({
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
 }) {
   const addRule = (action: EditableSourceSelectionAction) => {
-    onChange((current) => [...current, createDraftRule(action, "/")]);
+    onChange((current) => [...current, createDraftRule(action, "")]);
   };
 
   return (
@@ -498,6 +513,7 @@ function RuleEditor({
               <Input
                 id={patternId}
                 value={rule.pattern}
+                placeholder={copy.patternPlaceholder}
                 disabled={!canEdit}
                 onChange={(event) => {
                   const value = event.target.value;
@@ -693,10 +709,18 @@ function SourceSelectionTree({
       <table className="w-full min-w-[760px] text-sm">
         <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
           <tr>
-            <th className="px-3 py-2 text-left">{copy.pageColumn}</th>
-            <th className="px-3 py-2 text-left">{copy.stateColumn}</th>
-            <th className="px-3 py-2 text-left">{copy.reasonColumn}</th>
-            <th className="px-3 py-2 text-right">{copy.actionsColumn}</th>
+            <th scope="col" className="px-3 py-2 text-left">
+              {copy.pageColumn}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left">
+              {copy.stateColumn}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left">
+              {copy.reasonColumn}
+            </th>
+            <th scope="col" className="px-3 py-2 text-right">
+              {copy.actionsColumn}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -748,7 +772,7 @@ function FolderRow({
         <span className="font-mono text-xs">
           {row.includedCount}/{row.totalCount}
         </span>{" "}
-        {copy.selected}
+        {copy.selectedOnPage}
         {row.descendantRuleAction ? (
           <div className="mt-1">
             <Badge variant="outline">{copy.direct}</Badge>
@@ -761,6 +785,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
+            aria-label={`${copy.includeDescendants} ${row.path}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("include")}
           >
@@ -770,6 +795,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
+            aria-label={`${copy.excludeDescendants} ${row.path}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("exclude")}
           >
@@ -779,6 +805,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="ghost"
+            aria-label={`${copy.inheritDescendants} ${row.path}`}
             disabled={!canEdit}
             onClick={clearDescendantRule}
           >
@@ -856,6 +883,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
+            aria-label={`${copy.includePage} ${page.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("include")}
           >
@@ -865,6 +893,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
+            aria-label={`${copy.excludePage} ${page.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("exclude")}
           >
@@ -874,6 +903,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="ghost"
+            aria-label={`${copy.inheritPage} ${page.sourcePath}`}
             disabled={!canEdit}
             onClick={clearPageRule}
           >

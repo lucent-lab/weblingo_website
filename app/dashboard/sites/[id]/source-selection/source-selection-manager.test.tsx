@@ -27,6 +27,7 @@ const copy: SourceSelectionCopy = {
   inSync: "Saved state",
   actionLabel: "Action",
   patternLabel: "Pattern",
+  patternPlaceholder: "/blog/*",
   includeAction: "Include",
   excludeAction: "Exclude",
   addIncludeRule: "Add include rule",
@@ -55,6 +56,7 @@ const copy: SourceSelectionCopy = {
   reasonColumn: "Reason",
   actionsColumn: "Actions",
   selected: "Selected",
+  selectedOnPage: "Selected on this preview page",
   excluded: "Excluded",
   mixed: "Mixed",
   defaultState: "Default",
@@ -264,6 +266,47 @@ describe("SourceSelectionManager", () => {
     });
   });
 
+  it("keeps a newly added empty include rule from becoming a saveable allowlist", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(makePreview()), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(validationError("sourceSelection.rules[0].pattern needs a path")),
+          {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      );
+    globalThis.fetch = fetchMock as typeof fetch;
+    const saveAction = vi.fn<SaveSourceSelectionAction>(async () => ({
+      ok: true,
+      message: "saved",
+    }));
+
+    renderManager({ saveAction });
+    await runPreviewTimer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
+    expect(screen.getByPlaceholderText("/blog/*")).toBeTruthy();
+    await runPreviewTimer();
+
+    expect(screen.getByText("Rules need changes")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /save source selection/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /save source selection/i }));
+    expect(saveAction).not.toHaveBeenCalled();
+  });
+
   it("disables rule edits while saving to avoid clobbering newer drafts", async () => {
     vi.useFakeTimers();
     globalThis.fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -392,6 +435,12 @@ describe("SourceSelectionManager", () => {
                     "Unmatched paths will be excluded because at least one include rule is present.",
                 },
               ],
+              pagination: {
+                limit: 100,
+                offset: 0,
+                total: 120,
+                hasMore: true,
+              },
             }),
           ),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -417,7 +466,115 @@ describe("SourceSelectionManager", () => {
     expect(screen.getAllByText("/blog/drafts/*").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Inherited").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Direct").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Selected on this preview page").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Include page /blog/post-1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Exclude section /blog" })).toBeTruthy();
     expect(screen.queryByText(/hreflang/i)).toBeNull();
+  });
+
+  it("hides stale preview output when the current draft fails validation", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makePreview({
+              affectedPages: [
+                {
+                  sourcePath: "/blog/post-1",
+                  selected: true,
+                  reason: "included_by_default",
+                  effectiveState: "included",
+                  previousSelected: true,
+                  previousReason: "included_by_default",
+                  changed: false,
+                },
+              ],
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            validationError(
+              "sourceSelection.rules[0].pattern must use exact paths or /* wildcards",
+            ),
+          ),
+          {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+    expect(screen.getByText("/blog/post-1")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
+    fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog*" } });
+    await runPreviewTimer();
+
+    expect(screen.getByText("Rules need changes")).toBeTruthy();
+    expect(screen.queryByText("/blog/post-1")).toBeNull();
+    expect(screen.queryByText("Preview summary")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: /save source selection/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it("keeps pagination controls visible for an empty nonzero-offset preview page", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makePreview({
+              affectedPages: [
+                {
+                  sourcePath: "/blog/post-1",
+                  selected: true,
+                  reason: "included_by_default",
+                  effectiveState: "included",
+                  previousSelected: true,
+                  previousReason: "included_by_default",
+                  changed: false,
+                },
+              ],
+              pagination: { limit: 100, offset: 0, total: 100, hasMore: true },
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            makePreview({
+              affectedPages: [],
+              pagination: { limit: 100, offset: 100, total: 100, hasMore: false },
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ) as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await runPreviewTimer();
+
+    expect(screen.getByText("No known pages returned by preview.")).toBeTruthy();
+    expect(screen.getByText("100-100 of 100 previewed paths")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Previous" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
   });
 
   it("renders exclude-only behavior with unmatched pages included by default", async () => {

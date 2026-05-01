@@ -21,6 +21,7 @@ import {
   resumeTranslationRun,
   setTranslationSummaryPreference,
   setLocaleServing,
+  fetchSite,
   translateSite,
   triggerCrawl,
   triggerCrawlTranslate,
@@ -745,6 +746,14 @@ export async function updateSourceSelectionAction(
     }
     if (!auth.mutationsAllowed) {
       return failed(formatBillingBlockMessage(auth, "edit source selection"));
+    }
+
+    const currentSite = await fetchSite(auth.webhooksAuth, siteId);
+    const currentRules = currentSite.routeConfig?.sourceSelection?.rules ?? [];
+    if (currentRules.some((rule) => !isEditableSourceSelectionAction(rule.action))) {
+      return failed(
+        "Source selection contains unsupported rules and cannot be edited from this dashboard.",
+      );
     }
 
     const updated = await updateSite(auth.webhooksAuth, siteId, { sourceSelection });

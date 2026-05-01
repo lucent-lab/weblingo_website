@@ -143,4 +143,29 @@ describe("POST /api/dashboard/sites/[siteId]/source-selection/preview", () => {
     const body = await response.json();
     expect(body.details.validation.field).toBe("sourceSelection.rules[0].pattern");
   });
+
+  it.each([
+    ["limit=0", "limit must be at least 1."],
+    ["limit=201", "limit must be at most 200."],
+    ["limit=1.5", "limit must be an integer."],
+    ["limit=abc", "limit must be an integer."],
+    ["offset=-1", "offset must be at least 0."],
+    ["offset=1.5", "offset must be an integer."],
+  ])("rejects invalid pagination query %s", async (query, message) => {
+    mockedRequireDashboardAuth.mockResolvedValue(makeAuth());
+
+    const response = await POST(
+      new Request(`http://localhost/api/dashboard/sites/site-1/source-selection/preview?${query}`, {
+        method: "POST",
+        body: JSON.stringify({
+          sourceSelection: { rules: [] },
+        }),
+      }),
+      { params: Promise.resolve({ siteId: "site-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: message });
+    expect(mockedPreviewSourceSelection).not.toHaveBeenCalled();
+  });
 });

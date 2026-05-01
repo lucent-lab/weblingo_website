@@ -9,17 +9,52 @@ type RouteParams = {
   }>;
 };
 
-function parsePagination(searchParams: URLSearchParams): { limit?: number; offset?: number } {
+type PaginationResult =
+  | { ok: true; value: { limit?: number; offset?: number } }
+  | { ok: false; error: string };
+
+function parseOptionalInteger(
+  name: string,
+  rawValue: string | null,
+  bounds: { min: number; max?: number },
+): { ok: true; value?: number } | { ok: false; error: string } {
+  if (rawValue === null) {
+    return { ok: true };
+  }
+
+  const value = Number(rawValue);
+  if (!Number.isInteger(value)) {
+    return { ok: false, error: `${name} must be an integer.` };
+  }
+  if (value < bounds.min) {
+    return { ok: false, error: `${name} must be at least ${bounds.min}.` };
+  }
+  if (typeof bounds.max === "number" && value > bounds.max) {
+    return { ok: false, error: `${name} must be at most ${bounds.max}.` };
+  }
+  return { ok: true, value };
+}
+
+function parsePagination(searchParams: URLSearchParams): PaginationResult {
   const out: { limit?: number; offset?: number } = {};
-  const limitRaw = searchParams.get("limit");
-  const offsetRaw = searchParams.get("offset");
-  if (limitRaw !== null) {
-    out.limit = Number(limitRaw);
+
+  const limit = parseOptionalInteger("limit", searchParams.get("limit"), { min: 1, max: 200 });
+  if (!limit.ok) {
+    return limit;
   }
-  if (offsetRaw !== null) {
-    out.offset = Number(offsetRaw);
+  if (typeof limit.value === "number") {
+    out.limit = limit.value;
   }
-  return out;
+
+  const offset = parseOptionalInteger("offset", searchParams.get("offset"), { min: 0 });
+  if (!offset.ok) {
+    return offset;
+  }
+  if (typeof offset.value === "number") {
+    out.offset = offset.value;
+  }
+
+  return { ok: true, value: out };
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
@@ -41,6 +76,10 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   try {
     const url = new URL(request.url);
+    const pagination = parsePagination(url.searchParams);
+    if (!pagination.ok) {
+      return NextResponse.json({ error: pagination.error }, { status: 400 });
+    }
     const preview = await previewSourceSelection(
       auth.webhooksAuth,
       siteId,
@@ -49,7 +88,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           rules: Array<{ action: "include" | "exclude"; pattern: string }>;
         };
       },
-      parsePagination(url.searchParams),
+      pagination.value,
     );
     return NextResponse.json(preview);
   } catch (error) {

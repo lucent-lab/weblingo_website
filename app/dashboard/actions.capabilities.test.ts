@@ -11,6 +11,7 @@ const upsertDigestSubscription = vi.fn();
 const setTranslationSummaryPreference = vi.fn();
 const listTranslationSummaries = vi.fn();
 const fetchSwitcherSnippets = vi.fn();
+const fetchSite = vi.fn();
 const updateSite = vi.fn();
 const triggerCrawl = vi.fn();
 const translateSite = vi.fn();
@@ -47,6 +48,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   createSite,
   deactivateSite,
   cancelTranslationRun,
+  fetchSite,
   fetchSwitcherSnippets,
   listTranslationSummaries,
   provisionDomain,
@@ -111,6 +113,11 @@ describe("dashboard capability actions", () => {
         ? JSON.parse(raw)
         : ["translation.completed", "translation.failed", "translation.summary"],
     );
+    fetchSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: { rules: [] },
+      },
+    });
   });
 
   it("queues crawl+translate with parsed csv payload and force flag", async () => {
@@ -273,6 +280,10 @@ describe("dashboard capability actions", () => {
     const result = await updateSourceSelectionAction(undefined, formData);
 
     expect(result.ok).toBe(true);
+    expect(fetchSite).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token", subjectAccountId: "acct-1" }),
+      "site-1",
+    );
     expect(updateSite).toHaveBeenCalledWith(
       expect.objectContaining({ token: "webhooks-token", subjectAccountId: "acct-1" }),
       "site-1",
@@ -312,6 +323,45 @@ describe("dashboard capability actions", () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/include or exclude/i);
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks source-selection save when persisted rules contain unsupported actions", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "edit"),
+    });
+    fetchSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: {
+          rules: [
+            {
+              action: "canonical_source",
+              pattern: "/fr/*",
+              canonicalSourcePattern: "/blog/*",
+            },
+          ],
+        },
+      },
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [{ action: "include", pattern: "/blog/*" }],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/unsupported rules/i);
     expect(updateSite).not.toHaveBeenCalled();
   });
 
