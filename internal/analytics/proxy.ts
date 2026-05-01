@@ -1,5 +1,3 @@
-const POSTHOG_PROXY_PATH = "/_analytics/posthog";
-
 const HOP_BY_HOP_REQUEST_HEADERS = new Set([
   "authorization",
   "connection",
@@ -35,10 +33,6 @@ function normalizeBasePath(pathname: string): string {
   }
 
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-}
-
-export function buildPosthogProxyApiHost(appUrl: string): string {
-  return new URL(POSTHOG_PROXY_PATH, appUrl).toString().replace(/\/$/, "");
 }
 
 export function buildPosthogUpstreamUrl(

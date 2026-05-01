@@ -56,7 +56,7 @@ describe("PostHog proxy route", () => {
     );
 
     const response = await POST(
-      buildRequest("http://localhost:3000/_analytics/posthog/e/?ip=1", {
+      buildRequest("http://localhost:3000/api/analytics/posthog/e/?ip=1", {
         body: '{"event":"preview_ready"}',
         headers: {
           "content-type": "application/json",
@@ -89,7 +89,7 @@ describe("PostHog proxy route", () => {
       }),
     );
 
-    await GET(buildRequest("http://localhost:3000/_analytics/posthog/decide/?v=3"), {
+    await GET(buildRequest("http://localhost:3000/api/analytics/posthog/decide/?v=3"), {
       params: Promise.resolve({ path: ["decide"] }),
     });
 
@@ -106,7 +106,7 @@ describe("PostHog proxy route", () => {
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
 
     const response = await POST(
-      buildRequest("http://localhost:3000/_analytics/posthog/e/?ip=1", {
+      buildRequest("http://localhost:3000/api/analytics/posthog/e/?ip=1", {
         body: '{"event":"preview_ready"}',
         headers: {
           "content-type": "application/json",
@@ -114,6 +114,24 @@ describe("PostHog proxy route", () => {
         method: "POST",
       }),
       { params: Promise.resolve({ path: ["e"] }) },
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("degrades without surfacing upstream error responses to the browser", async () => {
+    vi.resetModules();
+    const { GET } = await import("./route");
+    fetchMock.mockResolvedValueOnce(
+      new Response("not found", {
+        status: 404,
+      }),
+    );
+
+    const response = await GET(
+      buildRequest("http://localhost:3000/api/analytics/posthog/array/phc_test/config.js"),
+      { params: Promise.resolve({ path: ["array", "phc_test", "config.js"] }) },
     );
 
     expect(response.status).toBe(204);
