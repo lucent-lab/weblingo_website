@@ -81,7 +81,13 @@ describe("SitesNav", () => {
       />,
     );
 
-    for (const label of ["Workspace", "Pages & crawl", "Translation rules", "Settings"]) {
+    for (const label of [
+      "Workspace",
+      "Pages & crawl",
+      "Source selection",
+      "Translation rules",
+      "Settings",
+    ]) {
       const link = screen.getByRole("link", { name: label });
       expect(link.getAttribute("data-prefetch")).toBe("false");
     }

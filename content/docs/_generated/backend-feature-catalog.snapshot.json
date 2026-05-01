@@ -1399,6 +1399,32 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.sourceSelection.preview",
+        "path": "/sites/:siteId/source-selection/preview"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.sourceSelection",
+      "id": "api.sites.sourceSelection.preview",
+      "name": "Preview source-selection rules",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.sourceSelection.preview"
+      ],
+      "stability": "GA",
+      "summary": "Dry-runs proposed `sourceSelection.rules` against known site pages using the same backend parser and resolver as persistence. This endpoint returns normalized compiled rules, summary counts, paginated page decisions, and warnings; it does not persist config or enqueue crawl/translation/publish work.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "GET",
         "operationId": "sites.switcherSnippets.get",
         "path": "/sites/:siteId/switcher-snippets"

@@ -369,6 +369,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}", method: "get" },
       { path: "/sites/{siteId}", method: "patch" },
       { path: "/sites/{siteId}/dashboard", method: "get" },
+      { path: "/sites/{siteId}/source-selection/preview", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "get" },
       { path: "/sites/{siteId}/showcase", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "patch" },
@@ -527,6 +528,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       },
       { name: "ListSitePagesResponse", schema: __webhooksZodContracts.listSitePagesResponseSchema },
       { name: "SiteDashboardResponse", schema: __webhooksZodContracts.siteDashboardResponseSchema },
+      {
+        name: "SourceSelectionPreviewResponse",
+        schema: __webhooksZodContracts.sourceSelectionPreviewResponseSchema,
+      },
       { name: "GlossaryResponse", schema: __webhooksZodContracts.upsertGlossaryResponseSchema },
       {
         name: "CreateOverrideResponse",

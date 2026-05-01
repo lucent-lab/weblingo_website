@@ -238,6 +238,83 @@ describe("dashboard capability actions", () => {
     expect(updateSite).not.toHaveBeenCalled();
   });
 
+  it("saves source-selection rules through the site PATCH payload", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "edit"),
+    });
+    updateSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: {
+          rules: [
+            { action: "include", pattern: "/blog/*" },
+            { action: "exclude", pattern: "/blog/drafts/*" },
+          ],
+        },
+      },
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [
+          { action: "include", pattern: "/blog/*" },
+          { action: "exclude", pattern: "/blog/drafts/*" },
+        ],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result.ok).toBe(true);
+    expect(updateSite).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token", subjectAccountId: "acct-1" }),
+      "site-1",
+      {
+        sourceSelection: {
+          rules: [
+            { action: "include", pattern: "/blog/*" },
+            { action: "exclude", pattern: "/blog/drafts/*" },
+          ],
+        },
+      },
+    );
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
+  });
+
+  it("blocks source-selection save when the editable preview contract is malformed", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [{ action: "canonical_source", pattern: "/fr/*" }],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/include or exclude/i);
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
   it("creates a site with webhook settings and allowlisted events", async () => {
     createSite.mockResolvedValue({
       id: "site-created",

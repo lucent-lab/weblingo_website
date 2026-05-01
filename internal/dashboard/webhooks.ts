@@ -128,16 +128,79 @@ const spaRefreshSchema = z
   })
   .strict();
 
+const sourceSelectionRuleActionSchema = z.enum(["include", "exclude", "canonical_source"]);
+
+const sourceSelectionRuleSchema = z
+  .object({
+    action: sourceSelectionRuleActionSchema,
+    pattern: z.string(),
+    canonicalSourcePattern: z.string().optional(),
+  })
+  .strict();
+
+const sourceSelectionConfigSchema = z
+  .object({
+    rules: z.array(sourceSelectionRuleSchema),
+  })
+  .strict();
+
+const localizedPathTemplateSchema = z
+  .object({
+    targetLang: z.string(),
+    sourcePattern: z.string(),
+    targetPattern: z.string(),
+  })
+  .strict();
+
+const previewCspModeSchema = z.enum([
+  "strict",
+  "compat",
+  "origin-derived",
+  "origin-derived-compat",
+]);
+const proxyCspOverrideModeSchema = z.enum([
+  "off",
+  "compat",
+  "origin-derived",
+  "origin-derived-compat",
+]);
+
+const footerSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    copyId: z.string().optional(),
+    themeId: z.string().optional(),
+  })
+  .strict();
+
+const languageSwitcherSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    mode: z.string().optional(),
+    templateId: z.string().optional(),
+    placement: z.string().optional(),
+    label: z.string().optional(),
+  })
+  .strict();
+
 const routeConfigSchema = z
   .object({
     sourceLang: z.string(),
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
     locales: z.array(routeLocaleSchema),
+    urlMode: z.enum(["original", "translated"]).optional(),
     clientRuntimeEnabled: z.boolean(),
     crawlCaptureMode: crawlCaptureModeSchema,
+    maxDepth: z.number().int().nonnegative().optional(),
+    previewCspMode: previewCspModeSchema.optional(),
+    proxyCspOverrideMode: proxyCspOverrideModeSchema.optional(),
     translatableAttributes: z.array(z.string()).nullable().optional(),
     spaRefresh: spaRefreshSchema.nullable().optional(),
+    footer: footerSettingsSchema.nullable().optional(),
+    languageSwitcher: languageSwitcherSettingsSchema.nullable().optional(),
+    localizedPathTemplates: z.array(localizedPathTemplateSchema).nullable().optional(),
+    sourceSelection: sourceSelectionConfigSchema.optional(),
   })
   .nullable();
 
@@ -676,6 +739,87 @@ const siteDashboardResponseSchema = z
   })
   .strict();
 
+const sourceSelectionPreviewReasonSchema = z.enum([
+  "included_by_default",
+  "included_by_rule",
+  "excluded_by_rule",
+  "canonicalized_by_rule",
+  "not_included_by_rule",
+]);
+
+const sourceSelectionPreviewEffectiveStateSchema = z.enum([
+  "included",
+  "excluded",
+  "canonicalized",
+]);
+
+const sourceSelectionPreviewRuleScopeSchema = z.enum(["direct", "inherited"]);
+
+const sourceSelectionPreviewRuleMatchSchema = z
+  .object({
+    action: sourceSelectionRuleActionSchema,
+    pattern: z.string(),
+    canonicalSourcePattern: z.string().optional(),
+  })
+  .strict();
+
+const sourceSelectionPreviewPageSchema = z
+  .object({
+    sourcePath: z.string(),
+    selected: z.boolean(),
+    reason: sourceSelectionPreviewReasonSchema,
+    effectiveState: sourceSelectionPreviewEffectiveStateSchema.optional(),
+    previousSelected: z.boolean().optional(),
+    previousReason: sourceSelectionPreviewReasonSchema.optional(),
+    changed: z.boolean().optional(),
+    matchedPattern: z.string().optional(),
+    matchedAction: sourceSelectionRuleActionSchema.optional(),
+    ruleScope: sourceSelectionPreviewRuleScopeSchema.optional(),
+    directRule: sourceSelectionPreviewRuleMatchSchema.nullable().optional(),
+    inheritedRule: sourceSelectionPreviewRuleMatchSchema.nullable().optional(),
+    canonicalSourcePath: z.string().optional(),
+  })
+  .strict();
+
+const sourceSelectionPreviewSummarySchema = z
+  .object({
+    knownPagesTotal: z.number().nonnegative(),
+    knownPagesIncluded: z.number().nonnegative(),
+    knownPagesExcluded: z.number().nonnegative(),
+    includedByDefault: z.number().nonnegative(),
+    includedByRule: z.number().nonnegative(),
+    excludedByRule: z.number().nonnegative(),
+    notIncludedByRule: z.number().nonnegative(),
+    canonicalizedByRule: z.number().nonnegative(),
+    rulesTotal: z.number().nonnegative(),
+  })
+  .strict();
+
+const sourceSelectionPreviewWarningCodeSchema = z.enum([
+  "include_rules_create_allowlist",
+  "selected_to_excluded_pages",
+  "selection_excludes_majority",
+]);
+
+const sourceSelectionPreviewWarningSchema = z
+  .object({
+    code: sourceSelectionPreviewWarningCodeSchema,
+    message: z.string(),
+    count: z.number().nonnegative().optional(),
+    sourcePaths: z.array(z.string()).optional(),
+  })
+  .strict();
+
+const sourceSelectionPreviewResponseSchema = z
+  .object({
+    sourceSelection: sourceSelectionConfigSchema,
+    summary: sourceSelectionPreviewSummarySchema,
+    affectedPages: z.array(sourceSelectionPreviewPageSchema),
+    pagination: listSitePagesResponseSchema.shape.pagination,
+    warnings: z.array(sourceSelectionPreviewWarningSchema),
+  })
+  .strict();
+
 const featureFlagsSchema = z
   .object({
     editEnabled: z.boolean(),
@@ -1062,6 +1206,14 @@ export type RouteConfig = z.infer<typeof routeConfigSchema>;
 export type CrawlCaptureMode = z.infer<typeof crawlCaptureModeSchema>;
 export type SpaRefreshSettings = z.infer<typeof spaRefreshSchema>;
 export type SpaRefreshFallback = z.infer<typeof spaRefreshFallbackSchema>;
+export type SourceSelectionRuleAction = z.infer<typeof sourceSelectionRuleActionSchema>;
+export type SourceSelectionRule = z.infer<typeof sourceSelectionRuleSchema>;
+export type SourceSelectionConfig = z.infer<typeof sourceSelectionConfigSchema>;
+export type SourceSelectionPreviewReason = z.infer<typeof sourceSelectionPreviewReasonSchema>;
+export type SourceSelectionPreviewPage = z.infer<typeof sourceSelectionPreviewPageSchema>;
+export type SourceSelectionPreviewSummary = z.infer<typeof sourceSelectionPreviewSummarySchema>;
+export type SourceSelectionPreviewWarning = z.infer<typeof sourceSelectionPreviewWarningSchema>;
+export type SourceSelectionPreviewResponse = z.infer<typeof sourceSelectionPreviewResponseSchema>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -1163,6 +1315,7 @@ export const __webhooksZodContracts = {
   listDeploymentHistoryResponseSchema,
   listSitePagesResponseSchema,
   siteDashboardResponseSchema,
+  sourceSelectionPreviewResponseSchema,
   upsertDigestSubscriptionResponseSchema,
   crawlTranslateResponseSchema,
   setTranslationSummaryPreferenceResponseSchema,
@@ -1473,6 +1626,117 @@ function createDashboardE2eMockDashboardPayload(siteId: string, searchParams: UR
   return payload;
 }
 
+function createDashboardE2eMockSourceSelectionPreview(
+  searchParams: URLSearchParams,
+  body: unknown,
+) {
+  const payload = getBodyRecord(body);
+  const rawSourceSelection = getBodyRecord(payload.sourceSelection);
+  const rules = Array.isArray(rawSourceSelection.rules)
+    ? rawSourceSelection.rules
+        .filter((value): value is Record<string, unknown> => isRecord(value))
+        .map((rule) => ({
+          action:
+            rule.action === "exclude" || rule.action === "canonical_source"
+              ? rule.action
+              : ("include" as const),
+          pattern: typeof rule.pattern === "string" ? rule.pattern : "/",
+          ...(typeof rule.canonicalSourcePattern === "string"
+            ? { canonicalSourcePattern: rule.canonicalSourcePattern }
+            : {}),
+        }))
+    : [];
+  const limitRaw = Number(searchParams.get("limit") ?? "100");
+  const offsetRaw = Number(searchParams.get("offset") ?? "0");
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 100;
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+  const allPages = createDashboardE2eMockPages(30);
+  const hasIncludeRule = rules.some((rule) => rule.action === "include");
+
+  const matchesPattern = (pattern: string, sourcePath: string) => {
+    if (pattern.endsWith("/*")) {
+      const prefix = pattern.slice(0, -2) || "/";
+      return sourcePath === prefix || sourcePath.startsWith(`${prefix}/`);
+    }
+    return pattern === sourcePath;
+  };
+
+  const decisions = allPages.map((page) => {
+    const matchedRule = rules.findLast((rule) => matchesPattern(rule.pattern, page.sourcePath));
+    const selected = matchedRule ? matchedRule.action === "include" : hasIncludeRule ? false : true;
+    const reason = matchedRule
+      ? matchedRule.action === "exclude"
+        ? "excluded_by_rule"
+        : matchedRule.action === "canonical_source"
+          ? "canonicalized_by_rule"
+          : "included_by_rule"
+      : hasIncludeRule
+        ? "not_included_by_rule"
+        : "included_by_default";
+    const ruleScope =
+      matchedRule && matchedRule.pattern.endsWith("/*")
+        ? ("inherited" as const)
+        : ("direct" as const);
+    return {
+      sourcePath: page.sourcePath,
+      selected,
+      reason,
+      effectiveState:
+        reason === "canonicalized_by_rule"
+          ? ("canonicalized" as const)
+          : selected
+            ? "included"
+            : "excluded",
+      previousSelected: true,
+      previousReason: "included_by_default" as const,
+      changed: selected === false,
+      ...(matchedRule
+        ? {
+            matchedPattern: matchedRule.pattern,
+            matchedAction: matchedRule.action,
+            ruleScope,
+            directRule: ruleScope === "direct" ? matchedRule : null,
+            inheritedRule: ruleScope === "inherited" ? matchedRule : null,
+          }
+        : {}),
+    };
+  });
+  const knownPagesIncluded = decisions.filter((page) => page.selected).length;
+  const knownPagesExcluded = decisions.length - knownPagesIncluded;
+
+  return {
+    sourceSelection: { rules },
+    summary: {
+      knownPagesTotal: decisions.length,
+      knownPagesIncluded,
+      knownPagesExcluded,
+      includedByDefault: decisions.filter((page) => page.reason === "included_by_default").length,
+      includedByRule: decisions.filter((page) => page.reason === "included_by_rule").length,
+      excludedByRule: decisions.filter((page) => page.reason === "excluded_by_rule").length,
+      notIncludedByRule: decisions.filter((page) => page.reason === "not_included_by_rule").length,
+      canonicalizedByRule: decisions.filter((page) => page.reason === "canonicalized_by_rule")
+        .length,
+      rulesTotal: rules.length,
+    },
+    affectedPages: decisions.slice(offset, offset + limit),
+    pagination: {
+      limit,
+      offset,
+      total: decisions.length,
+      hasMore: offset + limit < decisions.length,
+    },
+    warnings: hasIncludeRule
+      ? [
+          {
+            code: "include_rules_create_allowlist" as const,
+            message:
+              "Unmatched paths will be excluded because at least one include rule is present.",
+          },
+        ]
+      : [],
+  };
+}
+
 function createDashboardE2eMockSiteShowcase(siteId: string) {
   const now = new Date().toISOString();
   return {
@@ -1697,6 +1961,13 @@ function resolveDashboardE2eMockPayload(input: {
   const siteDashboardMatch = pathname.match(/^\/sites\/([^/]+)\/dashboard$/);
   if (siteDashboardMatch && method === "GET") {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
+  }
+
+  const sourceSelectionPreviewMatch = pathname.match(
+    /^\/sites\/([^/]+)\/source-selection\/preview$/,
+  );
+  if (sourceSelectionPreviewMatch && method === "POST") {
+    return createDashboardE2eMockSourceSelectionPreview(url.searchParams, input.body);
   }
 
   const glossaryMatch = pathname.match(/^\/sites\/([^/]+)\/glossary$/);
@@ -2530,6 +2801,35 @@ export async function fetchSiteDashboard(
   });
 }
 
+export async function previewSourceSelection(
+  auth: AuthInput,
+  siteId: string,
+  payload: {
+    sourceSelection: SourceSelectionConfig;
+    includeUnknownFutureDescendants?: boolean;
+  },
+  options?: { limit?: number; offset?: number },
+): Promise<SourceSelectionPreviewResponse> {
+  const qs = new URLSearchParams();
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/source-selection/preview?${qs.toString()}`
+    : `/sites/${siteId}/source-selection/preview`;
+  return request({
+    path,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: sourceSelectionPreviewResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
 export async function getSiteShowcase(
   auth: AuthInput,
   siteId: string,
@@ -2585,6 +2885,7 @@ export type CreateSitePayload = {
   clientRuntimeEnabled?: boolean;
   translatableAttributes?: string[] | null;
   spaRefresh?: SpaRefreshSettings | null;
+  sourceSelection?: SourceSelectionConfig | null;
   webhookUrl?: string | null;
   webhookSecret?: string | null;
   webhookEvents?: NotifyWebhookEventType[];
