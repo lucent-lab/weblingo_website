@@ -210,7 +210,7 @@
         "admin.managedDemos.rerunCrawl"
       ],
       "stability": "Internal",
-      "summary": "Enqueues a forced site refresh for one admin-managed demo site without incrementing customer manual crawl usage counters. Serve-enabled locales are retranslated through the normal pipeline after crawl.",
+      "summary": "Enqueues an operator rerun for one admin-managed demo site without incrementing customer manual crawl usage counters. The default recrawl_retranslate mode refreshes source pages through the normal pipeline; republish_rebuild_assets reuses active/latest rendered artifacts and enqueues publish-only jobs to rebuild deployment asset snapshots without MT. Publish-only repairs may be narrowed with targetLangs and sourcePaths and report zero paragraph/page-context/slug provider requests in the response.",
       "userFacing": false
     },
     {
@@ -2204,6 +2204,11 @@
             "name": "target_langs",
             "optional": true,
             "type": "LangTag[]"
+          },
+          {
+            "name": "translation_run_ids",
+            "optional": true,
+            "type": "Partial<Record<string, TranslationRunId>>"
           }
         ],
         "interfaceName": "CrawlRunQueuePayload",
@@ -2249,6 +2254,11 @@
             "name": "target_langs",
             "optional": true,
             "type": "LangTag[]"
+          },
+          {
+            "name": "translation_run_ids",
+            "optional": true,
+            "type": "Partial<Record<string, TranslationRunId>>"
           }
         ],
         "interfaceName": "CrawlSiteQueuePayload",
@@ -2524,6 +2534,11 @@
             "name": "target_path",
             "optional": true,
             "type": "string | null"
+          },
+          {
+            "name": "manifest_pages",
+            "optional": true,
+            "type": "Array<{\n    sourcePath: string;\n    targetPath?: string;\n    pageVersionId: PageVersionId;\n    currentKey: R2Key<\"rendered-current\">;\n    prevKey: R2Key<\"rendered-prev\">;\n  }>"
           },
           {
             "name": "timestamp",
