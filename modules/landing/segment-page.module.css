@@ -33,7 +33,7 @@
 }
 
 .heroRotatorWordOutgoing {
-  animation: segment-rotator-out 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  display: none;
 }
 
 .statCard {
@@ -239,6 +239,25 @@
 }
 
 @media (max-width: 640px) {
+  .heroRotator {
+    display: inline;
+  }
+
+  .heroRotatorWordWrap {
+    display: inline;
+    margin-inline-start: 0.18em;
+    min-inline-size: 0;
+    white-space: normal;
+  }
+
+  .heroRotatorWordLayer {
+    grid-area: auto;
+  }
+
+  .heroRotatorWordIncoming {
+    animation: none;
+  }
+
   .socialProofStatGrid {
     grid-template-columns: 1fr;
   }

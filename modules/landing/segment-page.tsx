@@ -60,13 +60,13 @@ export async function LandingSegmentPage({
       />
       <section
         id="try"
-        className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
+        className="section-reveal relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
       >
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
         <div className="relative mx-auto max-w-6xl">
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
-              <h1 className="mb-6 text-5xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
+              <h1 className="mb-6 text-4xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {shouldRotateHeroTitle ? (
                   <HeroOutcomeRotator
                     className={styles.heroTitleRotator}
@@ -85,7 +85,7 @@ export async function LandingSegmentPage({
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
-              <div className="relative rounded-2xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
+              <div className="surface-lift relative rounded-xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     {t("try.header.tagline")}
@@ -117,7 +117,7 @@ export async function LandingSegmentPage({
                 <div
                   key={stat.valueKey}
                   className={cn(
-                    "rounded-2xl border border-border bg-card/80 px-6 py-5 shadow-sm",
+                    "surface-lift rounded-xl border border-border bg-card/80 px-6 py-5 shadow-sm",
                     styles.statCard,
                   )}
                   style={{
@@ -144,7 +144,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div>
@@ -195,7 +195,7 @@ export async function LandingSegmentPage({
               {content.pain.items.map((item) => (
                 <div
                   key={item.titleKey}
-                  className="flex gap-4 rounded-2xl border border-border bg-card p-5"
+                  className="surface-lift flex gap-4 rounded-xl border border-border bg-card p-5"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <item.icon className="h-5 w-5" />
@@ -211,7 +211,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section id="features" className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section id="features" className="section-reveal px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
             {t(content.useCases.titleKey)}
@@ -223,7 +223,7 @@ export async function LandingSegmentPage({
             {content.useCases.items.map((item) => (
               <div
                 key={item.titleKey}
-                className="rounded-2xl border border-border bg-card p-6 text-left"
+                className="surface-lift rounded-xl border border-border bg-card p-6 text-left"
               >
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <item.icon className="h-5 w-5" />
@@ -238,7 +238,7 @@ export async function LandingSegmentPage({
 
       <section
         id="how-it-works"
-        className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
+        className="section-reveal border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
       >
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground sm:text-4xl">
@@ -251,7 +251,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-10 text-center text-3xl font-bold text-foreground sm:text-4xl">
             {t("landing.faq.title")}
@@ -283,7 +283,10 @@ export async function LandingSegmentPage({
                 answerKey: "landing.faq.items.6.a",
               },
             ].map((item) => (
-              <div key={item.questionKey} className="rounded-2xl border border-border bg-card p-6">
+              <div
+                key={item.questionKey}
+                className="surface-lift rounded-xl border border-border bg-card p-6"
+              >
                 <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{t(item.answerKey)}</p>
               </div>
@@ -292,7 +295,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-foreground sm:text-4xl">
             {t(content.cta.titleKey)}

@@ -18,6 +18,8 @@ const HOP_BY_HOP_REQUEST_HEADERS = new Set([
 
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
   "connection",
+  "content-encoding",
+  "content-length",
   "keep-alive",
   "proxy-authenticate",
   "proxy-authorization",

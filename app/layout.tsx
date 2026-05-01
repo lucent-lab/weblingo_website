@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     description:
       "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
   },
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 type RootLayoutProps = {
@@ -38,7 +41,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans text-foreground antialiased")}>
         <div className="flex min-h-screen flex-col">{children}</div>
         <PreviewStatusRuntimeBootstrap />

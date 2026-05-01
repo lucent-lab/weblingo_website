@@ -121,8 +121,17 @@ export function DocsShell({ locale, navSections, headerLinks, copy, children }: 
       <SidebarInset className="bg-muted/30">
         <header className="border-b bg-background">
           <div className="flex w-full flex-col gap-4 px-4 py-4 lg:px-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Link
+                href={`/${locale}`}
+                className="flex min-w-0 items-center gap-2 text-sm font-semibold"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Globe className="h-4 w-4" />
+                </span>
+                <span className="truncate">WebLingo</span>
+              </Link>
+              <div className="flex flex-wrap items-center justify-end gap-3 text-sm font-medium">
                 {showDocsSidebar ? <SidebarTrigger className="shrink-0" /> : null}
                 {showDocsSidebar ? <div className="hidden h-5 w-px bg-border sm:block" /> : null}
                 <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
@@ -133,10 +142,10 @@ export function DocsShell({ locale, navSections, headerLinks, copy, children }: 
                         key={link.href}
                         href={link.href}
                         className={cn(
-                          "transition",
+                          "rounded-md px-2 py-1 transition",
                           isActive
-                            ? "text-foreground"
-                            : "text-muted-foreground hover:text-foreground",
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
                         )}
                       >
                         {link.label}
@@ -144,13 +153,13 @@ export function DocsShell({ locale, navSections, headerLinks, copy, children }: 
                     );
                   })}
                 </nav>
+                <Link
+                  href={`/${locale}`}
+                  className="hidden text-sm font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
+                >
+                  {copy.homeLabel}
+                </Link>
               </div>
-              <Link
-                href={`/${locale}`}
-                className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
-              >
-                {copy.homeLabel}
-              </Link>
             </div>
           </div>
         </header>

@@ -17,12 +17,23 @@ type RouteContext = {
 async function proxyPosthogRequest(request: NextRequest, context: RouteContext): Promise<Response> {
   const { path = [] } = await context.params;
   const upstreamUrl = buildPosthogUpstreamUrl(env.NEXT_PUBLIC_POSTHOG_HOST, path, request.url);
-  const upstreamResponse = await fetch(upstreamUrl, {
-    body: shouldForwardRequestBody(request.method) ? await request.arrayBuffer() : undefined,
-    headers: buildPosthogProxyRequestHeaders(request.headers, request.url),
-    method: request.method,
-    redirect: "manual",
-  });
+  let upstreamResponse: Response;
+
+  try {
+    upstreamResponse = await fetch(upstreamUrl, {
+      body: shouldForwardRequestBody(request.method) ? await request.arrayBuffer() : undefined,
+      headers: buildPosthogProxyRequestHeaders(request.headers, request.url),
+      method: request.method,
+      redirect: "manual",
+    });
+  } catch {
+    return new Response(null, {
+      headers: {
+        "cache-control": "no-store",
+      },
+      status: 204,
+    });
+  }
 
   return new Response(upstreamResponse.body, {
     headers: buildPosthogProxyResponseHeaders(upstreamResponse.headers),

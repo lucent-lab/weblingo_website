@@ -263,6 +263,11 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
     },
   ];
   const pricingPagePath = `/${locale}/pricing`;
+  const comparisonPlans = [
+    { id: "starter", label: planLabels.starter, valueKey: "starter" },
+    { id: "pro", label: planLabels.pro, valueKey: "pro" },
+    { id: "agency", label: planLabels.agency, valueKey: "agency" },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-background">
@@ -274,13 +279,13 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           pageType: "pricing",
         })}
       />
-      <section className="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
         <div className="mx-auto max-w-4xl text-center">
           <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm font-medium">
             {t("pricing.header.tagline")}
           </Badge>
-          <h1 className="mb-6 text-5xl font-bold text-balance text-foreground sm:text-6xl">
+          <h1 className="mb-6 text-4xl font-bold text-balance text-foreground sm:text-6xl">
             {t("pricing.header.title")}
           </h1>
           <p className="mx-auto mb-4 max-w-2xl text-balance text-xl text-muted-foreground">
@@ -333,7 +338,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
       <section id="free-plan" className="px-4 pb-6 sm:px-6 sm:pb-10 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <Card>
+          <Card className="surface-lift">
             <CardContent className="flex flex-col gap-6 py-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -396,7 +401,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="mb-10 max-w-3xl">
             <h2 className="text-3xl font-bold text-balance text-foreground sm:text-4xl">
@@ -404,7 +409,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">{t("pricing.paid.description")}</p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid items-stretch gap-6 lg:grid-cols-3">
             {planIds.map((planId) => {
               const plan = planRows[planId];
               const highlight = planId === "growth" && Boolean(proTier.highlighted);
@@ -413,11 +418,11 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                   key={planId}
                   className={
                     highlight
-                      ? "border-primary/40 bg-primary/5 shadow-lg shadow-primary/10 md:scale-105"
-                      : ""
+                      ? "surface-lift flex h-full flex-col border-primary/40 bg-primary/5 shadow-lg shadow-primary/10 lg:scale-[1.03]"
+                      : "surface-lift flex h-full flex-col"
                   }
                 >
-                  <CardHeader>
+                  <CardHeader className="flex-1">
                     <div className="flex items-center justify-between gap-3">
                       <CardTitle>{plan.name}</CardTitle>
                       {highlight ? (
@@ -480,16 +485,20 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
                     <p className="text-xs font-semibold uppercase text-muted-foreground">
                       {t("pricing.compare.column.feature")}
                     </p>
-                    {plan.features.map((feature, index) => (
-                      <div key={index} className="flex gap-3 text-sm">
-                        <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
-                        <span className="text-foreground">{feature}</span>
-                      </div>
-                    ))}
-                    <p className="text-xs text-muted-foreground">{plan.note}</p>
-                    {plan.extra ? (
-                      <p className="text-xs text-muted-foreground">{plan.extra}</p>
-                    ) : null}
+                    <div className="grid gap-3">
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className="flex gap-3 text-sm">
+                          <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                          <span className="text-foreground">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2 border-t pt-4">
+                      <p className="text-xs text-muted-foreground">{plan.note}</p>
+                      {plan.extra ? (
+                        <p className="text-xs text-muted-foreground">{plan.extra}</p>
+                      ) : null}
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -498,12 +507,32 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      <section className="border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <h2 className="mb-12 text-3xl font-bold text-foreground sm:text-4xl">
+          <h2 className="mb-8 text-3xl font-bold text-foreground sm:mb-12 sm:text-4xl">
             {t("pricing.compare.title")}
           </h2>
-          <div className="overflow-x-auto">
+          <div className="grid gap-4 lg:hidden">
+            {comparisonPlans.map((plan) => (
+              <Card key={plan.id} className="surface-lift overflow-hidden">
+                <CardHeader className="border-b bg-background/70">
+                  <CardTitle className="text-xl">{plan.label}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-0 p-0">
+                  {comparisonRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-3 border-b px-4 py-3 last:border-b-0"
+                    >
+                      <p className="text-sm font-medium text-foreground">{row.label}</p>
+                      <div className="text-right">{renderComparisonValue(row[plan.valueKey])}</div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
@@ -540,7 +569,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      <section id="pricing-faq" className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section id="pricing-faq" className="section-reveal px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-balance text-foreground sm:text-4xl">
@@ -568,7 +597,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="mb-6 text-4xl font-bold text-foreground sm:text-5xl">
             {t("pricing.final.title")}

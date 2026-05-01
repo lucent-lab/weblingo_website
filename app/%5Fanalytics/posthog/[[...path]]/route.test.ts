@@ -99,4 +99,24 @@ describe("PostHog proxy route", () => {
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://eu.i.posthog.com/decide?v=3");
   });
+
+  it("degrades without throwing when the upstream analytics host is unavailable", async () => {
+    vi.resetModules();
+    const { POST } = await import("./route");
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    const response = await POST(
+      buildRequest("http://localhost:3000/_analytics/posthog/e/?ip=1", {
+        body: '{"event":"preview_ready"}',
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      }),
+      { params: Promise.resolve({ path: ["e"] }) },
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
 });
