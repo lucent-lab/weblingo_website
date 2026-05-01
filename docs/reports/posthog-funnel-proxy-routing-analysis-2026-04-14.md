@@ -89,7 +89,7 @@ Recommended approach:
 
 - introduce a dedicated public env for the first-party analytics host
 - keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the upstream PostHog ingestion host
-- proxy analytics traffic through a first-party `/_analytics/posthog` route in the website deployment
+- proxy analytics traffic through a first-party `/api/analytics/posthog` route in the website deployment
 - keep the dashboard auth proxy behavior intact
 - document the required domain + deployment configuration in `README.md`
 

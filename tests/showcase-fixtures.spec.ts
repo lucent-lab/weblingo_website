@@ -122,17 +122,21 @@ function collectFixtureRequestIssues(
   page.on("requestfailed", (request) => {
     const url = request.url();
     const parsed = new URL(url);
+    const failure = request.failure()?.errorText ?? null;
     if (
       (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
       parsed.pathname === "/favicon.ico"
     ) {
       return;
     }
+    if (failure === "net::ERR_ABORTED" && STATIC_FIXTURE_ASSET_PATHS.has(parsed.pathname)) {
+      return;
+    }
     const reason = classifyFixtureRequest(url, undefined, options) ?? "request failed";
     issues.push({
       url,
       resourceType: request.resourceType(),
-      failure: request.failure()?.errorText ?? null,
+      failure,
       reason,
     });
   });
