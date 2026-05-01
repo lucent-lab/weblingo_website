@@ -123,43 +123,75 @@ export function deriveDisplayTreeFromPreview(
   pages: readonly SourceSelectionPreviewPage[],
   draftRules: readonly DraftSourceSelectionRule[],
 ): SourceSelectionTreeRow[] {
-  const folderPaths = new Set<string>();
   const sortedPages = [...pages].sort((left, right) =>
     compareSourcePaths(left.sourcePath, right.sourcePath),
   );
 
+  const folderStats = new Map<
+    string,
+    { depth: number; totalCount: number; includedCount: number }
+  >();
+
   for (const page of sortedPages) {
     const segments = splitSourcePath(page.sourcePath);
-    for (let index = 1; index < segments.length; index += 1) {
-      folderPaths.add(`/${segments.slice(0, index).join("/")}`);
+    let folderPath = "";
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      folderPath = appendSourceSegment(folderPath, segments[index]);
+      if (!folderStats.has(folderPath)) {
+        folderStats.set(folderPath, {
+          depth: index + 1,
+          totalCount: 0,
+          includedCount: 0,
+        });
+      }
     }
   }
 
+  for (const page of sortedPages) {
+    const segments = splitSourcePath(page.sourcePath);
+    let folderPath = "";
+    for (const segment of segments) {
+      folderPath = appendSourceSegment(folderPath, segment);
+      const stats = folderStats.get(folderPath);
+      if (!stats) {
+        continue;
+      }
+      stats.totalCount += 1;
+      if (page.selected) {
+        stats.includedCount += 1;
+      }
+    }
+  }
+
+  const descendantRuleActions = new Map<string, EditableSourceSelectionAction>();
+  for (const rule of draftRules) {
+    const normalizedPattern = rule.pattern.trim();
+    if (!normalizedPattern.endsWith("/*")) {
+      continue;
+    }
+    descendantRuleActions.set(normalizedPattern, rule.action);
+  }
+
   const rows: SourceSelectionTreeRow[] = [];
-  for (const folderPath of folderPaths) {
-    const descendants = sortedPages.filter(
-      (page) => page.sourcePath === folderPath || page.sourcePath.startsWith(`${folderPath}/`),
-    );
-    const includedCount = descendants.filter((page) => page.selected).length;
-    const excludedCount = descendants.length - includedCount;
+  for (const [folderPath, stats] of folderStats) {
+    const excludedCount = stats.totalCount - stats.includedCount;
     const descendantPattern = descendantPatternForPath(folderPath);
-    const descendantRule =
-      draftRules.find((rule) => rule.pattern.trim() === descendantPattern) ?? null;
+    const descendantRuleAction = descendantRuleActions.get(descendantPattern) ?? null;
     rows.push({
       id: `folder:${folderPath}`,
       kind: "folder",
       path: folderPath,
-      depth: splitSourcePath(folderPath).length,
-      totalCount: descendants.length,
-      includedCount,
+      depth: stats.depth,
+      totalCount: stats.totalCount,
+      includedCount: stats.includedCount,
       excludedCount,
       effectiveState:
-        includedCount === descendants.length
+        stats.includedCount === stats.totalCount
           ? "included"
-          : excludedCount === descendants.length
+          : excludedCount === stats.totalCount
             ? "excluded"
             : "mixed",
-      descendantRuleAction: descendantRule?.action ?? null,
+      descendantRuleAction,
     });
   }
 
@@ -190,6 +222,10 @@ function splitSourcePath(path: string): string[] {
     return [];
   }
   return path.replace(/^\/+/, "").replace(/\/+$/, "").split("/").filter(Boolean);
+}
+
+function appendSourceSegment(prefix: string, segment: string): string {
+  return prefix ? `${prefix}/${segment}` : `/${segment}`;
 }
 
 function compareSourcePaths(left: string, right: string): number {

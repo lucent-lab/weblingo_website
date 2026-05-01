@@ -89,6 +89,11 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
     notFound();
   }
 
+  const initialSourceSelectionRules = site.routeConfig?.sourceSelection?.rules ?? [];
+  const hasUnsupportedSourceSelectionRules = initialSourceSelectionRules.some(
+    (rule) => rule.action !== "include" && rule.action !== "exclude",
+  );
+
   return (
     <div className="space-y-8">
       <SiteHeader
@@ -103,10 +108,25 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         activateHelp={activateHelp}
       />
 
-      {canEdit ? (
+      {canEdit && hasUnsupportedSourceSelectionRules ? (
+        <ErrorStateCard
+          title={t(
+            "dashboard.sourceSelection.unsupported.title",
+            "Unsupported source-selection rules",
+          )}
+          description={t(
+            "dashboard.sourceSelection.unsupported.description",
+            "This site has source-selection rules that this editor does not support yet.",
+          )}
+          message={t(
+            "dashboard.sourceSelection.unsupported.message",
+            "Editing is blocked to avoid deleting unsupported rules.",
+          )}
+        />
+      ) : canEdit ? (
         <SourceSelectionManager
           siteId={site.id}
-          initialRules={site.routeConfig?.sourceSelection?.rules ?? []}
+          initialRules={initialSourceSelectionRules}
           canEdit={canEdit}
           saveAction={updateSourceSelectionAction}
           copy={buildSourceSelectionCopy(t)}

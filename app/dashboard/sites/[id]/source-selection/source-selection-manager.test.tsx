@@ -264,6 +264,42 @@ describe("SourceSelectionManager", () => {
     });
   });
 
+  it("disables rule edits while saving to avoid clobbering newer drafts", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(init?.body as string) as {
+        sourceSelection: { rules: SourceSelectionRule[] };
+      };
+      return new Response(JSON.stringify(makePreview({ sourceSelection: body.sourceSelection })), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const save = createDeferred<ActionResponse>();
+    const saveAction = vi.fn<SaveSourceSelectionAction>(() => save.promise);
+
+    renderManager({ saveAction });
+    await runPreviewTimer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
+    fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
+    await runPreviewTimer();
+
+    fireEvent.click(screen.getByRole("button", { name: /save source selection/i }));
+
+    const patternInput = screen.getByLabelText("Pattern") as HTMLInputElement;
+    expect(patternInput.disabled).toBe(true);
+    fireEvent.change(patternInput, { target: { value: "/products/*" } });
+    expect(patternInput.value).toBe("/products/*");
+
+    await act(async () => {
+      save.resolve({ ok: true, message: "saved" });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect((screen.getByLabelText("Pattern") as HTMLInputElement).value).toBe("/products/*");
+  });
+
   it("renders include allowlists, exact rules, nested overrides, locale-looking paths, and metadata-neutral backend decisions", async () => {
     vi.useFakeTimers();
     globalThis.fetch = vi.fn(

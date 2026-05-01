@@ -137,6 +137,7 @@ export function SourceSelectionManager({
   const [saveResult, setSaveResult] = useState<ActionResponse | null>(null);
   const [isSaving, setSaving] = useState(false);
   const requestIdRef = useRef(0);
+  const draftFingerprintRef = useRef("");
 
   const draftConfig = useMemo(() => toSourceSelectionConfig(draftRules), [draftRules]);
   const persistedConfig = useMemo(() => toSourceSelectionConfig(persistedRules), [persistedRules]);
@@ -147,6 +148,7 @@ export function SourceSelectionManager({
   );
   const hasUnsavedChanges = draftFingerprint !== persistedFingerprint;
   const previewIsCurrent = lastSuccessfulPreviewFingerprint === draftFingerprint;
+  const controlsCanEdit = canEdit && !isSaving;
   const canSave =
     canEdit &&
     hasUnsavedChanges &&
@@ -155,6 +157,10 @@ export function SourceSelectionManager({
     previewError === null &&
     !isPreviewLoading &&
     !isSaving;
+
+  useEffect(() => {
+    draftFingerprintRef.current = draftFingerprint;
+  }, [draftFingerprint]);
 
   const updateDraftRules = useCallback(
     (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => {
@@ -231,6 +237,7 @@ export function SourceSelectionManager({
     if (!canSave || !preview) {
       return;
     }
+    const saveFingerprint = draftFingerprint;
     setSaving(true);
     void (async () => {
       const formData = new FormData();
@@ -245,8 +252,10 @@ export function SourceSelectionManager({
         const savedConfig = readSavedSourceSelection(result.meta) ?? preview.sourceSelection;
         const savedRules = normalizeRulesForForm(savedConfig.rules);
         setPersistedRules(savedRules);
-        setDraftRules(savedRules);
-        setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
+        if (draftFingerprintRef.current === saveFingerprint) {
+          setDraftRules(savedRules);
+          setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
+        }
       } catch (error) {
         setSaveResult({
           ok: false,
@@ -301,7 +310,7 @@ export function SourceSelectionManager({
           </CardHeader>
           <CardContent className="space-y-4">
             <RuleEditor
-              canEdit={canEdit}
+              canEdit={controlsCanEdit}
               copy={copy}
               rules={draftRules}
               onChange={updateDraftRules}
@@ -369,7 +378,7 @@ export function SourceSelectionManager({
           ) : (
             <div className="space-y-4">
               <SourceSelectionTree
-                canEdit={canEdit}
+                canEdit={controlsCanEdit}
                 copy={copy}
                 rows={treeRows}
                 onChange={updateDraftRules}
