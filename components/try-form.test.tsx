@@ -1414,6 +1414,13 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "owner@example.com" },
     });
+
+    expect(
+      captureAnalyticsEvent.mock.calls.filter(
+        ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
+      ),
+    ).toHaveLength(0);
+
     fireEvent.click(screen.getByRole("button", { name: "Email me" }));
 
     await waitFor(() => {

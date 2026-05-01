@@ -1706,7 +1706,6 @@ export function TryForm({
                         <Input
                           value={pendingEmail}
                           onChange={(event) => {
-                            trackTryFormStarted();
                             setPendingEmail(event.currentTarget.value);
                           }}
                           placeholder={t("try.form.emailPlaceholder")}
@@ -1774,7 +1773,6 @@ export function TryForm({
                   <Input
                     value={pendingEmail}
                     onChange={(event) => {
-                      trackTryFormStarted();
                       setPendingEmail(event.currentTarget.value);
                     }}
                     placeholder={t("try.form.emailPlaceholder")}
