@@ -144,7 +144,7 @@ export async function LandingSegmentPage({
         </div>
       </section>
 
-      <section className="section-reveal border-y border-border bg-secondary/50 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <section className="section-reveal border-y border-border bg-background px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div>

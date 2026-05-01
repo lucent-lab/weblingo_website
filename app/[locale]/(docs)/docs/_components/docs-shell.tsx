@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Code2, FileText, Globe, ListChecks, Workflow } from "lucide-react";
 
+import { SiteHeaderBar } from "@/components/site-header-bar";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -56,7 +57,7 @@ type DocsShellProps = {
     supportTitle: string;
     supportDescription: string;
     supportCta: string;
-    homeLabel: string;
+    menuLabel: string;
   };
   children: React.ReactNode;
 };
@@ -67,12 +68,6 @@ export function DocsShell({ locale, navSections, headerLinks, copy, children }: 
     pathname === `/${locale}/docs/api-reference` ||
     pathname.startsWith(`/${locale}/docs/api-reference/`);
   const showDocsSidebar = !isApiReferencePage;
-  const activeHeader = headerLinks.reduce((best, link) => {
-    if (pathname === link.href || pathname.startsWith(`${link.href}/`)) {
-      return link.href.length > best.length ? link.href : best;
-    }
-    return best;
-  }, "");
 
   return (
     <SidebarProvider defaultOpen={showDocsSidebar}>
@@ -119,50 +114,16 @@ export function DocsShell({ locale, navSections, headerLinks, copy, children }: 
       ) : null}
 
       <SidebarInset className="bg-muted/30">
-        <header className="border-b bg-background">
-          <div className="flex w-full flex-col gap-4 px-4 py-4 lg:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Link
-                href={`/${locale}`}
-                className="flex min-w-0 items-center gap-2 text-sm font-semibold"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Globe className="h-4 w-4" />
-                </span>
-                <span className="truncate">WebLingo</span>
-              </Link>
-              <div className="flex flex-wrap items-center justify-end gap-3 text-sm font-medium">
-                {showDocsSidebar ? <SidebarTrigger className="shrink-0" /> : null}
-                {showDocsSidebar ? <div className="hidden h-5 w-px bg-border sm:block" /> : null}
-                <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
-                  {headerLinks.map((link) => {
-                    const isActive = activeHeader === link.href;
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className={cn(
-                          "rounded-md px-2 py-1 transition",
-                          isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                        )}
-                      >
-                        {link.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-                <Link
-                  href={`/${locale}`}
-                  className="hidden text-sm font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
-                >
-                  {copy.homeLabel}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </header>
+        <SiteHeaderBar
+          locale={locale}
+          links={headerLinks}
+          menuLabel={copy.menuLabel}
+          className="bg-background"
+          innerClassName="max-w-none lg:px-6"
+          extraControl={showDocsSidebar ? <SidebarTrigger className="shrink-0" /> : null}
+          extraControlPosition="left"
+          showBrand={false}
+        />
 
         <section
           className={cn(
