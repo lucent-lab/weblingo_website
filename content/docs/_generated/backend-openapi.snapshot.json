@@ -333,6 +333,12 @@
             "const": true,
             "type": "boolean"
           },
+          "crawlRunId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "crawlStatus": {
             "additionalProperties": false,
             "properties": {
@@ -351,8 +357,100 @@
           "force": {
             "type": "boolean"
           },
+          "mode": {
+            "enum": [
+              "recrawl_retranslate",
+              "republish_rebuild_assets"
+            ],
+            "type": "string"
+          },
+          "providerRequests": {
+            "additionalProperties": false,
+            "properties": {
+              "pageContext": {
+                "type": "number"
+              },
+              "paragraph": {
+                "type": "number"
+              },
+              "plannedMtChars": {
+                "type": "number"
+              },
+              "plannedMtSegments": {
+                "type": "number"
+              },
+              "slug": {
+                "type": "number"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "plannedMtSegments",
+              "plannedMtChars",
+              "paragraph",
+              "pageContext",
+              "slug",
+              "source"
+            ],
+            "type": "object"
+          },
+          "publishJobs": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "deploymentId": {
+                  "description": "Deployment id associated with this publish job. Queued jobs use the deterministic intended deployment id; unavailable jobs use the manifest source deployment id or \"(active)\" when no source manifest is available.",
+                  "type": "string"
+                },
+                "enqueued": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": "string"
+                },
+                "intendedDeploymentId": {
+                  "type": "string"
+                },
+                "manifestSourceDeploymentId": {
+                  "type": "string"
+                },
+                "pageVersionId": {
+                  "type": "string"
+                },
+                "sourcePath": {
+                  "type": "string"
+                },
+                "targetLang": {
+                  "type": "string"
+                },
+                "targetPath": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "targetLang",
+                "deploymentId",
+                "pageVersionId",
+                "sourcePath",
+                "enqueued"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "siteId": {
             "type": "string"
+          },
+          "sourcePaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "sourceUrl": {
             "type": "string"
@@ -360,6 +458,29 @@
           "targetLangs": {
             "items": {
               "type": "string"
+            },
+            "type": "array"
+          },
+          "translationRuns": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "targetLang": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "targetLang",
+                "status"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
@@ -373,6 +494,7 @@
           "sourceUrl",
           "adminInitiated",
           "usageCounted",
+          "mode",
           "force",
           "targetLangs",
           "crawlStatus"
@@ -1592,12 +1714,35 @@
         "additionalProperties": false,
         "example": {
           "docsOnly": true,
-          "force": true
+          "force": true,
+          "mode": "recrawl_retranslate",
+          "sourcePaths": [
+            "/en/docs/workflows"
+          ],
+          "targetLangs": [
+            "it"
+          ]
         },
         "examples": [
           {
             "docsOnly": true,
-            "force": true
+            "force": true,
+            "mode": "recrawl_retranslate",
+            "sourcePaths": [
+              "/en/docs/workflows"
+            ],
+            "targetLangs": [
+              "it"
+            ]
+          },
+          {
+            "mode": "republish_rebuild_assets",
+            "sourcePaths": [
+              "/en/docs/workflows"
+            ],
+            "targetLangs": [
+              "it"
+            ]
           }
         ],
         "properties": {
@@ -1606,6 +1751,26 @@
           },
           "force": {
             "type": "boolean"
+          },
+          "mode": {
+            "default": "recrawl_retranslate",
+            "enum": [
+              "recrawl_retranslate",
+              "republish_rebuild_assets"
+            ],
+            "type": "string"
+          },
+          "sourcePaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -1802,6 +1967,19 @@
               ]
             },
             "type": "object"
+          },
+          "localizedPathTemplates": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LocalizedPathTemplate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "maxDepth": {
             "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
@@ -2284,6 +2462,7 @@
           "active_pointer_mismatch_latest_manifest",
           "active_pointer_manifest_probe_error",
           "active_pointer_manifest_missing",
+          "active_pointer_asset_index_missing",
           "active_pointer_manifest_invalid"
         ],
         "type": "string"
@@ -3458,6 +3637,29 @@
         ],
         "type": "object"
       },
+      "LocalizedPathTemplate": {
+        "additionalProperties": false,
+        "properties": {
+          "sourcePattern": {
+            "description": "Source path pattern. Use a final `/*` segment for subtree templates.",
+            "type": "string"
+          },
+          "targetLang": {
+            "description": "Target locale language tag this template applies to.",
+            "type": "string"
+          },
+          "targetPattern": {
+            "description": "Localized target path pattern. Must use `/*` when sourcePattern uses `/*`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "sourcePattern",
+          "targetPattern"
+        ],
+        "type": "object"
+      },
       "ManagedAccountAgencyLink": {
         "additionalProperties": false,
         "properties": {
@@ -4518,6 +4720,12 @@
           "locales": {
             "items": {
               "$ref": "#/components/schemas/RouteLocale"
+            },
+            "type": "array"
+          },
+          "localizedPathTemplates": {
+            "items": {
+              "$ref": "#/components/schemas/LocalizedPathTemplate"
             },
             "type": "array"
           },
@@ -5959,6 +6167,19 @@
             },
             "type": "object"
           },
+          "localizedPathTemplates": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LocalizedPathTemplate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "maxDepth": {
             "description": "Default: 0 (unlimited). Use positive integers to cap traversal depth from the source page.",
             "minimum": 0,
@@ -7001,7 +7222,7 @@
     },
     "/admin/managed-demos/{siteId}/rerun-crawl": {
       "post": {
-        "description": "Enqueues a forced site refresh for one admin-managed demo site without incrementing customer manual crawl usage counters. Serve-enabled locales are retranslated through the normal pipeline after crawl.",
+        "description": "Enqueues an operator rerun for one admin-managed demo site without incrementing customer manual crawl usage counters. The default recrawl_retranslate mode refreshes source pages through the normal pipeline; republish_rebuild_assets reuses active/latest rendered artifacts and enqueues publish-only jobs to rebuild deployment asset snapshots without MT. Publish-only repairs may be narrowed with targetLangs and sourcePaths and report zero paragraph/page-context/slug provider requests in the response.",
         "operationId": "admin.managedDemos.rerunCrawl",
         "parameters": [
           {
@@ -7018,7 +7239,14 @@
             "application/json": {
               "example": {
                 "docsOnly": true,
-                "force": true
+                "force": true,
+                "mode": "recrawl_retranslate",
+                "sourcePaths": [
+                  "/en/docs/workflows"
+                ],
+                "targetLangs": [
+                  "it"
+                ]
               },
               "schema": {
                 "$ref": "#/components/schemas/CrawlTriggerRequest"
@@ -7037,6 +7265,7 @@
                     "enqueued": true
                   },
                   "force": true,
+                  "mode": "recrawl_retranslate",
                   "siteId": "string",
                   "sourceUrl": "string",
                   "targetLangs": [
@@ -9739,7 +9968,14 @@
             "application/json": {
               "example": {
                 "docsOnly": true,
-                "force": true
+                "force": true,
+                "mode": "recrawl_retranslate",
+                "sourcePaths": [
+                  "/en/docs/workflows"
+                ],
+                "targetLangs": [
+                  "it"
+                ]
               },
               "schema": {
                 "$ref": "#/components/schemas/CrawlTriggerRequest"
