@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-05-04T16:20:50+09:00",
+  "generatedAt": "2026-05-04T19:31:23+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
       "bytes": 78056,
       "sha256": "d8c3ea5bb796bf6e5ff00ff21a113f9baafb2784c73664f7d9ee6dacf6a32009"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 401665,
-      "sha256": "063ee6eaac05bba72f230d435aaa559b8c2102ce0f0c0236bd9fd960cef37c3f"
+      "bytes": 402023,
+      "sha256": "a6520f680f52c7916bd6ea05faf514f419377a5c20b8a2e4095796d0e297dce7"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
       "bytes": 7329,
@@ -28,11 +28,11 @@
       "sha256": "baf9c26445c7d9ef5fa1a85001f7c6c3a606ed49a31719153c581cc2216b25ff"
     },
     "docs/reference/openapi.json": {
-      "bytes": 319173,
-      "sha256": "4fdca87b9f473f8c5740418f9026ba93f71b6d0c22f8eac89f990f74bf788552"
+      "bytes": 319597,
+      "sha256": "e346c6ed99f2083ebafef6e2c919a56a361449c04986ecc1af0484718f3d349f"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-05-04T16:20:50+09:00",
+  "sourceRepoCommitTimestamp": "2026-05-04T19:31:23+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo",
-  "sourceRepoSha": "a7972b93ed6efa5561c21de312d699cafff8dc66"
+  "sourceRepoSha": "744178999eb1f177cf704d79d90505772485ebcf"
 }

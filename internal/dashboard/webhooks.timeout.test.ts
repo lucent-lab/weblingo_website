@@ -280,6 +280,17 @@ describe("webhooks request wrapper", () => {
             total: 2,
             hasMore: false,
           },
+          impact: {
+            scope: "known_pages",
+            changedKnownPages: 0,
+            selectedToExcluded: { count: 0, sourcePaths: [] },
+            activeSiteRerun: {
+              required: false,
+              basis: "site_status_and_config_change",
+              activeDeploymentCount: 0,
+              deploymentImpact: "not_estimated",
+            },
+          },
           warnings: [
             {
               code: "include_rules_create_allowlist",

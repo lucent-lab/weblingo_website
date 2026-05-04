@@ -6338,9 +6338,11 @@
         "additionalProperties": false,
         "properties": {
           "complete": {
+            "description": "False when the backend capped preview scanning to keep the read-only preview bounded.",
             "type": "boolean"
           },
           "knownPagesTotal": {
+            "description": "Known pages analyzed for this preview response. When `complete` is false, this is capped.",
             "type": "number"
           },
           "maxPageSize": {
@@ -6357,6 +6359,7 @@
             "type": "string"
           },
           "resultNodesTotal": {
+            "description": "Tree nodes produced from the analyzed result set. When `complete` is false, this is capped.",
             "type": "number"
           },
           "resultScope": {

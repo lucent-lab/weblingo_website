@@ -133,11 +133,74 @@ describe("POST /api/dashboard/sites/[siteId]/source-selection/tree-preview", () 
     );
   });
 
+  it("forwards backend global search without also sending parent folder scope", async () => {
+    const auth = makeAuth();
+    mockedRequireDashboardAuth.mockResolvedValue(auth);
+    mockedPreviewSourceSelectionTree.mockResolvedValue({
+      sourceSelection: { rules: [] },
+      summary: {
+        knownPagesTotal: 1,
+        knownPagesIncluded: 1,
+        knownPagesExcluded: 0,
+        includedByDefault: 1,
+        includedByRule: 0,
+        excludedByRule: 0,
+        notIncludedByRule: 0,
+        canonicalizedByRule: 0,
+        rulesTotal: 0,
+      },
+      nodes: [],
+      pagination: { limit: 50, cursor: "folder:/blog", total: 0, hasMore: false },
+      warnings: [],
+      impact: {
+        scope: "known_pages",
+        changedKnownPages: 0,
+        selectedToExcluded: { count: 0, sourcePaths: [] },
+        activeSiteRerun: {
+          required: false,
+          basis: "site_status_and_config_change",
+          activeDeploymentCount: 0,
+          deploymentImpact: "not_estimated",
+        },
+      },
+      inventory: {
+        knownPagesTotal: 1,
+        resultNodesTotal: 0,
+        resultMode: "search",
+        summaryScope: "global_known_pages",
+        resultScope: "filtered_tree_nodes",
+        search: "drafts",
+        maxPageSize: 200,
+        complete: true,
+      },
+    });
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/dashboard/sites/site-1/source-selection/tree-preview?limit=50&parentPath=/blog&search=drafts&cursor=folder%3A%2Fblog",
+        {
+          method: "POST",
+          body: JSON.stringify({ sourceSelection: { rules: [] } }),
+        },
+      ),
+      { params: Promise.resolve({ siteId: "site-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockedPreviewSourceSelectionTree).toHaveBeenCalledWith(
+      auth.webhooksAuth,
+      "site-1",
+      { sourceSelection: { rules: [] } },
+      { limit: 50, cursor: "folder:/blog", search: "drafts" },
+    );
+  });
+
   it.each([
     ["limit=0", "limit must be at least 1."],
     ["limit=201", "limit must be at most 200."],
     ["limit=1.5", "limit must be an integer."],
     ["parentPath=blog", "parentPath must start with /."],
+    [`search=${"x".repeat(201)}`, "search must be at most 200 characters."],
   ])("rejects invalid tree query %s", async (query, message) => {
     mockedRequireDashboardAuth.mockResolvedValue(makeAuth());
 

@@ -220,6 +220,15 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     ),
     rulesTotal: t("dashboard.sourceSelection.summary.rulesTotal", "Rules"),
     warningsTitle: t("dashboard.sourceSelection.warnings.title", "Preview warnings"),
+    impactTitle: t("dashboard.sourceSelection.impact.title", "High-impact preview"),
+    selectedToExcludedWarning: t(
+      "dashboard.sourceSelection.impact.selectedToExcluded",
+      "{count} currently selected known source pages would be excluded by this draft.",
+    ),
+    activeSiteRerunWarning: t(
+      "dashboard.sourceSelection.impact.activeSiteRerun",
+      "Saving these rules on an active site will enqueue the existing site refresh flow for {count} active deployments.",
+    ),
     validationTitle: t("dashboard.sourceSelection.validation.title", "Rules need changes"),
     previewErrorTitle: t("dashboard.sourceSelection.preview.error", "Unable to preview rules."),
     previewLoading: t("dashboard.sourceSelection.preview.loading", "Previewing rules..."),
@@ -248,6 +257,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     inventoryNote: t(
       "dashboard.sourceSelection.inventory.note",
       "This view shows known discovered source paths returned by preview. It is not a live crawl of every possible origin URL.",
+    ),
+    partialInventoryNote: t(
+      "dashboard.sourceSelection.inventory.partial",
+      "This preview is limited to a backend-bounded sample so it stays responsive on large sites. Use search or open a narrower folder to inspect more paths.",
     ),
     currentFolder: t("dashboard.sourceSelection.tree.currentFolder", "Current folder"),
     parentFolder: t("dashboard.sourceSelection.tree.parentFolder", "Parent folder"),

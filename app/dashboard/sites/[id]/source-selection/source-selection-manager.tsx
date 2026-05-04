@@ -10,7 +10,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -79,6 +79,9 @@ export type SourceSelectionCopy = {
   notIncludedByRule: string;
   rulesTotal: string;
   warningsTitle: string;
+  impactTitle: string;
+  selectedToExcludedWarning: string;
+  activeSiteRerunWarning: string;
   validationTitle: string;
   previewErrorTitle: string;
   previewLoading: string;
@@ -93,6 +96,7 @@ export type SourceSelectionCopy = {
   filterNoResults: string;
   clearFilter: string;
   inventoryNote: string;
+  partialInventoryNote: string;
   currentFolder: string;
   parentFolder: string;
   rootFolder: string;
@@ -464,6 +468,7 @@ export function SourceSelectionManager({
       {currentPreview?.warnings.length ? (
         <WarningsAlert copy={copy} preview={currentPreview} />
       ) : null}
+      {currentPreview ? <ImpactAlert copy={copy} preview={currentPreview} /> : null}
       {currentPreview ? <PreviewSummary copy={copy} preview={currentPreview} /> : null}
 
       <Card>
@@ -520,7 +525,11 @@ export function SourceSelectionManager({
                       </div>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">{copy.inventoryNote}</p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {currentPreview.inventory.complete
+                      ? copy.inventoryNote
+                      : copy.partialInventoryNote}
+                  </p>
                 </div>
               ) : null}
               {visibleTreeRows.length === 0 ? (
@@ -841,6 +850,54 @@ function WarningsAlert({
   );
 }
 
+function ImpactAlert({
+  copy,
+  preview,
+}: {
+  copy: SourceSelectionCopy;
+  preview: SourceSelectionTreePreviewResponse;
+}) {
+  const selectedToExcluded = preview.impact.selectedToExcluded;
+  const activeSiteRerun = preview.impact.activeSiteRerun;
+  if (selectedToExcluded.count === 0 && !activeSiteRerun.required) {
+    return null;
+  }
+
+  return (
+    <Alert className="border-amber-300 bg-amber-50 text-amber-950">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>{copy.impactTitle}</AlertTitle>
+      <AlertDescription>
+        <div className="space-y-2">
+          {selectedToExcluded.count > 0 ? (
+            <div>
+              <p>
+                {copy.selectedToExcludedWarning.replace(
+                  "{count}",
+                  String(selectedToExcluded.count),
+                )}
+              </p>
+              {selectedToExcluded.sourcePaths.length ? (
+                <p className="mt-1 break-all font-mono text-xs text-amber-900">
+                  {selectedToExcluded.sourcePaths.join(", ")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {activeSiteRerun.required ? (
+            <p>
+              {copy.activeSiteRerunWarning.replace(
+                "{count}",
+                String(activeSiteRerun.activeDeploymentCount),
+              )}
+            </p>
+          ) : null}
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function PreviewSummary({
   copy,
   preview,
@@ -862,7 +919,9 @@ function PreviewSummary({
     <Card>
       <CardHeader>
         <CardTitle>{copy.summaryTitle}</CardTitle>
-        <CardDescription>{copy.summaryDescription}</CardDescription>
+        <CardDescription>
+          {preview.inventory.complete ? copy.summaryDescription : copy.partialInventoryNote}
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map(([label, value]) => (
@@ -889,43 +948,135 @@ function SourceSelectionTree({
   onOpenFolder: (path: string) => void;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
 }) {
+  const rowIds = useMemo(() => rows.map((row) => row.id), [rows]);
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
+  const activeFocusedRowId =
+    focusedRowId && rowIds.includes(focusedRowId) ? focusedRowId : (rowIds[0] ?? "");
+
+  const setRowRef = useCallback((id: string, node: HTMLTableRowElement | null) => {
+    if (node) {
+      rowRefs.current.set(id, node);
+      return;
+    }
+    rowRefs.current.delete(id);
+  }, []);
+
+  const focusRow = useCallback(
+    (index: number) => {
+      const nextRow = rows[index];
+      if (!nextRow) {
+        return;
+      }
+      setFocusedRowId(nextRow.id);
+      rowRefs.current.get(nextRow.id)?.focus();
+    },
+    [rows],
+  );
+
+  const handleRowKeyDown = useCallback(
+    (row: SourceSelectionTreePreviewNode, event: KeyboardEvent<HTMLTableRowElement>) => {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+      const currentIndex = rows.findIndex((candidate) => candidate.id === row.id);
+      if (currentIndex < 0) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        focusRow(Math.min(currentIndex + 1, rows.length - 1));
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        focusRow(Math.max(currentIndex - 1, 0));
+        return;
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        focusRow(0);
+        return;
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        focusRow(rows.length - 1);
+        return;
+      }
+      if (event.key === "ArrowLeft") {
+        const parentIndex = findPreviousAncestorRowIndex(rows, currentIndex, row.depth);
+        if (parentIndex >= 0) {
+          event.preventDefault();
+          focusRow(parentIndex);
+        }
+        return;
+      }
+      if (
+        (event.key === "ArrowRight" || event.key === "Enter" || event.key === " ") &&
+        row.kind === "folder" &&
+        row.hasChildren
+      ) {
+        event.preventDefault();
+        onOpenFolder(row.sourcePath);
+      }
+    },
+    [focusRow, onOpenFolder, rows],
+  );
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border/60">
-      <table className="w-full min-w-[760px] text-sm">
-        <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-3 py-2 text-left">
+      <table
+        role="treegrid"
+        aria-label={copy.pagesTitle}
+        aria-colcount={4}
+        aria-rowcount={rows.length + 1}
+        className="w-full min-w-[760px] text-sm"
+      >
+        <thead role="rowgroup" className="bg-muted/40 text-xs uppercase text-muted-foreground">
+          <tr role="row">
+            <th role="columnheader" scope="col" className="px-3 py-2 text-left">
               {copy.pageColumn}
             </th>
-            <th scope="col" className="px-3 py-2 text-left">
+            <th role="columnheader" scope="col" className="px-3 py-2 text-left">
               {copy.stateColumn}
             </th>
-            <th scope="col" className="px-3 py-2 text-left">
+            <th role="columnheader" scope="col" className="px-3 py-2 text-left">
               {copy.reasonColumn}
             </th>
-            <th scope="col" className="px-3 py-2 text-right">
+            <th role="columnheader" scope="col" className="px-3 py-2 text-right">
               {copy.actionsColumn}
             </th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row) =>
+        <tbody role="rowgroup">
+          {rows.map((row, index) =>
             row.kind === "folder" ? (
               <FolderRow
                 key={row.id}
                 canEdit={canEdit}
                 copy={copy}
+                isFocused={activeFocusedRowId === row.id}
                 row={row as SourceSelectionFolderNode}
+                rowIndex={index}
+                setRowRef={setRowRef}
                 onChange={onChange}
+                onFocusRow={setFocusedRowId}
                 onOpen={onOpenFolder}
+                onRowKeyDown={handleRowKeyDown}
               />
             ) : (
               <PageRow
                 key={row.id}
                 canEdit={canEdit}
                 copy={copy}
+                isFocused={activeFocusedRowId === row.id}
                 row={row as SourceSelectionPageNode}
+                rowIndex={index}
+                setRowRef={setRowRef}
                 onChange={onChange}
+                onFocusRow={setFocusedRowId}
+                onRowKeyDown={handleRowKeyDown}
               />
             ),
           )}
@@ -938,15 +1089,28 @@ function SourceSelectionTree({
 function FolderRow({
   canEdit,
   copy,
+  isFocused,
   onChange,
+  onFocusRow,
   onOpen,
+  onRowKeyDown,
   row,
+  rowIndex,
+  setRowRef,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
+  isFocused: boolean;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
+  onFocusRow: (id: string) => void;
   onOpen: (path: string) => void;
+  onRowKeyDown: (
+    row: SourceSelectionTreePreviewNode,
+    event: KeyboardEvent<HTMLTableRowElement>,
+  ) => void;
   row: SourceSelectionFolderNode;
+  rowIndex: number;
+  setRowRef: (id: string, node: HTMLTableRowElement | null) => void;
 }) {
   const descendantPattern = descendantPatternForPath(row.sourcePath);
   const descendantRuleAction =
@@ -961,8 +1125,19 @@ function FolderRow({
   };
 
   return (
-    <tr className="border-t border-border/50 bg-muted/10">
-      <td className="px-3 py-3 align-top">
+    <tr
+      {...treeRowProps({
+        copy,
+        isFocused,
+        onFocusRow,
+        onRowKeyDown,
+        row,
+        rowIndex,
+        setRowRef,
+      })}
+      className="border-t border-border/50 bg-muted/10 outline-none focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <td role="gridcell" className="px-3 py-3 align-top">
         <div className="flex items-center gap-2" style={{ paddingLeft: `${row.depth * 1.1}rem` }}>
           {row.hasChildren ? (
             <Button
@@ -971,6 +1146,7 @@ function FolderRow({
               variant="ghost"
               className="h-7 w-7 shrink-0"
               aria-label={`${copy.openFolder} ${row.sourcePath}`}
+              aria-keyshortcuts="ArrowRight Enter"
               title={copy.openFolder}
               onClick={() => onOpen(row.sourcePath)}
             >
@@ -984,10 +1160,10 @@ function FolderRow({
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{copy.descendantsHelp}</p>
       </td>
-      <td className="px-3 py-3 align-top">
+      <td role="gridcell" className="px-3 py-3 align-top">
         <StateBadge copy={copy} state={toBadgeState(row.effectiveState)} />
       </td>
-      <td className="px-3 py-3 align-top text-muted-foreground">
+      <td role="gridcell" className="px-3 py-3 align-top text-muted-foreground">
         <span className="font-mono text-xs">
           {row.knownPagesIncluded}/{row.knownPagesTotal}
         </span>{" "}
@@ -1005,7 +1181,7 @@ function FolderRow({
           </div>
         ) : null}
       </td>
-      <td className="px-3 py-3 text-right align-top">
+      <td role="gridcell" className="px-3 py-3 text-right align-top">
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
@@ -1046,13 +1222,26 @@ function FolderRow({
 function PageRow({
   canEdit,
   copy,
+  isFocused,
   onChange,
+  onFocusRow,
+  onRowKeyDown,
   row,
+  rowIndex,
+  setRowRef,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
+  isFocused: boolean;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
+  onFocusRow: (id: string) => void;
+  onRowKeyDown: (
+    row: SourceSelectionTreePreviewNode,
+    event: KeyboardEvent<HTMLTableRowElement>,
+  ) => void;
   row: SourceSelectionPageNode;
+  rowIndex: number;
+  setRowRef: (id: string, node: HTMLTableRowElement | null) => void;
 }) {
   const state = toBadgeState(row.effectiveState);
   const setPageRule = (action: EditableSourceSelectionAction) => {
@@ -1063,8 +1252,19 @@ function PageRow({
   };
 
   return (
-    <tr className="border-t border-border/50">
-      <td className="px-3 py-3 align-top">
+    <tr
+      {...treeRowProps({
+        copy,
+        isFocused,
+        onFocusRow,
+        onRowKeyDown,
+        row,
+        rowIndex,
+        setRowRef,
+      })}
+      className="border-t border-border/50 outline-none focus-visible:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <td role="gridcell" className="px-3 py-3 align-top">
         <div style={{ paddingLeft: `${row.depth * 1.1}rem` }}>
           <span className="break-all rounded bg-muted/60 px-2 py-1 font-mono text-xs text-foreground">
             {row.sourcePath}
@@ -1072,13 +1272,13 @@ function PageRow({
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{copy.exactHelp}</p>
       </td>
-      <td className="px-3 py-3 align-top">
+      <td role="gridcell" className="px-3 py-3 align-top">
         <div className="flex flex-wrap items-center gap-2">
           <StateBadge copy={copy} state={state} />
           {row.changed ? <Badge variant="outline">{copy.changed}</Badge> : null}
         </div>
       </td>
-      <td className="px-3 py-3 align-top">
+      <td role="gridcell" className="px-3 py-3 align-top">
         <div className="space-y-1 text-muted-foreground">
           <p>{row.reason ? copy.reasonLabels[row.reason] : copy.defaultState}</p>
           <p className="text-xs">
@@ -1102,7 +1302,7 @@ function PageRow({
           </div>
         </div>
       </td>
-      <td className="px-3 py-3 text-right align-top">
+      <td role="gridcell" className="px-3 py-3 text-right align-top">
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
@@ -1140,6 +1340,63 @@ function PageRow({
   );
 }
 
+function treeRowProps({
+  copy,
+  isFocused,
+  onFocusRow,
+  onRowKeyDown,
+  row,
+  rowIndex,
+  setRowRef,
+}: {
+  copy: SourceSelectionCopy;
+  isFocused: boolean;
+  onFocusRow: (id: string) => void;
+  onRowKeyDown: (
+    row: SourceSelectionTreePreviewNode,
+    event: KeyboardEvent<HTMLTableRowElement>,
+  ) => void;
+  row: SourceSelectionTreePreviewNode;
+  rowIndex: number;
+  setRowRef: (id: string, node: HTMLTableRowElement | null) => void;
+}) {
+  return {
+    ref: (node: HTMLTableRowElement | null) => setRowRef(row.id, node),
+    role: "row" as const,
+    tabIndex: isFocused ? 0 : -1,
+    "aria-label": treeRowLabel(copy, row),
+    "aria-level": row.depth + 1,
+    "aria-rowindex": rowIndex + 2,
+    onFocus: () => onFocusRow(row.id),
+    onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => onRowKeyDown(row, event),
+  };
+}
+
+function treeRowLabel(copy: SourceSelectionCopy, row: SourceSelectionTreePreviewNode): string {
+  const state = stateLabel(copy, toBadgeState(row.effectiveState));
+  const changed =
+    row.changedKnownPages > 0
+      ? copy.changedOnPage.replace("{count}", String(row.changedKnownPages))
+      : row.changed
+        ? copy.changed
+        : "";
+  const scope = row.kind === "folder" ? copy.descendantsHelp : copy.exactHelp;
+  return [row.sourcePath, state, changed, scope].filter(Boolean).join(", ");
+}
+
+function findPreviousAncestorRowIndex(
+  rows: readonly SourceSelectionTreePreviewNode[],
+  currentIndex: number,
+  currentDepth: number,
+): number {
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    if (rows[index]?.depth < currentDepth) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 function StateBadge({
   copy,
   state,
@@ -1148,12 +1405,22 @@ function StateBadge({
   state: "included" | "excluded" | "mixed";
 }) {
   if (state === "included") {
-    return <Badge className="bg-emerald-100 text-emerald-700">{copy.selected}</Badge>;
+    return <Badge className="bg-emerald-100 text-emerald-700">{stateLabel(copy, state)}</Badge>;
   }
   if (state === "excluded") {
-    return <Badge variant="outline">{copy.excluded}</Badge>;
+    return <Badge variant="outline">{stateLabel(copy, state)}</Badge>;
   }
-  return <Badge variant="secondary">{copy.mixed}</Badge>;
+  return <Badge variant="secondary">{stateLabel(copy, state)}</Badge>;
+}
+
+function stateLabel(copy: SourceSelectionCopy, state: "included" | "excluded" | "mixed"): string {
+  if (state === "included") {
+    return copy.selected;
+  }
+  if (state === "excluded") {
+    return copy.excluded;
+  }
+  return copy.mixed;
 }
 
 function toBadgeState(

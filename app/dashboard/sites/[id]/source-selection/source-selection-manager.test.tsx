@@ -50,6 +50,11 @@ const copy: SourceSelectionCopy = {
   notIncludedByRule: "Not included by rule",
   rulesTotal: "Rules",
   warningsTitle: "Preview warnings",
+  impactTitle: "High-impact preview",
+  selectedToExcludedWarning:
+    "{count} currently selected known source pages would be excluded by this draft.",
+  activeSiteRerunWarning:
+    "Saving these rules on an active site will enqueue the existing site refresh flow for {count} active deployments.",
   validationTitle: "Rules need changes",
   previewErrorTitle: "Unable to preview rules.",
   previewLoading: "Previewing rules...",
@@ -65,6 +70,8 @@ const copy: SourceSelectionCopy = {
   clearFilter: "Clear filter",
   inventoryNote:
     "This view shows known discovered source paths returned by preview. It is not a live crawl of every possible origin URL.",
+  partialInventoryNote:
+    "This preview is limited to a backend-bounded sample so it stays responsive on large sites. Use search or open a narrower folder to inspect more paths.",
   currentFolder: "Current folder",
   parentFolder: "Parent folder",
   rootFolder: "Root",
@@ -702,9 +709,9 @@ describe("SourceSelectionManager", () => {
     await runPreviewTimer();
 
     expect(screen.getByText("/blog/post-1")).toBeTruthy();
-    expect(screen.getByText("/blog/drafts/one")).toBeTruthy();
+    expect(screen.getAllByText("/blog/drafts/one").length).toBeGreaterThan(0);
     expect(screen.getAllByText("/pricing").length).toBeGreaterThan(0);
-    expect(screen.getByText("/products/widget")).toBeTruthy();
+    expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
     expect(screen.getAllByText("/ja").length).toBeGreaterThan(0);
     expect(screen.getByText("Excluded because include rules create an allowlist")).toBeTruthy();
     expect(screen.getAllByText("/blog/drafts/*").length).toBeGreaterThan(0);
@@ -804,7 +811,7 @@ describe("SourceSelectionManager", () => {
 
     expect(screen.getAllByText("/blog").length).toBeGreaterThan(0);
     expect(screen.getByText("/blog/drafts")).toBeTruthy();
-    expect(screen.getByText("/blog/drafts/one")).toBeTruthy();
+    expect(screen.getAllByText("/blog/drafts/one").length).toBeGreaterThan(0);
     expect(screen.getAllByText("1 changed on this preview page").length).toBeGreaterThan(1);
     expect(screen.queryByText("/blog/post-1")).toBeNull();
     expect(screen.queryByText("/products/widget")).toBeNull();
@@ -812,7 +819,125 @@ describe("SourceSelectionManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
     await runPreviewTimer();
-    expect(screen.getByText("/products/widget")).toBeTruthy();
+    expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
+  });
+
+  it("exposes backend rows as a keyboard navigable treegrid", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify(
+            makePreview({
+              affectedPages: [
+                {
+                  sourcePath: "/blog/post-1",
+                  selected: true,
+                  reason: "included_by_default",
+                  effectiveState: "included",
+                  previousSelected: true,
+                  previousReason: "included_by_default",
+                  changed: false,
+                },
+                {
+                  sourcePath: "/blog/drafts/one",
+                  selected: false,
+                  reason: "excluded_by_rule",
+                  effectiveState: "excluded",
+                  previousSelected: true,
+                  previousReason: "included_by_default",
+                  changed: true,
+                },
+              ],
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    );
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    const treeGrid = screen.getByRole("treegrid", { name: "Known source pages" });
+    expect(treeGrid.getAttribute("aria-colcount")).toBe("4");
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+      "Path",
+      "State",
+      "Reason",
+      "Actions",
+    ]);
+    const rows = screen.getAllByRole("row").filter((row) => row.getAttribute("aria-level"));
+    expect(rows.length).toBeGreaterThan(2);
+    expect(treeGrid.getAttribute("aria-rowcount")).toBe(String(rows.length + 1));
+    expect(rows[0]?.getAttribute("aria-level")).toBe("2");
+    expect(rows[0]?.getAttribute("aria-rowindex")).toBe("2");
+    expect(rows[0]?.getAttribute("aria-label")).toContain("/blog");
+    expect(rows[0]?.getAttribute("aria-label")).toContain("1 changed on this preview page");
+
+    (rows[0] as HTMLElement).focus();
+    expect(document.activeElement).toBe(rows[0]);
+    fireEvent.keyDown(rows[0] as HTMLElement, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(rows[1]);
+    fireEvent.keyDown(rows[1] as HTMLElement, { key: "End" });
+    expect(document.activeElement).toBe(rows[rows.length - 1]);
+    fireEvent.keyDown(rows[rows.length - 1] as HTMLElement, { key: "Home" });
+    expect(document.activeElement).toBe(rows[0]);
+
+    (rows[2] as HTMLElement).focus();
+    fireEvent.keyDown(rows[2] as HTMLElement, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(rows[1]);
+
+    fireEvent.keyDown(rows[0] as HTMLElement, { key: "ArrowRight" });
+    await runPreviewTimer();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("parentPath=%2Fblog"),
+      expect.any(Object),
+    );
+  });
+
+  it("surfaces backend impact warnings before saving high-impact drafts", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify(
+            makePreview({
+              impact: {
+                scope: "known_pages",
+                changedKnownPages: 2,
+                selectedToExcluded: {
+                  count: 2,
+                  sourcePaths: ["/blog/drafts/one", "/blog/drafts/two"],
+                },
+                activeSiteRerun: {
+                  required: true,
+                  basis: "site_status_and_config_change",
+                  activeDeploymentCount: 1,
+                  deploymentImpact: "has_active_deployments",
+                  message:
+                    "Saving these rules on an active site will enqueue the existing site refresh flow.",
+                },
+              },
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    expect(screen.getByText("High-impact preview")).toBeTruthy();
+    expect(
+      screen.getByText("2 currently selected known source pages would be excluded by this draft."),
+    ).toBeTruthy();
+    expect(screen.getByText("/blog/drafts/one, /blog/drafts/two")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Saving these rules on an active site will enqueue the existing site refresh flow for 1 active deployments.",
+      ),
+    ).toBeTruthy();
   });
 
   it("shows inventory copy, rule change markers, and opens loaded folders", async () => {
@@ -884,6 +1009,35 @@ describe("SourceSelectionManager", () => {
     expect(screen.getByText("New")).toBeTruthy();
     expect(screen.getByText("Removed on save")).toBeTruthy();
     expect(screen.getAllByText("/old/*").length).toBeGreaterThan(0);
+  });
+
+  it("shows a partial inventory note when backend preview scanning is capped", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify(
+            makePreview({
+              inventory: {
+                knownPagesTotal: 1_000,
+                resultNodesTotal: 1,
+                resultMode: "children",
+                summaryScope: "global_known_pages",
+                resultScope: "filtered_tree_nodes",
+                parentPath: "/",
+                maxPageSize: 200,
+                complete: false,
+              },
+            }),
+          ),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    expect(screen.getAllByText(copy.partialInventoryNote).length).toBeGreaterThan(0);
   });
 
   it("disables adding rules when the draft reaches the frontend rule cap", () => {
@@ -1056,7 +1210,7 @@ describe("SourceSelectionManager", () => {
 
     expect(screen.getByText("/about")).toBeTruthy();
     expect(screen.getByText("Included by default")).toBeTruthy();
-    expect(screen.getByText("/products/widget")).toBeTruthy();
+    expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Excluded by rule").length).toBeGreaterThan(0);
   });
 
@@ -1158,7 +1312,7 @@ describe("SourceSelectionManager", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("/products/widget")).toBeTruthy();
+    expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
 
     await act(async () => {
       first.resolve(
@@ -1185,7 +1339,7 @@ describe("SourceSelectionManager", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("/products/widget")).toBeTruthy();
+    expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
     expect(screen.queryByText("/blog/post-1")).toBeNull();
   });
 });
