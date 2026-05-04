@@ -120,7 +120,28 @@ describe("PostHog proxy route", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("degrades without surfacing upstream error responses to the browser", async () => {
+  it("degrades without surfacing upstream ingestion error responses to the browser", async () => {
+    vi.resetModules();
+    const { POST } = await import("./route");
+    fetchMock.mockResolvedValueOnce(
+      new Response("not found", {
+        status: 404,
+      }),
+    );
+
+    const response = await POST(
+      buildRequest("http://localhost:3000/api/analytics/posthog/e", {
+        body: "{}",
+        method: "POST",
+      }),
+      { params: Promise.resolve({ path: ["e"] }) },
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("surfaces upstream script failures so PostHog dependency loaders receive onerror", async () => {
     vi.resetModules();
     const { GET } = await import("./route");
     fetchMock.mockResolvedValueOnce(
@@ -130,11 +151,25 @@ describe("PostHog proxy route", () => {
     );
 
     const response = await GET(
+      buildRequest("http://localhost:3000/api/analytics/posthog/static/posthog-recorder.js"),
+      { params: Promise.resolve({ path: ["static", "posthog-recorder.js"] }) },
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("surfaces script fetch failures instead of returning blank successful JavaScript", async () => {
+    vi.resetModules();
+    const { GET } = await import("./route");
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    const response = await GET(
       buildRequest("http://localhost:3000/api/analytics/posthog/array/phc_test/config.js"),
       { params: Promise.resolve({ path: ["array", "phc_test", "config.js"] }) },
     );
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(504);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });

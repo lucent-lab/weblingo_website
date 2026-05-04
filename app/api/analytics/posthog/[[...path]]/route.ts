@@ -17,8 +17,27 @@ type RouteContext = {
   }>;
 };
 
+function shouldSurfaceProxyFailure(method: string, path: string[]): boolean {
+  const normalizedMethod = method.trim().toUpperCase();
+  if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") {
+    return false;
+  }
+  const lastSegment = path.at(-1) ?? "";
+  return path[0] === "static" || lastSegment.endsWith(".js");
+}
+
+function posthogProxyFailureResponse(surfaceFailure: boolean, status = 502): Response {
+  return new Response(null, {
+    headers: {
+      "cache-control": "no-store",
+    },
+    status: surfaceFailure ? status : 204,
+  });
+}
+
 async function proxyPosthogRequest(request: NextRequest, context: RouteContext): Promise<Response> {
   const { path = [] } = await context.params;
+  const surfaceFailure = shouldSurfaceProxyFailure(request.method, path);
   const upstreamUrl = buildPosthogUpstreamUrl(env.NEXT_PUBLIC_POSTHOG_HOST, path, request.url);
   let upstreamResponse: Response;
 
@@ -34,21 +53,11 @@ async function proxyPosthogRequest(request: NextRequest, context: RouteContext):
       { timeoutMs: POSTHOG_PROXY_TIMEOUT_MS },
     );
   } catch {
-    return new Response(null, {
-      headers: {
-        "cache-control": "no-store",
-      },
-      status: 204,
-    });
+    return posthogProxyFailureResponse(surfaceFailure, 504);
   }
 
   if (!upstreamResponse.ok) {
-    return new Response(null, {
-      headers: {
-        "cache-control": "no-store",
-      },
-      status: 204,
-    });
+    return posthogProxyFailureResponse(surfaceFailure, upstreamResponse.status);
   }
 
   return new Response(upstreamResponse.body, {
