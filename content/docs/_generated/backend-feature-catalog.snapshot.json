@@ -1425,6 +1425,32 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.sourceSelection.treePreview",
+        "path": "/sites/:siteId/source-selection/tree-preview"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.sourceSelection",
+      "id": "api.sites.sourceSelection.treePreview",
+      "name": "Preview source-selection tree nodes",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.sourceSelection.treePreview"
+      ],
+      "stability": "GA",
+      "summary": "Dry-runs proposed flat `sourceSelection.rules` and returns backend-resolved folder/page tree nodes for dashboard editing. The durable contract remains flat rules; this endpoint is read-only. `summary`, `warnings`, and `impact` describe the full known-page inventory, while `nodes` and `inventory.resultNodesTotal` describe only the requested child/search result set.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "GET",
         "operationId": "sites.switcherSnippets.get",
         "path": "/sites/:siteId/switcher-snippets"

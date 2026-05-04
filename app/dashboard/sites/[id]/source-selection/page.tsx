@@ -127,6 +127,8 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         <SourceSelectionManager
           siteId={site.id}
           initialRules={initialSourceSelectionRules}
+          routeConfigUpdatedAt={site.routeConfig?.updatedAt ?? null}
+          sourceSelectionFingerprint={site.routeConfig?.sourceSelectionFingerprint ?? null}
           canEdit={canEdit}
           saveAction={updateSourceSelectionAction}
           copy={buildSourceSelectionCopy(t)}
@@ -190,6 +192,18 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     addIncludeRule: t("dashboard.sourceSelection.rule.addInclude", "Add include rule"),
     addExcludeRule: t("dashboard.sourceSelection.rule.addExclude", "Add exclude rule"),
     removeRule: t("dashboard.sourceSelection.rule.remove", "Remove rule"),
+    ruleLimitLabel: t("dashboard.sourceSelection.rule.limitLabel", "{count}/{limit} rules used"),
+    ruleLimitHelp: t(
+      "dashboard.sourceSelection.rule.limitHelp",
+      "Use section rules like /blog/* to keep the rule set compact.",
+    ),
+    ruleLimitNear: t(
+      "dashboard.sourceSelection.rule.limitNear",
+      "Near the 200-rule limit. Prefer section rules before adding more page rules.",
+    ),
+    ruleChangeNew: t("dashboard.sourceSelection.rule.changeNew", "New"),
+    ruleChangeEdited: t("dashboard.sourceSelection.rule.changeEdited", "Edited"),
+    ruleChangeRemoved: t("dashboard.sourceSelection.rule.changeRemoved", "Removed on save"),
     summaryTitle: t("dashboard.sourceSelection.summary.title", "Preview summary"),
     summaryDescription: t(
       "dashboard.sourceSelection.summary.description",
@@ -217,9 +231,28 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     pagesTitle: t("dashboard.sourceSelection.pages.title", "Known source pages"),
     pagesDescription: t(
       "dashboard.sourceSelection.pages.description",
-      "The tree is derived from previewed source paths; include/exclude decisions come from the backend response.",
+      "The tree, search, and include/exclude decisions come from the backend preview response.",
     ),
     pagesEmpty: t("dashboard.sourceSelection.pages.empty", "No known pages returned by preview."),
+    filterLabel: t("dashboard.sourceSelection.filter.label", "Search source paths"),
+    filterPlaceholder: t("dashboard.sourceSelection.filter.placeholder", "/blog"),
+    filterHelp: t(
+      "dashboard.sourceSelection.filter.help",
+      "Searches globally across known backend source paths.",
+    ),
+    filterNoResults: t(
+      "dashboard.sourceSelection.filter.noResults",
+      "No backend source paths match the search.",
+    ),
+    clearFilter: t("dashboard.sourceSelection.filter.clear", "Clear filter"),
+    inventoryNote: t(
+      "dashboard.sourceSelection.inventory.note",
+      "This view shows known discovered source paths returned by preview. It is not a live crawl of every possible origin URL.",
+    ),
+    currentFolder: t("dashboard.sourceSelection.tree.currentFolder", "Current folder"),
+    parentFolder: t("dashboard.sourceSelection.tree.parentFolder", "Parent folder"),
+    rootFolder: t("dashboard.sourceSelection.tree.rootFolder", "Root"),
+    openFolder: t("dashboard.sourceSelection.tree.openFolder", "Open folder"),
     pageColumn: t("dashboard.sourceSelection.pages.column.page", "Path"),
     stateColumn: t("dashboard.sourceSelection.pages.column.state", "State"),
     reasonColumn: t("dashboard.sourceSelection.pages.column.reason", "Reason"),
@@ -235,6 +268,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     direct: t("dashboard.sourceSelection.state.direct", "Direct"),
     inherited: t("dashboard.sourceSelection.state.inherited", "Inherited"),
     changed: t("dashboard.sourceSelection.state.changed", "Changed"),
+    changedOnPage: t(
+      "dashboard.sourceSelection.state.changedOnPage",
+      "{count} changed on this preview page",
+    ),
     matchedPattern: t("dashboard.sourceSelection.pattern.matched", "Matched"),
     noMatchedPattern: t("dashboard.sourceSelection.pattern.none", "No matched rule"),
     includePage: t("dashboard.sourceSelection.action.includePage", "Include page"),

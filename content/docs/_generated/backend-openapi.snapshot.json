@@ -4767,6 +4767,10 @@
           "sourceSelection": {
             "$ref": "#/components/schemas/SourceSelectionConfig"
           },
+          "sourceSelectionFingerprint": {
+            "description": "Derived fingerprint of normalized flat source-selection rules for optimistic saves.",
+            "type": "string"
+          },
           "spaRefresh": {
             "anyOf": [
               {
@@ -4789,6 +4793,10 @@
                 "type": "null"
               }
             ]
+          },
+          "updatedAt": {
+            "description": "Route-config row update timestamp. Use as an optimistic concurrency token for settings edits.",
+            "type": "string"
           },
           "urlMode": {
             "default": "original",
@@ -5756,6 +5764,7 @@
             "items": {
               "$ref": "#/components/schemas/SourceSelectionRule"
             },
+            "maxItems": 200,
             "type": "array"
           }
         },
@@ -5771,6 +5780,80 @@
           "canonicalized"
         ],
         "type": "string"
+      },
+      "SourceSelectionPreviewImpact": {
+        "additionalProperties": false,
+        "properties": {
+          "activeSiteRerun": {
+            "additionalProperties": false,
+            "properties": {
+              "activeDeploymentCount": {
+                "type": "number"
+              },
+              "basis": {
+                "const": "site_status_and_config_change",
+                "description": "This is an enqueue/rerun signal, not a per-deployment disappearance estimate.",
+                "type": "string"
+              },
+              "deploymentImpact": {
+                "enum": [
+                  "not_estimated",
+                  "none",
+                  "has_active_deployments"
+                ],
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "required": {
+                "description": "True when the site is active and the draft flat source-selection rules differ.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "required",
+              "basis",
+              "activeDeploymentCount",
+              "deploymentImpact"
+            ],
+            "type": "object"
+          },
+          "changedKnownPages": {
+            "type": "number"
+          },
+          "scope": {
+            "const": "known_pages",
+            "description": "Impact counts are computed against known persisted page inventory only.",
+            "type": "string"
+          },
+          "selectedToExcluded": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "type": "number"
+              },
+              "sourcePaths": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "count",
+              "sourcePaths"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "changedKnownPages",
+          "selectedToExcluded",
+          "activeSiteRerun"
+        ],
+        "type": "object"
       },
       "SourceSelectionPreviewPage": {
         "additionalProperties": false,
@@ -5919,6 +6002,23 @@
               "sourcePath": "/blog/post-1"
             }
           ],
+          "impact": {
+            "activeSiteRerun": {
+              "activeDeploymentCount": 2,
+              "basis": "site_status_and_config_change",
+              "deploymentImpact": "has_active_deployments",
+              "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+              "required": true
+            },
+            "changedKnownPages": 8,
+            "scope": "known_pages",
+            "selectedToExcluded": {
+              "count": 8,
+              "sourcePaths": [
+                "/blog/drafts/draft-1"
+              ]
+            }
+          },
           "pagination": {
             "hasMore": true,
             "limit": 100,
@@ -5976,6 +6076,23 @@
                 "sourcePath": "/blog/post-1"
               }
             ],
+            "impact": {
+              "activeSiteRerun": {
+                "activeDeploymentCount": 2,
+                "basis": "site_status_and_config_change",
+                "deploymentImpact": "has_active_deployments",
+                "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+                "required": true
+              },
+              "changedKnownPages": 8,
+              "scope": "known_pages",
+              "selectedToExcluded": {
+                "count": 8,
+                "sourcePaths": [
+                  "/blog/drafts/draft-1"
+                ]
+              }
+            },
             "pagination": {
               "hasMore": true,
               "limit": 100,
@@ -6020,6 +6137,9 @@
             },
             "type": "array"
           },
+          "impact": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewImpact"
+          },
           "pagination": {
             "additionalProperties": false,
             "properties": {
@@ -6062,7 +6182,8 @@
           "summary",
           "affectedPages",
           "pagination",
-          "warnings"
+          "warnings",
+          "impact"
         ],
         "type": "object"
       },
@@ -6201,6 +6322,474 @@
           "inherited"
         ],
         "type": "string"
+      },
+      "SourceSelectionTreePreviewEffectiveState": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/SourceSelectionPreviewEffectiveState"
+          },
+          {
+            "const": "mixed",
+            "type": "string"
+          }
+        ]
+      },
+      "SourceSelectionTreePreviewInventory": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "knownPagesTotal": {
+            "type": "number"
+          },
+          "maxPageSize": {
+            "type": "number"
+          },
+          "parentPath": {
+            "type": "string"
+          },
+          "resultMode": {
+            "enum": [
+              "children",
+              "search"
+            ],
+            "type": "string"
+          },
+          "resultNodesTotal": {
+            "type": "number"
+          },
+          "resultScope": {
+            "const": "filtered_tree_nodes",
+            "type": "string"
+          },
+          "search": {
+            "type": "string"
+          },
+          "summaryScope": {
+            "const": "global_known_pages",
+            "type": "string"
+          }
+        },
+        "required": [
+          "knownPagesTotal",
+          "resultNodesTotal",
+          "resultMode",
+          "summaryScope",
+          "resultScope",
+          "maxPageSize",
+          "complete"
+        ],
+        "type": "object"
+      },
+      "SourceSelectionTreePreviewNode": {
+        "additionalProperties": false,
+        "properties": {
+          "canonicalSourcePath": {
+            "type": "string"
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "changedKnownPages": {
+            "type": "number"
+          },
+          "depth": {
+            "type": "number"
+          },
+          "descendantRule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceSelectionPreviewRuleMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "directRule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceSelectionPreviewRuleMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effectiveState": {
+            "$ref": "#/components/schemas/SourceSelectionTreePreviewEffectiveState"
+          },
+          "hasChildren": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inheritedRule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceSelectionPreviewRuleMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SourceSelectionTreePreviewNodeKind"
+          },
+          "knownPagesExcluded": {
+            "type": "number"
+          },
+          "knownPagesIncluded": {
+            "type": "number"
+          },
+          "knownPagesTotal": {
+            "type": "number"
+          },
+          "matchedAction": {
+            "$ref": "#/components/schemas/SourceSelectionRuleAction"
+          },
+          "matchedPattern": {
+            "type": "string"
+          },
+          "previousReason": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewReason"
+          },
+          "previousSelected": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewReason"
+          },
+          "ruleScope": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewRuleScope"
+          },
+          "selected": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sourcePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "sourcePath",
+          "depth",
+          "hasChildren",
+          "selected",
+          "effectiveState",
+          "changed",
+          "knownPagesTotal",
+          "knownPagesIncluded",
+          "knownPagesExcluded",
+          "changedKnownPages"
+        ],
+        "type": "object"
+      },
+      "SourceSelectionTreePreviewNodeKind": {
+        "enum": [
+          "folder",
+          "page"
+        ],
+        "type": "string"
+      },
+      "SourceSelectionTreePreviewResponse": {
+        "additionalProperties": false,
+        "example": {
+          "impact": {
+            "activeSiteRerun": {
+              "activeDeploymentCount": 2,
+              "basis": "site_status_and_config_change",
+              "deploymentImpact": "has_active_deployments",
+              "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+              "required": true
+            },
+            "changedKnownPages": 8,
+            "scope": "known_pages",
+            "selectedToExcluded": {
+              "count": 8,
+              "sourcePaths": [
+                "/blog/drafts/draft-1"
+              ]
+            }
+          },
+          "inventory": {
+            "complete": true,
+            "knownPagesTotal": 120,
+            "maxPageSize": 200,
+            "parentPath": "/",
+            "resultMode": "children",
+            "resultNodesTotal": 120,
+            "resultScope": "filtered_tree_nodes",
+            "summaryScope": "global_known_pages"
+          },
+          "nodes": [
+            {
+              "changed": true,
+              "changedKnownPages": 8,
+              "depth": 1,
+              "descendantRule": {
+                "action": "include",
+                "pattern": "/blog/*"
+              },
+              "effectiveState": "mixed",
+              "hasChildren": true,
+              "id": "folder:/blog",
+              "kind": "folder",
+              "knownPagesExcluded": 8,
+              "knownPagesIncluded": 42,
+              "knownPagesTotal": 50,
+              "previousReason": "included_by_default",
+              "previousSelected": true,
+              "selected": null,
+              "sourcePath": "/blog"
+            },
+            {
+              "changed": false,
+              "changedKnownPages": 0,
+              "depth": 2,
+              "directRule": null,
+              "effectiveState": "included",
+              "hasChildren": false,
+              "id": "page:/blog/post-1",
+              "inheritedRule": {
+                "action": "include",
+                "pattern": "/blog/*"
+              },
+              "kind": "page",
+              "knownPagesExcluded": 0,
+              "knownPagesIncluded": 1,
+              "knownPagesTotal": 1,
+              "matchedAction": "include",
+              "matchedPattern": "/blog/*",
+              "previousReason": "included_by_default",
+              "previousSelected": true,
+              "reason": "included_by_rule",
+              "ruleScope": "inherited",
+              "selected": true,
+              "sourcePath": "/blog/post-1"
+            }
+          ],
+          "pagination": {
+            "hasMore": true,
+            "limit": 100,
+            "nextCursor": "page:/blog/post-1",
+            "total": 120
+          },
+          "sourceSelection": {
+            "rules": [
+              {
+                "action": "include",
+                "pattern": "/blog/*"
+              },
+              {
+                "action": "exclude",
+                "pattern": "/blog/drafts/*"
+              }
+            ]
+          },
+          "summary": {
+            "canonicalizedByRule": 0,
+            "excludedByRule": 8,
+            "includedByDefault": 0,
+            "includedByRule": 42,
+            "knownPagesExcluded": 78,
+            "knownPagesIncluded": 42,
+            "knownPagesTotal": 120,
+            "notIncludedByRule": 70,
+            "rulesTotal": 2
+          },
+          "warnings": [
+            {
+              "code": "include_rules_create_allowlist",
+              "message": "Unmatched paths will be excluded because at least one include rule is present."
+            }
+          ]
+        },
+        "examples": [
+          {
+            "impact": {
+              "activeSiteRerun": {
+                "activeDeploymentCount": 2,
+                "basis": "site_status_and_config_change",
+                "deploymentImpact": "has_active_deployments",
+                "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+                "required": true
+              },
+              "changedKnownPages": 8,
+              "scope": "known_pages",
+              "selectedToExcluded": {
+                "count": 8,
+                "sourcePaths": [
+                  "/blog/drafts/draft-1"
+                ]
+              }
+            },
+            "inventory": {
+              "complete": true,
+              "knownPagesTotal": 120,
+              "maxPageSize": 200,
+              "parentPath": "/",
+              "resultMode": "children",
+              "resultNodesTotal": 120,
+              "resultScope": "filtered_tree_nodes",
+              "summaryScope": "global_known_pages"
+            },
+            "nodes": [
+              {
+                "changed": true,
+                "changedKnownPages": 8,
+                "depth": 1,
+                "descendantRule": {
+                  "action": "include",
+                  "pattern": "/blog/*"
+                },
+                "effectiveState": "mixed",
+                "hasChildren": true,
+                "id": "folder:/blog",
+                "kind": "folder",
+                "knownPagesExcluded": 8,
+                "knownPagesIncluded": 42,
+                "knownPagesTotal": 50,
+                "previousReason": "included_by_default",
+                "previousSelected": true,
+                "selected": null,
+                "sourcePath": "/blog"
+              },
+              {
+                "changed": false,
+                "changedKnownPages": 0,
+                "depth": 2,
+                "directRule": null,
+                "effectiveState": "included",
+                "hasChildren": false,
+                "id": "page:/blog/post-1",
+                "inheritedRule": {
+                  "action": "include",
+                  "pattern": "/blog/*"
+                },
+                "kind": "page",
+                "knownPagesExcluded": 0,
+                "knownPagesIncluded": 1,
+                "knownPagesTotal": 1,
+                "matchedAction": "include",
+                "matchedPattern": "/blog/*",
+                "previousReason": "included_by_default",
+                "previousSelected": true,
+                "reason": "included_by_rule",
+                "ruleScope": "inherited",
+                "selected": true,
+                "sourcePath": "/blog/post-1"
+              }
+            ],
+            "pagination": {
+              "hasMore": true,
+              "limit": 100,
+              "nextCursor": "page:/blog/post-1",
+              "total": 120
+            },
+            "sourceSelection": {
+              "rules": [
+                {
+                  "action": "include",
+                  "pattern": "/blog/*"
+                },
+                {
+                  "action": "exclude",
+                  "pattern": "/blog/drafts/*"
+                }
+              ]
+            },
+            "summary": {
+              "canonicalizedByRule": 0,
+              "excludedByRule": 8,
+              "includedByDefault": 0,
+              "includedByRule": 42,
+              "knownPagesExcluded": 78,
+              "knownPagesIncluded": 42,
+              "knownPagesTotal": 120,
+              "notIncludedByRule": 70,
+              "rulesTotal": 2
+            },
+            "warnings": [
+              {
+                "code": "include_rules_create_allowlist",
+                "message": "Unmatched paths will be excluded because at least one include rule is present."
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "impact": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewImpact"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/SourceSelectionTreePreviewInventory"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSelectionTreePreviewNode"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "additionalProperties": false,
+            "properties": {
+              "cursor": {
+                "type": "string"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "nextCursor": {
+                "type": "string"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "limit",
+              "total",
+              "hasMore"
+            ],
+            "type": "object"
+          },
+          "sourceSelection": {
+            "$ref": "#/components/schemas/SourceSelectionConfig"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SourceSelectionPreviewSummary"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSelectionPreviewWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sourceSelection",
+          "summary",
+          "nodes",
+          "pagination",
+          "warnings",
+          "impact",
+          "inventory"
+        ],
+        "type": "object"
       },
       "SpaRefreshFallback": {
         "enum": [
@@ -6604,6 +7193,14 @@
           },
           "crawlCaptureMode": {
             "$ref": "#/components/schemas/CrawlCaptureMode"
+          },
+          "expectedRouteConfigUpdatedAt": {
+            "description": "Optional optimistic concurrency token for dashboard source-selection edits. When provided with sourceSelection, the update fails with 409 if the current route-config row changed.",
+            "type": "string"
+          },
+          "expectedSourceSelectionFingerprint": {
+            "description": "Optional optimistic concurrency token for dashboard source-selection edits. When provided with sourceSelection, the update fails with 409 if current flat sourceSelection.rules differ.",
+            "type": "string"
           },
           "footer": {
             "anyOf": [
@@ -12873,6 +13470,23 @@
                       "sourcePath": "/blog/post-1"
                     }
                   ],
+                  "impact": {
+                    "activeSiteRerun": {
+                      "activeDeploymentCount": 2,
+                      "basis": "site_status_and_config_change",
+                      "deploymentImpact": "has_active_deployments",
+                      "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+                      "required": true
+                    },
+                    "changedKnownPages": 8,
+                    "scope": "known_pages",
+                    "selectedToExcluded": {
+                      "count": 8,
+                      "sourcePaths": [
+                        "/blog/drafts/draft-1"
+                      ]
+                    }
+                  },
                   "pagination": {
                     "hasMore": true,
                     "limit": 100,
@@ -13026,6 +13640,301 @@
           }
         ],
         "summary": "Preview source-selection rules",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/source-selection/tree-preview": {
+      "post": {
+        "description": "Dry-runs proposed flat `sourceSelection.rules` and returns backend-resolved folder/page tree nodes for dashboard editing. The durable contract remains flat rules; this endpoint is read-only. `summary`, `warnings`, and `impact` describe the full known-page inventory, while `nodes` and `inventory.resultNodesTotal` describe only the requested child/search result set.",
+        "operationId": "sites.sourceSelection.treePreview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Folder source path whose immediate child tree nodes should be returned when `search` is omitted. Defaults to `/`.",
+            "in": "query",
+            "name": "parentPath",
+            "required": false,
+            "schema": {
+              "default": "/",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Case-insensitive source-path substring search. Search results include matching page/folder nodes and ancestor folder context. Does not change global summary counts.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of tree nodes to return (1-200). Defaults to 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor returned by the previous tree-preview page, currently the last returned node id.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "sourceSelection": {
+                  "rules": [
+                    {
+                      "action": "include",
+                      "pattern": "/blog/*"
+                    },
+                    {
+                      "action": "exclude",
+                      "pattern": "/blog/drafts/*"
+                    }
+                  ]
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SourceSelectionPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "impact": {
+                    "activeSiteRerun": {
+                      "activeDeploymentCount": 2,
+                      "basis": "site_status_and_config_change",
+                      "deploymentImpact": "has_active_deployments",
+                      "message": "Saving these rules on an active site will enqueue the existing site refresh flow.",
+                      "required": true
+                    },
+                    "changedKnownPages": 8,
+                    "scope": "known_pages",
+                    "selectedToExcluded": {
+                      "count": 8,
+                      "sourcePaths": [
+                        "/blog/drafts/draft-1"
+                      ]
+                    }
+                  },
+                  "inventory": {
+                    "complete": true,
+                    "knownPagesTotal": 120,
+                    "maxPageSize": 200,
+                    "parentPath": "/",
+                    "resultMode": "children",
+                    "resultNodesTotal": 120,
+                    "resultScope": "filtered_tree_nodes",
+                    "summaryScope": "global_known_pages"
+                  },
+                  "nodes": [
+                    {
+                      "changed": true,
+                      "changedKnownPages": 8,
+                      "depth": 1,
+                      "descendantRule": {
+                        "action": "include",
+                        "pattern": "/blog/*"
+                      },
+                      "effectiveState": "mixed",
+                      "hasChildren": true,
+                      "id": "folder:/blog",
+                      "kind": "folder",
+                      "knownPagesExcluded": 8,
+                      "knownPagesIncluded": 42,
+                      "knownPagesTotal": 50,
+                      "previousReason": "included_by_default",
+                      "previousSelected": true,
+                      "selected": null,
+                      "sourcePath": "/blog"
+                    },
+                    {
+                      "changed": false,
+                      "changedKnownPages": 0,
+                      "depth": 2,
+                      "directRule": null,
+                      "effectiveState": "included",
+                      "hasChildren": false,
+                      "id": "page:/blog/post-1",
+                      "inheritedRule": {
+                        "action": "include",
+                        "pattern": "/blog/*"
+                      },
+                      "kind": "page",
+                      "knownPagesExcluded": 0,
+                      "knownPagesIncluded": 1,
+                      "knownPagesTotal": 1,
+                      "matchedAction": "include",
+                      "matchedPattern": "/blog/*",
+                      "previousReason": "included_by_default",
+                      "previousSelected": true,
+                      "reason": "included_by_rule",
+                      "ruleScope": "inherited",
+                      "selected": true,
+                      "sourcePath": "/blog/post-1"
+                    }
+                  ],
+                  "pagination": {
+                    "hasMore": true,
+                    "limit": 100,
+                    "nextCursor": "page:/blog/post-1",
+                    "total": 120
+                  },
+                  "sourceSelection": {
+                    "rules": [
+                      {
+                        "action": "include",
+                        "pattern": "/blog/*"
+                      },
+                      {
+                        "action": "exclude",
+                        "pattern": "/blog/drafts/*"
+                      }
+                    ]
+                  },
+                  "summary": {
+                    "canonicalizedByRule": 0,
+                    "excludedByRule": 8,
+                    "includedByDefault": 0,
+                    "includedByRule": 42,
+                    "knownPagesExcluded": 78,
+                    "knownPagesIncluded": 42,
+                    "knownPagesTotal": 120,
+                    "notIncludedByRule": 70,
+                    "rulesTotal": 2
+                  },
+                  "warnings": [
+                    {
+                      "code": "include_rules_create_allowlist",
+                      "message": "Unmatched paths will be excluded because at least one include rule is present."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SourceSelectionTreePreviewResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "cursor is no longer valid for these tree preview results"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The proposed source-selection rules or tree query are invalid."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "edit_disabled"
+                  },
+                  "error": "Edit access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The authenticated account cannot edit this site."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Site not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The site does not exist in the authenticated account scope."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Preview source-selection tree nodes",
         "tags": [
           "Sites"
         ]

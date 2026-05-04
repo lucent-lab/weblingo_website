@@ -31,12 +31,14 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `sites.dashboard.get`
 6. Preview source-selection rule changes before saving:
    - `operationId`: `sites.sourceSelection.preview`
-7. Update site configuration:
+7. Preview source-selection tree projections for dashboard editing:
+   - `operationId`: `sites.sourceSelection.treePreview`
+8. Update site configuration:
    - `operationId`: `sites.update`
-8. List discovered pages for a site:
+9. List discovered pages for a site:
    - `operationId`: `sites.pages.list`
-9. Generate language switcher snippets for custom frontend integration:
-   - `operationId`: `sites.switcherSnippets.get`
+10. Generate language switcher snippets for custom frontend integration:
+    - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Admin Managed Demos
 

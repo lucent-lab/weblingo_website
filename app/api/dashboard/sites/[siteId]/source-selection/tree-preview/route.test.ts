@@ -3,7 +3,7 @@ import type { DashboardAuth } from "@internal/dashboard/auth";
 
 import { POST } from "./route";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { previewSourceSelection } from "@internal/dashboard/webhooks";
+import { previewSourceSelectionTree } from "@internal/dashboard/webhooks";
 
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: vi.fn(),
@@ -21,13 +21,13 @@ vi.mock("@internal/dashboard/webhooks", () => {
     }
   }
   return {
-    previewSourceSelection: vi.fn(),
+    previewSourceSelectionTree: vi.fn(),
     WebhooksApiError,
   };
 });
 
 const mockedRequireDashboardAuth = vi.mocked(requireDashboardAuth);
-const mockedPreviewSourceSelection = vi.mocked(previewSourceSelection);
+const mockedPreviewSourceSelectionTree = vi.mocked(previewSourceSelectionTree);
 
 function makeAuth(): DashboardAuth {
   return {
@@ -66,11 +66,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("POST /api/dashboard/sites/[siteId]/source-selection/preview", () => {
-  it("uses the subject-scoped dashboard auth context for agency workspaces", async () => {
+describe("POST /api/dashboard/sites/[siteId]/source-selection/tree-preview", () => {
+  it("uses the subject auth context and forwards tree query options", async () => {
     const auth = makeAuth();
     mockedRequireDashboardAuth.mockResolvedValue(auth);
-    mockedPreviewSourceSelection.mockResolvedValue({
+    mockedPreviewSourceSelectionTree.mockResolvedValue({
       sourceSelection: { rules: [{ action: "exclude", pattern: "/products/*" }] },
       summary: {
         knownPagesTotal: 1,
@@ -83,8 +83,8 @@ describe("POST /api/dashboard/sites/[siteId]/source-selection/preview", () => {
         canonicalizedByRule: 0,
         rulesTotal: 1,
       },
-      affectedPages: [],
-      pagination: { limit: 100, offset: 0, total: 1, hasMore: false },
+      nodes: [],
+      pagination: { limit: 100, total: 0, hasMore: false },
       warnings: [],
       impact: {
         scope: "known_pages",
@@ -97,11 +97,21 @@ describe("POST /api/dashboard/sites/[siteId]/source-selection/preview", () => {
           deploymentImpact: "not_estimated",
         },
       },
+      inventory: {
+        knownPagesTotal: 1,
+        resultNodesTotal: 0,
+        resultMode: "children",
+        summaryScope: "global_known_pages",
+        resultScope: "filtered_tree_nodes",
+        parentPath: "/products",
+        maxPageSize: 200,
+        complete: true,
+      },
     });
 
     const response = await POST(
       new Request(
-        "http://localhost/api/dashboard/sites/site-1/source-selection/preview?limit=100",
+        "http://localhost/api/dashboard/sites/site-1/source-selection/tree-preview?limit=100&parentPath=/products",
         {
           method: "POST",
           body: JSON.stringify({
@@ -113,70 +123,37 @@ describe("POST /api/dashboard/sites/[siteId]/source-selection/preview", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockedPreviewSourceSelection).toHaveBeenCalledWith(
+    expect(mockedPreviewSourceSelectionTree).toHaveBeenCalledWith(
       auth.webhooksAuth,
       "site-1",
       {
         sourceSelection: { rules: [{ action: "exclude", pattern: "/products/*" }] },
       },
-      { limit: 100 },
+      { limit: 100, parentPath: "/products" },
     );
-  });
-
-  it("forwards structured validation details from the backend preview", async () => {
-    mockedRequireDashboardAuth.mockResolvedValue(makeAuth());
-    const { WebhooksApiError } = await import("@internal/dashboard/webhooks");
-    mockedPreviewSourceSelection.mockRejectedValue(
-      new WebhooksApiError(
-        "sourceSelection.rules[0].pattern must use exact paths or /* wildcards",
-        400,
-        {
-          code: "source_selection_validation_failed",
-          validation: {
-            field: "sourceSelection.rules[0].pattern",
-            message: "sourceSelection.rules[0].pattern must use exact paths or /* wildcards",
-          },
-        },
-      ),
-    );
-
-    const response = await POST(
-      new Request("http://localhost/api/dashboard/sites/site-1/source-selection/preview", {
-        method: "POST",
-        body: JSON.stringify({
-          sourceSelection: { rules: [{ action: "include", pattern: "/blog*" }] },
-        }),
-      }),
-      { params: Promise.resolve({ siteId: "site-1" }) },
-    );
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.details.validation.field).toBe("sourceSelection.rules[0].pattern");
   });
 
   it.each([
     ["limit=0", "limit must be at least 1."],
     ["limit=201", "limit must be at most 200."],
     ["limit=1.5", "limit must be an integer."],
-    ["limit=abc", "limit must be an integer."],
-    ["offset=-1", "offset must be at least 0."],
-    ["offset=1.5", "offset must be an integer."],
-  ])("rejects invalid pagination query %s", async (query, message) => {
+    ["parentPath=blog", "parentPath must start with /."],
+  ])("rejects invalid tree query %s", async (query, message) => {
     mockedRequireDashboardAuth.mockResolvedValue(makeAuth());
 
     const response = await POST(
-      new Request(`http://localhost/api/dashboard/sites/site-1/source-selection/preview?${query}`, {
-        method: "POST",
-        body: JSON.stringify({
-          sourceSelection: { rules: [] },
-        }),
-      }),
+      new Request(
+        `http://localhost/api/dashboard/sites/site-1/source-selection/tree-preview?${query}`,
+        {
+          method: "POST",
+          body: JSON.stringify({ sourceSelection: { rules: [] } }),
+        },
+      ),
       { params: Promise.resolve({ siteId: "site-1" }) },
     );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: message });
-    expect(mockedPreviewSourceSelection).not.toHaveBeenCalled();
+    expect(mockedPreviewSourceSelectionTree).not.toHaveBeenCalled();
   });
 });

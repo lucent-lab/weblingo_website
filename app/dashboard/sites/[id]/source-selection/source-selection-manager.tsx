@@ -1,6 +1,15 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, FolderTree, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  FolderTree,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
@@ -14,14 +23,14 @@ import { cn } from "@/lib/utils";
 import type {
   SourceSelectionConfig,
   SourceSelectionPreviewReason,
-  SourceSelectionPreviewResponse,
   SourceSelectionRule,
+  SourceSelectionTreePreviewNode,
+  SourceSelectionTreePreviewResponse,
 } from "@internal/dashboard/webhooks";
 
 import {
   addOrReplaceRule,
   createDraftRule,
-  deriveDisplayTreeFromPreview,
   descendantPatternForPath,
   normalizeRulesForForm,
   removeRulesByPattern,
@@ -29,11 +38,12 @@ import {
   toSourceSelectionConfig,
   type DraftSourceSelectionRule,
   type EditableSourceSelectionAction,
-  type SourceSelectionTreeRow,
 } from "./source-selection-model";
 
 const PREVIEW_DEBOUNCE_MS = 350;
 const PREVIEW_PAGE_SIZE = 100;
+const SOURCE_SELECTION_RULE_LIMIT = 200;
+const SOURCE_SELECTION_RULE_LIMIT_WARNING_THRESHOLD = 180;
 
 export type SourceSelectionCopy = {
   title: string;
@@ -53,6 +63,12 @@ export type SourceSelectionCopy = {
   addIncludeRule: string;
   addExcludeRule: string;
   removeRule: string;
+  ruleLimitLabel: string;
+  ruleLimitHelp: string;
+  ruleLimitNear: string;
+  ruleChangeNew: string;
+  ruleChangeEdited: string;
+  ruleChangeRemoved: string;
   summaryTitle: string;
   summaryDescription: string;
   knownIncluded: string;
@@ -71,6 +87,16 @@ export type SourceSelectionCopy = {
   pagesTitle: string;
   pagesDescription: string;
   pagesEmpty: string;
+  filterLabel: string;
+  filterPlaceholder: string;
+  filterHelp: string;
+  filterNoResults: string;
+  clearFilter: string;
+  inventoryNote: string;
+  currentFolder: string;
+  parentFolder: string;
+  rootFolder: string;
+  openFolder: string;
   pageColumn: string;
   stateColumn: string;
   reasonColumn: string;
@@ -83,6 +109,7 @@ export type SourceSelectionCopy = {
   direct: string;
   inherited: string;
   changed: string;
+  changedOnPage: string;
   matchedPattern: string;
   noMatchedPattern: string;
   includePage: string;
@@ -107,6 +134,8 @@ export type SourceSelectionCopy = {
 type SourceSelectionManagerProps = {
   siteId: string;
   initialRules: SourceSelectionRule[];
+  routeConfigUpdatedAt?: string | null;
+  sourceSelectionFingerprint?: string | null;
   canEdit: boolean;
   saveAction: (
     prevState: ActionResponse | undefined,
@@ -120,9 +149,14 @@ type PreviewError = {
   validation: Array<{ field?: string; message: string }>;
 };
 
+type SourceSelectionFolderNode = SourceSelectionTreePreviewNode & { kind: "folder" };
+type SourceSelectionPageNode = SourceSelectionTreePreviewNode & { kind: "page" };
+
 export function SourceSelectionManager({
   siteId,
   initialRules,
+  routeConfigUpdatedAt,
+  sourceSelectionFingerprint: backendSourceSelectionFingerprint,
   canEdit,
   saveAction,
   copy,
@@ -131,11 +165,19 @@ export function SourceSelectionManager({
   const [persistedRules, setPersistedRules] =
     useState<DraftSourceSelectionRule[]>(initialDraftRules);
   const [draftRules, setDraftRules] = useState<DraftSourceSelectionRule[]>(initialDraftRules);
-  const [preview, setPreview] = useState<SourceSelectionPreviewResponse | null>(null);
+  const [preview, setPreview] = useState<SourceSelectionTreePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [isPreviewLoading, setPreviewLoading] = useState(false);
   const [lastSuccessfulPreviewFingerprint, setLastSuccessfulPreviewFingerprint] = useState("");
-  const [offset, setOffset] = useState(0);
+  const [parentPath, setParentPath] = useState("/");
+  const [pathSearch, setPathSearch] = useState("");
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const [expectedRouteConfigUpdatedAt, setExpectedRouteConfigUpdatedAt] = useState(
+    routeConfigUpdatedAt ?? null,
+  );
+  const [expectedSourceSelectionFingerprint, setExpectedSourceSelectionFingerprint] = useState(
+    backendSourceSelectionFingerprint ?? null,
+  );
   const [saveResult, setSaveResult] = useState<ActionResponse | null>(null);
   const [isSaving, setSaving] = useState(false);
   const requestIdRef = useRef(0);
@@ -168,11 +210,14 @@ export function SourceSelectionManager({
   const updateDraftRules = useCallback(
     (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => {
       setDraftRules((current) => updater(current));
-      setOffset(0);
+      setCursorStack([]);
       setSaveResult(null);
     },
     [],
   );
+  const currentCursor = cursorStack[cursorStack.length - 1] ?? null;
+  const trimmedPathSearch = pathSearch.trim();
+  const hasPathSearch = trimmedPathSearch.length > 0;
 
   useEffect(() => {
     if (!canEdit) {
@@ -189,10 +234,17 @@ export function SourceSelectionManager({
         try {
           const params = new URLSearchParams({
             limit: String(PREVIEW_PAGE_SIZE),
-            offset: String(offset),
           });
+          if (currentCursor) {
+            params.set("cursor", currentCursor);
+          }
+          if (hasPathSearch) {
+            params.set("search", trimmedPathSearch);
+          } else {
+            params.set("parentPath", parentPath);
+          }
           const response = await fetch(
-            `/api/dashboard/sites/${encodeURIComponent(siteId)}/source-selection/preview?${params.toString()}`,
+            `/api/dashboard/sites/${encodeURIComponent(siteId)}/source-selection/tree-preview?${params.toString()}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -213,7 +265,7 @@ export function SourceSelectionManager({
             setPreviewLoading(false);
             return;
           }
-          setPreview(body as SourceSelectionPreviewResponse);
+          setPreview(body as SourceSelectionTreePreviewResponse);
           setPreviewError(null);
           setLastSuccessfulPreviewFingerprint(draftFingerprint);
           setPreviewLoading(false);
@@ -234,27 +286,52 @@ export function SourceSelectionManager({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [canEdit, copy.previewErrorTitle, draftConfig, draftFingerprint, offset, siteId]);
+  }, [
+    canEdit,
+    copy.previewErrorTitle,
+    currentCursor,
+    draftConfig,
+    draftFingerprint,
+    hasPathSearch,
+    parentPath,
+    siteId,
+    trimmedPathSearch,
+  ]);
 
   const savePreview = () => {
     if (!canSave || !preview) {
       return;
     }
+    const saveConfig = draftConfig;
     const saveFingerprint = draftFingerprint;
     setSaving(true);
     void (async () => {
       const formData = new FormData();
       formData.set("siteId", siteId);
-      formData.set("sourceSelection", JSON.stringify(preview.sourceSelection));
+      formData.set("sourceSelection", JSON.stringify(saveConfig));
+      if (expectedRouteConfigUpdatedAt) {
+        formData.set("expectedRouteConfigUpdatedAt", expectedRouteConfigUpdatedAt);
+      }
+      formData.set(
+        "expectedSourceSelectionFingerprint",
+        expectedSourceSelectionFingerprint ?? persistedFingerprint,
+      );
       try {
         const result = await saveAction(undefined, formData);
         setSaveResult(result);
         if (!result.ok) {
           return;
         }
-        const savedConfig = readSavedSourceSelection(result.meta) ?? preview.sourceSelection;
+        const savedConfig = readSavedSourceSelection(result.meta) ?? saveConfig;
+        const savedTokens = readSavedRouteTokens(result.meta);
         const savedRules = normalizeRulesForForm(savedConfig.rules);
         setPersistedRules(savedRules);
+        setExpectedRouteConfigUpdatedAt(
+          savedTokens.routeConfigUpdatedAt ?? expectedRouteConfigUpdatedAt,
+        );
+        setExpectedSourceSelectionFingerprint(
+          savedTokens.sourceSelectionFingerprint ?? sourceSelectionFingerprint(savedConfig),
+        );
         if (draftFingerprintRef.current === saveFingerprint) {
           setDraftRules(savedRules);
           setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
@@ -272,24 +349,34 @@ export function SourceSelectionManager({
 
   const resetDraft = () => {
     setDraftRules(persistedRules);
-    setOffset(0);
+    setCursorStack([]);
     setSaveResult(null);
   };
 
-  const treeRows = useMemo(
-    () => deriveDisplayTreeFromPreview(currentPreview?.affectedPages ?? [], draftRules),
-    [currentPreview?.affectedPages, draftRules],
-  );
+  const visibleTreeRows = currentPreview?.nodes ?? [];
+  const openFolder = useCallback((path: string) => {
+    setParentPath(path);
+    setPathSearch("");
+    setCursorStack([]);
+  }, []);
+  const openParentFolder = useCallback(() => {
+    setParentPath(parentSourcePath(parentPath));
+    setCursorStack([]);
+  }, [parentPath]);
+  const updatePathSearch = useCallback((value: string) => {
+    setPathSearch(value);
+    setCursorStack([]);
+  }, []);
 
   const pagination = currentPreview?.pagination ?? null;
-  const paginationStart = currentPreview
-    ? Math.min(currentPreview.pagination.offset + 1, currentPreview.pagination.total)
-    : 0;
+  const paginationStart =
+    currentPreview && currentPreview.pagination.total > 0
+      ? Math.min(cursorStack.length * PREVIEW_PAGE_SIZE + 1, currentPreview.pagination.total)
+      : 0;
   const paginationEnd = currentPreview
-    ? Math.min(
-        currentPreview.pagination.offset + currentPreview.affectedPages.length,
-        currentPreview.pagination.total,
-      )
+    ? currentPreview.nodes.length > 0
+      ? Math.min(paginationStart + currentPreview.nodes.length - 1, currentPreview.pagination.total)
+      : paginationStart
     : 0;
 
   return (
@@ -326,6 +413,7 @@ export function SourceSelectionManager({
             <RuleEditor
               canEdit={controlsCanEdit}
               copy={copy}
+              persistedRules={persistedRules}
               rules={draftRules}
               onChange={updateDraftRules}
             />
@@ -391,13 +479,60 @@ export function SourceSelectionManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {treeRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{copy.pagesEmpty}</p>
+              {currentPreview ? (
+                <div className="rounded-md border border-border/60 bg-muted/10 p-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <Field
+                      className="min-w-0 flex-1"
+                      label={copy.filterLabel}
+                      htmlFor="source-selection-path-filter"
+                      description={copy.filterHelp}
+                    >
+                      <Input
+                        id="source-selection-path-filter"
+                        value={pathSearch}
+                        placeholder={copy.filterPlaceholder}
+                        onChange={(event) => updatePathSearch(event.target.value)}
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!hasPathSearch}
+                      onClick={() => updatePathSearch("")}
+                    >
+                      {copy.clearFilter}
+                    </Button>
+                    {!hasPathSearch ? (
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{copy.currentFolder}</span>
+                        <Badge variant="secondary" className="font-mono">
+                          {parentPath === "/" ? copy.rootFolder : parentPath}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={parentPath === "/" || isPreviewLoading}
+                          onClick={openParentFolder}
+                        >
+                          {copy.parentFolder}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">{copy.inventoryNote}</p>
+                </div>
+              ) : null}
+              {visibleTreeRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {hasPathSearch ? copy.filterNoResults : copy.pagesEmpty}
+                </p>
               ) : (
                 <SourceSelectionTree
                   canEdit={controlsCanEdit}
                   copy={copy}
-                  rows={treeRows}
+                  rows={visibleTreeRows}
+                  onOpenFolder={openFolder}
                   onChange={updateDraftRules}
                 />
               )}
@@ -414,8 +549,8 @@ export function SourceSelectionManager({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={pagination.offset <= 0 || isPreviewLoading}
-                      onClick={() => setOffset(Math.max(0, offset - PREVIEW_PAGE_SIZE))}
+                      disabled={cursorStack.length === 0 || isPreviewLoading}
+                      onClick={() => setCursorStack((current) => current.slice(0, -1))}
                     >
                       {copy.previousPage}
                     </Button>
@@ -424,7 +559,11 @@ export function SourceSelectionManager({
                       size="sm"
                       variant="outline"
                       disabled={!pagination.hasMore || isPreviewLoading}
-                      onClick={() => setOffset(offset + PREVIEW_PAGE_SIZE)}
+                      onClick={() =>
+                        setCursorStack((current) =>
+                          pagination.nextCursor ? [...current, pagination.nextCursor] : current,
+                        )
+                      }
                     >
                       {copy.nextPage}
                     </Button>
@@ -467,24 +606,48 @@ function RulesList({
 function RuleEditor({
   canEdit,
   copy,
+  persistedRules,
   rules,
   onChange,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
+  persistedRules: DraftSourceSelectionRule[];
   rules: DraftSourceSelectionRule[];
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
 }) {
   const addRule = (action: EditableSourceSelectionAction) => {
     onChange((current) => [...current, createDraftRule(action, "")]);
   };
+  const removedRules = useMemo(
+    () =>
+      persistedRules.filter((persistedRule) =>
+        rules.every(
+          (draftRule) => draftRule.id !== persistedRule.id && !rulesMatch(draftRule, persistedRule),
+        ),
+      ),
+    [persistedRules, rules],
+  );
+  const atRuleLimit = rules.length >= SOURCE_SELECTION_RULE_LIMIT;
+  const nearRuleLimit = rules.length >= SOURCE_SELECTION_RULE_LIMIT_WARNING_THRESHOLD;
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-col gap-1 rounded-md border border-border/60 bg-muted/10 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-muted-foreground">
+          {copy.ruleLimitLabel
+            .replace("{count}", String(rules.length))
+            .replace("{limit}", String(SOURCE_SELECTION_RULE_LIMIT))}
+        </span>
+        <span className={cn("text-xs", nearRuleLimit ? "text-amber-700" : "text-muted-foreground")}>
+          {nearRuleLimit ? copy.ruleLimitNear : copy.ruleLimitHelp}
+        </span>
+      </div>
       {rules.length === 0 ? <p className="text-sm text-muted-foreground">{copy.noRules}</p> : null}
       {rules.map((rule, index) => {
         const actionId = `source-selection-action-${rule.id}`;
         const patternId = `source-selection-pattern-${rule.id}`;
+        const changeState = getRuleChangeState(rule, persistedRules);
         return (
           <div
             key={rule.id}
@@ -524,6 +687,11 @@ function RuleEditor({
                   );
                 }}
               />
+              {changeState ? (
+                <Badge className="mt-2 w-fit" variant="outline">
+                  {changeState === "new" ? copy.ruleChangeNew : copy.ruleChangeEdited}
+                </Badge>
+              ) : null}
             </Field>
             <div className="flex items-end">
               <Button
@@ -543,12 +711,27 @@ function RuleEditor({
           </div>
         );
       })}
+      {removedRules.length ? (
+        <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-muted/10 p-3">
+          {removedRules.map((rule) => (
+            <div key={`removed-${rule.id}`} className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant="outline">{copy.ruleChangeRemoved}</Badge>
+              <Badge variant={rule.action === "include" ? "secondary" : "outline"}>
+                {rule.action}
+              </Badge>
+              <span className="break-all font-mono text-xs text-muted-foreground">
+                {rule.pattern}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={!canEdit}
+          disabled={!canEdit || atRuleLimit}
           onClick={() => addRule("include")}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -558,7 +741,7 @@ function RuleEditor({
           type="button"
           variant="outline"
           size="sm"
-          disabled={!canEdit}
+          disabled={!canEdit || atRuleLimit}
           onClick={() => addRule("exclude")}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -631,7 +814,7 @@ function WarningsAlert({
   preview,
 }: {
   copy: SourceSelectionCopy;
-  preview: SourceSelectionPreviewResponse;
+  preview: SourceSelectionTreePreviewResponse;
 }) {
   return (
     <Alert className="border-amber-300 bg-amber-50 text-amber-950">
@@ -663,7 +846,7 @@ function PreviewSummary({
   preview,
 }: {
   copy: SourceSelectionCopy;
-  preview: SourceSelectionPreviewResponse;
+  preview: SourceSelectionTreePreviewResponse;
 }) {
   const items = [
     [copy.knownIncluded, preview.summary.knownPagesIncluded],
@@ -697,11 +880,13 @@ function SourceSelectionTree({
   canEdit,
   copy,
   rows,
+  onOpenFolder,
   onChange,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
-  rows: SourceSelectionTreeRow[];
+  rows: SourceSelectionTreePreviewNode[];
+  onOpenFolder: (path: string) => void;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
 }) {
   return (
@@ -726,9 +911,22 @@ function SourceSelectionTree({
         <tbody>
           {rows.map((row) =>
             row.kind === "folder" ? (
-              <FolderRow key={row.id} canEdit={canEdit} copy={copy} row={row} onChange={onChange} />
+              <FolderRow
+                key={row.id}
+                canEdit={canEdit}
+                copy={copy}
+                row={row as SourceSelectionFolderNode}
+                onChange={onChange}
+                onOpen={onOpenFolder}
+              />
             ) : (
-              <PageRow key={row.id} canEdit={canEdit} copy={copy} row={row} onChange={onChange} />
+              <PageRow
+                key={row.id}
+                canEdit={canEdit}
+                copy={copy}
+                row={row as SourceSelectionPageNode}
+                onChange={onChange}
+              />
             ),
           )}
         </tbody>
@@ -741,14 +939,20 @@ function FolderRow({
   canEdit,
   copy,
   onChange,
+  onOpen,
   row,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
-  row: Extract<SourceSelectionTreeRow, { kind: "folder" }>;
+  onOpen: (path: string) => void;
+  row: SourceSelectionFolderNode;
 }) {
-  const descendantPattern = descendantPatternForPath(row.path);
+  const descendantPattern = descendantPatternForPath(row.sourcePath);
+  const descendantRuleAction =
+    row.descendantRule?.action === "include" || row.descendantRule?.action === "exclude"
+      ? row.descendantRule.action
+      : null;
   const setDescendantRule = (action: EditableSourceSelectionAction) => {
     onChange((current) => addOrReplaceRule(current, { action, pattern: descendantPattern }));
   };
@@ -760,22 +964,44 @@ function FolderRow({
     <tr className="border-t border-border/50 bg-muted/10">
       <td className="px-3 py-3 align-top">
         <div className="flex items-center gap-2" style={{ paddingLeft: `${row.depth * 1.1}rem` }}>
+          {row.hasChildren ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 shrink-0"
+              aria-label={`${copy.openFolder} ${row.sourcePath}`}
+              title={copy.openFolder}
+              onClick={() => onOpen(row.sourcePath)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <span className="h-7 w-7 shrink-0" aria-hidden="true" />
+          )}
           <FolderTree className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="break-all font-mono text-xs text-foreground">{row.path}</span>
+          <span className="break-all font-mono text-xs text-foreground">{row.sourcePath}</span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{copy.descendantsHelp}</p>
       </td>
       <td className="px-3 py-3 align-top">
-        <StateBadge copy={copy} state={row.effectiveState} />
+        <StateBadge copy={copy} state={toBadgeState(row.effectiveState)} />
       </td>
       <td className="px-3 py-3 align-top text-muted-foreground">
         <span className="font-mono text-xs">
-          {row.includedCount}/{row.totalCount}
+          {row.knownPagesIncluded}/{row.knownPagesTotal}
         </span>{" "}
         {copy.selectedOnPage}
-        {row.descendantRuleAction ? (
+        {descendantRuleAction ? (
           <div className="mt-1">
             <Badge variant="outline">{copy.direct}</Badge>
+          </div>
+        ) : null}
+        {row.changedKnownPages > 0 ? (
+          <div className="mt-1">
+            <Badge variant="outline">
+              {copy.changedOnPage.replace("{count}", String(row.changedKnownPages))}
+            </Badge>
           </div>
         ) : null}
       </td>
@@ -785,7 +1011,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
-            aria-label={`${copy.includeDescendants} ${row.path}`}
+            aria-label={`${copy.includeDescendants} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("include")}
           >
@@ -795,7 +1021,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
-            aria-label={`${copy.excludeDescendants} ${row.path}`}
+            aria-label={`${copy.excludeDescendants} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("exclude")}
           >
@@ -805,7 +1031,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="ghost"
-            aria-label={`${copy.inheritDescendants} ${row.path}`}
+            aria-label={`${copy.inheritDescendants} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={clearDescendantRule}
           >
@@ -826,15 +1052,14 @@ function PageRow({
   canEdit: boolean;
   copy: SourceSelectionCopy;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
-  row: Extract<SourceSelectionTreeRow, { kind: "page" }>;
+  row: SourceSelectionPageNode;
 }) {
-  const page = row.page;
-  const state = page.selected ? "included" : "excluded";
+  const state = toBadgeState(row.effectiveState);
   const setPageRule = (action: EditableSourceSelectionAction) => {
-    onChange((current) => addOrReplaceRule(current, { action, pattern: page.sourcePath }));
+    onChange((current) => addOrReplaceRule(current, { action, pattern: row.sourcePath }));
   };
   const clearPageRule = () => {
-    onChange((current) => removeRulesByPattern(current, page.sourcePath));
+    onChange((current) => removeRulesByPattern(current, row.sourcePath));
   };
 
   return (
@@ -842,7 +1067,7 @@ function PageRow({
       <td className="px-3 py-3 align-top">
         <div style={{ paddingLeft: `${row.depth * 1.1}rem` }}>
           <span className="break-all rounded bg-muted/60 px-2 py-1 font-mono text-xs text-foreground">
-            {page.sourcePath}
+            {row.sourcePath}
           </span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{copy.exactHelp}</p>
@@ -850,28 +1075,28 @@ function PageRow({
       <td className="px-3 py-3 align-top">
         <div className="flex flex-wrap items-center gap-2">
           <StateBadge copy={copy} state={state} />
-          {page.changed ? <Badge variant="outline">{copy.changed}</Badge> : null}
+          {row.changed ? <Badge variant="outline">{copy.changed}</Badge> : null}
         </div>
       </td>
       <td className="px-3 py-3 align-top">
         <div className="space-y-1 text-muted-foreground">
-          <p>{copy.reasonLabels[page.reason]}</p>
+          <p>{row.reason ? copy.reasonLabels[row.reason] : copy.defaultState}</p>
           <p className="text-xs">
-            {page.matchedPattern ? (
+            {row.matchedPattern ? (
               <>
                 {copy.matchedPattern}{" "}
-                <span className="font-mono text-foreground">{page.matchedPattern}</span>
+                <span className="font-mono text-foreground">{row.matchedPattern}</span>
               </>
             ) : (
               copy.noMatchedPattern
             )}
           </p>
           <div className="flex flex-wrap gap-1">
-            {page.directRule ? <Badge variant="outline">{copy.direct}</Badge> : null}
-            {page.inheritedRule || page.ruleScope === "inherited" ? (
+            {row.directRule ? <Badge variant="outline">{copy.direct}</Badge> : null}
+            {row.inheritedRule || row.ruleScope === "inherited" ? (
               <Badge variant="secondary">{copy.inherited}</Badge>
             ) : null}
-            {!page.directRule && !page.inheritedRule && !page.matchedPattern ? (
+            {!row.directRule && !row.inheritedRule && !row.matchedPattern ? (
               <Badge variant="outline">{copy.defaultState}</Badge>
             ) : null}
           </div>
@@ -883,7 +1108,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
-            aria-label={`${copy.includePage} ${page.sourcePath}`}
+            aria-label={`${copy.includePage} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("include")}
           >
@@ -893,7 +1118,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
-            aria-label={`${copy.excludePage} ${page.sourcePath}`}
+            aria-label={`${copy.excludePage} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("exclude")}
           >
@@ -903,7 +1128,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="ghost"
-            aria-label={`${copy.inheritPage} ${page.sourcePath}`}
+            aria-label={`${copy.inheritPage} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={clearPageRule}
           >
@@ -929,6 +1154,26 @@ function StateBadge({
     return <Badge variant="outline">{copy.excluded}</Badge>;
   }
   return <Badge variant="secondary">{copy.mixed}</Badge>;
+}
+
+function toBadgeState(
+  state: SourceSelectionTreePreviewNode["effectiveState"],
+): "included" | "excluded" | "mixed" {
+  if (state === "included" || state === "canonicalized") {
+    return "included";
+  }
+  if (state === "excluded") {
+    return "excluded";
+  }
+  return "mixed";
+}
+
+function parentSourcePath(path: string): string {
+  const segments = path.replace(/^\/+/, "").replace(/\/+$/, "").split("/").filter(Boolean);
+  if (segments.length <= 1) {
+    return "/";
+  }
+  return `/${segments.slice(0, -1).join("/")}`;
 }
 
 function extractPreviewError(body: unknown, status: number): PreviewError {
@@ -961,6 +1206,18 @@ function extractPreviewError(body: unknown, status: number): PreviewError {
   };
 }
 
+function readSavedRouteTokens(meta: Record<string, unknown> | undefined): {
+  routeConfigUpdatedAt: string | null;
+  sourceSelectionFingerprint: string | null;
+} {
+  return {
+    routeConfigUpdatedAt:
+      typeof meta?.routeConfigUpdatedAt === "string" ? meta.routeConfigUpdatedAt : null,
+    sourceSelectionFingerprint:
+      typeof meta?.sourceSelectionFingerprint === "string" ? meta.sourceSelectionFingerprint : null,
+  };
+}
+
 function readSavedSourceSelection(
   meta: Record<string, unknown> | undefined,
 ): SourceSelectionConfig | null {
@@ -987,4 +1244,19 @@ function readSavedSourceSelection(
       return [{ action: record.action, pattern: record.pattern }];
     }),
   };
+}
+
+function rulesMatch(left: DraftSourceSelectionRule, right: DraftSourceSelectionRule): boolean {
+  return left.action === right.action && left.pattern.trim() === right.pattern.trim();
+}
+
+function getRuleChangeState(
+  rule: DraftSourceSelectionRule,
+  persistedRules: readonly DraftSourceSelectionRule[],
+): "new" | "edited" | null {
+  const original = persistedRules.find((persistedRule) => persistedRule.id === rule.id);
+  if (!original) {
+    return persistedRules.some((persistedRule) => rulesMatch(rule, persistedRule)) ? null : "new";
+  }
+  return rulesMatch(rule, original) ? null : "edited";
 }

@@ -185,6 +185,8 @@ const languageSwitcherSettingsSchema = z
 
 const routeConfigSchema = z
   .object({
+    updatedAt: z.string().optional(),
+    sourceSelectionFingerprint: z.string().optional(),
     sourceLang: z.string(),
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
@@ -810,6 +812,28 @@ const sourceSelectionPreviewWarningSchema = z
   })
   .strict();
 
+const sourceSelectionPreviewImpactSchema = z
+  .object({
+    scope: z.literal("known_pages"),
+    changedKnownPages: z.number().nonnegative(),
+    selectedToExcluded: z
+      .object({
+        count: z.number().nonnegative(),
+        sourcePaths: z.array(z.string()),
+      })
+      .strict(),
+    activeSiteRerun: z
+      .object({
+        required: z.boolean(),
+        basis: z.literal("site_status_and_config_change"),
+        activeDeploymentCount: z.number().nonnegative(),
+        deploymentImpact: z.enum(["not_estimated", "none", "has_active_deployments"]),
+        message: z.string().optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
 const sourceSelectionPreviewResponseSchema = z
   .object({
     sourceSelection: sourceSelectionConfigSchema,
@@ -817,6 +841,71 @@ const sourceSelectionPreviewResponseSchema = z
     affectedPages: z.array(sourceSelectionPreviewPageSchema),
     pagination: listSitePagesResponseSchema.shape.pagination,
     warnings: z.array(sourceSelectionPreviewWarningSchema),
+    impact: sourceSelectionPreviewImpactSchema,
+  })
+  .strict();
+
+const sourceSelectionTreePreviewEffectiveStateSchema =
+  sourceSelectionPreviewEffectiveStateSchema.or(z.literal("mixed"));
+
+const sourceSelectionTreePreviewNodeSchema = z
+  .object({
+    id: z.string(),
+    kind: z.enum(["folder", "page"]),
+    sourcePath: z.string(),
+    depth: z.number().int().nonnegative(),
+    hasChildren: z.boolean(),
+    selected: z.boolean().nullable(),
+    reason: sourceSelectionPreviewReasonSchema.optional(),
+    effectiveState: sourceSelectionTreePreviewEffectiveStateSchema,
+    previousSelected: z.boolean().nullable().optional(),
+    previousReason: sourceSelectionPreviewReasonSchema.optional(),
+    changed: z.boolean(),
+    knownPagesTotal: z.number().nonnegative(),
+    knownPagesIncluded: z.number().nonnegative(),
+    knownPagesExcluded: z.number().nonnegative(),
+    changedKnownPages: z.number().nonnegative(),
+    matchedPattern: z.string().optional(),
+    matchedAction: sourceSelectionRuleActionSchema.optional(),
+    ruleScope: sourceSelectionPreviewRuleScopeSchema.optional(),
+    directRule: sourceSelectionPreviewRuleMatchSchema.nullable().optional(),
+    inheritedRule: sourceSelectionPreviewRuleMatchSchema.nullable().optional(),
+    descendantRule: sourceSelectionPreviewRuleMatchSchema.nullable().optional(),
+    canonicalSourcePath: z.string().optional(),
+  })
+  .strict();
+
+const sourceSelectionTreePreviewInventorySchema = z
+  .object({
+    knownPagesTotal: z.number().nonnegative(),
+    resultNodesTotal: z.number().nonnegative(),
+    resultMode: z.enum(["children", "search"]),
+    summaryScope: z.literal("global_known_pages"),
+    resultScope: z.literal("filtered_tree_nodes"),
+    parentPath: z.string().optional(),
+    search: z.string().optional(),
+    maxPageSize: z.number().int().positive(),
+    complete: z.boolean(),
+  })
+  .strict();
+
+const sourceSelectionTreePreviewResponseSchema = z
+  .object({
+    sourceSelection: sourceSelectionConfigSchema,
+    summary: sourceSelectionPreviewSummarySchema,
+    nodes: z.array(sourceSelectionTreePreviewNodeSchema),
+    pagination: z
+      .object({
+        limit: z.number().int().positive(),
+        cursor: z.string().optional(),
+        nextCursor: z.string().optional(),
+        total: z.number().nonnegative(),
+        hasMore: z.boolean(),
+      })
+      .strict(),
+    warnings: z.array(sourceSelectionPreviewWarningSchema),
+    impact: sourceSelectionPreviewImpactSchema,
+    inventory: sourceSelectionTreePreviewInventorySchema,
   })
   .strict();
 
@@ -1213,7 +1302,15 @@ export type SourceSelectionPreviewReason = z.infer<typeof sourceSelectionPreview
 export type SourceSelectionPreviewPage = z.infer<typeof sourceSelectionPreviewPageSchema>;
 export type SourceSelectionPreviewSummary = z.infer<typeof sourceSelectionPreviewSummarySchema>;
 export type SourceSelectionPreviewWarning = z.infer<typeof sourceSelectionPreviewWarningSchema>;
+export type SourceSelectionPreviewImpact = z.infer<typeof sourceSelectionPreviewImpactSchema>;
 export type SourceSelectionPreviewResponse = z.infer<typeof sourceSelectionPreviewResponseSchema>;
+export type SourceSelectionTreePreviewNode = z.infer<typeof sourceSelectionTreePreviewNodeSchema>;
+export type SourceSelectionTreePreviewInventory = z.infer<
+  typeof sourceSelectionTreePreviewInventorySchema
+>;
+export type SourceSelectionTreePreviewResponse = z.infer<
+  typeof sourceSelectionTreePreviewResponseSchema
+>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -1316,6 +1413,7 @@ export const __webhooksZodContracts = {
   listSitePagesResponseSchema,
   siteDashboardResponseSchema,
   sourceSelectionPreviewResponseSchema,
+  sourceSelectionTreePreviewResponseSchema,
   upsertDigestSubscriptionResponseSchema,
   crawlTranslateResponseSchema,
   setTranslationSummaryPreferenceResponseSchema,
@@ -2830,6 +2928,40 @@ export async function previewSourceSelection(
   });
 }
 
+export async function previewSourceSelectionTree(
+  auth: AuthInput,
+  siteId: string,
+  payload: {
+    sourceSelection: SourceSelectionConfig;
+    includeUnknownFutureDescendants?: boolean;
+  },
+  options?: { limit?: number; cursor?: string; parentPath?: string; search?: string },
+): Promise<SourceSelectionTreePreviewResponse> {
+  const qs = new URLSearchParams();
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.cursor === "string" && options.cursor.trim()) {
+    qs.set("cursor", options.cursor);
+  }
+  if (typeof options?.search === "string" && options.search.trim()) {
+    qs.set("search", options.search.trim());
+  } else if (typeof options?.parentPath === "string" && options.parentPath.trim()) {
+    qs.set("parentPath", options.parentPath.trim());
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/source-selection/tree-preview?${qs.toString()}`
+    : `/sites/${siteId}/source-selection/tree-preview`;
+  return request({
+    path,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: sourceSelectionTreePreviewResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
 export async function getSiteShowcase(
   auth: AuthInput,
   siteId: string,
@@ -2907,6 +3039,8 @@ export async function updateSite(
   payload: Partial<Omit<CreateSitePayload, "targetLangs">> & {
     targetLangs?: string[];
     status?: "active" | "inactive";
+    expectedRouteConfigUpdatedAt?: string;
+    expectedSourceSelectionFingerprint?: string;
   },
 ) {
   return request({

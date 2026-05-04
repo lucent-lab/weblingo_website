@@ -253,8 +253,17 @@ describe("dashboard capability actions", () => {
       billingIssue: null,
       has: vi.fn((check: { feature?: string }) => check.feature === "edit"),
     });
+    fetchSite.mockResolvedValue({
+      routeConfig: {
+        updatedAt: "2026-05-04T00:00:00.000Z",
+        sourceSelectionFingerprint: '{"rules":[]}',
+        sourceSelection: { rules: [] },
+      },
+    });
     updateSite.mockResolvedValue({
       routeConfig: {
+        updatedAt: "2026-05-04T00:01:00.000Z",
+        sourceSelectionFingerprint: "fingerprint-after-save",
         sourceSelection: {
           rules: [
             { action: "include", pattern: "/blog/*" },
@@ -267,6 +276,8 @@ describe("dashboard capability actions", () => {
     const { updateSourceSelectionAction } = await import("./actions");
     const formData = new FormData();
     formData.set("siteId", "site-1");
+    formData.set("expectedRouteConfigUpdatedAt", "2026-05-04T00:00:00.000Z");
+    formData.set("expectedSourceSelectionFingerprint", '{"rules":[]}');
     formData.set(
       "sourceSelection",
       JSON.stringify({
@@ -294,8 +305,14 @@ describe("dashboard capability actions", () => {
             { action: "exclude", pattern: "/blog/drafts/*" },
           ],
         },
+        expectedRouteConfigUpdatedAt: "2026-05-04T00:00:00.000Z",
+        expectedSourceSelectionFingerprint: '{"rules":[]}',
       },
     );
+    expect(result.meta).toMatchObject({
+      routeConfigUpdatedAt: "2026-05-04T00:01:00.000Z",
+      sourceSelectionFingerprint: "fingerprint-after-save",
+    });
     expect(invalidateSiteDashboardCache).toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
   });
@@ -362,6 +379,41 @@ describe("dashboard capability actions", () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/unsupported rules/i);
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks source-selection save when persisted rules changed after the page loaded", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "edit"),
+    });
+    fetchSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: {
+          rules: [{ action: "include", pattern: "/blog/*" }],
+        },
+      },
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("expectedSourceSelectionFingerprint", '{"rules":[]}');
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [{ action: "exclude", pattern: "/products/*" }],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/changed since this page was loaded/i);
+    expect(result.meta?.code).toBe("source_selection_conflict");
     expect(updateSite).not.toHaveBeenCalled();
   });
 

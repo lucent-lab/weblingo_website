@@ -1,44 +1,66 @@
 import { describe, expect, it } from "vitest";
 
-import type { SourceSelectionPreviewPage } from "@internal/dashboard/webhooks";
+import {
+  addOrReplaceRule,
+  descendantPatternForPath,
+  normalizeRulesForForm,
+  removeRulesByPattern,
+  sourceSelectionFingerprint,
+  toSourceSelectionConfig,
+} from "./source-selection-model";
 
-import { deriveDisplayTreeFromPreview } from "./source-selection-model";
+describe("source-selection model helpers", () => {
+  it("normalizes editable rules without preserving unsupported backend actions", () => {
+    expect(
+      normalizeRulesForForm([
+        { action: "include", pattern: "/blog/*" },
+        { action: "exclude", pattern: "/drafts/*" },
+        { action: "canonical_source", pattern: "/fr/*", canonicalSourcePattern: "/blog/*" },
+      ]),
+    ).toEqual([
+      { id: "persisted-0-include-/blog/*", action: "include", pattern: "/blog/*" },
+      { id: "persisted-1-exclude-/drafts/*", action: "exclude", pattern: "/drafts/*" },
+    ]);
+  });
 
-function page(sourcePath: string, selected: boolean): SourceSelectionPreviewPage {
-  return {
-    sourcePath,
-    selected,
-    reason: selected ? "included_by_rule" : "excluded_by_rule",
-    effectiveState: selected ? "included" : "excluded",
-    previousSelected: true,
-    previousReason: "included_by_default",
-    changed: !selected,
-  };
-}
+  it("trims and replaces editable draft rules by normalized pattern", () => {
+    const rules = addOrReplaceRule([{ id: "rule-1", action: "include", pattern: "/blog/*" }], {
+      action: "exclude",
+      pattern: " /blog/* ",
+    });
 
-describe("deriveDisplayTreeFromPreview", () => {
-  it("builds folder stats without losing exact folder-path pages", () => {
-    const rows = deriveDisplayTreeFromPreview(
-      [page("/blog", true), page("/blog/post-1", true), page("/blog/drafts/one", false)],
-      [{ id: "rule-1", action: "exclude", pattern: "/blog/drafts/*" }],
+    expect(rules).toEqual([{ id: "rule-1", action: "exclude", pattern: "/blog/*" }]);
+    expect(toSourceSelectionConfig(rules)).toEqual({
+      rules: [{ action: "exclude", pattern: "/blog/*" }],
+    });
+  });
+
+  it("removes rules and creates descendant patterns with root handling", () => {
+    const rules = [
+      { id: "rule-1", action: "include" as const, pattern: "/blog/*" },
+      { id: "rule-2", action: "exclude" as const, pattern: "/drafts/*" },
+    ];
+
+    expect(removeRulesByPattern(rules, " /blog/* ")).toEqual([rules[1]]);
+    expect(descendantPatternForPath("/")).toBe("/*");
+    expect(descendantPatternForPath("/blog/")).toBe("/blog/*");
+  });
+
+  it("builds the save fingerprint from trimmed editable rules in order", () => {
+    expect(
+      sourceSelectionFingerprint({
+        rules: [
+          { action: "include", pattern: " /blog/* " },
+          { action: "exclude", pattern: "/drafts/*" },
+        ],
+      }),
+    ).toBe(
+      JSON.stringify({
+        rules: [
+          { action: "include", pattern: "/blog/*" },
+          { action: "exclude", pattern: "/drafts/*" },
+        ],
+      }),
     );
-
-    const blog = rows.find((row) => row.kind === "folder" && row.path === "/blog");
-    expect(blog).toMatchObject({
-      totalCount: 3,
-      includedCount: 2,
-      excludedCount: 1,
-      effectiveState: "mixed",
-      descendantRuleAction: null,
-    });
-
-    const drafts = rows.find((row) => row.kind === "folder" && row.path === "/blog/drafts");
-    expect(drafts).toMatchObject({
-      totalCount: 1,
-      includedCount: 0,
-      excludedCount: 1,
-      effectiveState: "excluded",
-      descendantRuleAction: "exclude",
-    });
   });
 });

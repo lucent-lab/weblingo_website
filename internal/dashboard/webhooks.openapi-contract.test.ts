@@ -253,6 +253,45 @@ function openApiHasPath(
   return openApiHasPath(spec, definitionsIndex, properties[head], tail);
 }
 
+function collectOpenApiRequiredPaths(
+  spec: OpenApiSpec,
+  definitionsIndex: Map<string, unknown>,
+  schema: unknown,
+  prefix: string[] = [],
+  out: string[][] = [],
+): string[][] {
+  const normalized = flattenAllOf(spec, definitionsIndex, schema);
+  if (!normalized || typeof normalized !== "object") {
+    return out;
+  }
+
+  const anyOf = (normalized as { anyOf?: unknown }).anyOf;
+  const oneOf = (normalized as { oneOf?: unknown }).oneOf;
+  if (Array.isArray(anyOf) || Array.isArray(oneOf)) {
+    return out;
+  }
+
+  const type = (normalized as { type?: unknown }).type;
+  const items = (normalized as { items?: unknown }).items;
+  if ((type === "array" || items) && items) {
+    collectOpenApiRequiredPaths(spec, definitionsIndex, items, [...prefix, "*"], out);
+    return out;
+  }
+
+  const properties = (normalized as { properties?: Record<string, unknown> }).properties;
+  const required = (normalized as { required?: unknown }).required;
+  if (!properties || typeof properties !== "object" || !Array.isArray(required)) {
+    return out;
+  }
+
+  for (const key of required.filter((value): value is string => typeof value === "string")) {
+    const next = [...prefix, key];
+    out.push(next);
+    collectOpenApiRequiredPaths(spec, definitionsIndex, properties[key], next, out);
+  }
+  return out;
+}
+
 function unwrapZod(schema: unknown): unknown {
   let current: unknown = schema;
   // Zod v4 wrappers expose `.unwrap()`; unwrap as many as possible so we can inspect shapes.
@@ -327,6 +366,10 @@ function uniquePaths(paths: string[][]): string[][] {
   return out;
 }
 
+function pathKey(path: readonly string[]): string {
+  return path.join(".");
+}
+
 describe("webhooks OpenAPI contract (dashboard client)", () => {
   it("merges allOf branches when checking for paths", () => {
     const spec: OpenApiSpec = {};
@@ -370,6 +413,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}", method: "patch" },
       { path: "/sites/{siteId}/dashboard", method: "get" },
       { path: "/sites/{siteId}/source-selection/preview", method: "post" },
+      { path: "/sites/{siteId}/source-selection/tree-preview", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "get" },
       { path: "/sites/{siteId}/showcase", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "patch" },
@@ -532,6 +576,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         name: "SourceSelectionPreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionPreviewResponseSchema,
       },
+      {
+        name: "SourceSelectionTreePreviewResponse",
+        schema: __webhooksZodContracts.sourceSelectionTreePreviewResponseSchema,
+      },
       { name: "GlossaryResponse", schema: __webhooksZodContracts.upsertGlossaryResponseSchema },
       {
         name: "CreateOverrideResponse",
@@ -548,6 +596,41 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       for (const path of paths) {
         const hasPath = openApiHasPath(spec, definitionsIndex, openApiSchema, path);
         expect(hasPath, `[contracts] ${name} missing OpenAPI path: ${path.join(".")}`).toBe(true);
+      }
+    }
+  });
+
+  it("fails when required backend source-selection response fields are missing from website schemas", async () => {
+    const spec = readOpenApiSpecFromEnv();
+    const definitionsIndex = buildOpenApiDefinitionsIndex(spec);
+
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+    const mirroredSchemas: Array<{ name: string; schema: unknown }> = [
+      {
+        name: "SourceSelectionPreviewResponse",
+        schema: __webhooksZodContracts.sourceSelectionPreviewResponseSchema,
+      },
+      {
+        name: "SourceSelectionTreePreviewResponse",
+        schema: __webhooksZodContracts.sourceSelectionTreePreviewResponseSchema,
+      },
+    ];
+
+    for (const { name, schema } of mirroredSchemas) {
+      const openApiSchema = spec.components?.schemas?.[name];
+      expect(openApiSchema).toBeTruthy();
+      const zodPathKeys = new Set(uniquePaths(collectZodPaths(schema)).map(pathKey));
+      const requiredPaths = uniquePaths(
+        collectOpenApiRequiredPaths(spec, definitionsIndex, openApiSchema),
+      );
+      for (const path of requiredPaths) {
+        expect(
+          zodPathKeys.has(pathKey(path)),
+          `[contracts] ${name} required OpenAPI field is not accepted by website schema: ${path.join(
+            ".",
+          )}`,
+        ).toBe(true);
       }
     }
   });

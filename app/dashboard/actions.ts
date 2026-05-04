@@ -349,6 +349,28 @@ function parseSourceSelectionConfig(
   return { rules };
 }
 
+function sourceSelectionConfigFingerprint(config: SourceSelectionConfig): string {
+  return JSON.stringify({
+    rules: config.rules.map((rule) => ({
+      action: rule.action,
+      pattern: rule.pattern.trim(),
+    })),
+  });
+}
+
+function editableSourceSelectionConfigFromRules(
+  rules: readonly SourceSelectionConfig["rules"][number][],
+): SourceSelectionConfig {
+  return {
+    rules: rules.flatMap((rule) => {
+      if (!isEditableSourceSelectionAction(rule.action)) {
+        return [];
+      }
+      return [{ action: rule.action, pattern: rule.pattern.trim() }];
+    }),
+  };
+}
+
 function parseCsvField(rawValue: FormDataEntryValue | null): string[] {
   if (typeof rawValue !== "string") {
     return [];
@@ -735,6 +757,10 @@ export async function updateSourceSelectionAction(
   if (typeof sourceSelection === "string") {
     return failed(sourceSelection);
   }
+  const expectedSourceSelectionFingerprint = formData
+    .get("expectedSourceSelectionFingerprint")
+    ?.toString();
+  const expectedRouteConfigUpdatedAt = formData.get("expectedRouteConfigUpdatedAt")?.toString();
 
   try {
     const auth = await requireDashboardAuth();
@@ -755,8 +781,32 @@ export async function updateSourceSelectionAction(
         "Source selection contains unsupported rules and cannot be edited from this dashboard.",
       );
     }
+    if (expectedSourceSelectionFingerprint) {
+      const currentFingerprint = sourceSelectionConfigFingerprint(
+        editableSourceSelectionConfigFromRules(currentRules),
+      );
+      if (currentFingerprint !== expectedSourceSelectionFingerprint) {
+        return failed(
+          "Source selection changed since this page was loaded. Reload the site, review the latest rules, and preview again before saving.",
+          { code: "source_selection_conflict" },
+        );
+      }
+    }
+    if (
+      expectedRouteConfigUpdatedAt &&
+      currentSite.routeConfig?.updatedAt !== expectedRouteConfigUpdatedAt
+    ) {
+      return failed(
+        "Site route settings changed since this page was loaded. Reload the site, review the latest rules, and preview again before saving.",
+        { code: "source_selection_conflict" },
+      );
+    }
 
-    const updated = await updateSite(auth.webhooksAuth, siteId, { sourceSelection });
+    const updated = await updateSite(auth.webhooksAuth, siteId, {
+      sourceSelection,
+      ...(expectedRouteConfigUpdatedAt ? { expectedRouteConfigUpdatedAt } : {}),
+      ...(expectedSourceSelectionFingerprint ? { expectedSourceSelectionFingerprint } : {}),
+    });
     await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
       invalidateSitesList: false,
     });
@@ -766,6 +816,8 @@ export async function updateSourceSelectionAction(
 
     return succeeded("Source selection saved.", {
       sourceSelection: updated.routeConfig?.sourceSelection ?? sourceSelection,
+      routeConfigUpdatedAt: updated.routeConfig?.updatedAt ?? null,
+      sourceSelectionFingerprint: updated.routeConfig?.sourceSelectionFingerprint ?? null,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
