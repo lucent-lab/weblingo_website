@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-05-01T12:09:37+09:00",
+  "generatedAt": "2026-05-04T19:31:23+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
-      "bytes": 75870,
-      "sha256": "8d5211bad104e527b2c6266b9419d116281c185c5454891864b616b04f006c48"
+      "bytes": 78056,
+      "sha256": "d8c3ea5bb796bf6e5ff00ff21a113f9baafb2784c73664f7d9ee6dacf6a32009"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 350345,
-      "sha256": "efa5b40e48934124bf923648edd7f65080f199fb61520e5e8a7f622f9ca3a3ca"
+      "bytes": 402023,
+      "sha256": "a6520f680f52c7916bd6ea05faf514f419377a5c20b8a2e4095796d0e297dce7"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
-      "bytes": 7095,
-      "sha256": "461904166fc3f328f1d67ec0932da543ac7d5eda14af08c8448e872b7b2989c6"
+      "bytes": 7329,
+      "sha256": "8c39b24cd6cd1a25cb611e35d4bb171bd708929d2984e4acf838e9bfa9a48299"
     }
   },
   "requiredEnv": [
@@ -20,19 +20,19 @@
   "schemaVersion": 1,
   "sourceFiles": {
     "docs/reference/API_PLAYBOOKS.md": {
-      "bytes": 7095,
-      "sha256": "461904166fc3f328f1d67ec0932da543ac7d5eda14af08c8448e872b7b2989c6"
+      "bytes": 7329,
+      "sha256": "8c39b24cd6cd1a25cb611e35d4bb171bd708929d2984e4acf838e9bfa9a48299"
     },
     "docs/reference/feature-catalog.generated.json": {
-      "bytes": 70392,
-      "sha256": "b00394c1e22d10e71ec88e5e4932d1b9f8cf8b01833e22965d7f384e271bebcf"
+      "bytes": 72546,
+      "sha256": "baf9c26445c7d9ef5fa1a85001f7c6c3a606ed49a31719153c581cc2216b25ff"
     },
     "docs/reference/openapi.json": {
-      "bytes": 275323,
-      "sha256": "d6b4916d7fbe5215435400758344069069a4c23ce7db9f56ef78881f2a61bdc6"
+      "bytes": 319597,
+      "sha256": "e346c6ed99f2083ebafef6e2c919a56a361449c04986ecc1af0484718f3d349f"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-05-01T12:09:37+09:00",
-  "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo-main-docsync",
-  "sourceRepoSha": "9c0087b51787b80a2401fbe755fd1cb522592d32"
+  "sourceRepoCommitTimestamp": "2026-05-04T19:31:23+09:00",
+  "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo",
+  "sourceRepoSha": "744178999eb1f177cf704d79d90505772485ebcf"
 }

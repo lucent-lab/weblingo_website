@@ -77,12 +77,15 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - Returned alongside `pages` on paginated page-list responses (`GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`).
   - `{ limit, offset, total, hasMore }`.
 - **RouteConfig**:
+  - `updatedAt`: optional optimistic concurrency token for guarded route-config writes.
+  - `sourceSelectionFingerprint`: optional optimistic concurrency token for guarded source-selection writes.
   - `sourceLang`, `sourceOrigin`, `pattern` (string or `null`).
   - `locales`: `[{ lang, origin, routePrefix }]`.
   - `clientRuntimeEnabled`: boolean.
   - `crawlCaptureMode`: `"template_plus_hydrated" | "template_only"`.
   - `translatableAttributes`: `string[] | null`.
   - `spaRefresh`: object or `null`.
+  - `sourceSelection`: optional flat policy object `{ rules }`; `rules` is capped at 200 and may contain backend actions such as `include`, `exclude`, and `canonical_source`.
 - **CrawlStatus**: `{ enqueued: boolean, error?: string }`.
 - **Deployment**: `{ targetLang, status, deploymentId?, activatedAt?, routePrefix?, artifactManifest?, activeDeploymentId?, domain?, domainStatus?, serveEnabled, servingStatus, translationRun? }`.
 - **GlossaryEntry**: `{ source, target, targetLangs?, matchType?, caseSensitive?, scope? }`.
@@ -215,11 +218,27 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
   - **Warning:** changing `sourceUrl` is destructive. It wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling. UI should require explicit confirmation.
   - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
+  - Source-selection saves use the same endpoint with `sourceSelection` plus `expectedRouteConfigUpdatedAt` and/or `expectedSourceSelectionFingerprint`; guarded writes are source-selection-only and stale writes return `409`.
 - Response `200`: updated `Site`.
 
 - Website mapping:
   - `/dashboard/sites/:id/admin` and the onboarding form should expose `webhookUrl`, `webhookSecret`, and the event allowlist together as one integrations block.
   - The dashboard should preserve raw webhook event values from the API, even if the current UI cannot label them yet.
+
+`POST /api/sites/:id/source-selection/preview`
+
+- Dry-runs draft flat `sourceSelection.rules` without persisting or enqueueing work.
+- Query: `limit` (optional integer `1..200`) and `offset` (optional integer `>=0`).
+- Response: normalized `sourceSelection`, global known-page `summary`, paginated `affectedPages`, `warnings`, and `impact` including selected-to-excluded samples and active-site rerun context.
+
+`POST /api/sites/:id/source-selection/tree-preview`
+
+- Dry-runs draft flat `sourceSelection.rules` and returns backend-resolved folder/page nodes for the source-selection editor. The durable policy remains flat rules; the tree is a read-only projection.
+- Query:
+  - `parentPath` returns immediate child nodes for a folder when `search` is omitted.
+  - `search` is a backend global source-path search across known site paths, not a frontend filter over the loaded preview rows. Search results include ancestor folder context.
+  - `limit` is an optional integer `1..200`; `cursor` is the opaque backend cursor from the previous response.
+- Response: normalized `sourceSelection`, global `summary`, tree `nodes`, cursor `pagination`, `warnings`, `impact`, and `inventory` metadata (`knownPagesTotal`, result mode/scope, `maxPageSize`, `complete`) so the website does not claim a complete origin inventory when the backend returned a bounded projection.
 
 `POST /api/sites/:id/crawl`
 

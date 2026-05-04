@@ -224,6 +224,104 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(10_000);
   });
 
+  it("previews proposed source-selection rules without saving", async () => {
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      expect(url).toContain("/sites/site-1/source-selection/preview");
+      expect(url).toContain("limit=100");
+      expect(url).toContain("offset=0");
+      expect(init?.method).toBe("POST");
+
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe("Bearer token");
+      expect(headers.get("Content-Type")).toBe("application/json");
+      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
+      expect(JSON.parse(init?.body as string)).toEqual({
+        sourceSelection: {
+          rules: [{ action: "include", pattern: "/blog/*" }],
+        },
+      });
+
+      return new Response(
+        JSON.stringify({
+          sourceSelection: {
+            rules: [{ action: "include", pattern: "/blog/*" }],
+          },
+          summary: {
+            knownPagesTotal: 2,
+            knownPagesIncluded: 1,
+            knownPagesExcluded: 1,
+            includedByDefault: 0,
+            includedByRule: 1,
+            excludedByRule: 0,
+            notIncludedByRule: 1,
+            canonicalizedByRule: 0,
+            rulesTotal: 1,
+          },
+          affectedPages: [
+            {
+              sourcePath: "/blog",
+              selected: true,
+              reason: "included_by_rule",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+              matchedPattern: "/blog/*",
+              matchedAction: "include",
+              ruleScope: "inherited",
+              directRule: null,
+              inheritedRule: { action: "include", pattern: "/blog/*" },
+            },
+          ],
+          pagination: {
+            limit: 100,
+            offset: 0,
+            total: 2,
+            hasMore: false,
+          },
+          impact: {
+            scope: "known_pages",
+            changedKnownPages: 0,
+            selectedToExcluded: { count: 0, sourcePaths: [] },
+            activeSiteRerun: {
+              required: false,
+              basis: "site_status_and_config_change",
+              activeDeploymentCount: 0,
+              deploymentImpact: "not_estimated",
+            },
+          },
+          warnings: [
+            {
+              code: "include_rules_create_allowlist",
+              message:
+                "Unmatched paths will be excluded because at least one include rule is present.",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+
+    vi.resetModules();
+    const { previewSourceSelection } = await import("./webhooks");
+    const preview = await previewSourceSelection(
+      "token",
+      "site-1",
+      {
+        sourceSelection: {
+          rules: [{ action: "include", pattern: "/blog/*" }],
+        },
+      },
+      { limit: 100, offset: 0 },
+    );
+
+    expect(preview.summary.knownPagesIncluded).toBe(1);
+    expect(preview.affectedPages[0]?.matchedPattern).toBe("/blog/*");
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
   it("accepts site dashboard payloads with operational summary fields", async () => {
     const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const headers = new Headers(init?.headers);

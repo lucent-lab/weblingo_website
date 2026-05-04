@@ -21,6 +21,7 @@ import {
   resumeTranslationRun,
   setTranslationSummaryPreference,
   setLocaleServing,
+  fetchSite,
   translateSite,
   triggerCrawl,
   triggerCrawlTranslate,
@@ -33,6 +34,7 @@ import {
   WebhooksApiError,
   type DigestFrequency,
   type GlossaryEntry,
+  type SourceSelectionConfig,
   type TranslationSummaryFrequency,
 } from "@internal/dashboard/webhooks";
 import { invalidateSiteDashboardCache, invalidateSitesCache } from "@internal/dashboard/data";
@@ -80,6 +82,11 @@ const translationSummaryFrequencies = new Set<TranslationSummaryFrequency>([
 ]);
 const consistencyStatuses = new Set(["proposed", "approved", "frozen"]);
 const consistencyBlockModes = new Set(["strict", "prefer"]);
+const sourceSelectionRuleActions = new Set(["include", "exclude"]);
+
+function isEditableSourceSelectionAction(value: string): value is "include" | "exclude" {
+  return sourceSelectionRuleActions.has(value);
+}
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
   const isDev = process.env.NODE_ENV !== "production";
@@ -296,6 +303,72 @@ function normalizeGlossaryEntries(entries: unknown): GlossaryEntry[] | string {
   }
 
   return normalized;
+}
+
+function parseSourceSelectionConfig(
+  rawValue: FormDataEntryValue | null,
+): SourceSelectionConfig | string {
+  if (typeof rawValue !== "string" || rawValue.trim().length === 0) {
+    return "Source selection payload is required.";
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return "Source selection payload must be valid JSON.";
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "Source selection payload must be an object.";
+  }
+
+  const rulesValue = (parsed as Record<string, unknown>).rules;
+  if (!Array.isArray(rulesValue)) {
+    return "Source selection rules must be an array.";
+  }
+
+  const rules: SourceSelectionConfig["rules"] = [];
+  for (const [index, ruleValue] of rulesValue.entries()) {
+    if (!ruleValue || typeof ruleValue !== "object" || Array.isArray(ruleValue)) {
+      return `Source selection rule ${index + 1} must be an object.`;
+    }
+    const record = ruleValue as Record<string, unknown>;
+    if (typeof record.action !== "string" || !isEditableSourceSelectionAction(record.action)) {
+      return `Source selection rule ${index + 1} must use include or exclude.`;
+    }
+    if (typeof record.pattern !== "string" || record.pattern.trim().length === 0) {
+      return `Source selection rule ${index + 1} needs a path pattern.`;
+    }
+    rules.push({
+      action: record.action,
+      pattern: record.pattern.trim(),
+    });
+  }
+
+  return { rules };
+}
+
+function sourceSelectionConfigFingerprint(config: SourceSelectionConfig): string {
+  return JSON.stringify({
+    rules: config.rules.map((rule) => ({
+      action: rule.action,
+      pattern: rule.pattern.trim(),
+    })),
+  });
+}
+
+function editableSourceSelectionConfigFromRules(
+  rules: readonly SourceSelectionConfig["rules"][number][],
+): SourceSelectionConfig {
+  return {
+    rules: rules.flatMap((rule) => {
+      if (!isEditableSourceSelectionAction(rule.action)) {
+        return [];
+      }
+      return [{ action: rule.action, pattern: rule.pattern.trim() }];
+    }),
+  };
 }
 
 function parseCsvField(rawValue: FormDataEntryValue | null): string[] {
@@ -668,6 +741,92 @@ export async function updateSiteSettingsAction(
       return failed(toFriendlyDashboardActionError(error, "Unable to update site settings."));
     }
     return failed("Unable to update site settings.");
+  }
+}
+
+export async function updateSourceSelectionAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  const sourceSelection = parseSourceSelectionConfig(formData.get("sourceSelection"));
+  if (typeof sourceSelection === "string") {
+    return failed(sourceSelection);
+  }
+  const expectedSourceSelectionFingerprint = formData
+    .get("expectedSourceSelectionFingerprint")
+    ?.toString();
+  const expectedRouteConfigUpdatedAt = formData.get("expectedRouteConfigUpdatedAt")?.toString();
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.webhooksAuth) {
+      return failed("Unable to authenticate dashboard request.");
+    }
+    if (!auth.has({ feature: "edit" })) {
+      return failed("Source selection editing is not enabled for this account.");
+    }
+    if (!auth.mutationsAllowed) {
+      return failed(formatBillingBlockMessage(auth, "edit source selection"));
+    }
+
+    const currentSite = await fetchSite(auth.webhooksAuth, siteId);
+    const currentRules = currentSite.routeConfig?.sourceSelection?.rules ?? [];
+    if (currentRules.some((rule) => !isEditableSourceSelectionAction(rule.action))) {
+      return failed(
+        "Source selection contains unsupported rules and cannot be edited from this dashboard.",
+      );
+    }
+    if (expectedSourceSelectionFingerprint) {
+      const currentFingerprint = sourceSelectionConfigFingerprint(
+        editableSourceSelectionConfigFromRules(currentRules),
+      );
+      if (currentFingerprint !== expectedSourceSelectionFingerprint) {
+        return failed(
+          "Source selection changed since this page was loaded. Reload the site, review the latest rules, and preview again before saving.",
+          { code: "source_selection_conflict" },
+        );
+      }
+    }
+    if (
+      expectedRouteConfigUpdatedAt &&
+      currentSite.routeConfig?.updatedAt !== expectedRouteConfigUpdatedAt
+    ) {
+      return failed(
+        "Site route settings changed since this page was loaded. Reload the site, review the latest rules, and preview again before saving.",
+        { code: "source_selection_conflict" },
+      );
+    }
+
+    const updated = await updateSite(auth.webhooksAuth, siteId, {
+      sourceSelection,
+      ...(expectedRouteConfigUpdatedAt ? { expectedRouteConfigUpdatedAt } : {}),
+      ...(expectedSourceSelectionFingerprint ? { expectedSourceSelectionFingerprint } : {}),
+    });
+    await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+      invalidateSitesList: false,
+    });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/pages`);
+    revalidatePath(`/dashboard/sites/${siteId}/source-selection`);
+
+    return succeeded("Source selection saved.", {
+      sourceSelection: updated.routeConfig?.sourceSelection ?? sourceSelection,
+      routeConfigUpdatedAt: updated.routeConfig?.updatedAt ?? null,
+      sourceSelectionFingerprint: updated.routeConfig?.sourceSelectionFingerprint ?? null,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] updateSourceSelectionAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to update source selection right now."),
+    );
   }
 }
 

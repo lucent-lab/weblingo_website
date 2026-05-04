@@ -58,6 +58,7 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
   const subItems = [
     { href: baseHref, label: "Workspace" },
     { href: `${baseHref}/pages`, label: "Pages & crawl" },
+    { href: `${baseHref}/source-selection`, label: "Source selection" },
     { href: `${baseHref}/overrides`, label: "Translation rules" },
     { href: `${baseHref}/admin`, label: "Settings" },
   ];
