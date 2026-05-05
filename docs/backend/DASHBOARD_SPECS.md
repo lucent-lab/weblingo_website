@@ -79,6 +79,9 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 - **RouteConfig**:
   - `updatedAt`: optional optimistic concurrency token for guarded route-config writes.
   - `sourceSelectionFingerprint`: optional optimistic concurrency token for guarded source-selection writes.
+  - `runtimeRequestPolicyFingerprint`: optional optimistic concurrency token for guarded runtime-request-policy writes.
+  - `runtimeRequestPolicyVersion`: served policy version propagated through route caches.
+  - `runtimeRequestPolicyPropagation`: `{ servedVersion, expectedVersion, stale }`.
   - `sourceLang`, `sourceOrigin`, `pattern` (string or `null`).
   - `locales`: `[{ lang, origin, routePrefix }]`.
   - `clientRuntimeEnabled`: boolean.
@@ -86,6 +89,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `translatableAttributes`: `string[] | null`.
   - `spaRefresh`: object or `null`.
   - `sourceSelection`: optional flat policy object `{ rules }`; `rules` is capped at 200 and may contain backend actions such as `include`, `exclude`, and `canonical_source`.
+  - `runtimeRequestPolicy`: optional versioned Standard policy object. Missing configs are normalized by the backend to schema version `1` Standard behavior.
 - **CrawlStatus**: `{ enqueued: boolean, error?: string }`.
 - **Deployment**: `{ targetLang, status, deploymentId?, activatedAt?, routePrefix?, artifactManifest?, activeDeploymentId?, domain?, domainStatus?, serveEnabled, servingStatus, translationRun? }`.
 - **GlossaryEntry**: `{ source, target, targetLangs?, matchType?, caseSensitive?, scope? }`.
@@ -219,6 +223,7 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - **Warning:** changing `sourceUrl` is destructive. It wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling. UI should require explicit confirmation.
   - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
   - Source-selection saves use the same endpoint with `sourceSelection` plus `expectedRouteConfigUpdatedAt` and/or `expectedSourceSelectionFingerprint`; guarded writes are source-selection-only and stale writes return `409`.
+  - Runtime request policy saves use the same endpoint with `runtimeRequestPolicy` plus `expectedRuntimeRequestPolicyFingerprint`; stale writes return `409` and route-cache propagation exposes the saved policy version/stale state.
 - Response `200`: updated `Site`.
 
 - Website mapping:
@@ -239,6 +244,33 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
   - `search` is a backend global source-path search across known site paths, not a frontend filter over the loaded preview rows. Search results include ancestor folder context.
   - `limit` is an optional integer `1..200`; `cursor` is the opaque backend cursor from the previous response.
 - Response: normalized `sourceSelection`, global `summary`, tree `nodes`, cursor `pagination`, `warnings`, `impact`, and `inventory` metadata (`knownPagesTotal`, result mode/scope, `maxPageSize`, `complete`) so the website does not claim a complete origin inventory when the backend returned a bounded projection.
+
+`GET /api/sites/:id/runtime-requests/observations`
+
+- Returns grouped, redacted same-origin runtime request observations for the site.
+- Query: `limit` (`1..100`), `cursor`, `lifecycle` (`open|reviewed|dismissed|ignored|all`), `risk` (`low|medium|high|all`), `method`, `search`, and `sort` (`last_seen_desc|last_seen_asc|count_desc`).
+- Response: `{ groups, nextCursor }`. Each group includes method, normalized path, likely type, intent, accept class, first/last seen, sampled count, seen-from-page context, current/suggested action, risk, lifecycle state, body presence/size bucket, and route-policy version/stale state. The API never returns cookies, auth headers, bodies, raw query strings, CSRF tokens, or sensitive full URLs.
+
+`PATCH /api/sites/:id/runtime-requests/observations/:groupHash`
+
+- Updates lifecycle for a grouped runtime request observation.
+- Payload: `{ method, shapeSignature, lifecycle }` where lifecycle is `open`, `reviewed`, `dismissed`, or `ignored`.
+- Groups reopen automatically when the observed shape changes or a new high-risk shape appears.
+
+`POST /api/sites/:id/runtime-request-policy/preview`
+
+- Read-only validation and dry-run for draft `runtimeRequestPolicy`.
+- Response: normalized policy, stable validation error codes, warnings, collisions, high-risk confirmations, sample evaluator results, matched observation groups, and current propagation metadata.
+- The website may do lightweight UX validation, but server preview is authoritative and must pass before save.
+
+Runtime Requests dashboard mapping:
+
+- `/dashboard/sites/:id/runtime-requests` is the customer workflow for interactive features. Standard mode is the happy path: translated HTML and proven assets work without configuration, external public resources remain external, and unconfigured same-origin dynamic requests fail locally and become redacted observation groups.
+- Summary cards show Standard mode, active rules, unreviewed/high-risk groups, last seen, served policy version, and route-cache propagation state.
+- The observations table shows method, normalized path/pattern, likely type, first/last seen, sampled count, seen from page, current action, suggested action, risk, and lifecycle controls.
+- Rule creation uses explicit templates only: neutralize analytics/beacon, read-only search proxy, read-only feature flag/config proxy, route-data passthrough candidate, and form submit advanced proxy. Do not add a “proxy all APIs” control.
+- Rule saves require a current server preview. Validation failures preserve the draft and block save. Advanced confirmations are required for non-GET proxy, credential forwarding, and auth/cart/checkout/payment/account/admin/form paths.
+- Default proxy template values are `credentials=omit`, `cache=no-store`, `maxBodyBytes=0`, `GET/HEAD` only, request/response header allowlists empty, and same-origin redirect scope.
 
 `POST /api/sites/:id/crawl`
 

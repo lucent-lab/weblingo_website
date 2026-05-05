@@ -13,3 +13,4 @@ types/database.ts
 
 # Backend-synced docs artifacts (deterministic generator output)
 content/docs/_generated/*.json
+content/docs/_generated/backend-playbooks.snapshot.md

@@ -85,6 +85,7 @@ describe("SitesNav", () => {
       "Workspace",
       "Pages & crawl",
       "Source selection",
+      "Runtime requests",
       "Translation rules",
       "Settings",
     ]) {

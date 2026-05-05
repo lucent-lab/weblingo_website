@@ -255,6 +255,25 @@
       "endpoint": {
         "auth": "bearer",
         "method": "POST",
+        "operationId": "admin.routeCaches.reconcile",
+        "path": "/admin/route-caches/reconcile"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "admin",
+      "id": "api.admin.routeCaches.reconcile",
+      "name": "Reconcile customer and showcase route caches",
+      "routeIds": [
+        "admin.routeCaches.reconcile"
+      ],
+      "stability": "Internal",
+      "summary": "Internal admin operation that rebuilds customer and showcase route-cache entries for active sites from the current persisted site config. Use after route-cache contract changes or managed showcase route-cache drift; dryRun reports served versus expected runtime request policy versions without mutating KV/R2.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
         "operationId": "agency.customers.create",
         "path": "/agency/customers"
       },
@@ -1289,6 +1308,84 @@
       "stability": "Internal",
       "summary": "Get pipeline status for a page version",
       "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.runtimeRequestPolicy.preview",
+        "path": "/sites/:siteId/runtime-request-policy/preview"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.runtimeRequestPolicy",
+      "id": "api.sites.runtimeRequestPolicy.preview",
+      "name": "Preview runtime request policy",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.runtimeRequestPolicy.preview"
+      ],
+      "stability": "GA",
+      "summary": "Validates and dry-runs a draft runtimeRequestPolicy with the canonical runtime evaluator. This endpoint is read-only and returns stable validation codes, warnings, collisions, high-risk confirmations, sample evaluations, and matched observation groups.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "PATCH",
+        "operationId": "sites.runtimeRequests.observations.lifecycle",
+        "path": "/sites/:siteId/runtime-requests/observations/:groupHash"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.runtimeRequests",
+      "id": "api.sites.runtimeRequests.observations.lifecycle",
+      "name": "Update runtime request observation lifecycle",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.runtimeRequests.observations.lifecycle"
+      ],
+      "stability": "GA",
+      "summary": "Marks a grouped runtime request observation as reviewed, dismissed, ignored, or open for dashboard triage.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.runtimeRequests.observations.list",
+        "path": "/sites/:siteId/runtime-requests/observations"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.runtimeRequests",
+      "id": "api.sites.runtimeRequests.observations.list",
+      "name": "List grouped runtime request observations",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        }
+      ],
+      "routeIds": [
+        "sites.runtimeRequests.observations.list"
+      ],
+      "stability": "GA",
+      "summary": "Returns grouped, redacted runtime request observations for a site. Raw queries, bodies, cookies, auth headers, CSRF tokens, and sensitive URLs are never returned.",
+      "userFacing": true
     },
     {
       "endpoint": {
