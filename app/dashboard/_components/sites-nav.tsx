@@ -59,6 +59,7 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
     { href: baseHref, label: "Workspace" },
     { href: `${baseHref}/pages`, label: "Pages & crawl" },
     { href: `${baseHref}/source-selection`, label: "Source selection" },
+    { href: `${baseHref}/runtime-requests`, label: "Runtime requests" },
     { href: `${baseHref}/overrides`, label: "Translation rules" },
     { href: `${baseHref}/admin`, label: "Settings" },
   ];

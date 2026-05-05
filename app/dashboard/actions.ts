@@ -22,6 +22,7 @@ import {
   setTranslationSummaryPreference,
   setLocaleServing,
   fetchSite,
+  updateRuntimeRequestObservationLifecycle,
   translateSite,
   triggerCrawl,
   triggerCrawlTranslate,
@@ -34,6 +35,9 @@ import {
   WebhooksApiError,
   type DigestFrequency,
   type GlossaryEntry,
+  type RuntimeRequestLifecycle,
+  type RuntimeRequestPolicyConfig,
+  type RuntimeRequestPolicyRule,
   type SourceSelectionConfig,
   type TranslationSummaryFrequency,
 } from "@internal/dashboard/webhooks";
@@ -83,9 +87,32 @@ const translationSummaryFrequencies = new Set<TranslationSummaryFrequency>([
 const consistencyStatuses = new Set(["proposed", "approved", "frozen"]);
 const consistencyBlockModes = new Set(["strict", "prefer"]);
 const sourceSelectionRuleActions = new Set(["include", "exclude"]);
+const runtimeRequestPolicyActions = new Set(["observe", "deny", "neutralize", "proxy"]);
+const runtimeRequestPolicyMethods = new Set([
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "OPTIONS",
+]);
+const runtimeRequestPolicyCredentials = new Set(["omit", "same_origin", "include"]);
+const runtimeRequestPolicyCacheModes = new Set(["no-store", "edge"]);
+const runtimeRequestPolicyRedirectScopes = new Set(["same_origin", "same_registrable_domain"]);
+const runtimeRequestPolicyConfirmations = new Set([
+  "non_get_proxy",
+  "credential_forwarding",
+  "high_risk_path",
+]);
+const runtimeRequestLifecycles = new Set(["open", "reviewed", "dismissed", "ignored"]);
 
 function isEditableSourceSelectionAction(value: string): value is "include" | "exclude" {
   return sourceSelectionRuleActions.has(value);
+}
+
+function isRuntimeRequestLifecycle(value: string): value is RuntimeRequestLifecycle {
+  return runtimeRequestLifecycles.has(value);
 }
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
@@ -369,6 +396,191 @@ function editableSourceSelectionConfigFromRules(
       return [{ action: rule.action, pattern: rule.pattern.trim() }];
     }),
   };
+}
+
+function parseRuntimeRequestPolicyConfig(
+  rawValue: FormDataEntryValue | null,
+): RuntimeRequestPolicyConfig | string {
+  if (typeof rawValue !== "string" || rawValue.trim().length === 0) {
+    return "Runtime request policy payload is required.";
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return "Runtime request policy payload must be valid JSON.";
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "Runtime request policy payload must be an object.";
+  }
+  const record = parsed as Record<string, unknown>;
+  const rulesValue = record.rules;
+  if (!Array.isArray(rulesValue)) {
+    return "Runtime request policy rules must be an array.";
+  }
+  if (rulesValue.length > 200) {
+    return "Runtime request policy supports up to 200 rules.";
+  }
+
+  const rules: RuntimeRequestPolicyRule[] = [];
+  for (const [index, ruleValue] of rulesValue.entries()) {
+    const rule = parseRuntimeRequestPolicyRule(ruleValue, index);
+    if (typeof rule === "string") {
+      return rule;
+    }
+    rules.push(rule);
+  }
+
+  return {
+    schemaVersion: 1,
+    mode: "standard",
+    enabled: record.enabled !== false,
+    rules,
+  };
+}
+
+function parseRuntimeRequestPolicyRule(
+  value: unknown,
+  index: number,
+): RuntimeRequestPolicyRule | string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return `Runtime request rule ${index + 1} must be an object.`;
+  }
+  const record = value as Record<string, unknown>;
+  const id = readRuntimePolicyString(record.id, `runtime request rule ${index + 1} id`, 64);
+  if (!id.ok) {
+    return id.error;
+  }
+  const name = readRuntimePolicyString(record.name, `runtime request rule ${index + 1} name`, 120);
+  if (!name.ok) {
+    return name.error;
+  }
+  const pattern = readRuntimePolicyString(
+    record.pattern,
+    `runtime request rule ${index + 1} pattern`,
+    300,
+  );
+  if (!pattern.ok) {
+    return pattern.error;
+  }
+  const action = typeof record.action === "string" ? record.action : "";
+  if (!runtimeRequestPolicyActions.has(action)) {
+    return `Runtime request rule ${index + 1} must use observe, deny, neutralize, or proxy.`;
+  }
+  const methods = parseRuntimePolicyStringSet(
+    record.methods,
+    runtimeRequestPolicyMethods,
+    action === "proxy" ? ["GET", "HEAD"] : ["GET", "HEAD", "POST", "OPTIONS"],
+  );
+  const confirmations = parseRuntimePolicyStringSet(
+    record.confirmations,
+    runtimeRequestPolicyConfirmations,
+    [],
+  );
+  const neutralization = parseRuntimePolicyNeutralization(record.neutralization);
+  return {
+    id: id.value,
+    name: name.value,
+    enabled: record.enabled !== false,
+    pattern: pattern.value,
+    methods: methods as RuntimeRequestPolicyRule["methods"],
+    action: action as RuntimeRequestPolicyRule["action"],
+    credentials: runtimeRequestPolicyCredentials.has(String(record.credentials))
+      ? (record.credentials as RuntimeRequestPolicyRule["credentials"])
+      : "omit",
+    cache: runtimeRequestPolicyCacheModes.has(String(record.cache))
+      ? (record.cache as RuntimeRequestPolicyRule["cache"])
+      : "no-store",
+    maxBodyBytes: readRuntimePolicyInteger(record.maxBodyBytes, 0, 1_048_576),
+    maxResponseBytes: readRuntimePolicyInteger(record.maxResponseBytes, 1_048_576, 10_485_760),
+    timeoutMs: readRuntimePolicyInteger(record.timeoutMs, 5_000, 30_000),
+    redirectScope: runtimeRequestPolicyRedirectScopes.has(String(record.redirectScope))
+      ? (record.redirectScope as RuntimeRequestPolicyRule["redirectScope"])
+      : "same_origin",
+    requestHeaders: { allow: parseRuntimePolicyStringArray(record.requestHeaders, "allow") },
+    responseHeaders: { allow: parseRuntimePolicyStringArray(record.responseHeaders, "allow") },
+    requestContentTypes: parseRuntimePolicyStringArray(record.requestContentTypes),
+    responseContentTypes: parseRuntimePolicyStringArray(record.responseContentTypes),
+    neutralization,
+    confirmations: confirmations as RuntimeRequestPolicyRule["confirmations"],
+  };
+}
+
+function readRuntimePolicyString(
+  value: unknown,
+  label: string,
+  maxLength: number,
+): { ok: true; value: string } | { ok: false; error: string } {
+  if (typeof value !== "string" || !value.trim() || value.trim().length > maxLength) {
+    return { ok: false, error: `${label} is required.` };
+  }
+  return { ok: true, value: value.trim() };
+}
+
+function parseRuntimePolicyStringSet(
+  value: unknown,
+  allowed: Set<string>,
+  defaults: string[],
+): string[] {
+  const raw = Array.isArray(value) ? value : defaults;
+  const out = new Set<string>();
+  for (const entry of raw) {
+    if (typeof entry === "string") {
+      const normalized = entry.trim();
+      if (allowed.has(normalized)) {
+        out.add(normalized);
+      }
+    }
+  }
+  return out.size ? Array.from(out) : defaults;
+}
+
+function parseRuntimePolicyStringArray(value: unknown, nestedKey?: string): string[] {
+  const source =
+    nestedKey && value && typeof value === "object"
+      ? (value as Record<string, unknown>)[nestedKey]
+      : value;
+  if (!Array.isArray(source)) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      source
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 20),
+    ),
+  );
+}
+
+function readRuntimePolicyInteger(value: unknown, fallback: number, max: number): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(value, max));
+}
+
+function parseRuntimePolicyNeutralization(
+  value: unknown,
+): RuntimeRequestPolicyRule["neutralization"] {
+  const record =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const shape =
+    record.shape === "empty_text" || record.shape === "no_content" || record.shape === "empty_json"
+      ? record.shape
+      : "empty_json";
+  if (shape === "no_content") {
+    return { shape, status: 204, contentType: null, body: null };
+  }
+  if (shape === "empty_text") {
+    return { shape, status: 200, contentType: "text/plain; charset=utf-8", body: "" };
+  }
+  return { shape, status: 200, contentType: "application/json", body: "{}" };
 }
 
 function parseCsvField(rawValue: FormDataEntryValue | null): string[] {
@@ -826,6 +1038,112 @@ export async function updateSourceSelectionAction(
     console.error("[dashboard] updateSourceSelectionAction failed:", error);
     return failed(
       toFriendlyDashboardActionError(error, "Unable to update source selection right now."),
+    );
+  }
+}
+
+export async function updateRuntimeRequestPolicyAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+  const runtimeRequestPolicy = parseRuntimeRequestPolicyConfig(
+    formData.get("runtimeRequestPolicy"),
+  );
+  if (typeof runtimeRequestPolicy === "string") {
+    return failed(runtimeRequestPolicy);
+  }
+  const expectedRuntimeRequestPolicyFingerprint = formData
+    .get("expectedRuntimeRequestPolicyFingerprint")
+    ?.toString();
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.webhooksAuth) {
+      return failed("Unable to authenticate dashboard request.");
+    }
+    if (!auth.has({ feature: "edit" })) {
+      return failed("Runtime request editing is not enabled for this account.");
+    }
+    if (!auth.mutationsAllowed) {
+      return failed(formatBillingBlockMessage(auth, "edit runtime request rules"));
+    }
+
+    const updated = await updateSite(auth.webhooksAuth, siteId, {
+      runtimeRequestPolicy,
+      ...(expectedRuntimeRequestPolicyFingerprint
+        ? { expectedRuntimeRequestPolicyFingerprint }
+        : {}),
+    });
+    await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+      invalidateSitesList: false,
+    });
+    revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
+
+    return succeeded("Runtime request policy saved.", {
+      runtimeRequestPolicy: updated.routeConfig?.runtimeRequestPolicy ?? runtimeRequestPolicy,
+      runtimeRequestPolicyFingerprint: updated.routeConfig?.runtimeRequestPolicyFingerprint ?? null,
+      runtimeRequestPolicyVersion: updated.routeConfig?.runtimeRequestPolicyVersion ?? null,
+      runtimeRequestPolicyPropagation: updated.routeConfig?.runtimeRequestPolicyPropagation ?? null,
+    });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] updateRuntimeRequestPolicyAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to update runtime request policy right now."),
+    );
+  }
+}
+
+export async function updateRuntimeRequestObservationLifecycleAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  const groupingPathHash = formData.get("groupingPathHash")?.toString().trim();
+  const method = formData.get("method")?.toString().trim();
+  const shapeSignature = formData.get("shapeSignature")?.toString().trim();
+  const lifecycleRaw = formData.get("lifecycle")?.toString().trim();
+  if (!siteId || !groupingPathHash || !method || !shapeSignature || !lifecycleRaw) {
+    return failed("Observation lifecycle payload is incomplete.");
+  }
+  if (!isRuntimeRequestLifecycle(lifecycleRaw)) {
+    return failed("Observation lifecycle is invalid.");
+  }
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.webhooksAuth) {
+      return failed("Unable to authenticate dashboard request.");
+    }
+    if (!auth.has({ feature: "edit" })) {
+      return failed("Runtime request review is not enabled for this account.");
+    }
+    if (!auth.mutationsAllowed) {
+      return failed(formatBillingBlockMessage(auth, "review runtime request observations"));
+    }
+
+    const result = await updateRuntimeRequestObservationLifecycle(
+      auth.webhooksAuth,
+      siteId,
+      groupingPathHash,
+      { lifecycle: lifecycleRaw, method, shapeSignature },
+    );
+    revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
+    return succeeded("Observation updated.", { state: result.state });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] updateRuntimeRequestObservationLifecycleAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to update runtime request observation."),
     );
   }
 }

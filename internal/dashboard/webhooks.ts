@@ -144,6 +144,80 @@ const sourceSelectionConfigSchema = z
   })
   .strict();
 
+const runtimeRequestPolicyActionSchema = z.enum(["observe", "deny", "neutralize", "proxy"]);
+const runtimeRequestPolicyMethodSchema = z.enum([
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "OPTIONS",
+]);
+const runtimeRequestPolicyCredentialsSchema = z.enum(["omit", "same_origin", "include"]);
+const runtimeRequestPolicyCacheSchema = z.enum(["no-store", "edge"]);
+const runtimeRequestPolicyRedirectScopeSchema = z.enum(["same_origin", "same_registrable_domain"]);
+const runtimeRequestPolicyNeutralizationShapeSchema = z.enum([
+  "empty_json",
+  "empty_text",
+  "no_content",
+]);
+const runtimeRequestPolicyConfirmationSchema = z.enum([
+  "non_get_proxy",
+  "credential_forwarding",
+  "high_risk_path",
+]);
+const runtimeRequestHeaderPolicySchema = z
+  .object({
+    allow: z.array(z.string()),
+  })
+  .strict();
+const runtimeRequestNeutralizationSchema = z
+  .object({
+    shape: runtimeRequestPolicyNeutralizationShapeSchema,
+    status: z.number().int().min(100).max(599),
+    contentType: z.string().nullable(),
+    body: z.string().nullable(),
+  })
+  .strict();
+const runtimeRequestPolicyRuleSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    enabled: z.boolean(),
+    pattern: z.string(),
+    methods: z.array(runtimeRequestPolicyMethodSchema),
+    action: runtimeRequestPolicyActionSchema,
+    credentials: runtimeRequestPolicyCredentialsSchema,
+    cache: runtimeRequestPolicyCacheSchema,
+    maxBodyBytes: z.number().int().nonnegative(),
+    maxResponseBytes: z.number().int().nonnegative(),
+    timeoutMs: z.number().int().positive(),
+    redirectScope: runtimeRequestPolicyRedirectScopeSchema,
+    requestHeaders: runtimeRequestHeaderPolicySchema,
+    responseHeaders: runtimeRequestHeaderPolicySchema,
+    requestContentTypes: z.array(z.string()),
+    responseContentTypes: z.array(z.string()),
+    neutralization: runtimeRequestNeutralizationSchema,
+    confirmations: z.array(runtimeRequestPolicyConfirmationSchema),
+  })
+  .strict();
+const runtimeRequestPolicyConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    mode: z.literal("standard"),
+    enabled: z.boolean(),
+    rules: z.array(runtimeRequestPolicyRuleSchema),
+  })
+  .strict();
+const runtimeRequestPolicyPropagationSchema = z
+  .object({
+    servedVersion: z.string().nullable(),
+    expectedVersion: z.string().nullable(),
+    stale: z.boolean(),
+  })
+  .strict();
+
 const localizedPathTemplateSchema = z
   .object({
     targetLang: z.string(),
@@ -187,6 +261,9 @@ const routeConfigSchema = z
   .object({
     updatedAt: z.string().optional(),
     sourceSelectionFingerprint: z.string().optional(),
+    runtimeRequestPolicyFingerprint: z.string().optional(),
+    runtimeRequestPolicyVersion: z.string().optional(),
+    runtimeRequestPolicyPropagation: runtimeRequestPolicyPropagationSchema.optional(),
     sourceLang: z.string(),
     sourceOrigin: z.string(),
     pattern: z.string().nullable().optional(),
@@ -203,6 +280,7 @@ const routeConfigSchema = z
     languageSwitcher: languageSwitcherSettingsSchema.nullable().optional(),
     localizedPathTemplates: z.array(localizedPathTemplateSchema).nullable().optional(),
     sourceSelection: sourceSelectionConfigSchema.optional(),
+    runtimeRequestPolicy: runtimeRequestPolicyConfigSchema.optional(),
   })
   .nullable();
 
@@ -909,6 +987,177 @@ const sourceSelectionTreePreviewResponseSchema = z
   })
   .strict();
 
+const runtimeRequestAcceptClassSchema = z.enum([
+  "html",
+  "json",
+  "rsc",
+  "asset",
+  "event-stream",
+  "other",
+  "missing",
+]);
+const runtimeRequestIntentSchema = z.enum([
+  "navigation",
+  "fetch",
+  "route-data",
+  "asset",
+  "preflight",
+  "beacon",
+  "form",
+  "unknown",
+]);
+const runtimeRequestClassificationSchema = z.enum([
+  "malformed",
+  "static_asset",
+  "showcase_telemetry",
+  "html_navigation",
+  "dynamic_api",
+  "route_data",
+  "api_like_json",
+  "high_risk_dynamic",
+  "preflight",
+  "default_dynamic",
+]);
+const runtimeRequestRiskSchema = z.enum(["low", "medium", "high"]);
+const runtimeRequestLifecycleSchema = z.enum(["open", "reviewed", "dismissed", "ignored"]);
+const runtimeRequestBodySizeBucketSchema = z.enum([
+  "none",
+  "unknown",
+  "1-1kb",
+  "1kb-10kb",
+  "10kb-100kb",
+  "100kb-1mb",
+  "over-1mb",
+]);
+const runtimeRequestPolicySourceSchema = z.enum([
+  "explicit_rule",
+  "standard_default",
+  "policy_disabled",
+]);
+const runtimeRequestDiagnosticCodeSchema = z.enum([
+  "runtime_request_observed",
+  "runtime_request_denied",
+  "runtime_request_neutralized",
+  "runtime_request_proxy_allowed",
+  "runtime_request_policy_disabled",
+]);
+const runtimeRequestPolicyEvaluationSchema = z
+  .object({
+    policyVersion: z.string(),
+    method: runtimeRequestPolicyMethodSchema.or(z.literal("OTHER")),
+    host: z.string(),
+    normalizedPath: z.string(),
+    groupingPath: z.string(),
+    groupingPathHash: z.string(),
+    hasQuery: z.boolean(),
+    bodySizeBucket: runtimeRequestBodySizeBucketSchema,
+    bodyPresent: z.boolean(),
+    acceptClass: runtimeRequestAcceptClassSchema,
+    intent: runtimeRequestIntentSchema,
+    classification: runtimeRequestClassificationSchema,
+    canonicalizationIssue: z
+      .enum(["malformed_url", "encoded_slash", "dot_segments", "invalid_encoding"])
+      .nullable(),
+    risk: runtimeRequestRiskSchema,
+    riskReasons: z.array(z.string()),
+    action: runtimeRequestPolicyActionSchema,
+    source: runtimeRequestPolicySourceSchema,
+    ruleId: z.string().nullable(),
+    shouldFetchSourceOrigin: z.boolean(),
+    shouldStoreObservation: z.boolean(),
+    status: z.number().int(),
+    diagnosticCode: runtimeRequestDiagnosticCodeSchema,
+  })
+  .strict();
+const runtimeRequestObservationGroupSchema = z
+  .object({
+    siteId: z.string(),
+    groupingPathHash: z.string(),
+    shapeSignature: z.string(),
+    path: z.string(),
+    method: z.string(),
+    likelyType: runtimeRequestClassificationSchema,
+    intent: runtimeRequestIntentSchema,
+    acceptClass: runtimeRequestAcceptClassSchema,
+    risk: runtimeRequestRiskSchema,
+    riskReasons: z.array(z.string()),
+    firstSeenAt: z.string(),
+    lastSeenAt: z.string(),
+    count: z.number().int().nonnegative(),
+    seenFromPage: z.string().nullable(),
+    currentAction: runtimeRequestPolicyActionSchema,
+    suggestedAction: runtimeRequestPolicyActionSchema,
+    policyRuleId: z.string().nullable(),
+    routePolicyVersion: z.string().nullable(),
+    routePolicyStale: z.boolean(),
+    lifecycle: runtimeRequestLifecycleSchema,
+    reviewedAt: z.string().nullable(),
+    dismissedAt: z.string().nullable(),
+    ignoredAt: z.string().nullable(),
+    bodyPresent: z.boolean(),
+    bodySizeBucket: runtimeRequestBodySizeBucketSchema,
+  })
+  .strict();
+const runtimeRequestObservationGroupsResponseSchema = z
+  .object({
+    groups: z.array(runtimeRequestObservationGroupSchema),
+    nextCursor: z.string().nullable(),
+  })
+  .strict();
+const runtimeRequestObservationLifecycleResponseSchema = z
+  .object({
+    state: z
+      .object({
+        siteId: z.string(),
+        groupingPathHash: z.string(),
+        method: z.string(),
+        shapeSignature: z.string(),
+        reviewedAt: z.string().nullable(),
+        dismissedAt: z.string().nullable(),
+        ignoredAt: z.string().nullable(),
+        updatedAt: z.string(),
+      })
+      .strict(),
+  })
+  .strict();
+const runtimeRequestPolicyPreviewSampleSchema = z
+  .object({
+    url: z.string(),
+    method: z.string().optional(),
+    accept: z.string().optional(),
+  })
+  .strict();
+const runtimeRequestPolicyPreviewResponseSchema = z
+  .object({
+    runtimeRequestPolicy: runtimeRequestPolicyConfigSchema,
+    validationErrors: z.array(
+      z.object({ code: z.string(), ruleId: z.string(), message: z.string() }).strict(),
+    ),
+    warnings: z.array(
+      z.object({ code: z.string(), ruleId: z.string(), message: z.string() }).strict(),
+    ),
+    collisions: z.array(
+      z.object({ leftRuleId: z.string(), rightRuleId: z.string(), code: z.string() }).strict(),
+    ),
+    highRiskConfirmations: z.array(z.object({ ruleId: z.string(), code: z.string() }).strict()),
+    sampleResults: z.array(
+      z
+        .object({
+          index: z.number().int().nonnegative(),
+          result: runtimeRequestPolicyEvaluationSchema,
+        })
+        .strict(),
+    ),
+    matchedObservationGroups: z.array(runtimeRequestObservationGroupSchema),
+    propagation: z
+      .object({
+        currentRouteConfigUpdatedAt: z.string().nullable(),
+        currentRuntimeRequestPolicyVersion: z.string().nullable(),
+      })
+      .strict(),
+  })
+  .strict();
+
 const featureFlagsSchema = z
   .object({
     editEnabled: z.boolean(),
@@ -1311,6 +1560,33 @@ export type SourceSelectionTreePreviewInventory = z.infer<
 export type SourceSelectionTreePreviewResponse = z.infer<
   typeof sourceSelectionTreePreviewResponseSchema
 >;
+export type RuntimeRequestPolicyAction = z.infer<typeof runtimeRequestPolicyActionSchema>;
+export type RuntimeRequestPolicyMethod = z.infer<typeof runtimeRequestPolicyMethodSchema>;
+export type RuntimeRequestPolicyCredentials = z.infer<typeof runtimeRequestPolicyCredentialsSchema>;
+export type RuntimeRequestPolicyCache = z.infer<typeof runtimeRequestPolicyCacheSchema>;
+export type RuntimeRequestPolicyRedirectScope = z.infer<
+  typeof runtimeRequestPolicyRedirectScopeSchema
+>;
+export type RuntimeRequestPolicyNeutralizationShape = z.infer<
+  typeof runtimeRequestPolicyNeutralizationShapeSchema
+>;
+export type RuntimeRequestPolicyConfirmation = z.infer<
+  typeof runtimeRequestPolicyConfirmationSchema
+>;
+export type RuntimeRequestPolicyRule = z.infer<typeof runtimeRequestPolicyRuleSchema>;
+export type RuntimeRequestPolicyConfig = z.infer<typeof runtimeRequestPolicyConfigSchema>;
+export type RuntimeRequestPolicyPropagation = z.infer<typeof runtimeRequestPolicyPropagationSchema>;
+export type RuntimeRequestObservationGroup = z.infer<typeof runtimeRequestObservationGroupSchema>;
+export type RuntimeRequestObservationGroupsResponse = z.infer<
+  typeof runtimeRequestObservationGroupsResponseSchema
+>;
+export type RuntimeRequestLifecycle = z.infer<typeof runtimeRequestLifecycleSchema>;
+export type RuntimeRequestPolicyPreviewSample = z.infer<
+  typeof runtimeRequestPolicyPreviewSampleSchema
+>;
+export type RuntimeRequestPolicyPreviewResponse = z.infer<
+  typeof runtimeRequestPolicyPreviewResponseSchema
+>;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -1414,6 +1690,9 @@ export const __webhooksZodContracts = {
   siteDashboardResponseSchema,
   sourceSelectionPreviewResponseSchema,
   sourceSelectionTreePreviewResponseSchema,
+  runtimeRequestObservationGroupsResponseSchema,
+  runtimeRequestObservationLifecycleResponseSchema,
+  runtimeRequestPolicyPreviewResponseSchema,
   upsertDigestSubscriptionResponseSchema,
   crawlTranslateResponseSchema,
   setTranslationSummaryPreferenceResponseSchema,
@@ -1484,6 +1763,15 @@ const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
 
 export const SUPPORTED_LANGUAGES_STATIC: SupportedLanguage[] = [...FALLBACK_SUPPORTED_LANGUAGES];
 
+function createDashboardE2eMockRuntimeRequestPolicy(rules: RuntimeRequestPolicyRule[] = []) {
+  return {
+    schemaVersion: 1 as const,
+    mode: "standard" as const,
+    enabled: true,
+    rules,
+  };
+}
+
 function createDashboardE2eMockSiteSummary(siteId: string) {
   return {
     id: siteId,
@@ -1518,6 +1806,7 @@ function createDashboardE2eMockSite(siteId: string) {
       { sourceLang: "en", targetLang: "ja", alias: null, serveEnabled: true },
     ],
     routeConfig: {
+      updatedAt: now,
       sourceLang: "en",
       sourceOrigin: DASHBOARD_E2E_MOCK_SOURCE_URL,
       pattern: null,
@@ -1534,6 +1823,14 @@ function createDashboardE2eMockSite(siteId: string) {
         errorFallback: "baseline" as const,
         enableSectionScope: false,
       },
+      runtimeRequestPolicyFingerprint: JSON.stringify({ schemaVersion: 1, rules: [] }),
+      runtimeRequestPolicyVersion: `site-config:${now}`,
+      runtimeRequestPolicyPropagation: {
+        servedVersion: `site-config:${now}`,
+        expectedVersion: `site-config:${now}`,
+        stale: false,
+      },
+      runtimeRequestPolicy: createDashboardE2eMockRuntimeRequestPolicy(),
     },
     domains: [
       {
@@ -1835,6 +2132,203 @@ function createDashboardE2eMockSourceSelectionPreview(
   };
 }
 
+function createDashboardE2eMockRuntimeObservationGroups(searchParams: URLSearchParams) {
+  const now = new Date().toISOString();
+  const groups = [
+    {
+      siteId: DASHBOARD_E2E_MOCK_SITE_ID,
+      groupingPathHash: "cart-group",
+      shapeSignature: "POST:cart-group:high_risk_dynamic:fetch:json",
+      path: "/api/cart",
+      method: "POST",
+      likelyType: "high_risk_dynamic" as const,
+      intent: "fetch" as const,
+      acceptClass: "json" as const,
+      risk: "high" as const,
+      riskReasons: ["non_read_method", "high_risk_path"],
+      firstSeenAt: new Date(Date.now() - 86_400_000).toISOString(),
+      lastSeenAt: now,
+      count: 7,
+      seenFromPage: "/pricing",
+      currentAction: "observe" as const,
+      suggestedAction: "deny" as const,
+      policyRuleId: null,
+      routePolicyVersion: `site-config:${now}`,
+      routePolicyStale: false,
+      lifecycle: "open" as const,
+      reviewedAt: null,
+      dismissedAt: null,
+      ignoredAt: null,
+      bodyPresent: true,
+      bodySizeBucket: "1-1kb" as const,
+    },
+    {
+      siteId: DASHBOARD_E2E_MOCK_SITE_ID,
+      groupingPathHash: "search-group",
+      shapeSignature: "GET:search-group:dynamic_api:fetch:json",
+      path: "/api/search",
+      method: "GET",
+      likelyType: "dynamic_api" as const,
+      intent: "fetch" as const,
+      acceptClass: "json" as const,
+      risk: "medium" as const,
+      riskReasons: [],
+      firstSeenAt: new Date(Date.now() - 172_800_000).toISOString(),
+      lastSeenAt: new Date(Date.now() - 3_600_000).toISOString(),
+      count: 18,
+      seenFromPage: "/",
+      currentAction: "observe" as const,
+      suggestedAction: "proxy" as const,
+      policyRuleId: null,
+      routePolicyVersion: `site-config:${now}`,
+      routePolicyStale: false,
+      lifecycle: "open" as const,
+      reviewedAt: null,
+      dismissedAt: null,
+      ignoredAt: null,
+      bodyPresent: false,
+      bodySizeBucket: "none" as const,
+    },
+  ];
+  const risk = searchParams.get("risk");
+  const lifecycle = searchParams.get("lifecycle");
+  const search = searchParams.get("search")?.trim().toLowerCase();
+  const filtered = groups.filter((group) => {
+    if (risk && group.risk !== risk) return false;
+    if (lifecycle && group.lifecycle !== lifecycle) return false;
+    if (search && !group.path.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  return { groups: filtered, nextCursor: null };
+}
+
+function createDashboardE2eMockRuntimePolicyPreview(body: unknown) {
+  const payload = getBodyRecord(body);
+  const rawPolicy = getBodyRecord(payload.runtimeRequestPolicy);
+  const rawRules = Array.isArray(rawPolicy.rules) ? rawPolicy.rules : [];
+  const rules = rawRules
+    .filter((value): value is Record<string, unknown> => isRecord(value))
+    .map((rule, index) => createRuntimeRequestPolicyRuleFromRecord(rule, index));
+  const runtimeRequestPolicy = createDashboardE2eMockRuntimeRequestPolicy(rules);
+  const validationErrors = rules.flatMap((rule) => {
+    const errors: Array<{ code: string; ruleId: string; message: string }> = [];
+    if (
+      rule.action === "proxy" &&
+      rule.methods.some((method) => method !== "GET" && method !== "HEAD") &&
+      !rule.confirmations.includes("non_get_proxy")
+    ) {
+      errors.push({
+        code: "confirmation_required_non_get_proxy",
+        ruleId: rule.id,
+        message: "Non-GET proxy rules require confirmation.",
+      });
+    }
+    if (
+      rule.action === "proxy" &&
+      rule.credentials !== "omit" &&
+      !rule.confirmations.includes("credential_forwarding")
+    ) {
+      errors.push({
+        code: "confirmation_required_credential_forwarding",
+        ruleId: rule.id,
+        message: "Credential forwarding requires confirmation.",
+      });
+    }
+    if (
+      /\/(?:api\/)?(?:auth|cart|checkout|payment|account|admin)(?:\/|$)/i.test(rule.pattern) &&
+      !rule.confirmations.includes("high_risk_path")
+    ) {
+      errors.push({
+        code: "confirmation_required_high_risk_path",
+        ruleId: rule.id,
+        message: "High-risk paths require confirmation.",
+      });
+    }
+    return errors;
+  });
+  return {
+    runtimeRequestPolicy,
+    validationErrors,
+    warnings: [],
+    collisions: [],
+    highRiskConfirmations: validationErrors.map((error) => ({
+      ruleId: error.ruleId,
+      code: error.code,
+    })),
+    sampleResults: [],
+    matchedObservationGroups: createDashboardE2eMockRuntimeObservationGroups(
+      new URLSearchParams(),
+    ).groups.filter((group) => rules.some((rule) => group.path === rule.pattern)),
+    propagation: {
+      currentRouteConfigUpdatedAt: new Date().toISOString(),
+      currentRuntimeRequestPolicyVersion: `site-config:${new Date().toISOString()}`,
+    },
+  };
+}
+
+function createRuntimeRequestPolicyRuleFromRecord(
+  record: Record<string, unknown>,
+  index: number,
+): RuntimeRequestPolicyRule {
+  const action =
+    record.action === "deny" ||
+    record.action === "neutralize" ||
+    record.action === "proxy" ||
+    record.action === "observe"
+      ? record.action
+      : "observe";
+  const methods = Array.isArray(record.methods)
+    ? record.methods.filter(
+        (method): method is RuntimeRequestPolicyMethod =>
+          runtimeRequestPolicyMethodSchema.safeParse(method).success,
+      )
+    : action === "proxy"
+      ? (["GET", "HEAD"] as RuntimeRequestPolicyMethod[])
+      : (["GET", "HEAD", "POST", "OPTIONS"] as RuntimeRequestPolicyMethod[]);
+  const confirmations = Array.isArray(record.confirmations)
+    ? record.confirmations.filter(
+        (value): value is RuntimeRequestPolicyConfirmation =>
+          runtimeRequestPolicyConfirmationSchema.safeParse(value).success,
+      )
+    : [];
+  return {
+    id: typeof record.id === "string" && record.id.trim() ? record.id.trim() : `rule-${index + 1}`,
+    name:
+      typeof record.name === "string" && record.name.trim()
+        ? record.name.trim()
+        : `Rule ${index + 1}`,
+    enabled: record.enabled !== false,
+    pattern:
+      typeof record.pattern === "string" && record.pattern.trim()
+        ? record.pattern.trim()
+        : "/api/*",
+    methods,
+    action,
+    credentials:
+      record.credentials === "same_origin" || record.credentials === "include"
+        ? record.credentials
+        : "omit",
+    cache: record.cache === "edge" ? "edge" : "no-store",
+    maxBodyBytes: typeof record.maxBodyBytes === "number" ? record.maxBodyBytes : 0,
+    maxResponseBytes:
+      typeof record.maxResponseBytes === "number" ? record.maxResponseBytes : 1_048_576,
+    timeoutMs: typeof record.timeoutMs === "number" ? record.timeoutMs : 5_000,
+    redirectScope:
+      record.redirectScope === "same_registrable_domain" ? record.redirectScope : "same_origin",
+    requestHeaders: { allow: [] },
+    responseHeaders: { allow: [] },
+    requestContentTypes: [],
+    responseContentTypes: [],
+    neutralization: {
+      shape: "empty_json",
+      status: 200,
+      contentType: "application/json",
+      body: "{}",
+    },
+    confirmations,
+  };
+}
+
 function createDashboardE2eMockSiteShowcase(siteId: string) {
   const now = new Date().toISOString();
   return {
@@ -2059,6 +2553,41 @@ function resolveDashboardE2eMockPayload(input: {
   const siteDashboardMatch = pathname.match(/^\/sites\/([^/]+)\/dashboard$/);
   if (siteDashboardMatch && method === "GET") {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
+  }
+
+  const runtimeObservationsMatch = pathname.match(
+    /^\/sites\/([^/]+)\/runtime-requests\/observations$/,
+  );
+  if (runtimeObservationsMatch && method === "GET") {
+    return createDashboardE2eMockRuntimeObservationGroups(url.searchParams);
+  }
+
+  const runtimeObservationLifecycleMatch = pathname.match(
+    /^\/sites\/([^/]+)\/runtime-requests\/observations\/([^/]+)$/,
+  );
+  if (runtimeObservationLifecycleMatch && method === "PATCH") {
+    const payload = getBodyRecord(input.body);
+    const now = new Date().toISOString();
+    return {
+      state: {
+        siteId: runtimeObservationLifecycleMatch[1],
+        groupingPathHash: decodeURIComponent(runtimeObservationLifecycleMatch[2]),
+        method: typeof payload.method === "string" ? payload.method : "GET",
+        shapeSignature:
+          typeof payload.shapeSignature === "string" ? payload.shapeSignature : "GET:mock",
+        reviewedAt: payload.lifecycle === "reviewed" ? now : null,
+        dismissedAt: payload.lifecycle === "dismissed" ? now : null,
+        ignoredAt: payload.lifecycle === "ignored" ? now : null,
+        updatedAt: now,
+      },
+    };
+  }
+
+  const runtimePolicyPreviewMatch = pathname.match(
+    /^\/sites\/([^/]+)\/runtime-request-policy\/preview$/,
+  );
+  if (runtimePolicyPreviewMatch && method === "POST") {
+    return createDashboardE2eMockRuntimePolicyPreview(input.body);
   }
 
   const sourceSelectionPreviewMatch = pathname.match(
@@ -2962,6 +3491,86 @@ export async function previewSourceSelectionTree(
   });
 }
 
+export async function listRuntimeRequestObservations(
+  auth: AuthInput,
+  siteId: string,
+  options?: {
+    limit?: number;
+    cursor?: string | null;
+    lifecycle?: RuntimeRequestLifecycle | "all";
+    risk?: "low" | "medium" | "high" | "all";
+    method?: string | null;
+    search?: string | null;
+    sort?: "last_seen_desc" | "last_seen_asc" | "count_desc";
+  },
+): Promise<RuntimeRequestObservationGroupsResponse> {
+  const qs = new URLSearchParams();
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.cursor === "string" && options.cursor.trim()) {
+    qs.set("cursor", options.cursor);
+  }
+  if (options?.lifecycle && options.lifecycle !== "all") {
+    qs.set("lifecycle", options.lifecycle);
+  }
+  if (options?.risk && options.risk !== "all") {
+    qs.set("risk", options.risk);
+  }
+  if (typeof options?.method === "string" && options.method.trim()) {
+    qs.set("method", options.method.trim().toUpperCase());
+  }
+  if (typeof options?.search === "string" && options.search.trim()) {
+    qs.set("search", options.search.trim());
+  }
+  if (options?.sort) {
+    qs.set("sort", options.sort);
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/runtime-requests/observations?${qs.toString()}`
+    : `/sites/${siteId}/runtime-requests/observations`;
+  return request({
+    path,
+    auth,
+    schema: runtimeRequestObservationGroupsResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function updateRuntimeRequestObservationLifecycle(
+  auth: AuthInput,
+  siteId: string,
+  groupingPathHash: string,
+  payload: { lifecycle: RuntimeRequestLifecycle; method: string; shapeSignature: string },
+) {
+  return request({
+    path: `/sites/${siteId}/runtime-requests/observations/${encodeURIComponent(groupingPathHash)}`,
+    method: "PATCH",
+    auth,
+    body: payload,
+    schema: runtimeRequestObservationLifecycleResponseSchema,
+    timeoutProfile: "mutation",
+  });
+}
+
+export async function previewRuntimeRequestPolicy(
+  auth: AuthInput,
+  siteId: string,
+  payload: {
+    runtimeRequestPolicy: RuntimeRequestPolicyConfig;
+    samples?: Array<string | RuntimeRequestPolicyPreviewSample>;
+  },
+): Promise<RuntimeRequestPolicyPreviewResponse> {
+  return request({
+    path: `/sites/${siteId}/runtime-request-policy/preview`,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: runtimeRequestPolicyPreviewResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
 export async function getSiteShowcase(
   auth: AuthInput,
   siteId: string,
@@ -3018,6 +3627,7 @@ export type CreateSitePayload = {
   translatableAttributes?: string[] | null;
   spaRefresh?: SpaRefreshSettings | null;
   sourceSelection?: SourceSelectionConfig | null;
+  runtimeRequestPolicy?: RuntimeRequestPolicyConfig | null;
   webhookUrl?: string | null;
   webhookSecret?: string | null;
   webhookEvents?: NotifyWebhookEventType[];
@@ -3041,6 +3651,7 @@ export async function updateSite(
     status?: "active" | "inactive";
     expectedRouteConfigUpdatedAt?: string;
     expectedSourceSelectionFingerprint?: string;
+    expectedRuntimeRequestPolicyFingerprint?: string;
   },
 ) {
   return request({

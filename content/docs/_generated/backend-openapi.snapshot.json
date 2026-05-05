@@ -1998,6 +1998,16 @@
           "proxyCspOverrideMode": {
             "$ref": "#/components/schemas/ProxyCspOverrideMode"
           },
+          "runtimeRequestPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
           },
@@ -4758,6 +4768,20 @@
             "$ref": "#/components/schemas/ProxyCspOverrideMode",
             "description": "Default: off"
           },
+          "runtimeRequestPolicy": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+          },
+          "runtimeRequestPolicyFingerprint": {
+            "description": "Derived fingerprint of normalized runtime request policy for optimistic saves.",
+            "type": "string"
+          },
+          "runtimeRequestPolicyPropagation": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyPropagation"
+          },
+          "runtimeRequestPolicyVersion": {
+            "description": "Route-config-derived runtime policy version served by customer route caches.",
+            "type": "string"
+          },
           "sourceLang": {
             "type": "string"
           },
@@ -4836,6 +4860,895 @@
           "origin"
         ],
         "type": "object"
+      },
+      "RuntimeRequestAcceptClass": {
+        "enum": [
+          "html",
+          "json",
+          "rsc",
+          "asset",
+          "event-stream",
+          "other",
+          "missing"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestBodySizeBucket": {
+        "enum": [
+          "none",
+          "unknown",
+          "1-1kb",
+          "1kb-10kb",
+          "10kb-100kb",
+          "100kb-1mb",
+          "over-1mb"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestClassification": {
+        "enum": [
+          "malformed",
+          "static_asset",
+          "showcase_telemetry",
+          "html_navigation",
+          "dynamic_api",
+          "route_data",
+          "api_like_json",
+          "high_risk_dynamic",
+          "preflight",
+          "default_dynamic"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestDiagnosticCode": {
+        "enum": [
+          "runtime_request_observed",
+          "runtime_request_denied",
+          "runtime_request_neutralized",
+          "runtime_request_proxy_allowed",
+          "runtime_request_policy_disabled"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestHeaderPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "allow": {
+            "description": "Header names explicitly allowed by this rule. Defaults to an empty allowlist.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "allow"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestIntent": {
+        "enum": [
+          "navigation",
+          "fetch",
+          "route-data",
+          "asset",
+          "preflight",
+          "beacon",
+          "form",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestLifecycle": {
+        "enum": [
+          "open",
+          "reviewed",
+          "dismissed",
+          "ignored"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestNeutralizationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shape": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyNeutralizationShape"
+          },
+          "status": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "shape",
+          "status",
+          "contentType",
+          "body"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestObservationGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptClass": {
+            "$ref": "#/components/schemas/RuntimeRequestAcceptClass"
+          },
+          "bodyPresent": {
+            "type": "boolean"
+          },
+          "bodySizeBucket": {
+            "$ref": "#/components/schemas/RuntimeRequestBodySizeBucket"
+          },
+          "count": {
+            "type": "number"
+          },
+          "currentAction": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyAction"
+          },
+          "dismissedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "firstSeenAt": {
+            "type": "string"
+          },
+          "groupingPathHash": {
+            "type": "string"
+          },
+          "ignoredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intent": {
+            "$ref": "#/components/schemas/RuntimeRequestIntent"
+          },
+          "lastSeenAt": {
+            "type": "string"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/RuntimeRequestLifecycle"
+          },
+          "likelyType": {
+            "$ref": "#/components/schemas/RuntimeRequestClassification"
+          },
+          "method": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "policyRuleId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "risk": {
+            "$ref": "#/components/schemas/RuntimeRequestRisk"
+          },
+          "riskReasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "routePolicyStale": {
+            "type": "boolean"
+          },
+          "routePolicyVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seenFromPage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shapeSignature": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "suggestedAction": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyAction"
+          }
+        },
+        "required": [
+          "siteId",
+          "groupingPathHash",
+          "shapeSignature",
+          "path",
+          "method",
+          "likelyType",
+          "intent",
+          "acceptClass",
+          "risk",
+          "riskReasons",
+          "firstSeenAt",
+          "lastSeenAt",
+          "count",
+          "seenFromPage",
+          "currentAction",
+          "suggestedAction",
+          "policyRuleId",
+          "routePolicyVersion",
+          "routePolicyStale",
+          "lifecycle",
+          "reviewedAt",
+          "dismissedAt",
+          "ignoredAt",
+          "bodyPresent",
+          "bodySizeBucket"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestObservationGroupsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeRequestObservationGroup"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "groups",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestObservationLifecycleRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "lifecycle": {
+            "$ref": "#/components/schemas/RuntimeRequestLifecycle"
+          },
+          "method": {
+            "type": "string"
+          },
+          "shapeSignature": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lifecycle",
+          "method",
+          "shapeSignature"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestObservationLifecycleResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "additionalProperties": false,
+            "properties": {
+              "dismissedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groupingPathHash": {
+                "type": "string"
+              },
+              "ignoredAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "method": {
+                "type": "string"
+              },
+              "reviewedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "shapeSignature": {
+                "type": "string"
+              },
+              "siteId": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "siteId",
+              "groupingPathHash",
+              "method",
+              "shapeSignature",
+              "reviewedAt",
+              "dismissedAt",
+              "ignoredAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyAction": {
+        "enum": [
+          "observe",
+          "deny",
+          "neutralize",
+          "proxy"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyCache": {
+        "enum": [
+          "no-store",
+          "edge"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyMode"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeRequestPolicyRule"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "mode",
+          "enabled",
+          "rules"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyConfirmation": {
+        "enum": [
+          "non_get_proxy",
+          "credential_forwarding",
+          "high_risk_path"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyCredentials": {
+        "enum": [
+          "omit",
+          "same_origin",
+          "include"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyEvaluation": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptClass": {
+            "$ref": "#/components/schemas/RuntimeRequestAcceptClass"
+          },
+          "action": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyAction"
+          },
+          "bodyPresent": {
+            "type": "boolean"
+          },
+          "bodySizeBucket": {
+            "$ref": "#/components/schemas/RuntimeRequestBodySizeBucket"
+          },
+          "canonicalizationIssue": {
+            "enum": [
+              "malformed_url",
+              "encoded_slash",
+              "dot_segments",
+              "invalid_encoding",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "$ref": "#/components/schemas/RuntimeRequestClassification"
+          },
+          "diagnosticCode": {
+            "$ref": "#/components/schemas/RuntimeRequestDiagnosticCode"
+          },
+          "groupingPath": {
+            "type": "string"
+          },
+          "groupingPathHash": {
+            "type": "string"
+          },
+          "hasQuery": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/RuntimeRequestIntent"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeRequestPolicyMethod"
+              },
+              {
+                "const": "OTHER",
+                "type": "string"
+              }
+            ]
+          },
+          "normalizedPath": {
+            "type": "string"
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "risk": {
+            "$ref": "#/components/schemas/RuntimeRequestRisk"
+          },
+          "riskReasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ruleId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shouldFetchSourceOrigin": {
+            "type": "boolean"
+          },
+          "shouldStoreObservation": {
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicySource"
+          },
+          "status": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "policyVersion",
+          "method",
+          "host",
+          "normalizedPath",
+          "groupingPath",
+          "groupingPathHash",
+          "hasQuery",
+          "bodySizeBucket",
+          "bodyPresent",
+          "acceptClass",
+          "intent",
+          "classification",
+          "canonicalizationIssue",
+          "risk",
+          "riskReasons",
+          "action",
+          "source",
+          "ruleId",
+          "shouldFetchSourceOrigin",
+          "shouldStoreObservation",
+          "status",
+          "diagnosticCode"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyMethod": {
+        "enum": [
+          "GET",
+          "HEAD",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "OPTIONS"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyMode": {
+        "const": "standard",
+        "type": "string"
+      },
+      "RuntimeRequestPolicyNeutralizationShape": {
+        "enum": [
+          "empty_json",
+          "empty_text",
+          "no_content"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyPreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "runtimeRequestPolicy": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+          },
+          "samples": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/components/schemas/RuntimeRequestPolicyPreviewSample"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runtimeRequestPolicy"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "leftRuleId": {
+                  "type": "string"
+                },
+                "rightRuleId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "leftRuleId",
+                "rightRuleId",
+                "code"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "highRiskConfirmations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "ruleId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ruleId",
+                "code"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "matchedObservationGroups": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeRequestObservationGroup"
+            },
+            "type": "array"
+          },
+          "propagation": {
+            "additionalProperties": false,
+            "properties": {
+              "currentRouteConfigUpdatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "currentRuntimeRequestPolicyVersion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "currentRouteConfigUpdatedAt",
+              "currentRuntimeRequestPolicyVersion"
+            ],
+            "type": "object"
+          },
+          "runtimeRequestPolicy": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+          },
+          "sampleResults": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "index": {
+                  "type": "number"
+                },
+                "result": {
+                  "$ref": "#/components/schemas/RuntimeRequestPolicyEvaluation"
+                }
+              },
+              "required": [
+                "index",
+                "result"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "validationErrors": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "ruleId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "ruleId",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "ruleId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "ruleId",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runtimeRequestPolicy",
+          "validationErrors",
+          "warnings",
+          "collisions",
+          "highRiskConfirmations",
+          "sampleResults",
+          "matchedObservationGroups",
+          "propagation"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyPreviewSample": {
+        "additionalProperties": false,
+        "properties": {
+          "accept": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyPropagation": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "servedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "servedVersion",
+          "expectedVersion",
+          "stale"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicyRedirectScope": {
+        "enum": [
+          "same_origin",
+          "same_registrable_domain"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestPolicyRule": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyAction"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyCache"
+          },
+          "confirmations": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeRequestPolicyConfirmation"
+            },
+            "type": "array"
+          },
+          "credentials": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyCredentials"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "maxBodyBytes": {
+            "type": "number"
+          },
+          "maxResponseBytes": {
+            "type": "number"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeRequestPolicyMethod"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "neutralization": {
+            "$ref": "#/components/schemas/RuntimeRequestNeutralizationResponse"
+          },
+          "pattern": {
+            "description": "Root-relative exact path or final-wildcard pattern, for example `/api/search` or `/flags/*`.",
+            "type": "string"
+          },
+          "redirectScope": {
+            "$ref": "#/components/schemas/RuntimeRequestPolicyRedirectScope"
+          },
+          "requestContentTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "requestHeaders": {
+            "$ref": "#/components/schemas/RuntimeRequestHeaderPolicy"
+          },
+          "responseContentTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "responseHeaders": {
+            "$ref": "#/components/schemas/RuntimeRequestHeaderPolicy"
+          },
+          "timeoutMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "pattern",
+          "methods",
+          "action",
+          "credentials",
+          "cache",
+          "maxBodyBytes",
+          "maxResponseBytes",
+          "timeoutMs",
+          "redirectScope",
+          "requestHeaders",
+          "responseHeaders",
+          "requestContentTypes",
+          "responseContentTypes",
+          "neutralization",
+          "confirmations"
+        ],
+        "type": "object"
+      },
+      "RuntimeRequestPolicySource": {
+        "enum": [
+          "explicit_rule",
+          "standard_default",
+          "policy_disabled"
+        ],
+        "type": "string"
+      },
+      "RuntimeRequestRisk": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "type": "string"
       },
       "ServingMode": {
         "enum": [
@@ -7201,6 +8114,10 @@
             "description": "Optional optimistic concurrency token for dashboard source-selection edits. When provided with sourceSelection, the update fails with 409 if the current route-config row changed.",
             "type": "string"
           },
+          "expectedRuntimeRequestPolicyFingerprint": {
+            "description": "Optional optimistic concurrency token for dashboard runtime-request-policy edits. When provided with runtimeRequestPolicy, the update fails with 409 if current policy differs.",
+            "type": "string"
+          },
           "expectedSourceSelectionFingerprint": {
             "description": "Optional optimistic concurrency token for dashboard source-selection edits. When provided with sourceSelection, the update fails with 409 if current flat sourceSelection.rules differ.",
             "type": "string"
@@ -7263,6 +8180,16 @@
           },
           "proxyCspOverrideMode": {
             "$ref": "#/components/schemas/ProxyCspOverrideMode"
+          },
+          "runtimeRequestPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "servingMode": {
             "$ref": "#/components/schemas/ServingMode"
@@ -12899,6 +13826,510 @@
         "tags": [
           "Sites",
           "Pipeline"
+        ]
+      }
+    },
+    "/sites/{siteId}/runtime-request-policy/preview": {
+      "post": {
+        "description": "Validates and dry-runs a draft runtimeRequestPolicy with the canonical runtime evaluator. This endpoint is read-only and returns stable validation codes, warnings, collisions, high-risk confirmations, sample evaluations, and matched observation groups.",
+        "operationId": "sites.runtimeRequestPolicy.preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "runtimeRequestPolicy": {
+                  "enabled": true,
+                  "mode": "standard",
+                  "rules": [
+                    {
+                      "action": "observe",
+                      "cache": "no-store",
+                      "confirmations": [
+                        "non_get_proxy"
+                      ],
+                      "credentials": "omit",
+                      "enabled": true,
+                      "id": "string",
+                      "maxBodyBytes": 1,
+                      "maxResponseBytes": 1,
+                      "methods": [
+                        "GET"
+                      ],
+                      "name": "string",
+                      "neutralization": {
+                        "body": "string",
+                        "contentType": "string",
+                        "status": 1
+                      },
+                      "pattern": "string",
+                      "redirectScope": "same_origin",
+                      "requestContentTypes": [
+                        "string"
+                      ],
+                      "requestHeaders": {
+                        "allow": [
+                          "string"
+                        ]
+                      },
+                      "responseContentTypes": [
+                        "string"
+                      ],
+                      "responseHeaders": {
+                        "allow": [
+                          "string"
+                        ]
+                      },
+                      "timeoutMs": 1
+                    }
+                  ],
+                  "schemaVersion": 1
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeRequestPolicyPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "collisions": [
+                    {
+                      "code": "string",
+                      "leftRuleId": "string",
+                      "rightRuleId": "string"
+                    }
+                  ],
+                  "highRiskConfirmations": [
+                    {
+                      "code": "string",
+                      "ruleId": "string"
+                    }
+                  ],
+                  "matchedObservationGroups": [
+                    {
+                      "acceptClass": "html",
+                      "bodyPresent": true,
+                      "bodySizeBucket": "none",
+                      "count": 1,
+                      "currentAction": "observe",
+                      "dismissedAt": "string",
+                      "firstSeenAt": "string",
+                      "groupingPathHash": "string",
+                      "ignoredAt": "string",
+                      "intent": "navigation",
+                      "lastSeenAt": "string",
+                      "lifecycle": "open",
+                      "likelyType": "malformed",
+                      "method": "string",
+                      "path": "string",
+                      "policyRuleId": "string",
+                      "reviewedAt": "string",
+                      "risk": "low",
+                      "riskReasons": [
+                        "string"
+                      ],
+                      "routePolicyStale": true,
+                      "routePolicyVersion": "string",
+                      "seenFromPage": "string",
+                      "shapeSignature": "string",
+                      "siteId": "string",
+                      "suggestedAction": "observe"
+                    }
+                  ],
+                  "propagation": {
+                    "currentRouteConfigUpdatedAt": "string",
+                    "currentRuntimeRequestPolicyVersion": "string"
+                  },
+                  "runtimeRequestPolicy": {
+                    "enabled": true,
+                    "mode": "standard",
+                    "rules": [
+                      {
+                        "action": "observe",
+                        "cache": "no-store",
+                        "confirmations": [
+                          "non_get_proxy"
+                        ],
+                        "credentials": "omit",
+                        "enabled": true,
+                        "id": "string",
+                        "maxBodyBytes": 1,
+                        "maxResponseBytes": 1,
+                        "methods": [
+                          "GET"
+                        ],
+                        "name": "string",
+                        "neutralization": {
+                          "body": "string",
+                          "contentType": "string",
+                          "status": 1
+                        },
+                        "pattern": "string",
+                        "redirectScope": "same_origin",
+                        "requestContentTypes": [
+                          "string"
+                        ],
+                        "requestHeaders": {
+                          "allow": [
+                            "string"
+                          ]
+                        },
+                        "responseContentTypes": [
+                          "string"
+                        ],
+                        "responseHeaders": {
+                          "allow": [
+                            "string"
+                          ]
+                        },
+                        "timeoutMs": 1
+                      }
+                    ],
+                    "schemaVersion": 1
+                  },
+                  "sampleResults": [
+                    {
+                      "index": 1,
+                      "result": {
+                        "acceptClass": "html",
+                        "action": "observe",
+                        "bodyPresent": true,
+                        "bodySizeBucket": "none",
+                        "canonicalizationIssue": "malformed_url",
+                        "classification": "malformed",
+                        "diagnosticCode": "runtime_request_observed",
+                        "groupingPath": "string",
+                        "groupingPathHash": "string",
+                        "hasQuery": true,
+                        "host": "string",
+                        "intent": "navigation",
+                        "method": "GET",
+                        "normalizedPath": "string",
+                        "policyVersion": "string",
+                        "risk": "low",
+                        "riskReasons": [
+                          "string"
+                        ],
+                        "ruleId": "string",
+                        "shouldFetchSourceOrigin": true,
+                        "shouldStoreObservation": true,
+                        "source": "explicit_rule",
+                        "status": 1
+                      }
+                    }
+                  ],
+                  "validationErrors": [
+                    {
+                      "code": "string",
+                      "message": "string",
+                      "ruleId": "string"
+                    }
+                  ],
+                  "warnings": [
+                    {
+                      "code": "string",
+                      "message": "string",
+                      "ruleId": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeRequestPolicyPreviewResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Preview runtime request policy",
+        "tags": [
+          "Sites",
+          "Runtime Requests"
+        ]
+      }
+    },
+    "/sites/{siteId}/runtime-requests/observations": {
+      "get": {
+        "description": "Returns grouped, redacted runtime request observations for a site. Raw queries, bodies, cookies, auth headers, CSRF tokens, and sensitive URLs are never returned.",
+        "operationId": "sites.runtimeRequests.observations.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "groups": [
+                    {
+                      "acceptClass": "html",
+                      "bodyPresent": true,
+                      "bodySizeBucket": "none",
+                      "count": 1,
+                      "currentAction": "observe",
+                      "dismissedAt": "string",
+                      "firstSeenAt": "string",
+                      "groupingPathHash": "string",
+                      "ignoredAt": "string",
+                      "intent": "navigation",
+                      "lastSeenAt": "string",
+                      "lifecycle": "open",
+                      "likelyType": "malformed",
+                      "method": "string",
+                      "path": "string",
+                      "policyRuleId": "string",
+                      "reviewedAt": "string",
+                      "risk": "low",
+                      "riskReasons": [
+                        "string"
+                      ],
+                      "routePolicyStale": true,
+                      "routePolicyVersion": "string",
+                      "seenFromPage": "string",
+                      "shapeSignature": "string",
+                      "siteId": "string",
+                      "suggestedAction": "observe"
+                    }
+                  ],
+                  "nextCursor": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeRequestObservationGroupsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List grouped runtime request observations",
+        "tags": [
+          "Sites",
+          "Runtime Requests"
+        ]
+      }
+    },
+    "/sites/{siteId}/runtime-requests/observations/{groupHash}": {
+      "patch": {
+        "description": "Marks a grouped runtime request observation as reviewed, dismissed, ignored, or open for dashboard triage.",
+        "operationId": "sites.runtimeRequests.observations.lifecycle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "groupHash",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "lifecycle": "open",
+                "method": "string",
+                "shapeSignature": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeRequestObservationLifecycleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "state": {
+                    "dismissedAt": "string",
+                    "groupingPathHash": "string",
+                    "ignoredAt": "string",
+                    "method": "string",
+                    "reviewedAt": "string",
+                    "shapeSignature": "string",
+                    "siteId": "string",
+                    "updatedAt": "string"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeRequestObservationLifecycleResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Update runtime request observation lifecycle",
+        "tags": [
+          "Sites",
+          "Runtime Requests"
         ]
       }
     },

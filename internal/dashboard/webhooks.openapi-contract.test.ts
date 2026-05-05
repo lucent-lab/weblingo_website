@@ -414,6 +414,9 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}/dashboard", method: "get" },
       { path: "/sites/{siteId}/source-selection/preview", method: "post" },
       { path: "/sites/{siteId}/source-selection/tree-preview", method: "post" },
+      { path: "/sites/{siteId}/runtime-requests/observations", method: "get" },
+      { path: "/sites/{siteId}/runtime-requests/observations/{groupHash}", method: "patch" },
+      { path: "/sites/{siteId}/runtime-request-policy/preview", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "get" },
       { path: "/sites/{siteId}/showcase", method: "post" },
       { path: "/sites/{siteId}/showcase", method: "patch" },
@@ -579,6 +582,14 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "SourceSelectionTreePreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionTreePreviewResponseSchema,
+      },
+      {
+        name: "RuntimeRequestObservationGroupsResponse",
+        schema: __webhooksZodContracts.runtimeRequestObservationGroupsResponseSchema,
+      },
+      {
+        name: "RuntimeRequestPolicyPreviewResponse",
+        schema: __webhooksZodContracts.runtimeRequestPolicyPreviewResponseSchema,
       },
       { name: "GlossaryResponse", schema: __webhooksZodContracts.upsertGlossaryResponseSchema },
       {
