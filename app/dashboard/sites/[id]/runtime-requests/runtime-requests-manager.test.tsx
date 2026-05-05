@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
@@ -42,7 +42,12 @@ const copy: RuntimeRequestsCopy = {
   rulesTitle: "Policy rules",
   rulesDescription: "Rules.",
   noRules: "No rules.",
-  addRule: "Add rule",
+  presetsTitle: "Templates",
+  presetNeutralizeAnalytics: "Neutralize analytics/beacon",
+  presetSearchProxy: "Read-only search proxy",
+  presetFeatureConfigProxy: "Read-only feature flag/config proxy",
+  presetRouteDataProxy: "Route-data passthrough candidate",
+  presetFormSubmitProxy: "Form submit advanced proxy",
   validateDraft: "Validate draft",
   previewReady: "Server validation passed",
   previewBlocked: "Server validation blocked save",
@@ -62,6 +67,20 @@ const copy: RuntimeRequestsCopy = {
   neutralization: "Neutralization",
   confirmations: "Advanced confirmations",
   removeRule: "Remove rule",
+  draftStatus: "Draft",
+  savedStatus: "Saved",
+  standardValue: "Standard",
+  standardFallbackVersion: "standard-v1",
+  maxBodyBytes: "Max body bytes",
+  maxResponseBytes: "Max response bytes",
+  timeoutMs: "Timeout ms",
+  requestHeaders: "Request header allowlist",
+  responseHeaders: "Response header allowlist",
+  requestContentTypes: "Request content types",
+  responseContentTypes: "Response content types",
+  redirectScope: "Redirect scope",
+  defaultRuleName: "Runtime request rule",
+  previewErrorFallback: "Unable to preview runtime request policy.",
   validationTitle: "Validation",
   warningsTitle: "Warnings",
   matchedGroupsTitle: "Matched observations",
@@ -147,6 +166,29 @@ describe("RuntimeRequestsManager", () => {
 
     expect(screen.getByDisplayValue("/api/cart")).toBeTruthy();
     expect(saveAction).not.toHaveBeenCalled();
+  });
+
+  it("adds rules only through explicit templates", () => {
+    const saveAction = vi.fn(async () => ({ ok: true, message: "saved" }));
+    renderManager({ saveAction });
+
+    expect(screen.queryByRole("button", { name: "Add rule" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Read-only search proxy" }));
+
+    expect(screen.getByDisplayValue("/api/search")).toBeTruthy();
+    expect(screen.getByDisplayValue("Read-only search proxy")).toBeTruthy();
+    expect(saveAction).not.toHaveBeenCalled();
+  });
+
+  it("supports dismissing observed request groups", async () => {
+    const { lifecycleAction } = renderManager();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismissed" }));
+
+    await waitFor(() => expect(lifecycleAction).toHaveBeenCalled());
+    const call = lifecycleAction.mock.calls[0] as unknown as [ActionResponse | undefined, FormData];
+    const formData = call[1];
+    expect(formData.get("lifecycle")).toBe("dismissed");
   });
 
   it("blocks save on server validation errors and preserves the draft", async () => {

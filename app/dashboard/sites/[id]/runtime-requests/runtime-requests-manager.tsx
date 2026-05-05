@@ -84,7 +84,12 @@ export type RuntimeRequestsCopy = {
   rulesTitle: string;
   rulesDescription: string;
   noRules: string;
-  addRule: string;
+  presetsTitle: string;
+  presetNeutralizeAnalytics: string;
+  presetSearchProxy: string;
+  presetFeatureConfigProxy: string;
+  presetRouteDataProxy: string;
+  presetFormSubmitProxy: string;
   validateDraft: string;
   previewReady: string;
   previewBlocked: string;
@@ -104,10 +109,37 @@ export type RuntimeRequestsCopy = {
   neutralization: string;
   confirmations: string;
   removeRule: string;
+  draftStatus: string;
+  savedStatus: string;
+  standardValue: string;
+  standardFallbackVersion: string;
+  maxBodyBytes: string;
+  maxResponseBytes: string;
+  timeoutMs: string;
+  requestHeaders: string;
+  responseHeaders: string;
+  requestContentTypes: string;
+  responseContentTypes: string;
+  redirectScope: string;
+  defaultRuleName: string;
+  previewErrorFallback: string;
   validationTitle: string;
   warningsTitle: string;
   matchedGroupsTitle: string;
   redactionNote: string;
+};
+
+type RuntimeRequestPreset = {
+  id: string;
+  label: keyof Pick<
+    RuntimeRequestsCopy,
+    | "presetNeutralizeAnalytics"
+    | "presetSearchProxy"
+    | "presetFeatureConfigProxy"
+    | "presetRouteDataProxy"
+    | "presetFormSubmitProxy"
+  >;
+  rule: Partial<RuntimeRequestPolicyRule>;
 };
 
 type RuntimeRequestsManagerProps = {
@@ -223,7 +255,7 @@ export function RuntimeRequestsManager({
         );
         const body = (await response.json()) as unknown;
         if (!response.ok) {
-          setPreviewError(extractPreviewMessage(body));
+          setPreviewError(extractPreviewMessage(body, copy));
           return;
         }
         setPreview(body as RuntimeRequestPolicyPreviewResponse);
@@ -315,7 +347,7 @@ export function RuntimeRequestsManager({
           </Badge>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-5">
-          <Metric label={copy.standardMode} value="Standard" />
+          <Metric label={copy.standardMode} value={copy.standardValue} />
           <Metric label={copy.activeRules} value={String(activeRuleCount)} />
           <Metric label={copy.unreviewedGroups} value={String(unreviewedCount)} />
           <Metric label={copy.highRiskGroups} value={String(highRiskCount)} />
@@ -323,7 +355,7 @@ export function RuntimeRequestsManager({
           <div className="md:col-span-5">
             <p className="text-xs text-muted-foreground">
               {copy.policyVersion}:{" "}
-              {servedVersion ?? servedPropagation?.servedVersion ?? "standard-v1"}
+              {servedVersion ?? servedPropagation?.servedVersion ?? copy.standardFallbackVersion}
             </p>
           </div>
         </CardContent>
@@ -364,22 +396,34 @@ export function RuntimeRequestsManager({
             <CardDescription>{copy.rulesDescription}</CardDescription>
           </div>
           <Badge variant={hasUnsavedChanges ? "outline" : "secondary"}>
-            {hasUnsavedChanges ? "Draft" : "Saved"}
+            {hasUnsavedChanges ? copy.draftStatus : copy.savedStatus}
           </Badge>
         </CardHeader>
         <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{copy.presetsTitle}</p>
+            <div className="flex flex-wrap gap-2">
+              {buildRuntimeRequestPresets(copy).map((preset) => (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  variant="outline"
+                  disabled={!canEdit || isSaving}
+                  onClick={() =>
+                    updateDraft((policy) => ({
+                      ...policy,
+                      rules: [...policy.rules, createRule(preset.rule, copy)],
+                    }))
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {copy[preset.label]}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canEdit || isSaving}
-              onClick={() =>
-                updateDraft((policy) => ({ ...policy, rules: [...policy.rules, createRule()] }))
-              }
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {copy.addRule}
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -556,6 +600,15 @@ function ObservationsTable({
                     size="sm"
                     variant="outline"
                     disabled={!canEdit}
+                    onClick={() => onLifecycle(group, "dismissed")}
+                  >
+                    {copy.dismissed}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!canEdit}
                     onClick={() => onLifecycle(group, "ignored")}
                   >
                     {copy.ignored}
@@ -678,7 +731,7 @@ function RuleEditor({
         </div>
       </fieldset>
       <div className="mt-4 grid gap-4 lg:grid-cols-4">
-        <Field label="Max body bytes" htmlFor={`${rule.id}-body`}>
+        <Field label={copy.maxBodyBytes} htmlFor={`${rule.id}-body`}>
           <Input
             id={`${rule.id}-body`}
             type="number"
@@ -688,7 +741,7 @@ function RuleEditor({
             onChange={(event) => onChange({ ...rule, maxBodyBytes: Number(event.target.value) })}
           />
         </Field>
-        <Field label="Max response bytes" htmlFor={`${rule.id}-response`}>
+        <Field label={copy.maxResponseBytes} htmlFor={`${rule.id}-response`}>
           <Input
             id={`${rule.id}-response`}
             type="number"
@@ -700,7 +753,7 @@ function RuleEditor({
             }
           />
         </Field>
-        <Field label="Timeout ms" htmlFor={`${rule.id}-timeout`}>
+        <Field label={copy.timeoutMs} htmlFor={`${rule.id}-timeout`}>
           <Input
             id={`${rule.id}-timeout`}
             type="number"
@@ -726,7 +779,7 @@ function RuleEditor({
         </Field>
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Field label={`${copy.headers} request`} htmlFor={`${rule.id}-request-headers`}>
+        <Field label={copy.requestHeaders} htmlFor={`${rule.id}-request-headers`}>
           <Input
             id={`${rule.id}-request-headers`}
             value={rule.requestHeaders.allow.join(", ")}
@@ -736,7 +789,7 @@ function RuleEditor({
             }
           />
         </Field>
-        <Field label={`${copy.headers} response`} htmlFor={`${rule.id}-response-headers`}>
+        <Field label={copy.responseHeaders} htmlFor={`${rule.id}-response-headers`}>
           <Input
             id={`${rule.id}-response-headers`}
             value={rule.responseHeaders.allow.join(", ")}
@@ -746,7 +799,7 @@ function RuleEditor({
             }
           />
         </Field>
-        <Field label="Request content types" htmlFor={`${rule.id}-request-content-types`}>
+        <Field label={copy.requestContentTypes} htmlFor={`${rule.id}-request-content-types`}>
           <Input
             id={`${rule.id}-request-content-types`}
             value={rule.requestContentTypes.join(", ")}
@@ -756,7 +809,7 @@ function RuleEditor({
             }
           />
         </Field>
-        <Field label="Response content types" htmlFor={`${rule.id}-response-content-types`}>
+        <Field label={copy.responseContentTypes} htmlFor={`${rule.id}-response-content-types`}>
           <Input
             id={`${rule.id}-response-content-types`}
             value={rule.responseContentTypes.join(", ")}
@@ -788,7 +841,7 @@ function RuleEditor({
             <option value="no_content">no_content</option>
           </select>
         </Field>
-        <Field label="Redirect scope" htmlFor={`${rule.id}-redirect`}>
+        <Field label={copy.redirectScope} htmlFor={`${rule.id}-redirect`}>
           <select
             id={`${rule.id}-redirect`}
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -915,6 +968,86 @@ function RiskBadge({ risk }: { risk: RuntimeRequestObservationGroup["risk"] }) {
   );
 }
 
+function buildRuntimeRequestPresets(copy: RuntimeRequestsCopy): RuntimeRequestPreset[] {
+  return [
+    {
+      id: "neutralize-analytics",
+      label: "presetNeutralizeAnalytics",
+      rule: {
+        name: copy.presetNeutralizeAnalytics,
+        pattern: "/analytics/*",
+        methods: ["GET", "HEAD", "POST", "OPTIONS"],
+        action: "neutralize",
+        maxBodyBytes: 0,
+        maxResponseBytes: 0,
+        neutralization: neutralizationForShape("empty_json"),
+      },
+    },
+    {
+      id: "search-proxy",
+      label: "presetSearchProxy",
+      rule: {
+        name: copy.presetSearchProxy,
+        pattern: "/api/search",
+        methods: ["GET", "HEAD"],
+        action: "proxy",
+        credentials: "omit",
+        cache: "no-store",
+        maxBodyBytes: 0,
+        maxResponseBytes: 1_048_576,
+        responseContentTypes: ["application/json"],
+      },
+    },
+    {
+      id: "feature-config-proxy",
+      label: "presetFeatureConfigProxy",
+      rule: {
+        name: copy.presetFeatureConfigProxy,
+        pattern: "/api/config",
+        methods: ["GET", "HEAD"],
+        action: "proxy",
+        credentials: "omit",
+        cache: "no-store",
+        maxBodyBytes: 0,
+        maxResponseBytes: 262_144,
+        responseContentTypes: ["application/json"],
+      },
+    },
+    {
+      id: "route-data-proxy",
+      label: "presetRouteDataProxy",
+      rule: {
+        name: copy.presetRouteDataProxy,
+        pattern: "/_next/data/*",
+        methods: ["GET", "HEAD"],
+        action: "proxy",
+        credentials: "omit",
+        cache: "no-store",
+        maxBodyBytes: 0,
+        maxResponseBytes: 1_048_576,
+        responseContentTypes: ["application/json"],
+      },
+    },
+    {
+      id: "form-submit-proxy",
+      label: "presetFormSubmitProxy",
+      rule: {
+        name: copy.presetFormSubmitProxy,
+        pattern: "/api/forms/*",
+        methods: ["POST"],
+        action: "proxy",
+        credentials: "omit",
+        cache: "no-store",
+        maxBodyBytes: 65_536,
+        maxResponseBytes: 262_144,
+        requestContentTypes: ["application/json", "application/x-www-form-urlencoded"],
+        responseContentTypes: ["application/json"],
+        confirmations: ["non_get_proxy", "high_risk_path"],
+      },
+    },
+  ];
+}
+
 function normalizeRuntimePolicy(policy: RuntimeRequestPolicyConfig): RuntimeRequestPolicyConfig {
   return {
     schemaVersion: 1,
@@ -934,11 +1067,14 @@ function normalizeRuntimePolicy(policy: RuntimeRequestPolicyConfig): RuntimeRequ
   };
 }
 
-function createRule(overrides: Partial<RuntimeRequestPolicyRule> = {}): RuntimeRequestPolicyRule {
+function createRule(
+  overrides: Partial<RuntimeRequestPolicyRule> = {},
+  copy?: RuntimeRequestsCopy,
+): RuntimeRequestPolicyRule {
   const id = overrides.id ?? `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   return {
     id,
-    name: overrides.name ?? "Runtime request rule",
+    name: overrides.name ?? copy?.defaultRuleName ?? "Runtime request rule",
     enabled: overrides.enabled ?? true,
     pattern: overrides.pattern ?? "/api/search",
     methods: overrides.methods ?? ["GET", "HEAD"],
@@ -1045,14 +1181,14 @@ function formatDate(value: string | undefined): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function extractPreviewMessage(value: unknown): string {
+function extractPreviewMessage(value: unknown, copy: RuntimeRequestsCopy): string {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
     if (typeof record.error === "string") {
       return record.error;
     }
   }
-  return "Unable to preview runtime request policy.";
+  return copy.previewErrorFallback;
 }
 
 function readSavedRuntimePolicy(meta: Record<string, unknown> | undefined) {

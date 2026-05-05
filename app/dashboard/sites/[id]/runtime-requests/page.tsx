@@ -206,7 +206,27 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
       "dashboard.runtimeRequests.rules.empty",
       "No rules. Standard observe-and-fail is active.",
     ),
-    addRule: t("dashboard.runtimeRequests.rules.add", "Add rule"),
+    presetsTitle: t("dashboard.runtimeRequests.rules.presets", "Templates"),
+    presetNeutralizeAnalytics: t(
+      "dashboard.runtimeRequests.rules.preset.neutralizeAnalytics",
+      "Neutralize analytics/beacon",
+    ),
+    presetSearchProxy: t(
+      "dashboard.runtimeRequests.rules.preset.searchProxy",
+      "Read-only search proxy",
+    ),
+    presetFeatureConfigProxy: t(
+      "dashboard.runtimeRequests.rules.preset.featureConfigProxy",
+      "Read-only feature flag/config proxy",
+    ),
+    presetRouteDataProxy: t(
+      "dashboard.runtimeRequests.rules.preset.routeDataProxy",
+      "Route-data passthrough candidate",
+    ),
+    presetFormSubmitProxy: t(
+      "dashboard.runtimeRequests.rules.preset.formSubmitProxy",
+      "Form submit advanced proxy",
+    ),
     validateDraft: t("dashboard.runtimeRequests.rules.validate", "Validate draft"),
     previewReady: t("dashboard.runtimeRequests.preview.ready", "Server validation passed"),
     previewBlocked: t(
@@ -232,6 +252,32 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
     neutralization: t("dashboard.runtimeRequests.rule.neutralization", "Neutralization"),
     confirmations: t("dashboard.runtimeRequests.rule.confirmations", "Advanced confirmations"),
     removeRule: t("dashboard.runtimeRequests.rule.remove", "Remove rule"),
+    draftStatus: t("dashboard.runtimeRequests.status.draft", "Draft"),
+    savedStatus: t("dashboard.runtimeRequests.status.saved", "Saved"),
+    standardValue: t("dashboard.runtimeRequests.standardValue", "Standard"),
+    standardFallbackVersion: t("dashboard.runtimeRequests.standardFallbackVersion", "standard-v1"),
+    maxBodyBytes: t("dashboard.runtimeRequests.rule.maxBodyBytes", "Max body bytes"),
+    maxResponseBytes: t("dashboard.runtimeRequests.rule.maxResponseBytes", "Max response bytes"),
+    timeoutMs: t("dashboard.runtimeRequests.rule.timeoutMs", "Timeout ms"),
+    requestHeaders: t("dashboard.runtimeRequests.rule.requestHeaders", "Request header allowlist"),
+    responseHeaders: t(
+      "dashboard.runtimeRequests.rule.responseHeaders",
+      "Response header allowlist",
+    ),
+    requestContentTypes: t(
+      "dashboard.runtimeRequests.rule.requestContentTypes",
+      "Request content types",
+    ),
+    responseContentTypes: t(
+      "dashboard.runtimeRequests.rule.responseContentTypes",
+      "Response content types",
+    ),
+    redirectScope: t("dashboard.runtimeRequests.rule.redirectScope", "Redirect scope"),
+    defaultRuleName: t("dashboard.runtimeRequests.rule.defaultName", "Runtime request rule"),
+    previewErrorFallback: t(
+      "dashboard.runtimeRequests.preview.errorFallback",
+      "Unable to preview runtime request policy.",
+    ),
     validationTitle: t("dashboard.runtimeRequests.validation.title", "Validation"),
     warningsTitle: t("dashboard.runtimeRequests.validation.warnings", "Warnings"),
     matchedGroupsTitle: t(
