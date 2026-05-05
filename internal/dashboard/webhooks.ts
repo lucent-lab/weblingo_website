@@ -1120,13 +1120,6 @@ const runtimeRequestObservationLifecycleResponseSchema = z
       .strict(),
   })
   .strict();
-const runtimeRequestPolicyPreviewSampleSchema = z
-  .object({
-    url: z.string(),
-    method: z.string().optional(),
-    accept: z.string().optional(),
-  })
-  .strict();
 const runtimeRequestPolicyPreviewResponseSchema = z
   .object({
     runtimeRequestPolicy: runtimeRequestPolicyConfigSchema,
@@ -1581,9 +1574,11 @@ export type RuntimeRequestObservationGroupsResponse = z.infer<
   typeof runtimeRequestObservationGroupsResponseSchema
 >;
 export type RuntimeRequestLifecycle = z.infer<typeof runtimeRequestLifecycleSchema>;
-export type RuntimeRequestPolicyPreviewSample = z.infer<
-  typeof runtimeRequestPolicyPreviewSampleSchema
->;
+export type RuntimeRequestPolicyPreviewSample = {
+  url: string;
+  method?: string;
+  accept?: string;
+};
 export type RuntimeRequestPolicyPreviewResponse = z.infer<
   typeof runtimeRequestPolicyPreviewResponseSchema
 >;

@@ -90,13 +90,10 @@ describe("POST /api/dashboard/sites/[siteId]/runtime-request-policy/preview", ()
 
     const payload = { runtimeRequestPolicy: makePolicy() };
     const response = await POST(
-      new Request(
-        "http://localhost/api/dashboard/sites/site-1/runtime-request-policy/preview",
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        },
-      ),
+      new Request("http://localhost/api/dashboard/sites/site-1/runtime-request-policy/preview", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
       { params: Promise.resolve({ siteId: "site-1" }) },
     );
 
@@ -119,13 +116,10 @@ describe("POST /api/dashboard/sites/[siteId]/runtime-request-policy/preview", ()
     );
 
     const response = await POST(
-      new Request(
-        "http://localhost/api/dashboard/sites/site-1/runtime-request-policy/preview",
-        {
-          method: "POST",
-          body: JSON.stringify({ runtimeRequestPolicy: makePolicy() }),
-        },
-      ),
+      new Request("http://localhost/api/dashboard/sites/site-1/runtime-request-policy/preview", {
+        method: "POST",
+        body: JSON.stringify({ runtimeRequestPolicy: makePolicy() }),
+      }),
       { params: Promise.resolve({ siteId: "site-1" }) },
     );
 
