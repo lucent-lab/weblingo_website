@@ -443,6 +443,9 @@
             },
             "type": "array"
           },
+          "routeCacheRefresh": {
+            "$ref": "#/components/schemas/ManagedDemoRouteCacheRefreshSummary"
+          },
           "siteId": {
             "type": "string"
           },
@@ -679,6 +682,152 @@
           "createdAt",
           "updatedAt",
           "feedback"
+        ],
+        "type": "object"
+      },
+      "AdminRouteCacheReconcilePolicyState": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "string"
+          },
+          "servedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "servedVersion",
+          "expectedVersion",
+          "stale"
+        ],
+        "type": "object"
+      },
+      "AdminRouteCacheReconcileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "customerRoutes": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "showcaseRoutes": {
+            "type": "boolean"
+          },
+          "siteIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AdminRouteCacheReconcileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "customerRoutes": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "requestedSiteIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/AdminRouteCacheReconcileSiteResult"
+            },
+            "type": "array"
+          },
+          "showcaseRoutes": {
+            "type": "boolean"
+          },
+          "totals": {
+            "additionalProperties": false,
+            "properties": {
+              "dryRun": {
+                "type": "number"
+              },
+              "failed": {
+                "type": "number"
+              },
+              "refreshed": {
+                "type": "number"
+              },
+              "sitesConsidered": {
+                "type": "number"
+              },
+              "skipped": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "sitesConsidered",
+              "refreshed",
+              "dryRun",
+              "skipped",
+              "failed"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "dryRun",
+          "customerRoutes",
+          "showcaseRoutes",
+          "requestedSiteIds",
+          "totals",
+          "results"
+        ],
+        "type": "object"
+      },
+      "AdminRouteCacheReconcileSiteResult": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "enum": [
+              "customer",
+              "showcase"
+            ],
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "runtimeRequestPolicy": {
+            "$ref": "#/components/schemas/AdminRouteCacheReconcilePolicyState"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "refreshed",
+              "dry_run",
+              "skipped",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "context",
+          "status"
         ],
         "type": "object"
       },
@@ -3960,6 +4109,48 @@
           "activeDeploymentId",
           "activeDeploymentRowId",
           "activeDeploymentStatus"
+        ],
+        "type": "object"
+      },
+      "ManagedDemoRouteCacheRefreshSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "attempted": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "refreshed": {
+            "type": "boolean"
+          },
+          "runtimeRequestPolicy": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedVersion": {
+                "type": "string"
+              },
+              "servedVersion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stale": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "servedVersion",
+              "expectedVersion",
+              "stale"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "attempted",
+          "refreshed"
         ],
         "type": "object"
       },
@@ -9670,6 +9861,134 @@
           }
         ],
         "summary": "Get preview detail with ordered reviews",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/admin/route-caches/reconcile": {
+      "post": {
+        "description": "Internal admin operation that rebuilds customer and showcase route-cache entries for active sites from the current persisted site config. Use after route-cache contract changes or managed showcase route-cache drift; dryRun reports served versus expected runtime request policy versions without mutating KV/R2.",
+        "operationId": "admin.routeCaches.reconcile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "customerRoutes": true,
+                "dryRun": true,
+                "showcaseRoutes": true,
+                "siteIds": [
+                  "site_123"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AdminRouteCacheReconcileRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customerRoutes": true,
+                  "dryRun": true,
+                  "requestedSiteIds": [
+                    "site_123"
+                  ],
+                  "results": [
+                    {
+                      "context": "customer",
+                      "runtimeRequestPolicy": {
+                        "expectedVersion": "site-config:2026-05-05T00:00:00.000Z",
+                        "servedVersion": "site-config:2026-05-05T00:00:00.000Z",
+                        "stale": false
+                      },
+                      "siteId": "site_123",
+                      "status": "dry_run"
+                    }
+                  ],
+                  "showcaseRoutes": true,
+                  "totals": {
+                    "dryRun": 2,
+                    "failed": 0,
+                    "refreshed": 0,
+                    "sitesConsidered": 1,
+                    "skipped": 0
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRouteCacheReconcileResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reconcile customer and showcase route caches",
         "tags": [
           "Admin"
         ]

@@ -255,6 +255,25 @@
       "endpoint": {
         "auth": "bearer",
         "method": "POST",
+        "operationId": "admin.routeCaches.reconcile",
+        "path": "/admin/route-caches/reconcile"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "admin",
+      "id": "api.admin.routeCaches.reconcile",
+      "name": "Reconcile customer and showcase route caches",
+      "routeIds": [
+        "admin.routeCaches.reconcile"
+      ],
+      "stability": "Internal",
+      "summary": "Internal admin operation that rebuilds customer and showcase route-cache entries for active sites from the current persisted site config. Use after route-cache contract changes or managed showcase route-cache drift; dryRun reports served versus expected runtime request policy versions without mutating KV/R2.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
         "operationId": "agency.customers.create",
         "path": "/agency/customers"
       },
