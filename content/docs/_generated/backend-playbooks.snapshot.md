@@ -33,11 +33,17 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `sites.sourceSelection.preview`
 7. Preview source-selection tree projections for dashboard editing:
    - `operationId`: `sites.sourceSelection.treePreview`
-8. Update site configuration:
+8. Review observed runtime requests before adding interactive-feature rules:
+   - `operationId`: `sites.runtimeRequests.observations.list`
+9. Update observation lifecycle after triage:
+   - `operationId`: `sites.runtimeRequests.observations.lifecycle`
+10. Preview runtime request policy drafts before saving:
+   - `operationId`: `sites.runtimeRequestPolicy.preview`
+11. Update site configuration:
    - `operationId`: `sites.update`
-9. List discovered pages for a site:
+12. List discovered pages for a site:
    - `operationId`: `sites.pages.list`
-10. Generate language switcher snippets for custom frontend integration:
+13. Generate language switcher snippets for custom frontend integration:
     - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Admin Managed Demos
