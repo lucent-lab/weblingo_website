@@ -370,16 +370,23 @@ export function SourceSelectionManager({
         if (!result.ok) {
           return;
         }
-        const savedConfig = readSavedSourceSelection(result.meta) ?? saveConfig;
+        const savedConfig = readSavedSourceSelection(result.meta);
         const savedTokens = readSavedRouteTokens(result.meta);
+        if (
+          !savedConfig ||
+          !savedTokens.routeConfigUpdatedAt ||
+          !savedTokens.sourceSelectionFingerprint
+        ) {
+          setSaveResult({
+            ok: false,
+            message: "Source selection save response was incomplete.",
+          });
+          return;
+        }
         const savedRules = normalizeRulesForForm(savedConfig.rules);
         setPersistedRules(savedRules);
-        setExpectedRouteConfigUpdatedAt(
-          savedTokens.routeConfigUpdatedAt ?? expectedRouteConfigUpdatedAt,
-        );
-        setExpectedSourceSelectionFingerprint(
-          savedTokens.sourceSelectionFingerprint ?? sourceSelectionFingerprint(savedConfig),
-        );
+        setExpectedRouteConfigUpdatedAt(savedTokens.routeConfigUpdatedAt);
+        setExpectedSourceSelectionFingerprint(savedTokens.sourceSelectionFingerprint);
         if (draftFingerprintRef.current === saveFingerprint) {
           setDraftRules(savedRules);
           setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
@@ -1600,21 +1607,21 @@ function readSavedSourceSelection(
   if (!Array.isArray(rules)) {
     return null;
   }
-  return {
-    rules: rules.flatMap((rule) => {
-      if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
-        return [];
-      }
-      const record = rule as Record<string, unknown>;
-      if (
-        (record.action !== "include" && record.action !== "exclude") ||
-        typeof record.pattern !== "string"
-      ) {
-        return [];
-      }
-      return [{ action: record.action, pattern: record.pattern }];
-    }),
-  };
+  const parsedRules: SourceSelectionConfig["rules"] = [];
+  for (const rule of rules) {
+    if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+      return null;
+    }
+    const record = rule as Record<string, unknown>;
+    if (
+      (record.action !== "include" && record.action !== "exclude") ||
+      typeof record.pattern !== "string"
+    ) {
+      return null;
+    }
+    parsedRules.push({ action: record.action, pattern: record.pattern });
+  }
+  return { rules: parsedRules };
 }
 
 function rulesMatch(left: DraftSourceSelectionRule, right: DraftSourceSelectionRule): boolean {

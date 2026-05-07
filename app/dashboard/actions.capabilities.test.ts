@@ -442,6 +442,34 @@ describe("dashboard capability actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
   });
 
+  it("does not report source-selection success when the PATCH response omits confirmation metadata", async () => {
+    updateSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: { rules: [{ action: "include", pattern: "/blog/*" }] },
+      },
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [{ action: "include", pattern: "/blog/*" }],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Source selection was saved, but the confirmation payload was incomplete.",
+      meta: { code: "source_selection_incomplete_response" },
+    });
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
+  });
+
   it("blocks source-selection save when the editable preview contract is malformed", async () => {
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
@@ -592,6 +620,124 @@ describe("dashboard capability actions", () => {
         webhookEvents: ["translation.completed", "translation.summary"],
       }),
     );
+  });
+
+  it("reports create-site glossary persistence failures instead of returning success", async () => {
+    createSite.mockResolvedValue({
+      id: "site-created",
+      crawlStatus: { enqueued: false },
+    });
+    updateGlossary.mockRejectedValue(new Error("glossary write failed"));
+    requireDashboardAuth.mockResolvedValue({
+      account: {
+        accountId: "acct-1",
+        planType: "pro",
+        featureFlags: { maxLocales: null },
+      },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { createSiteAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.example.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.example.com");
+    formData.set("servingMode", "strict");
+    formData.set(
+      "glossaryEntries",
+      JSON.stringify([{ source: "Hello", target: "Bonjour", targetLang: "fr" }]),
+    );
+
+    const result = await createSiteAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Site was created, but glossary entries could not be saved.",
+      meta: { siteId: "site-created", partialSiteCreated: true },
+    });
+    expect(updateGlossary).toHaveBeenCalled();
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(invalidateSitesCache).toHaveBeenCalled();
+  });
+
+  it("rejects incomplete runtime request policy rule payloads", async () => {
+    const { updateRuntimeRequestPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "runtimeRequestPolicy",
+      JSON.stringify({
+        schemaVersion: 1,
+        mode: "standard",
+        enabled: true,
+        rules: [
+          {
+            id: "rule-1",
+            name: "Rule 1",
+            enabled: true,
+            pattern: "/api/*",
+            methods: ["GET"],
+            action: "proxy",
+            cache: "no-store",
+            maxBodyBytes: 0,
+            maxResponseBytes: 1048576,
+            timeoutMs: 5000,
+            redirectScope: "same_origin",
+            requestHeaders: { allow: [] },
+            responseHeaders: { allow: [] },
+            requestContentTypes: [],
+            responseContentTypes: [],
+            neutralization: {
+              shape: "empty_json",
+              status: 200,
+              contentType: "application/json",
+              body: "{}",
+            },
+            confirmations: [],
+          },
+        ],
+      }),
+    );
+
+    const result = await updateRuntimeRequestPolicyAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/credentials is invalid/i);
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("does not report runtime policy success when the PATCH response omits confirmation metadata", async () => {
+    updateSite.mockResolvedValue({
+      routeConfig: {
+        runtimeRequestPolicy: { schemaVersion: 1, mode: "standard", enabled: true, rules: [] },
+      },
+    });
+    const { updateRuntimeRequestPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "runtimeRequestPolicy",
+      JSON.stringify({
+        schemaVersion: 1,
+        mode: "standard",
+        enabled: true,
+        rules: [],
+      }),
+    );
+
+    const result = await updateRuntimeRequestPolicyAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Runtime request policy was saved, but the confirmation payload was incomplete.",
+      meta: { code: "runtime_request_policy_incomplete_response" },
+    });
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/runtime-requests");
   });
 
   it("updates locale summary preferences and invalidates site dashboard cache", async () => {

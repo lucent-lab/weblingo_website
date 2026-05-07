@@ -94,20 +94,7 @@ async function OverviewActions({
   auth: DashboardAuth;
   pricingPath: string;
 }) {
-  const data = await getOverviewData(auth).catch((error) => {
-    console.warn("[dashboard] overview actions failed:", error);
-    return null;
-  });
-
-  if (!data) {
-    return (
-      <div className="flex flex-wrap gap-3">
-        <Button disabled variant="outline">
-          Add a site
-        </Button>
-      </div>
-    );
-  }
+  const data = await getOverviewData(auth);
 
   return (
     <div className="flex flex-wrap gap-3">

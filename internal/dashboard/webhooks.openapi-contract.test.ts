@@ -814,6 +814,57 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     });
   });
 
+  it("rejects dashboard customer payloads with unsupported site statuses", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const overview = __webhooksZodContracts.siteCustomerOverviewResponseSchema.safeParse({
+      meta: {
+        view: "overview",
+        generatedAt: "2026-05-07T00:00:00.000Z",
+        schemaVersion: 1,
+      },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "paused",
+      },
+      account: {
+        accountId: "acct-1",
+        planType: "starter",
+        planStatus: "active",
+        mutationsAllowed: true,
+      },
+      health: {
+        status: "healthy",
+        titleKey: "dashboard.health.healthy.title",
+      },
+      nextAction: {
+        kind: "none",
+        priority: 100,
+        severity: "none",
+        titleKey: "dashboard.nextAction.none.title",
+      },
+      blockers: [],
+      languages: [],
+      domains: [],
+      pagesSummary: {},
+      currentActivity: [],
+      errors: [],
+      quotas: [],
+    });
+    expect(overview.success).toBe(false);
+
+    const compact = __webhooksZodContracts.siteCompactStatusResponseSchema.safeParse({
+      siteId: "site-1",
+      siteStatus: "paused",
+      latestCrawlRun: null,
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+    expect(compact.success).toBe(false);
+  });
+
   it("parses managed demo create responses that include showcase-aware site fields", async () => {
     vi.resetModules();
     const { __webhooksZodContracts } = await import("./webhooks");

@@ -470,11 +470,14 @@ function parseRuntimeRequestPolicyConfig(
     }
     rules.push(rule);
   }
+  if (typeof record.enabled !== "boolean") {
+    return "Runtime request policy enabled flag is required.";
+  }
 
   return {
     schemaVersion: 1,
     mode: "standard",
-    enabled: record.enabled !== false,
+    enabled: record.enabled,
     rules,
   };
 }
@@ -510,37 +513,125 @@ function parseRuntimeRequestPolicyRule(
   const methods = parseRuntimePolicyStringSet(
     record.methods,
     runtimeRequestPolicyMethods,
-    action === "proxy" ? ["GET", "HEAD"] : ["GET", "HEAD", "POST", "OPTIONS"],
+    `runtime request rule ${index + 1} methods`,
+    { allowEmpty: false },
   );
+  if (typeof methods === "string") {
+    return methods;
+  }
   const confirmations = parseRuntimePolicyStringSet(
     record.confirmations,
     runtimeRequestPolicyConfirmations,
-    [],
+    `runtime request rule ${index + 1} confirmations`,
+    { allowEmpty: true },
   );
+  if (typeof confirmations === "string") {
+    return confirmations;
+  }
   const neutralization = parseRuntimePolicyNeutralization(record.neutralization);
+  if (typeof neutralization === "string") {
+    return `Runtime request rule ${index + 1} ${neutralization}`;
+  }
+  const enabled = readRuntimePolicyBoolean(record.enabled, `runtime request rule ${index + 1}`);
+  if (typeof enabled === "string") {
+    return enabled;
+  }
+  const credentials = readRuntimePolicyEnum(
+    record.credentials,
+    runtimeRequestPolicyCredentials,
+    `runtime request rule ${index + 1} credentials`,
+  );
+  if (!credentials.ok) {
+    return credentials.error;
+  }
+  const cache = readRuntimePolicyEnum(
+    record.cache,
+    runtimeRequestPolicyCacheModes,
+    `runtime request rule ${index + 1} cache`,
+  );
+  if (!cache.ok) {
+    return cache.error;
+  }
+  const redirectScope = readRuntimePolicyEnum(
+    record.redirectScope,
+    runtimeRequestPolicyRedirectScopes,
+    `runtime request rule ${index + 1} redirect scope`,
+  );
+  if (!redirectScope.ok) {
+    return redirectScope.error;
+  }
+  const maxBodyBytes = readRuntimePolicyInteger(
+    record.maxBodyBytes,
+    `runtime request rule ${index + 1} max body bytes`,
+    0,
+    1_048_576,
+  );
+  if (typeof maxBodyBytes === "string") {
+    return maxBodyBytes;
+  }
+  const maxResponseBytes = readRuntimePolicyInteger(
+    record.maxResponseBytes,
+    `runtime request rule ${index + 1} max response bytes`,
+    0,
+    10_485_760,
+  );
+  if (typeof maxResponseBytes === "string") {
+    return maxResponseBytes;
+  }
+  const timeoutMs = readRuntimePolicyInteger(
+    record.timeoutMs,
+    `runtime request rule ${index + 1} timeout ms`,
+    1,
+    30_000,
+  );
+  if (typeof timeoutMs === "string") {
+    return timeoutMs;
+  }
+  const requestHeaders = parseRuntimePolicyHeaderPolicy(
+    record.requestHeaders,
+    `runtime request rule ${index + 1} request headers`,
+  );
+  if (typeof requestHeaders === "string") {
+    return requestHeaders;
+  }
+  const responseHeaders = parseRuntimePolicyHeaderPolicy(
+    record.responseHeaders,
+    `runtime request rule ${index + 1} response headers`,
+  );
+  if (typeof responseHeaders === "string") {
+    return responseHeaders;
+  }
+  const requestContentTypes = parseRuntimePolicyStringArray(
+    record.requestContentTypes,
+    `runtime request rule ${index + 1} request content types`,
+  );
+  if (typeof requestContentTypes === "string") {
+    return requestContentTypes;
+  }
+  const responseContentTypes = parseRuntimePolicyStringArray(
+    record.responseContentTypes,
+    `runtime request rule ${index + 1} response content types`,
+  );
+  if (typeof responseContentTypes === "string") {
+    return responseContentTypes;
+  }
   return {
     id: id.value,
     name: name.value,
-    enabled: record.enabled !== false,
+    enabled,
     pattern: pattern.value,
     methods: methods as RuntimeRequestPolicyRule["methods"],
     action: action as RuntimeRequestPolicyRule["action"],
-    credentials: runtimeRequestPolicyCredentials.has(String(record.credentials))
-      ? (record.credentials as RuntimeRequestPolicyRule["credentials"])
-      : "omit",
-    cache: runtimeRequestPolicyCacheModes.has(String(record.cache))
-      ? (record.cache as RuntimeRequestPolicyRule["cache"])
-      : "no-store",
-    maxBodyBytes: readRuntimePolicyInteger(record.maxBodyBytes, 0, 1_048_576),
-    maxResponseBytes: readRuntimePolicyInteger(record.maxResponseBytes, 1_048_576, 10_485_760),
-    timeoutMs: readRuntimePolicyInteger(record.timeoutMs, 5_000, 30_000),
-    redirectScope: runtimeRequestPolicyRedirectScopes.has(String(record.redirectScope))
-      ? (record.redirectScope as RuntimeRequestPolicyRule["redirectScope"])
-      : "same_origin",
-    requestHeaders: { allow: parseRuntimePolicyStringArray(record.requestHeaders, "allow") },
-    responseHeaders: { allow: parseRuntimePolicyStringArray(record.responseHeaders, "allow") },
-    requestContentTypes: parseRuntimePolicyStringArray(record.requestContentTypes),
-    responseContentTypes: parseRuntimePolicyStringArray(record.responseContentTypes),
+    credentials: credentials.value as RuntimeRequestPolicyRule["credentials"],
+    cache: cache.value as RuntimeRequestPolicyRule["cache"],
+    maxBodyBytes,
+    maxResponseBytes,
+    timeoutMs,
+    redirectScope: redirectScope.value as RuntimeRequestPolicyRule["redirectScope"],
+    requestHeaders,
+    responseHeaders,
+    requestContentTypes,
+    responseContentTypes,
     neutralization,
     confirmations: confirmations as RuntimeRequestPolicyRule["confirmations"],
   };
@@ -560,63 +651,119 @@ function readRuntimePolicyString(
 function parseRuntimePolicyStringSet(
   value: unknown,
   allowed: Set<string>,
-  defaults: string[],
-): string[] {
-  const raw = Array.isArray(value) ? value : defaults;
+  label: string,
+  options: { allowEmpty: boolean },
+): string[] | string {
+  if (!Array.isArray(value)) {
+    return `${label} must be an array.`;
+  }
   const out = new Set<string>();
-  for (const entry of raw) {
-    if (typeof entry === "string") {
-      const normalized = entry.trim();
-      if (allowed.has(normalized)) {
-        out.add(normalized);
-      }
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      return `${label} must contain only strings.`;
     }
+    const normalized = entry.trim();
+    if (!allowed.has(normalized)) {
+      return `${label} contains an unsupported value: ${normalized || "(empty)"}.`;
+    }
+    out.add(normalized);
   }
-  return out.size ? Array.from(out) : defaults;
+  if (!options.allowEmpty && out.size === 0) {
+    return `${label} must include at least one value.`;
+  }
+  return Array.from(out);
 }
 
-function parseRuntimePolicyStringArray(value: unknown, nestedKey?: string): string[] {
-  const source =
-    nestedKey && value && typeof value === "object"
-      ? (value as Record<string, unknown>)[nestedKey]
-      : value;
-  if (!Array.isArray(source)) {
-    return [];
+function parseRuntimePolicyStringArray(value: unknown, label: string): string[] | string {
+  if (!Array.isArray(value)) {
+    return `${label} must be an array.`;
   }
-  return Array.from(
-    new Set(
-      source
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => entry.trim().toLowerCase())
-        .filter(Boolean)
-        .slice(0, 20),
-    ),
-  );
+  if (value.length > 20) {
+    return `${label} supports up to 20 values.`;
+  }
+  const out = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string" || !entry.trim()) {
+      return `${label} must contain only non-empty strings.`;
+    }
+    out.add(entry.trim().toLowerCase());
+  }
+  return Array.from(out);
 }
 
-function readRuntimePolicyInteger(value: unknown, fallback: number, max: number): number {
+function parseRuntimePolicyHeaderPolicy(value: unknown, label: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return `${label} must be an object.`;
+  }
+  const allow = parseRuntimePolicyStringArray((value as Record<string, unknown>).allow, label);
+  if (typeof allow === "string") {
+    return allow;
+  }
+  return { allow };
+}
+
+function readRuntimePolicyBoolean(value: unknown, label: string): boolean | string {
+  if (typeof value !== "boolean") {
+    return `${label} enabled flag is required.`;
+  }
+  return value;
+}
+
+function readRuntimePolicyEnum(
+  value: unknown,
+  allowed: Set<string>,
+  label: string,
+): { ok: true; value: string } | { ok: false; error: string } {
+  if (typeof value !== "string" || !allowed.has(value)) {
+    return { ok: false, error: `${label} is invalid.` };
+  }
+  return { ok: true, value };
+}
+
+function readRuntimePolicyInteger(
+  value: unknown,
+  label: string,
+  min: number,
+  max: number,
+): number | string {
   if (typeof value !== "number" || !Number.isInteger(value)) {
-    return fallback;
+    return `${label} must be an integer.`;
   }
-  return Math.max(0, Math.min(value, max));
+  if (value < min || value > max) {
+    return `${label} must be between ${min} and ${max}.`;
+  }
+  return value;
 }
 
 function parseRuntimePolicyNeutralization(
   value: unknown,
-): RuntimeRequestPolicyRule["neutralization"] {
-  const record =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
-  const shape =
-    record.shape === "empty_text" || record.shape === "no_content" || record.shape === "empty_json"
-      ? record.shape
-      : "empty_json";
+): RuntimeRequestPolicyRule["neutralization"] | string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "neutralization must be an object.";
+  }
+  const record = value as Record<string, unknown>;
+  const shape = record.shape;
+  if (shape !== "empty_text" && shape !== "no_content" && shape !== "empty_json") {
+    return "neutralization shape is invalid.";
+  }
   if (shape === "no_content") {
+    if (record.status !== 204 || record.contentType !== null || record.body !== null) {
+      return "neutralization no_content payload is invalid.";
+    }
     return { shape, status: 204, contentType: null, body: null };
   }
   if (shape === "empty_text") {
+    if (
+      record.status !== 200 ||
+      record.contentType !== "text/plain; charset=utf-8" ||
+      record.body !== ""
+    ) {
+      return "neutralization empty_text payload is invalid.";
+    }
     return { shape, status: 200, contentType: "text/plain; charset=utf-8", body: "" };
+  }
+  if (record.status !== 200 || record.contentType !== "application/json" || record.body !== "{}") {
+    return "neutralization empty_json payload is invalid.";
   }
   return { shape, status: 200, contentType: "application/json", body: "{}" };
 }
@@ -738,7 +885,6 @@ export async function createSiteAction(
       webhookEvents,
     });
 
-    let toast: string | null = null;
     if (
       normalizedGlossary.length > 0 &&
       auth.has({ allFeatures: ["edit", "glossary"] }) &&
@@ -748,7 +894,15 @@ export async function createSiteAction(
         await updateGlossary(auth.webhooksAuth, site.id, normalizedGlossary, false);
       } catch (error) {
         console.error("[dashboard] createSiteAction glossary update failed:", error);
-        toast = "Site created, but glossary entries could not be saved.";
+        await invalidateDashboardCaches(auth.webhooksAuth, site.id, {
+          invalidateSitesList: true,
+        });
+        revalidatePath("/dashboard");
+        revalidatePath(`/dashboard/sites/${site.id}`);
+        return failed("Site was created, but glossary entries could not be saved.", {
+          siteId: site.id,
+          partialSiteCreated: true,
+        });
       }
     }
 
@@ -758,10 +912,9 @@ export async function createSiteAction(
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/sites/${site.id}`);
 
-    return succeeded(toast ?? "Site created. Verify domains and activate to start crawling.", {
+    return succeeded("Site created. Verify domains and activate to start crawling.", {
       siteId: site.id,
       crawlStatus: site.crawlStatus,
-      toast: toast ?? undefined,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1060,6 +1213,21 @@ export async function updateSourceSelectionAction(
       ...(expectedRouteConfigUpdatedAt ? { expectedRouteConfigUpdatedAt } : {}),
       ...(expectedSourceSelectionFingerprint ? { expectedSourceSelectionFingerprint } : {}),
     });
+    const savedRouteConfig = updated.routeConfig;
+    if (
+      !savedRouteConfig?.sourceSelection ||
+      typeof savedRouteConfig.updatedAt !== "string" ||
+      typeof savedRouteConfig.sourceSelectionFingerprint !== "string"
+    ) {
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+        invalidateSitesList: false,
+      });
+      revalidatePath(`/dashboard/sites/${siteId}`);
+      revalidatePath(`/dashboard/sites/${siteId}/source-selection`);
+      return failed("Source selection was saved, but the confirmation payload was incomplete.", {
+        code: "source_selection_incomplete_response",
+      });
+    }
     await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
       invalidateSitesList: false,
     });
@@ -1068,9 +1236,9 @@ export async function updateSourceSelectionAction(
     revalidatePath(`/dashboard/sites/${siteId}/source-selection`);
 
     return succeeded("Source selection saved.", {
-      sourceSelection: updated.routeConfig?.sourceSelection ?? sourceSelection,
-      routeConfigUpdatedAt: updated.routeConfig?.updatedAt ?? null,
-      sourceSelectionFingerprint: updated.routeConfig?.sourceSelectionFingerprint ?? null,
+      sourceSelection: savedRouteConfig.sourceSelection,
+      routeConfigUpdatedAt: savedRouteConfig.updatedAt,
+      sourceSelectionFingerprint: savedRouteConfig.sourceSelectionFingerprint,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1119,6 +1287,22 @@ export async function updateRuntimeRequestPolicyAction(
         ? { expectedRuntimeRequestPolicyFingerprint }
         : {}),
     });
+    const savedRouteConfig = updated.routeConfig;
+    if (
+      !savedRouteConfig?.runtimeRequestPolicy ||
+      typeof savedRouteConfig.runtimeRequestPolicyFingerprint !== "string" ||
+      typeof savedRouteConfig.runtimeRequestPolicyVersion !== "string"
+    ) {
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+        invalidateSitesList: false,
+      });
+      revalidatePath(`/dashboard/sites/${siteId}`);
+      revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
+      return failed(
+        "Runtime request policy was saved, but the confirmation payload was incomplete.",
+        { code: "runtime_request_policy_incomplete_response" },
+      );
+    }
     await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
       invalidateSitesList: false,
     });
@@ -1126,10 +1310,10 @@ export async function updateRuntimeRequestPolicyAction(
     revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
 
     return succeeded("Runtime request policy saved.", {
-      runtimeRequestPolicy: updated.routeConfig?.runtimeRequestPolicy ?? runtimeRequestPolicy,
-      runtimeRequestPolicyFingerprint: updated.routeConfig?.runtimeRequestPolicyFingerprint ?? null,
-      runtimeRequestPolicyVersion: updated.routeConfig?.runtimeRequestPolicyVersion ?? null,
-      runtimeRequestPolicyPropagation: updated.routeConfig?.runtimeRequestPolicyPropagation ?? null,
+      runtimeRequestPolicy: savedRouteConfig.runtimeRequestPolicy,
+      runtimeRequestPolicyFingerprint: savedRouteConfig.runtimeRequestPolicyFingerprint,
+      runtimeRequestPolicyVersion: savedRouteConfig.runtimeRequestPolicyVersion,
+      runtimeRequestPolicyPropagation: savedRouteConfig.runtimeRequestPolicyPropagation ?? null,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {

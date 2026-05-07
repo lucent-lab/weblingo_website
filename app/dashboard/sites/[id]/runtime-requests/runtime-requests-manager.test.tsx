@@ -243,4 +243,40 @@ describe("RuntimeRequestsManager", () => {
     expect(screen.getByDisplayValue("/api/cart")).toBeTruthy();
     expect(saveAction).not.toHaveBeenCalled();
   });
+
+  it("does not fabricate saved runtime policy state when save meta is incomplete", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            runtimeRequestPolicy: emptyPolicy,
+            validationErrors: [],
+            warnings: [],
+            collisions: [],
+            highRiskConfirmations: [],
+            sampleResults: [],
+            matchedObservationGroups: [],
+            propagation: {
+              currentRouteConfigUpdatedAt: "2026-05-04T00:00:00.000Z",
+              currentRuntimeRequestPolicyVersion: "site-config:v1",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    );
+    (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+    const saveAction = vi.fn(async () => ({ ok: true, message: "saved", meta: {} }));
+    renderManager({ saveAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create rule" }));
+    fireEvent.click(screen.getByRole("button", { name: "Validate draft" }));
+    expect(await screen.findAllByText("Server validation passed")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled());
+    expect(
+      await screen.findByText("Runtime request policy save response was incomplete."),
+    ).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
+  });
 });

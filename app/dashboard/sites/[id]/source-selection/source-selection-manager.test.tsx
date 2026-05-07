@@ -536,6 +536,41 @@ describe("SourceSelectionManager", () => {
     });
   });
 
+  it("does not fabricate saved source-selection state when save meta is incomplete", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(init?.body as string) as {
+        sourceSelection: { rules: SourceSelectionRule[] };
+      };
+      return new Response(JSON.stringify(makePreview({ sourceSelection: body.sourceSelection })), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const saveAction = vi.fn<SaveSourceSelectionAction>(async () => ({
+      ok: true,
+      message: "saved",
+      meta: {},
+    }));
+
+    renderManager({ saveAction });
+    await requestPreview();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
+    fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
+    await runPreviewTimer();
+    fireEvent.click(screen.getByRole("button", { name: /save source selection/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(saveAction).toHaveBeenCalledOnce();
+    expect(screen.getByText("Source selection save response was incomplete.")).toBeTruthy();
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+  });
+
   it("keeps a newly added empty include rule from becoming a saveable allowlist", async () => {
     vi.useFakeTimers();
     const fetchMock = vi

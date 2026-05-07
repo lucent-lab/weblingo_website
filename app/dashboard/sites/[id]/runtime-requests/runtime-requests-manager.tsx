@@ -46,6 +46,17 @@ const CONFIRMATIONS: RuntimeRequestPolicyConfirmation[] = [
   "credential_forwarding",
   "high_risk_path",
 ];
+const POLICY_ACTIONS = new Set<RuntimeRequestPolicyAction>([
+  "observe",
+  "deny",
+  "neutralize",
+  "proxy",
+]);
+const POLICY_METHODS = new Set<RuntimeRequestPolicyMethod>(ALL_METHODS);
+const POLICY_CREDENTIALS = new Set(["omit", "same_origin", "include"]);
+const POLICY_CACHE_MODES = new Set(["no-store", "edge"]);
+const POLICY_REDIRECT_SCOPES = new Set(["same_origin", "same_registrable_domain"]);
+const POLICY_CONFIRMATIONS = new Set<RuntimeRequestPolicyConfirmation>(CONFIRMATIONS);
 const DEFAULT_POLICY: RuntimeRequestPolicyConfig = {
   schemaVersion: 1,
   mode: "standard",
@@ -325,7 +336,14 @@ export function RuntimeRequestsManager({
         if (!result.ok) {
           return;
         }
-        const savedPolicy = readSavedRuntimePolicy(result.meta) ?? draftPolicy;
+        const savedPolicy = readSavedRuntimePolicy(result.meta);
+        if (!savedPolicy) {
+          setSaveResult({
+            ok: false,
+            message: "Runtime request policy save response was incomplete.",
+          });
+          return;
+        }
         setPersistedPolicy(savedPolicy);
         setDraftPolicy(savedPolicy);
         setExpectedFingerprint(readMetaString(result.meta, "runtimeRequestPolicyFingerprint"));
@@ -1265,10 +1283,109 @@ function extractPreviewMessage(value: unknown, copy: RuntimeRequestsCopy): strin
 
 function readSavedRuntimePolicy(meta: Record<string, unknown> | undefined) {
   const value = meta?.runtimeRequestPolicy;
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRuntimePolicyConfig(value)) {
     return null;
   }
-  return normalizeRuntimePolicy(value as RuntimeRequestPolicyConfig);
+  return value;
+}
+
+function isRuntimePolicyConfig(value: unknown): value is RuntimeRequestPolicyConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    record.schemaVersion === 1 &&
+    record.mode === "standard" &&
+    typeof record.enabled === "boolean" &&
+    Array.isArray(record.rules) &&
+    record.rules.every(isRuntimePolicyRule)
+  );
+}
+
+function isRuntimePolicyRule(value: unknown): value is RuntimeRequestPolicyRule {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.name === "string" &&
+    typeof record.enabled === "boolean" &&
+    typeof record.pattern === "string" &&
+    isEnumArray(record.methods, POLICY_METHODS, false) &&
+    typeof record.action === "string" &&
+    POLICY_ACTIONS.has(record.action as RuntimeRequestPolicyAction) &&
+    typeof record.credentials === "string" &&
+    POLICY_CREDENTIALS.has(record.credentials) &&
+    typeof record.cache === "string" &&
+    POLICY_CACHE_MODES.has(record.cache) &&
+    typeof record.maxBodyBytes === "number" &&
+    Number.isInteger(record.maxBodyBytes) &&
+    record.maxBodyBytes >= 0 &&
+    typeof record.maxResponseBytes === "number" &&
+    Number.isInteger(record.maxResponseBytes) &&
+    record.maxResponseBytes >= 0 &&
+    typeof record.timeoutMs === "number" &&
+    Number.isInteger(record.timeoutMs) &&
+    record.timeoutMs > 0 &&
+    typeof record.redirectScope === "string" &&
+    POLICY_REDIRECT_SCOPES.has(record.redirectScope) &&
+    isHeaderPolicy(record.requestHeaders) &&
+    isHeaderPolicy(record.responseHeaders) &&
+    isStringArray(record.requestContentTypes) &&
+    isStringArray(record.responseContentTypes) &&
+    isRuntimePolicyNeutralization(record.neutralization) &&
+    isEnumArray(record.confirmations, POLICY_CONFIRMATIONS, true)
+  );
+}
+
+function isEnumArray<T extends string>(
+  value: unknown,
+  allowed: Set<T>,
+  allowEmpty: boolean,
+): value is T[] {
+  return (
+    Array.isArray(value) &&
+    (allowEmpty || value.length > 0) &&
+    value.every((entry): entry is T => typeof entry === "string" && allowed.has(entry as T))
+  );
+}
+
+function isHeaderPolicy(value: unknown): value is { allow: string[] } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  return isStringArray((value as Record<string, unknown>).allow);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isRuntimePolicyNeutralization(
+  value: unknown,
+): value is RuntimeRequestPolicyRule["neutralization"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  if (record.shape === "no_content") {
+    return record.status === 204 && record.contentType === null && record.body === null;
+  }
+  if (record.shape === "empty_text") {
+    return (
+      record.status === 200 &&
+      record.contentType === "text/plain; charset=utf-8" &&
+      record.body === ""
+    );
+  }
+  return (
+    record.shape === "empty_json" &&
+    record.status === 200 &&
+    record.contentType === "application/json" &&
+    record.body === "{}"
+  );
 }
 
 function readObservationGroups(meta: Record<string, unknown> | undefined) {

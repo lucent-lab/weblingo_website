@@ -56,6 +56,7 @@ function getBodyRecord(value: unknown): Record<string, unknown> {
 const planTypeSchema = z.enum(["free", "starter", "pro", "agency"]);
 const managedAccountPlanSchema = z.enum(["free", "starter", "pro"]);
 const planStatusSchema = z.enum(["active", "past_due", "cancelled"]);
+const siteStatusValueSchema = z.enum(["active", "inactive"]);
 const previewRequestStatusSchema = z.enum(["pending", "processing", "ready", "failed"]);
 
 const entitlementsSchema = z
@@ -291,7 +292,7 @@ const siteSummarySchema = z
     id: z.string(),
     accountId: z.string(),
     sourceUrl: z.string(),
-    status: z.enum(["active", "inactive"]),
+    status: siteStatusValueSchema,
     servingMode: z.enum(["strict", "tolerant"]),
     maxLocales: z.number().int().positive().nullable(),
     siteProfile: siteProfileSchema,
@@ -308,7 +309,7 @@ const siteSchema = z.object({
   id: z.string(),
   accountId: z.string(),
   sourceUrl: z.string(),
-  status: z.enum(["active", "inactive"]),
+  status: siteStatusValueSchema,
   managedDemo: z.boolean().optional(),
   servingMode: z.enum(["strict", "tolerant"]),
   maxLocales: z.number().int().positive().nullable(),
@@ -633,7 +634,7 @@ const listDeploymentsResponseSchema = z.object({ deployments: z.array(deployment
 const deploymentHistoryEntrySchema = z
   .object({
     deploymentId: z.string(),
-    status: z.string(),
+    status: z.enum(["publishing", "active", "failed", "superseded"]),
     createdAt: z.string().nullable().optional(),
     activatedAt: z.string().nullable().optional(),
     routePrefix: z.string().nullable().optional(),
@@ -772,7 +773,7 @@ const customerSiteRefSchema = z
     id: z.string(),
     sourceUrl: z.string(),
     sourceLang: z.string(),
-    status: z.string(),
+    status: siteStatusValueSchema,
     profile: z.string().nullable().optional(),
     servingMode: z.string().nullable().optional(),
   })
@@ -1321,7 +1322,7 @@ const siteDashboardProjectionResponseSchema = z.union([
 const siteCompactStatusResponseSchema = z
   .object({
     siteId: z.string(),
-    siteStatus: z.string(),
+    siteStatus: siteStatusValueSchema,
     latestCrawlRun: z
       .object({
         id: z.string(),
@@ -4724,17 +4725,12 @@ export async function getAdminPreview(
 }
 
 export async function listSupportedLanguages(): Promise<SupportedLanguage[]> {
-  try {
-    const data = await request({
-      path: "/meta/languages",
-      schema: supportedLanguagesResponseSchema,
-      timeoutProfile: "metadata",
-    });
-    return data.languages;
-  } catch (error) {
-    console.warn("[webhooks] listSupportedLanguages failed; using fallback list:", error);
-    return [...FALLBACK_SUPPORTED_LANGUAGES];
-  }
+  const data = await request({
+    path: "/meta/languages",
+    schema: supportedLanguagesResponseSchema,
+    timeoutProfile: "metadata",
+  });
+  return data.languages;
 }
 
 export async function listSites(auth: AuthInput): Promise<SiteSummary[]> {
