@@ -107,6 +107,7 @@ const copy: SourceSelectionCopy = {
   save: "Save source selection",
   saving: "Saving...",
   saveDisabled: "Save after preview.",
+  saveIncomplete: "The dashboard could not confirm the saved source selection.",
   saved: "Source selection saved.",
   reset: "Reset changes",
   reasonLabels: {
@@ -567,7 +568,9 @@ describe("SourceSelectionManager", () => {
     });
 
     expect(saveAction).toHaveBeenCalledOnce();
-    expect(screen.getByText("Source selection save response was incomplete.")).toBeTruthy();
+    expect(
+      screen.getByText("The dashboard could not confirm the saved source selection."),
+    ).toBeTruthy();
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
   });
 

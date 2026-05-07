@@ -57,6 +57,8 @@ const copy: RuntimeRequestsCopy = {
   previewRequired: "Validate before saving.",
   save: "Save policy",
   saving: "Saving",
+  saveIncomplete: "The dashboard could not confirm the saved policy.",
+  lifecycleUpdateError: "Unable to update the request status.",
   reset: "Reset draft",
   enabled: "Enabled",
   name: "Name",
@@ -131,9 +133,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderManager(options: { saveAction?: RuntimeRequestsManagerPropsSave } = {}) {
+function renderManager(
+  options: {
+    saveAction?: RuntimeRequestsManagerPropsSave;
+    lifecycleAction?: RuntimeRequestsManagerPropsLifecycle;
+  } = {},
+) {
   const saveAction = options.saveAction ?? vi.fn(async () => ({ ok: true, message: "saved" }));
-  const lifecycleAction = vi.fn(async () => ({ ok: true, message: "updated" }));
+  const lifecycleAction =
+    options.lifecycleAction ?? vi.fn(async () => ({ ok: true, message: "updated" }));
   const loadObservationsAction = vi.fn(async () => ({
     ok: true,
     message: "loaded",
@@ -166,6 +174,7 @@ type RuntimeRequestsManagerPropsSave = (
   prev: ActionResponse | undefined,
   formData: FormData,
 ) => Promise<ActionResponse>;
+type RuntimeRequestsManagerPropsLifecycle = RuntimeRequestsManagerPropsSave;
 
 describe("RuntimeRequestsManager", () => {
   it("creates a draft rule from an observation without saving it", () => {
@@ -191,7 +200,8 @@ describe("RuntimeRequestsManager", () => {
   });
 
   it("supports dismissing observed request groups", async () => {
-    const { lifecycleAction } = renderManager();
+    const lifecycleAction = vi.fn(async () => ({ ok: true, message: "updated" }));
+    renderManager({ lifecycleAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Dismissed" }));
 
@@ -199,6 +209,20 @@ describe("RuntimeRequestsManager", () => {
     const call = lifecycleAction.mock.calls[0] as unknown as [ActionResponse | undefined, FormData];
     const formData = call[1];
     expect(formData.get("lifecycle")).toBe("dismissed");
+  });
+
+  it("shows a friendly lifecycle failure when the action rejects", async () => {
+    const lifecycleAction = vi.fn(async () => {
+      throw new Error("raw lifecycle backend detail");
+    });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    renderManager({ lifecycleAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismissed" }));
+
+    expect(await screen.findByText("Unable to update the request status.")).toBeTruthy();
+    expect(screen.queryByText("raw lifecycle backend detail")).toBeNull();
+    consoleSpy.mockRestore();
   });
 
   it("blocks save on server validation errors and preserves the draft", async () => {
@@ -236,7 +260,12 @@ describe("RuntimeRequestsManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create rule" }));
     fireEvent.click(screen.getByRole("button", { name: "Validate draft" }));
 
-    expect(await screen.findAllByText(/confirmation_required_high_risk_path/)).toHaveLength(2);
+    expect(
+      await screen.findByText(
+        "High-risk request paths need an explicit confirmation before the policy can be saved.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/confirmation_required_high_risk_path/)).toBeNull();
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Save policy" }).disabled).toBe(
       true,
     );
@@ -275,7 +304,7 @@ describe("RuntimeRequestsManager", () => {
 
     await waitFor(() => expect(saveAction).toHaveBeenCalled());
     expect(
-      await screen.findByText("Runtime request policy save response was incomplete."),
+      await screen.findByText("The dashboard could not confirm the saved policy."),
     ).toBeTruthy();
     expect(screen.getByText("Draft")).toBeTruthy();
   });

@@ -34,7 +34,16 @@ vi.mock("@internal/dashboard/data", () => ({
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchSiteDashboardProjection: mocks.fetchSiteDashboardProjection,
   fetchDeploymentHistory: mocks.fetchDeploymentHistory,
-  WebhooksApiError: class WebhooksApiError extends Error {},
+  WebhooksApiError: class WebhooksApiError extends Error {
+    status: number;
+    details?: unknown;
+
+    constructor(message: string, status: number, details?: unknown) {
+      super(message);
+      this.status = status;
+      this.details = details;
+    }
+  },
 }));
 vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: mocks.resolvePreferredLocale,
@@ -137,7 +146,7 @@ describe("DomainsPage", () => {
     );
   });
 
-  it("fails closed when an unverified domain has no DNS setup instructions", async () => {
+  it("shows focused recovery when an unverified domain has no DNS setup instructions", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
     mocks.fetchSiteDashboardProjection.mockResolvedValue({
@@ -170,11 +179,21 @@ describe("DomainsPage", () => {
     });
 
     vi.resetModules();
-    const { default: DomainsPage } = await import("./page");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { default: DomainsPage } = await import("./page");
+      const tree = await DomainsPage({ params: Promise.resolve({ id: "site-1" }) });
 
-    await expect(DomainsPage({ params: Promise.resolve({ id: "site-1" }) })).rejects.toThrow(
-      /missing dns setup instructions/i,
-    );
+      render(tree);
+      expect(screen.getByText("This section cannot be shown safely")).toBeTruthy();
+      expect(document.body.textContent).toContain(
+        "Support reference: dashboard_domain_setup_contract_mismatch",
+      );
+      expect(document.body.textContent).not.toContain("missing.example.com");
+      expect(document.body.textContent).not.toContain("Missing DNS setup instructions");
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 

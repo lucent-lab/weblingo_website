@@ -132,7 +132,7 @@ export function resolveDashboardErrorView(
 
 function classifyDashboardErrorKind(error: unknown): DashboardErrorKind {
   if (error instanceof WebhooksApiError) {
-    if (readDashboardErrorCode(error) === "response_schema_mismatch") {
+    if (isDashboardContractMismatchCode(readDashboardErrorCode(error))) {
       return "contract_mismatch";
     }
     if (error.status === 504 || /timed out/i.test(error.message)) {
@@ -173,7 +173,7 @@ function classifyDashboardErrorKind(error: unknown): DashboardErrorKind {
 
 function resolveDashboardErrorMessage(error: unknown, fallbackMessage?: string): string {
   if (error instanceof WebhooksApiError) {
-    if (readDashboardErrorCode(error) === "response_schema_mismatch") {
+    if (isDashboardContractMismatchCode(readDashboardErrorCode(error))) {
       return "No settings, translations, or deployments were changed. This section is paused until it can display the response safely.";
     }
     if (error.status === 401 || error.status === 403) {
@@ -215,6 +215,10 @@ function readDashboardErrorCode(error: WebhooksApiError): string | null {
   }
   const code = (details as Record<string, unknown>).code;
   return typeof code === "string" && code.trim().length > 0 ? code : null;
+}
+
+function isDashboardContractMismatchCode(code: string | null): boolean {
+  return code === "response_schema_mismatch" || code?.endsWith("_contract_mismatch") === true;
 }
 
 function readErrorDigest(error: unknown): string | null {

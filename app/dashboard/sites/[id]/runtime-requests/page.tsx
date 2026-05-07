@@ -275,6 +275,14 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
     ),
     save: t("dashboard.runtimeRequests.save", "Save policy"),
     saving: t("dashboard.runtimeRequests.saving", "Saving"),
+    saveIncomplete: t(
+      "dashboard.runtimeRequests.saveIncomplete",
+      "The dashboard could not confirm the saved policy. Review the current policy before trying again.",
+    ),
+    lifecycleUpdateError: t(
+      "dashboard.runtimeRequests.lifecycleUpdateError",
+      "Unable to update the request status. Try again or refresh this page.",
+    ),
     reset: t("dashboard.runtimeRequests.reset", "Reset draft"),
     enabled: t("dashboard.runtimeRequests.rule.enabled", "Enabled"),
     name: t("dashboard.runtimeRequests.rule.name", "Name"),

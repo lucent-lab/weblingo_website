@@ -134,6 +134,7 @@ export type SourceSelectionCopy = {
   save: string;
   saving: string;
   saveDisabled: string;
+  saveIncomplete: string;
   saved: string;
   reset: string;
   reasonLabels: Record<SourceSelectionPreviewReason, string>;
@@ -380,7 +381,7 @@ export function SourceSelectionManager({
         ) {
           setSaveResult({
             ok: false,
-            message: "Source selection save response was incomplete.",
+            message: copy.saveIncomplete,
           });
           return;
         }

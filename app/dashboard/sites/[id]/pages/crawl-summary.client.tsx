@@ -2,7 +2,11 @@
 
 import { useCallback } from "react";
 
+import { AlertTriangle } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
 import { usePoll } from "@internal/dashboard/use-poll";
 import type { SiteCompactStatusResponse } from "@internal/dashboard/webhooks";
 
@@ -46,7 +50,7 @@ export function CrawlSummaryClient({
 
   const isTerminal = useCallback((value: SiteCompactStatusResponse) => !hasActiveWork(value), []);
 
-  const { value: status } = usePoll<SiteCompactStatusResponse>({
+  const { value: status, error: refreshError } = usePoll<SiteCompactStatusResponse>({
     enabled: hasActiveWork(initialStatus),
     intervalMs: 3000,
     fetcher: fetchStatus,
@@ -55,42 +59,66 @@ export function CrawlSummaryClient({
   });
 
   const latestCrawlRun = status.latestCrawlRun ?? null;
+  const refreshWarning = refreshError ? (
+    <Alert className="border-amber-200 bg-amber-50/60 text-amber-950">
+      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+      <AlertTitle>Status refresh delayed</AlertTitle>
+      <AlertDescription>
+        The crawl summary could not refresh. The values below may be stale; refresh this page before
+        making crawl decisions.
+      </AlertDescription>
+    </Alert>
+  ) : null;
 
   if (!latestCrawlRun) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+    return (
+      <div className="space-y-3">
+        {refreshWarning}
+        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+      </div>
+    );
   }
 
   const showError = latestCrawlRun.customerStatus === "failed";
-  const errorText = showError ? (latestCrawlRun.customerError?.code ?? "Crawl failed") : "-";
+  const errorText = showError
+    ? latestCrawlRun.customerError
+      ? formatCustomerStatusValue(latestCrawlRun.customerError.code)
+      : "Crawl failed"
+    : "-";
   const errorTone = showError ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <div className="grid gap-4 text-sm md:grid-cols-2">
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{statusLabel}</div>
-        <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.customerStatus)}>
-          {statusLabels[latestCrawlRun.customerStatus] ?? "Status unavailable"}
-        </Badge>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{startedLabel}</div>
-        <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.startedAt)}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{finishedLabel}</div>
-        <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.finishedAt)}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{pagesUpdatedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesUpdated ?? "-"}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{pagesPendingLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesPending ?? "-"}</span>
-      </div>
-      <div className="space-y-1 md:col-span-2">
-        <div className="text-xs uppercase text-muted-foreground">{errorLabel}</div>
-        <span className={errorTone}>{errorText}</span>
+    <div className="space-y-4">
+      {refreshWarning}
+      <div className="grid gap-4 text-sm md:grid-cols-2">
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground">{statusLabel}</div>
+          <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.customerStatus)}>
+            {statusLabels[latestCrawlRun.customerStatus] ?? "Status unavailable"}
+          </Badge>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground">{startedLabel}</div>
+          <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.startedAt)}</span>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground">{finishedLabel}</div>
+          <span className="text-muted-foreground">
+            {formatTimestamp(latestCrawlRun.finishedAt)}
+          </span>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground">{pagesUpdatedLabel}</div>
+          <span className="font-mono text-foreground">{latestCrawlRun.pagesUpdated ?? "-"}</span>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs uppercase text-muted-foreground">{pagesPendingLabel}</div>
+          <span className="font-mono text-foreground">{latestCrawlRun.pagesPending ?? "-"}</span>
+        </div>
+        <div className="space-y-1 md:col-span-2">
+          <div className="text-xs uppercase text-muted-foreground">{errorLabel}</div>
+          <span className={errorTone}>{errorText}</span>
+        </div>
       </div>
     </div>
   );

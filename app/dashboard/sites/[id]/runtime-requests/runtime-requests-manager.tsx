@@ -109,6 +109,8 @@ export type RuntimeRequestsCopy = {
   previewRequired: string;
   save: string;
   saving: string;
+  saveIncomplete: string;
+  lifecycleUpdateError: string;
   reset: string;
   enabled: string;
   name: string;
@@ -342,7 +344,7 @@ export function RuntimeRequestsManager({
         if (!savedPolicy) {
           setSaveResult({
             ok: false,
-            message: "Runtime request policy save response was incomplete.",
+            message: copy.saveIncomplete,
           });
           return;
         }
@@ -378,20 +380,28 @@ export function RuntimeRequestsManager({
     formData.set("method", group.method);
     formData.set("shapeSignature", group.shapeSignature);
     formData.set("lifecycle", lifecycle);
-    void lifecycleAction(undefined, formData).then((result) => {
-      setLifecycleResult(result);
-      if (result.ok) {
-        setGroups((current) =>
-          current.map((entry) =>
-            entry.groupingPathHash === group.groupingPathHash &&
-            entry.method === group.method &&
-            entry.shapeSignature === group.shapeSignature
-              ? { ...entry, lifecycle }
-              : entry,
-          ),
-        );
-      }
-    });
+    void lifecycleAction(undefined, formData)
+      .then((result) => {
+        setLifecycleResult(result);
+        if (result.ok) {
+          setGroups((current) =>
+            current.map((entry) =>
+              entry.groupingPathHash === group.groupingPathHash &&
+              entry.method === group.method &&
+              entry.shapeSignature === group.shapeSignature
+                ? { ...entry, lifecycle }
+                : entry,
+            ),
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("[dashboard] runtime request lifecycle update failed:", error);
+        setLifecycleResult({
+          ok: false,
+          message: copy.lifecycleUpdateError,
+        });
+      });
   };
 
   return (
@@ -1000,13 +1010,11 @@ function PreviewStatus({
       </Alert>
     );
   }
-  const validationMessages = [
-    ...preview.validationErrors.map((error) => `${error.code}: ${error.message}`),
-    ...preview.collisions.map(
-      (collision) => `${collision.code}: ${collision.leftRuleId} / ${collision.rightRuleId}`,
-    ),
-    ...preview.highRiskConfirmations.map((entry) => `${entry.code}: ${entry.ruleId}`),
-  ];
+  const validationMessages = uniqueRuntimePreviewMessages([
+    ...preview.validationErrors.map(formatRuntimePreviewValidationError),
+    ...preview.collisions.map(formatRuntimePreviewCollision),
+    ...preview.highRiskConfirmations.map(formatRuntimePreviewConfirmation),
+  ]);
   return (
     <div className="space-y-3">
       {validationMessages.length ? (
@@ -1021,7 +1029,7 @@ function PreviewStatus({
       {preview.warnings.length ? (
         <ValidationAlert
           title={copy.warningsTitle}
-          messages={preview.warnings.map((warning) => `${warning.code}: ${warning.message}`)}
+          messages={uniqueRuntimePreviewMessages(preview.warnings.map(formatRuntimePreviewWarning))}
         />
       ) : null}
       {preview.matchedObservationGroups.length ? (
@@ -1051,6 +1059,45 @@ function ValidationAlert({ title, messages }: { title: string; messages: string[
       </AlertDescription>
     </Alert>
   );
+}
+
+type RuntimePreviewValidationError =
+  RuntimeRequestPolicyPreviewResponse["validationErrors"][number];
+type RuntimePreviewWarning = RuntimeRequestPolicyPreviewResponse["warnings"][number];
+type RuntimePreviewConfirmation =
+  RuntimeRequestPolicyPreviewResponse["highRiskConfirmations"][number];
+
+function uniqueRuntimePreviewMessages(messages: string[]): string[] {
+  return Array.from(new Set(messages.filter((message) => message.trim().length > 0)));
+}
+
+function formatRuntimePreviewValidationError(error: RuntimePreviewValidationError): string {
+  return formatRuntimePreviewCode(error.code);
+}
+
+function formatRuntimePreviewWarning(warning: RuntimePreviewWarning): string {
+  return formatRuntimePreviewCode(warning.code);
+}
+
+function formatRuntimePreviewCollision(): string {
+  return "Two runtime request policy rules overlap. Adjust one rule and preview again.";
+}
+
+function formatRuntimePreviewConfirmation(confirmation: RuntimePreviewConfirmation): string {
+  return formatRuntimePreviewCode(confirmation.code);
+}
+
+function formatRuntimePreviewCode(code: string): string {
+  if (code === "confirmation_required_non_get_proxy") {
+    return "Proxying non-GET requests needs an explicit confirmation before the policy can be saved.";
+  }
+  if (code === "confirmation_required_credential_forwarding") {
+    return "Forwarding credentials needs an explicit confirmation before the policy can be saved.";
+  }
+  if (code === "confirmation_required_high_risk_path") {
+    return "High-risk request paths need an explicit confirmation before the policy can be saved.";
+  }
+  return "Review the runtime request policy and preview again before saving.";
 }
 
 function RiskBadge({ risk }: { risk: RuntimeRequestObservationGroup["risk"] }) {

@@ -59,4 +59,112 @@ describe("CrawlSummaryClient", () => {
     expect(screen.queryByText("provider_internal_error")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("humanizes customer crawl error codes", () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+    const initialStatus: SiteCompactStatusResponse = {
+      siteId: "site-1",
+      siteStatus: "active",
+      latestCrawlRun: {
+        id: "crawl-1",
+        rawStatus: "failed",
+        customerStatus: "failed",
+        startedAt: "2026-05-07T00:00:00.000Z",
+        finishedAt: "2026-05-07T00:01:00.000Z",
+        pagesUpdated: 0,
+        pagesPending: 0,
+        customerError: {
+          id: "domain_not_verified:domain:example.com",
+          area: "domain",
+          severity: "warning",
+          code: "domain_not_verified",
+          titleKey: "dashboard.blockers.domainNotVerified.title",
+          params: { domain: "example.com" },
+          firstSeenAt: "2026-05-07T00:00:00.000Z",
+        },
+      },
+      activeTranslationRuns: [],
+      currentActivity: [],
+      generatedAt: "2026-05-07T00:02:00.000Z",
+    };
+
+    render(
+      <CrawlSummaryClient
+        siteId="site-1"
+        initialStatus={initialStatus}
+        emptyLabel="No crawl yet."
+        statusLabel="Status"
+        startedLabel="Started"
+        finishedLabel="Finished"
+        pagesUpdatedLabel="Updated"
+        pagesPendingLabel="Pending"
+        errorLabel="Error"
+        statusLabels={{
+          queued: "Queued",
+          in_progress: "In progress",
+          completed: "Completed",
+          failed: "Failed",
+          not_started: "Not started",
+          unknown: "Unknown",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Domain not verified")).toBeTruthy();
+    expect(screen.queryByText("domain_not_verified")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a friendly warning when active crawl status refresh fails", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error("raw status backend detail");
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const initialStatus: SiteCompactStatusResponse = {
+      siteId: "site-1",
+      siteStatus: "active",
+      latestCrawlRun: {
+        id: "crawl-1",
+        rawStatus: "queued",
+        customerStatus: "queued",
+        startedAt: "2026-05-07T00:00:00.000Z",
+        finishedAt: null,
+        pagesUpdated: 0,
+        pagesPending: 3,
+        customerError: null,
+      },
+      activeTranslationRuns: [],
+      currentActivity: [],
+      generatedAt: "2026-05-07T00:02:00.000Z",
+    };
+
+    render(
+      <CrawlSummaryClient
+        siteId="site-1"
+        initialStatus={initialStatus}
+        emptyLabel="No crawl yet."
+        statusLabel="Status"
+        startedLabel="Started"
+        finishedLabel="Finished"
+        pagesUpdatedLabel="Updated"
+        pagesPendingLabel="Pending"
+        errorLabel="Error"
+        statusLabels={{
+          queued: "Queued",
+          in_progress: "In progress",
+          completed: "Completed",
+          failed: "Failed",
+          not_started: "Not started",
+          unknown: "Unknown",
+        }}
+      />,
+    );
+
+    expect(await screen.findByText("Status refresh delayed")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("raw status backend detail");
+    expect(fetchMock).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });

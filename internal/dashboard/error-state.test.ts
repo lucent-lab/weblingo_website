@@ -68,6 +68,24 @@ describe("dashboard error state", () => {
     expect(view.message).not.toContain("customerError");
   });
 
+  it("treats dashboard contract mismatch codes as safe recovery states", () => {
+    const view = resolveDashboardErrorView(
+      new WebhooksApiError("The dashboard received incomplete domain setup data.", 200, {
+        code: "dashboard_domain_setup_contract_mismatch",
+      }),
+      {
+        title: "Unable to load domains",
+        description: "Fallback description",
+        message: "Unable to load domain setup.",
+      },
+    );
+
+    expect(view.kind).toBe("contract_mismatch");
+    expect(view.referenceCode).toBe("dashboard_domain_setup_contract_mismatch");
+    expect(view.message).toContain("This section is paused");
+    expect(view.message).not.toContain("incomplete domain setup data");
+  });
+
   it("does not render raw schema or implementation errors to dashboard UI", () => {
     const view = resolveDashboardErrorView(
       new Error(

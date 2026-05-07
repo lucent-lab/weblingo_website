@@ -7,6 +7,7 @@ import { ManagedDemoCreateForm } from "./managed-demo-create-form";
 
 import { createSiteShowcaseAction, updateSiteShowcaseAction } from "@/app/dashboard/actions";
 import { ActionForm } from "@/components/dashboard/action-form";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSupportedLanguagesCached } from "@internal/dashboard/data";
+import {
+  resolveDashboardErrorView,
+  type DashboardErrorView,
+} from "@internal/dashboard/error-state";
 import { resolvePreferredLocale } from "@internal/i18n";
 import { listManagedDemos, type ManagedDemoSiteSummary } from "@internal/dashboard/webhooks";
 import { setWorkspaceAction } from "../../_lib/workspace-actions";
@@ -40,11 +45,22 @@ export default async function OpsShowcasesPage() {
   const items = managedDemoResult.status === "fulfilled" ? managedDemoResult.value.items : [];
   const supportedLanguages =
     supportedLanguagesResult.status === "fulfilled" ? supportedLanguagesResult.value : [];
-  const managedDemoError =
+  const managedDemoErrorView =
     managedDemoResult.status === "rejected"
-      ? managedDemoResult.reason instanceof Error
-        ? managedDemoResult.reason.message
-        : "Unable to load managed demos right now."
+      ? resolveDashboardErrorView(managedDemoResult.reason, {
+          title: "Demo inventory unavailable",
+          description:
+            "We could not load the managed-demo inventory. Existing demos were not changed.",
+          message: "Unable to load managed demos.",
+        })
+      : null;
+  const supportedLanguagesErrorView =
+    supportedLanguagesResult.status === "rejected"
+      ? resolveDashboardErrorView(supportedLanguagesResult.reason, {
+          title: "Language options unavailable",
+          description: "We could not load the language list needed to create a managed demo.",
+          message: "Unable to load supported languages.",
+        })
       : null;
   const activeShowcases = items.filter((item) => item.showcase.status === "active").length;
   const servingShowcases = items.filter(
@@ -77,10 +93,18 @@ export default async function OpsShowcasesPage() {
         </CardContent>
       </Card>
 
-      <ManagedDemoCreateForm
-        supportedLanguages={supportedLanguages}
-        displayLocale={displayLocale}
-      />
+      {supportedLanguagesErrorView ? (
+        <OpsInlineRecovery
+          view={supportedLanguagesErrorView}
+          retryLabel="Retry language options"
+          retryHref="/dashboard/ops/showcases"
+        />
+      ) : (
+        <ManagedDemoCreateForm
+          supportedLanguages={supportedLanguages}
+          displayLocale={displayLocale}
+        />
+      )}
 
       <AttachShowcaseCard />
 
@@ -93,11 +117,12 @@ export default async function OpsShowcasesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {managedDemoError ? (
-            <div className="rounded-lg border border-dashed border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100">
-              Demo inventory is temporarily unavailable. You can still create a managed demo above.
-              <div className="mt-2 text-xs opacity-80">{managedDemoError}</div>
-            </div>
+          {managedDemoErrorView ? (
+            <OpsInlineRecovery
+              view={managedDemoErrorView}
+              retryLabel="Retry inventory"
+              retryHref="/dashboard/ops/showcases"
+            />
           ) : null}
           {items.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
@@ -150,6 +175,47 @@ function AttachShowcaseCard() {
         </ActionForm>
       </CardContent>
     </Card>
+  );
+}
+
+function OpsInlineRecovery({
+  view,
+  retryLabel,
+  retryHref,
+}: {
+  view: DashboardErrorView;
+  retryLabel: string;
+  retryHref: string;
+}) {
+  return (
+    <div
+      role="alert"
+      className="space-y-3 rounded-lg border border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100"
+    >
+      <div>
+        <p className="font-medium">{view.title}</p>
+        <p className="mt-1">{view.description}</p>
+      </div>
+      <p>{view.message}</p>
+      <ol className="list-decimal space-y-1 pl-4">
+        {view.nextSteps.map((step, index) => (
+          <li key={`${index}:${step}`}>{step}</li>
+        ))}
+      </ol>
+      {view.referenceCode ? (
+        <p className="text-xs opacity-80">
+          Support reference: <span className="font-mono">{view.referenceCode}</span>
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <DashboardRetryButton href={retryHref} label={retryLabel} />
+        <Button asChild variant="outline">
+          <a href="mailto:contact@weblingo.app?subject=Managed%20demo%20dashboard%20error">
+            Contact support
+          </a>
+        </Button>
+      </div>
+    </div>
   );
 }
 

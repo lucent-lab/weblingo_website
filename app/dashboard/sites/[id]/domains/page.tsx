@@ -90,7 +90,35 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
     }
     notFound();
   }
-  assertDomainSetupInstructions(projection.domains);
+  try {
+    assertDomainSetupInstructions(projection.domains);
+  } catch (err) {
+    console.warn("[dashboard] domain setup projection failed contract validation", {
+      siteId: id,
+      subjectAccountId: auth.subjectAccountId,
+      error: err,
+    });
+    return (
+      <FocusedRouteErrorState
+        error={
+          new WebhooksApiError("The dashboard received incomplete domain setup data.", 200, {
+            code: "dashboard_domain_setup_contract_mismatch",
+          })
+        }
+        title="Unable to load domains"
+        description="We could not load domain verification and serving readiness for this site."
+        message="Unable to load domain setup."
+        siteId={id}
+        retryHref={`/dashboard/sites/${id}/domains`}
+        retryLabel="Retry domains"
+        nextSteps={[
+          "Retry domain setup once.",
+          "Open the site overview to continue with other site work.",
+          "Contact support with the reference code if domain setup remains unavailable.",
+        ]}
+      />
+    );
+  }
 
   const headerLabels = buildSiteHeaderLabels(t);
   const mutationsLocked = !auth.mutationsAllowed || !projection.access.mutationsAllowed;
@@ -524,6 +552,12 @@ function assertDomainSetupInstructions(domains: CustomerDomain[]) {
   if (missing) {
     throw new Error(`Missing DNS setup instructions for customer domain ${missing.domain}.`);
   }
+  const unsupported = domains.find((domain) =>
+    (domain.requiredDns ?? []).some((record) => !isSupportedDnsRecordType(record.type)),
+  );
+  if (unsupported) {
+    throw new Error(`Unsupported DNS setup record type for customer domain ${unsupported.domain}.`);
+  }
 }
 
 function resolveDomainDnsMode(domain: CustomerDomain): "cname" | "txt" {
@@ -535,6 +569,11 @@ function resolveDomainDnsMode(domain: CustomerDomain): "cname" | "txt" {
     return "txt";
   }
   throw new Error(`Unsupported DNS setup record type for customer domain ${domain.domain}.`);
+}
+
+function isSupportedDnsRecordType(type: string): boolean {
+  const normalized = type.toUpperCase();
+  return normalized === "CNAME" || normalized === "TXT";
 }
 
 function domainAnchorId(domain: string): string {

@@ -357,6 +357,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
       "dashboard.sourceSelection.saveDisabled",
       "Save after the current proposed rules preview successfully.",
     ),
+    saveIncomplete: t(
+      "dashboard.sourceSelection.saveIncomplete",
+      "The dashboard could not confirm the saved source selection. Review the current rules before trying again.",
+    ),
     saved: t("dashboard.sourceSelection.saved", "Source selection saved."),
     reset: t("dashboard.sourceSelection.reset", "Reset changes"),
     reasonLabels: {
