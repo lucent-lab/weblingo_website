@@ -619,6 +619,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
       },
       {
+        name: "CustomerTranslationRunsResponse",
+        schema: __webhooksZodContracts.customerTranslationRunsResponseSchema,
+      },
+      {
         name: "DeploymentHistoryRouteResponse",
         schema: __webhooksZodContracts.deploymentHistoryRouteResponseSchema,
       },
@@ -690,6 +694,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
       },
       {
+        name: "CustomerTranslationRunsResponse",
+        schema: __webhooksZodContracts.customerTranslationRunsResponseSchema,
+      },
+      {
         name: "CustomerDeploymentHistoryResponse",
         schema: __webhooksZodContracts.customerDeploymentHistoryResponseSchema,
       },
@@ -711,6 +719,40 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         ).toBe(true);
       }
     }
+  });
+
+  it("accepts customer translation runs with complete customer-safe error summaries", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const parsed = __webhooksZodContracts.customerTranslationRunsResponseSchema.parse({
+      runs: [
+        {
+          id: "tr-failed",
+          targetLang: "fr",
+          rawStatus: "failed",
+          customerStatus: "failed",
+          progress: { completed: 2, total: 4, failed: 1 },
+          startedAt: null,
+          finishedAt: "2026-05-06T00:02:00.000Z",
+          createdAt: "2026-05-06T00:00:00.000Z",
+          updatedAt: "2026-05-06T00:01:00.000Z",
+          customerError: {
+            id: "translation_run_failed:tr-failed",
+            area: "translation",
+            severity: "danger",
+            code: "translation_run_failed",
+            titleKey: "dashboard.errors.translationRunFailed.title",
+            descriptionKey: "dashboard.errors.translationRunFailed.description",
+            lastSeenAt: "2026-05-06T00:02:00.000Z",
+          },
+        },
+      ],
+      pagination: { limit: 10, offset: 0, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    expect(parsed.runs[0]?.customerError?.area).toBe("translation");
   });
 
   it("parses managed demo create responses that include showcase-aware site fields", async () => {
