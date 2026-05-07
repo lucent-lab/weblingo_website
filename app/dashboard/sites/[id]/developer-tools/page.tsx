@@ -77,7 +77,7 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
           nextSteps={[
             "Retry developer tools.",
             "Open the site overview if you need to continue with non-developer tasks.",
-            "Contact support with the reference code if these tools remain unavailable.",
+            "Contact support if these tools remain unavailable.",
           ]}
         />
       );

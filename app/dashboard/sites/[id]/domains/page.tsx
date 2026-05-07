@@ -83,7 +83,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
           nextSteps={[
             "Retry domain setup.",
             "Open the site overview to continue with other site work.",
-            "Contact support with the reference code if domain setup remains unavailable.",
+            "Contact support if domain setup remains unavailable.",
           ]}
         />
       );
@@ -114,7 +114,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
         nextSteps={[
           "Retry domain setup once.",
           "Open the site overview to continue with other site work.",
-          "Contact support with the reference code if domain setup remains unavailable.",
+          "Contact support if domain setup remains unavailable.",
         ]}
       />
     );

@@ -79,7 +79,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           nextSteps={[
             "Retry settings.",
             "Open the site overview to check current health and next actions.",
-            "Contact support with the reference code if settings remain unavailable.",
+            "Contact support if settings remain unavailable.",
           ]}
         />
       );

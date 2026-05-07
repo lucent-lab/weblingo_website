@@ -40,7 +40,7 @@ export function resolveDashboardErrorView(
       nextSteps: [
         "Retry this section once to rule out a stale response.",
         "Open the site overview to continue managing the workspace.",
-        "Contact support with the reference code if retry shows the same screen.",
+        "Contact support if retry shows the same screen.",
       ],
       referenceCode,
     };

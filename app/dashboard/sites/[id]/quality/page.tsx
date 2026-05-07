@@ -72,7 +72,7 @@ export default async function QualityPage({ params }: QualityPageProps) {
           nextSteps={[
             "Retry quality data.",
             "Open the site overview to check current blockers and activity.",
-            "Contact support with the reference code if quality data remains unavailable.",
+            "Contact support if quality data remains unavailable.",
           ]}
         />
       );

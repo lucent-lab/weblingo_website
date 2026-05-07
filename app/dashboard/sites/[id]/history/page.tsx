@@ -109,7 +109,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
         nextSteps={[
           "Retry this history view once.",
           "Switch to another locale or history stream if you need a different record.",
-          "Contact support with the reference code below if retry shows this screen.",
+          "Contact support if retry shows this screen.",
         ]}
       />
     );
