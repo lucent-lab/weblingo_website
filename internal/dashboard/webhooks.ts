@@ -3682,6 +3682,25 @@ function resolveDashboardE2eMockPayload(input: {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
   }
 
+  const sitePagesMatch = pathname.match(/^\/sites\/([^/]+)\/pages$/);
+  if (sitePagesMatch && method === "GET") {
+    const limitRaw = Number(url.searchParams.get("limit") ?? "25");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 25;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    const allPages = createDashboardE2eMockPages(30);
+    const pages = allPages.slice(offset, offset + limit);
+    return {
+      pages,
+      pagination: {
+        limit,
+        offset,
+        total: allPages.length,
+        hasMore: offset + pages.length < allPages.length,
+      },
+    };
+  }
+
   const siteStatusMatch = pathname.match(/^\/sites\/([^/]+)\/status$/);
   if (siteStatusMatch && method === "GET") {
     return createDashboardE2eMockCompactStatus(siteStatusMatch[1]);
