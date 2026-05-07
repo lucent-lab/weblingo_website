@@ -576,7 +576,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {servingRows.map((deployment) => {
+                      {servingRows.map((deployment, index) => {
                         const domainStatus = deployment.domainStatus ?? null;
                         const servingLabel =
                           servingStatusLabels[deployment.servingStatus] ?? deployment.servingStatus;
@@ -593,7 +593,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                         const showToggle = deployment.servingStatus !== "inactive";
                         return (
                           <tr
-                            key={`${deployment.targetLang}-${deployment.domain ?? "domain"}`}
+                            key={`${deployment.targetLang}-${deployment.domain ?? "domain"}:${index}`}
                             className="border-t border-border/50"
                           >
                             <td className="px-3 py-3 align-top font-semibold text-foreground">
@@ -792,8 +792,10 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {deployments.map((deployment) => (
-                      <tr key={`${deployment.targetLang}-${deployment.routePrefix ?? "route"}`}>
+                    {deployments.map((deployment, index) => (
+                      <tr
+                        key={`${deployment.targetLang}-${deployment.routePrefix ?? "route"}:${index}`}
+                      >
                         <td className="px-3 py-3 align-top font-semibold text-foreground">
                           {deployment.targetLang.toUpperCase()}
                         </td>

@@ -1,5 +1,7 @@
+// @vitest-environment happy-dom
+import { render, screen } from "@testing-library/react";
 import { isValidElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 
@@ -159,6 +161,10 @@ function makeOverview(): SiteCustomerOverviewResponse {
 }
 
 describe("SitePage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("loads the customer overview projection without the legacy broad dashboard request", async () => {
     const webhooksAuth = {
       token: "token",
@@ -190,5 +196,63 @@ describe("SitePage", () => {
     expect(isValidElement(tree)).toBe(true);
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
     expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
+  });
+
+  it("renders repeated blocker codes without duplicate React keys", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: null,
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+      subjectFallbackToActor: false,
+    });
+    const overview = makeOverview();
+    overview.blockers = [
+      {
+        code: "domain_not_verified",
+        area: "domain",
+        severity: "warning",
+        titleKey: "dashboard.blockers.domainNotVerified.title",
+        affectedDomains: ["fr.example.com"],
+      },
+      {
+        code: "domain_not_verified",
+        area: "domain",
+        severity: "warning",
+        titleKey: "dashboard.blockers.domainNotVerified.title",
+        affectedDomains: ["de.example.com"],
+      },
+    ];
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(overview);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { default: SitePage } = await import("./page");
+
+      const tree = await SitePage({
+        params: Promise.resolve({ id: "site-1" }),
+      });
+      render(tree);
+
+      expect(screen.getAllByText("Domain not verified")).toHaveLength(2);
+      const duplicateKeyErrors = consoleError.mock.calls.filter((call) =>
+        call.map(String).join(" ").includes("Encountered two children with the same key"),
+      );
+      expect(duplicateKeyErrors).toHaveLength(0);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

@@ -119,9 +119,9 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
 
       <div className="grid gap-4">
         {projection.domains.length ? (
-          projection.domains.map((domain) => (
+          projection.domains.map((domain, index) => (
             <DomainCard
-              key={`${domain.domain}:${domain.targetLang ?? "source"}`}
+              key={`${domain.domain}:${domain.targetLang ?? "source"}:${index}`}
               domain={domain}
               canVerify={canEdit && projection.access.canVerifyDomain && !mutationsLocked}
               canRefresh={canEdit && projection.access.canRefreshDomain && !mutationsLocked}

@@ -165,9 +165,9 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
               Locale URLs
             </p>
             <div className="mt-2 grid gap-2">
-              {item.showcaseLocales.map((locale) => (
+              {item.showcaseLocales.map((locale, index) => (
                 <div
-                  key={locale.targetLang}
+                  key={`${locale.targetLang}:${index}`}
                   className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                 >
                   <Badge variant={locale.isDefault ? "secondary" : "outline"}>

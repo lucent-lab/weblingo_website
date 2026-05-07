@@ -220,7 +220,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                 Add at least one target locale before using consistency governance.
               </p>
             ) : (
-              localeScopes.map((scope) => {
+              localeScopes.map((scope, index) => {
                 const active =
                   selectedLocaleScope !== null &&
                   scope.targetLang === selectedLocaleScope.targetLang &&
@@ -235,7 +235,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                     ? `/dashboard/sites/${site.id}/overrides`
                     : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
                 return (
-                  <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                  <Link key={`${scope.sourceLang}:${scope.targetLang}:${index}`} href={href}>
                     <Badge variant={active ? "default" : "secondary"}>
                       {formatConsistencyLocaleScopeLabel(scope)}
                     </Badge>

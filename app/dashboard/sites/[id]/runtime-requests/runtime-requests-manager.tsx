@@ -535,27 +535,27 @@ function ObservationsTable({
         <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
           <tr>
             {[
-              copy.method,
-              copy.path,
-              copy.likelyType,
-              copy.firstSeen,
-              copy.seenFromPage,
-              copy.currentAction,
-              copy.suggestedAction,
-              copy.risk,
-              copy.lifecycle,
-              "",
+              { key: "method", label: copy.method },
+              { key: "path", label: copy.path },
+              { key: "likelyType", label: copy.likelyType },
+              { key: "firstSeen", label: copy.firstSeen },
+              { key: "seenFromPage", label: copy.seenFromPage },
+              { key: "currentAction", label: copy.currentAction },
+              { key: "suggestedAction", label: copy.suggestedAction },
+              { key: "risk", label: copy.risk },
+              { key: "lifecycle", label: copy.lifecycle },
+              { key: "actions", label: "" },
             ].map((heading) => (
-              <th key={heading || "actions"} className="px-3 py-2 font-medium">
-                {heading}
+              <th key={heading.key} className="px-3 py-2 font-medium">
+                {heading.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
+          {groups.map((group, index) => (
             <tr
-              key={`${group.groupingPathHash}:${group.method}:${group.shapeSignature}`}
+              key={`${group.groupingPathHash}:${group.method}:${group.shapeSignature}:${index}`}
               className="border-t border-border/60"
             >
               <td className="px-3 py-2 font-mono text-xs">{group.method}</td>
@@ -950,8 +950,8 @@ function ValidationAlert({ title, messages }: { title: string; messages: string[
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <ul className="list-disc space-y-1 pl-4">
-          {messages.map((message) => (
-            <li key={message}>{message}</li>
+          {messages.map((message, index) => (
+            <li key={`${message}:${index}`}>{message}</li>
           ))}
         </ul>
       </AlertDescription>

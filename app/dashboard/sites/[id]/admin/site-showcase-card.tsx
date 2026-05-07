@@ -154,9 +154,9 @@ export function SiteShowcaseCard({
                   Locale URLs
                 </p>
                 <div className="mt-2 grid gap-2">
-                  {showcaseLocaleLinks.map((link) => (
+                  {showcaseLocaleLinks.map((link, index) => (
                     <div
-                      key={link.targetLang}
+                      key={`${link.targetLang}:${index}`}
                       className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 px-3 py-2"
                     >
                       <span className="font-mono text-xs text-foreground">

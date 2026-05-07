@@ -40,8 +40,8 @@ export function DeploymentHistoryTable({ history, locale = "en" }: DeploymentHis
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.targetLang}-${row.deploymentId}`}>
+          {rows.map((row, index) => (
+            <tr key={`${row.targetLang}-${row.deploymentId}:${index}`}>
               <td className="px-3 py-3 align-top font-semibold text-foreground">
                 {row.targetLang.toUpperCase()}
               </td>

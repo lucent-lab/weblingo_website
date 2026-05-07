@@ -231,9 +231,9 @@ export function ConsistencyManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {overrideWarnings.map((warning) => (
+                  {overrideWarnings.map((warning, index) => (
                     <tr
-                      key={`${warning.segmentId}:${warning.contextHashScope}`}
+                      key={`${warning.segmentId}:${warning.contextHashScope}:${index}`}
                       className="border-t"
                     >
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">

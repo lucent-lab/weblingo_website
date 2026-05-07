@@ -244,10 +244,10 @@ function LanguagesCard({ languages, t }: { languages: CustomerLanguage[]; t: Tra
       </CardHeader>
       <CardContent className="space-y-3">
         {languages.length ? (
-          languages.map((language) => (
+          languages.map((language, index) => (
             <div
               className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_auto]"
-              key={language.tag}
+              key={`${language.tag}:${index}`}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -288,10 +288,10 @@ function DomainsCard({ domains, t }: { domains: CustomerDomain[]; t: Translator 
       </CardHeader>
       <CardContent className="space-y-3">
         {domains.length ? (
-          domains.map((domain) => (
+          domains.map((domain, index) => (
             <div
               className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3 md:grid-cols-[minmax(0,1fr)_auto]"
-              key={`${domain.domain}:${domain.targetLang ?? "source"}`}
+              key={`${domain.domain}:${domain.targetLang ?? "source"}:${index}`}
             >
               <div className="min-w-0">
                 <p className="break-words text-sm font-medium text-foreground">{domain.domain}</p>
@@ -390,14 +390,14 @@ function BlockersCard({ blockers, t }: { blockers: CustomerBlocker[]; t: Transla
         <CardDescription>Issues that can prevent serving or updates.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {blockers.map((blocker) => (
+        {blockers.map((blocker, index) => (
           <StatusItem
             description={
               blocker.descriptionKey
                 ? formatCustomerCopy(t, blocker.descriptionKey, { params: blocker.params })
                 : describeAffectedScope(blocker)
             }
-            key={`${blocker.area}:${blocker.code}`}
+            key={customerBlockerKey(blocker, index)}
             label={formatCustomerCopy(t, blocker.titleKey, { params: blocker.params })}
             tone={toneForSeverity(blocker.severity)}
           />
@@ -416,10 +416,10 @@ function ActivityCard({ activity, t }: { activity: CustomerActivity[]; t: Transl
       </CardHeader>
       <CardContent className="space-y-3">
         {activity.length ? (
-          activity.map((item) => (
+          activity.map((item, index) => (
             <StatusItem
               description={formatActivityDescription(item)}
-              key={`${item.type}:${item.targetLang ?? "all"}:${item.startedAt ?? item.updatedAt ?? "current"}`}
+              key={customerActivityKey(item, index)}
               label={formatCustomerCopy(t, item.titleKey, {
                 fallback: formatCustomerStatusValue(item.type),
               })}
@@ -443,14 +443,14 @@ function ErrorsCard({ errors, t }: { errors: CustomerError[]; t: Translator }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {errors.length ? (
-          errors.map((error) => (
+          errors.map((error, index) => (
             <StatusItem
               description={
                 error.descriptionKey
                   ? formatCustomerCopy(t, error.descriptionKey, { params: error.params })
                   : describeErrorScope(error)
               }
-              key={error.id}
+              key={`${error.id}:${index}`}
               label={formatCustomerCopy(t, error.titleKey, { params: error.params })}
               tone={toneForSeverity(error.severity)}
             />
@@ -475,9 +475,9 @@ function QuotasCard({ overview, t }: { overview: SiteCustomerOverviewResponse; t
         <CardDescription>Plan meters that affect dashboard actions.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {overview.quotas.map((quota) => (
+        {overview.quotas.map((quota, index) => (
           <QuotaMeter
-            key={quota.key}
+            key={`${quota.key}:${index}`}
             label={formatCustomerCopy(t, quota.labelKey, {
               fallback: formatCustomerStatusValue(quota.key),
             })}
@@ -586,6 +586,29 @@ function formatActivityDescription(item: CustomerActivity): string {
   return [target, progress ? `progress ${progress}` : null, `updated ${updated}`]
     .filter(Boolean)
     .join(" - ");
+}
+
+function customerBlockerKey(blocker: CustomerBlocker, index: number): string {
+  return [
+    blocker.area,
+    blocker.code,
+    blocker.severity,
+    blocker.affectedDomains?.join(",") ?? "",
+    blocker.affectedLangs?.join(",") ?? "",
+    index,
+  ].join(":");
+}
+
+function customerActivityKey(item: CustomerActivity, index: number): string {
+  return [
+    item.id,
+    item.type,
+    item.targetLang ?? "all",
+    item.startedAt ?? "",
+    item.updatedAt ?? "",
+    item.finishedAt ?? "",
+    index,
+  ].join(":");
 }
 
 function describeAffectedScope(item: CustomerBlocker): string | null {

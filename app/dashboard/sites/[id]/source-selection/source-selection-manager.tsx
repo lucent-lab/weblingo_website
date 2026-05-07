@@ -859,8 +859,8 @@ function WarningsAlert({
       <AlertTitle>{copy.warningsTitle}</AlertTitle>
       <AlertDescription>
         <ul className="space-y-2">
-          {preview.warnings.map((warning) => (
-            <li key={`${warning.code}-${warning.message}`}>
+          {preview.warnings.map((warning, index) => (
+            <li key={`${warning.code}:${warning.message}:${index}`}>
               <span className="font-medium">{warning.message}</span>
               {typeof warning.count === "number" ? (
                 <span className="ml-1 text-amber-800">({warning.count})</span>
@@ -934,13 +934,21 @@ function PreviewSummary({
   preview: SourceSelectionTreePreviewResponse;
 }) {
   const items = [
-    [copy.knownIncluded, preview.summary.knownPagesIncluded],
-    [copy.knownExcluded, preview.summary.knownPagesExcluded],
-    [copy.includedByDefault, preview.summary.includedByDefault],
-    [copy.includedByRule, preview.summary.includedByRule],
-    [copy.excludedByRule, preview.summary.excludedByRule],
-    [copy.notIncludedByRule, preview.summary.notIncludedByRule],
-    [copy.rulesTotal, preview.summary.rulesTotal],
+    { key: "knownIncluded", label: copy.knownIncluded, value: preview.summary.knownPagesIncluded },
+    { key: "knownExcluded", label: copy.knownExcluded, value: preview.summary.knownPagesExcluded },
+    {
+      key: "includedByDefault",
+      label: copy.includedByDefault,
+      value: preview.summary.includedByDefault,
+    },
+    { key: "includedByRule", label: copy.includedByRule, value: preview.summary.includedByRule },
+    { key: "excludedByRule", label: copy.excludedByRule, value: preview.summary.excludedByRule },
+    {
+      key: "notIncludedByRule",
+      label: copy.notIncludedByRule,
+      value: preview.summary.notIncludedByRule,
+    },
+    { key: "rulesTotal", label: copy.rulesTotal, value: preview.summary.rulesTotal },
   ] as const;
 
   return (
@@ -952,10 +960,10 @@ function PreviewSummary({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(([label, value]) => (
-          <div key={label} className="rounded-md border border-border/60 bg-muted/20 p-3">
-            <p className="text-xs uppercase text-muted-foreground">{label}</p>
-            <p className="font-mono text-2xl font-semibold text-foreground">{value}</p>
+        {items.map((item) => (
+          <div key={item.key} className="rounded-md border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs uppercase text-muted-foreground">{item.label}</p>
+            <p className="font-mono text-2xl font-semibold text-foreground">{item.value}</p>
           </div>
         ))}
       </CardContent>
