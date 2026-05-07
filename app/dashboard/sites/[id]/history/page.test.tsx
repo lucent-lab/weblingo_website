@@ -1,4 +1,4 @@
-import { isValidElement } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +20,9 @@ vi.mock("next/navigation", () => ({
     throw new Error("notFound");
   }),
 }));
+vi.mock("@/components/dashboard/action-form", () => ({
+  ActionForm: ({ children }: { children: ReactNode }) => children,
+}));
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
@@ -32,6 +35,11 @@ vi.mock("@internal/dashboard/webhooks", () => ({
 vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
+}));
+vi.mock("../../../actions", () => ({
+  cancelTranslationRunAction: vi.fn(),
+  resumeTranslationRunAction: vi.fn(),
+  retryFailedTranslationRunAction: vi.fn(),
 }));
 vi.mock("../site-header", () => ({
   SiteHeader: () => null,

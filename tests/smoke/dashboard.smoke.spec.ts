@@ -52,7 +52,7 @@ test.describe("dashboard smoke", () => {
 
     await page.goto(`/dashboard/sites/${SITE_ID}/settings`);
     await expect(page.getByRole("heading", { name: "Settings" }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Runtime" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Runtime", exact: true })).toBeVisible();
 
     await page.goto(`/dashboard/sites/${SITE_ID}/developer-tools`);
     await expect(page.getByRole("heading", { name: "Developer tools" }).first()).toBeVisible();
@@ -73,11 +73,10 @@ test.describe("dashboard smoke", () => {
   });
 
   test("shows focused crawl trigger feedback", async ({ page }) => {
-    await page.goto(`/dashboard/sites/${SITE_ID}/admin`);
+    await page.goto(`/dashboard/sites/${SITE_ID}/pages`);
     await page.getByRole("button", { name: "Force full website crawl" }).click();
     await expectToast(page, "Crawl enqueued.");
 
-    await page.goto(`/dashboard/sites/${SITE_ID}/pages`);
     await page.getByRole("button", { name: "Force crawl" }).first().click();
     await expectToast(page, "Page crawl enqueued.");
   });

@@ -552,7 +552,7 @@ function resolveCustomerCtaHref({
     case "configure_domain":
     case "verify_domain":
     case "refresh_domain_status":
-      return `/dashboard/sites/${siteId}/admin#domains`;
+      return `/dashboard/sites/${siteId}/domains`;
     case "review_source_selection":
       return `/dashboard/sites/${siteId}/source-selection`;
     case "start_crawl":
@@ -565,7 +565,7 @@ function resolveCustomerCtaHref({
     case "view_live_site":
       return action.href ?? null;
     default:
-      return `/dashboard/sites/${siteId}/admin`;
+      return `/dashboard/sites/${siteId}/settings`;
   }
 }
 

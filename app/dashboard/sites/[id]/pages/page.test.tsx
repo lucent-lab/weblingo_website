@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSitePages: vi.fn(),
-  fetchSiteCompactStatus: vi.fn(),
   getSiteDashboardCached: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
@@ -40,7 +39,6 @@ vi.mock("@internal/dashboard/error-state", () => ({
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchSitePages: mocks.fetchSitePages,
-  fetchSiteCompactStatus: mocks.fetchSiteCompactStatus,
   WebhooksApiError: class WebhooksApiError extends Error {
     status = 500;
     details = null;
@@ -57,6 +55,7 @@ vi.mock("./crawl-summary.client", () => ({
   CrawlSummaryClient: mocks.CrawlSummaryClient,
 }));
 vi.mock("../../../actions", () => ({
+  triggerCrawlAction: vi.fn(),
   triggerPageCrawlAction: vi.fn(),
 }));
 
@@ -82,7 +81,7 @@ function makeCompactStatus() {
 }
 
 describe("SitePagesPage", () => {
-  it("uses direct pages and compact status endpoints instead of the legacy dashboard payload", async () => {
+  it("uses one direct pages response instead of legacy dashboard or extra status payloads", async () => {
     const webhooksAuth = {
       token: "token",
       subjectAccountId: "acct-1",
@@ -94,8 +93,8 @@ describe("SitePagesPage", () => {
       mutationsAllowed: true,
       has: vi.fn().mockReturnValue(true),
       account: {
-        dailyCrawlUsage: { pageCrawls: 0 },
-        featureFlags: { maxDailyPageRecrawls: null },
+        dailyCrawlUsage: { pageCrawls: 0, siteCrawls: 0 },
+        featureFlags: { maxDailyPageRecrawls: null, maxDailyRecrawls: null },
       },
       subjectAccount: null,
       actorAccount: null,
@@ -105,6 +104,22 @@ describe("SitePagesPage", () => {
       subjectFallbackToActor: false,
     });
     mocks.fetchSitePages.mockResolvedValue({
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        status: "active",
+      },
+      status: makeCompactStatus(),
+      pagesSummary: {
+        lastCrawlStartedAt: "2026-01-01T00:00:00.000Z",
+        lastCrawlFinishedAt: "2026-01-01T00:01:00.000Z",
+        pagesUpdated: 1,
+        pagesPending: 0,
+        nextEligibleCrawlAt: null,
+        eligiblePageCount: null,
+        rawLatestCrawlStatus: "completed",
+        customerCrawlStatus: "completed",
+      },
       pages: [
         {
           id: "page-1",
@@ -121,7 +136,6 @@ describe("SitePagesPage", () => {
         hasMore: false,
       },
     });
-    mocks.fetchSiteCompactStatus.mockResolvedValue(makeCompactStatus());
 
     vi.resetModules();
     const { default: SitePagesPage } = await import("./page");
@@ -136,7 +150,6 @@ describe("SitePagesPage", () => {
       limit: 25,
       offset: 0,
     });
-    expect(mocks.fetchSiteCompactStatus).toHaveBeenCalledWith(webhooksAuth, "site-1");
     expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
   });
 });

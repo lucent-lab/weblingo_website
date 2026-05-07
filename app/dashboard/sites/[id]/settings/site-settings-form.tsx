@@ -39,7 +39,7 @@ const LanguageTagCombobox = dynamic(
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
-type SiteAdminFormProps = {
+type SiteSettingsFormProps = {
   siteId: string;
   sourceUrl: string;
   sourceLang: string;
@@ -110,7 +110,7 @@ type SiteAdminFormProps = {
   initialSiteProfileNotes?: string;
 };
 
-export function SiteAdminForm({
+export function SiteSettingsForm({
   siteId,
   sourceUrl: initialSourceUrl,
   sourceLang,
@@ -143,7 +143,7 @@ export function SiteAdminForm({
   displayLocale,
   initialBrandVoice = "",
   initialSiteProfileNotes = "",
-}: SiteAdminFormProps) {
+}: SiteSettingsFormProps) {
   const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
   const [targets, setTargets] = useState<string[]>(() => initialTargets);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {

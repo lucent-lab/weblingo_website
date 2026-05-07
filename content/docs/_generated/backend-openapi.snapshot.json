@@ -4811,6 +4811,9 @@
             },
             "type": "array"
           },
+          "pagesSummary": {
+            "$ref": "#/components/schemas/SitePagesSummary"
+          },
           "pagination": {
             "additionalProperties": false,
             "properties": {
@@ -4834,9 +4837,39 @@
               "hasMore"
             ],
             "type": "object"
+          },
+          "site": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sourceUrl": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "inactive"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sourceUrl",
+              "status"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SiteCompactStatusResponse"
           }
         },
         "required": [
+          "site",
+          "status",
+          "pagesSummary",
           "pages",
           "pagination"
         ],
@@ -8099,6 +8132,12 @@
             },
             "type": "array"
           },
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerLanguageStatus"
+            },
+            "type": "array"
+          },
           "meta": {
             "additionalProperties": false,
             "properties": {
@@ -8169,6 +8208,7 @@
           "site",
           "access",
           "routing",
+          "languages",
           "domains"
         ],
         "type": "object"
@@ -8477,6 +8517,9 @@
       "SitePagesSummary": {
         "additionalProperties": false,
         "properties": {
+          "customerCrawlStatus": {
+            "$ref": "#/components/schemas/CustomerCrawlStatusValue"
+          },
           "eligiblePageCount": {
             "type": [
               "number",
@@ -8506,6 +8549,12 @@
           },
           "pagesUpdated": {
             "type": "number"
+          },
+          "rawLatestCrawlStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -8933,6 +8982,108 @@
             },
             "type": "object"
           },
+          "settings": {
+            "additionalProperties": false,
+            "properties": {
+              "aliases": {
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": "object"
+              },
+              "clientRuntimeEnabled": {
+                "type": "boolean"
+              },
+              "crawlCaptureMode": {
+                "$ref": "#/components/schemas/CrawlCaptureMode"
+              },
+              "maxLocales": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "pattern": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "servingMode": {
+                "$ref": "#/components/schemas/ServingMode"
+              },
+              "siteProfile": {
+                "additionalProperties": false,
+                "properties": {
+                  "brandVoice": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "sourceLang": {
+                "type": "string"
+              },
+              "spaRefresh": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SpaRefreshSettings"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "targetLangs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translatableAttributes": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "webhookEvents": {
+                "items": {
+                  "$ref": "#/components/schemas/NotifyWebhookEventType"
+                },
+                "type": "array"
+              },
+              "webhookUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "sourceLang",
+              "targetLangs",
+              "aliases",
+              "maxLocales",
+              "servingMode",
+              "crawlCaptureMode",
+              "clientRuntimeEnabled",
+              "webhookEvents"
+            ],
+            "type": "object"
+          },
           "site": {
             "additionalProperties": false,
             "properties": {
@@ -9015,7 +9166,8 @@
           "routing",
           "crawl",
           "runtime",
-          "webhooks"
+          "webhooks",
+          "settings"
         ],
         "type": "object"
       },
@@ -16714,11 +16866,25 @@
                       "sourcePath": "string"
                     }
                   ],
+                  "pagesSummary": {
+                    "pagesPending": 1,
+                    "pagesUpdated": 1
+                  },
                   "pagination": {
                     "hasMore": true,
                     "limit": 1,
                     "offset": 1,
                     "total": 1
+                  },
+                  "site": {
+                    "id": "string",
+                    "sourceUrl": "string",
+                    "status": "active"
+                  },
+                  "status": {
+                    "generatedAt": "string",
+                    "siteId": "string",
+                    "siteStatus": "string"
                   }
                 },
                 "schema": {

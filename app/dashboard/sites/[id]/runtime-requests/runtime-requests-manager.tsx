@@ -66,7 +66,10 @@ export type RuntimeRequestsCopy = {
   propagationStale: string;
   observationsTitle: string;
   observationsDescription: string;
+  observationsDeferred: string;
   observationsEmpty: string;
+  loadObservations: string;
+  loadingObservations: string;
   method: string;
   path: string;
   likelyType: string;
@@ -148,7 +151,12 @@ type RuntimeRequestsManagerProps = {
   runtimeRequestPolicyVersion?: string | null;
   propagation?: RuntimeRequestPolicyPropagation | null;
   observations: RuntimeRequestObservationGroup[];
+  observationsLoaded?: boolean;
   canEdit: boolean;
+  loadObservationsAction: (
+    prevState: ActionResponse | undefined,
+    formData: FormData,
+  ) => Promise<ActionResponse>;
   saveAction: (
     prevState: ActionResponse | undefined,
     formData: FormData,
@@ -167,7 +175,9 @@ export function RuntimeRequestsManager({
   runtimeRequestPolicyVersion,
   propagation,
   observations,
+  observationsLoaded: initialObservationsLoaded = true,
   canEdit,
+  loadObservationsAction,
   saveAction,
   lifecycleAction,
   copy,
@@ -184,12 +194,15 @@ export function RuntimeRequestsManager({
   const [servedVersion, setServedVersion] = useState(runtimeRequestPolicyVersion ?? null);
   const [servedPropagation, setServedPropagation] = useState(propagation ?? null);
   const [groups, setGroups] = useState(observations);
+  const [observationsLoaded, setObservationsLoaded] = useState(initialObservationsLoaded);
+  const [isLoadingObservations, setLoadingObservations] = useState(false);
   const [preview, setPreview] = useState<RuntimeRequestPolicyPreviewResponse | null>(null);
   const [previewFingerprint, setPreviewFingerprint] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewing, setPreviewing] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<ActionResponse | null>(null);
+  const [observationLoadResult, setObservationLoadResult] = useState<ActionResponse | null>(null);
   const [lifecycleResult, setLifecycleResult] = useState<ActionResponse | null>(null);
 
   const persistedFingerprint = runtimePolicyFingerprint(persistedPolicy);
@@ -217,6 +230,31 @@ export function RuntimeRequestsManager({
     !isPreviewing &&
     !previewError &&
     !previewBlocksSave;
+
+  const loadObservations = () => {
+    if (!canEdit || isLoadingObservations) {
+      return;
+    }
+    setLoadingObservations(true);
+    setObservationLoadResult(null);
+    const formData = new FormData();
+    formData.set("siteId", siteId);
+    void loadObservationsAction(undefined, formData)
+      .then((result) => {
+        setObservationLoadResult(result);
+        if (result.ok) {
+          setGroups(readObservationGroups(result.meta));
+          setObservationsLoaded(true);
+        }
+      })
+      .catch((error) => {
+        setObservationLoadResult({
+          ok: false,
+          message: error instanceof Error ? error.message : copy.previewBlocked,
+        });
+      })
+      .finally(() => setLoadingObservations(false));
+  };
 
   const updateDraft = (
     updater: (policy: RuntimeRequestPolicyConfig) => RuntimeRequestPolicyConfig,
@@ -366,14 +404,47 @@ export function RuntimeRequestsManager({
           <CardDescription>{copy.observationsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">{copy.redactionNote}</p>
-          <ObservationsTable
-            canEdit={canEdit}
-            copy={copy}
-            groups={groups}
-            onCreateRule={(group) => updateDraft((policy) => addRuleFromObservation(policy, group))}
-            onLifecycle={updateLifecycle}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <p className="text-xs text-muted-foreground">{copy.redactionNote}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canEdit || isLoadingObservations}
+              onClick={loadObservations}
+            >
+              {isLoadingObservations ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="mr-2 h-4 w-4" />
+              )}
+              {isLoadingObservations ? copy.loadingObservations : copy.loadObservations}
+            </Button>
+          </div>
+          {!observationsLoaded ? (
+            <p className="text-sm text-muted-foreground">{copy.observationsDeferred}</p>
+          ) : null}
+          {observationLoadResult ? (
+            <p
+              role={observationLoadResult.ok ? "status" : "alert"}
+              className={cn(
+                "text-sm",
+                observationLoadResult.ok ? "text-emerald-700" : "text-destructive",
+              )}
+            >
+              {observationLoadResult.message}
+            </p>
+          ) : null}
+          {observationsLoaded ? (
+            <ObservationsTable
+              canEdit={canEdit}
+              copy={copy}
+              groups={groups}
+              onCreateRule={(group) =>
+                updateDraft((policy) => addRuleFromObservation(policy, group))
+              }
+              onLifecycle={updateLifecycle}
+            />
+          ) : null}
           {lifecycleResult ? (
             <p
               role={lifecycleResult.ok ? "status" : "alert"}
@@ -1196,6 +1267,30 @@ function readSavedRuntimePolicy(meta: Record<string, unknown> | undefined) {
     return null;
   }
   return normalizeRuntimePolicy(value as RuntimeRequestPolicyConfig);
+}
+
+function readObservationGroups(meta: Record<string, unknown> | undefined) {
+  const value = meta?.groups;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRuntimeRequestObservationGroup);
+}
+
+function isRuntimeRequestObservationGroup(value: unknown): value is RuntimeRequestObservationGroup {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.groupingPathHash === "string" &&
+    typeof record.method === "string" &&
+    typeof record.shapeSignature === "string" &&
+    typeof record.path === "string" &&
+    typeof record.firstSeenAt === "string" &&
+    typeof record.lastSeenAt === "string" &&
+    typeof record.lifecycle === "string"
+  );
 }
 
 function readMetaString(meta: Record<string, unknown> | undefined, key: string): string | null {

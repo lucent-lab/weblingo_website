@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   fetchSiteDashboardProjection: vi.fn(),
   getSiteDashboardCached: vi.fn(),
   getSiteShowcase: vi.fn(),
+  listSupportedLanguagesCached: vi.fn(),
   listRuntimeRequestObservations: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
@@ -26,6 +27,7 @@ vi.mock("@internal/dashboard/auth", () => ({
 }));
 vi.mock("@internal/dashboard/data", () => ({
   getSiteDashboardCached: mocks.getSiteDashboardCached,
+  listSupportedLanguagesCached: mocks.listSupportedLanguagesCached,
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchSiteDashboardProjection: mocks.fetchSiteDashboardProjection,
@@ -71,7 +73,23 @@ describe("SettingsPage", () => {
         cspMode: "strict",
       },
       webhooks: { url: null, events: [], hasSecret: false },
+      settings: {
+        sourceLang: "en",
+        targetLangs: ["fr"],
+        aliases: { fr: null },
+        pattern: "https://{lang}.example.com",
+        maxLocales: null,
+        servingMode: "strict",
+        crawlCaptureMode: "template_plus_hydrated",
+        clientRuntimeEnabled: true,
+        spaRefresh: null,
+        translatableAttributes: [],
+        webhookUrl: null,
+        webhookEvents: [],
+        siteProfile: {},
+      },
     });
+    mocks.listSupportedLanguagesCached.mockResolvedValue([]);
 
     vi.resetModules();
     const { default: SettingsPage } = await import("./page");

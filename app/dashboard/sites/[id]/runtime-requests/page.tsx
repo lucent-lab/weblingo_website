@@ -8,14 +8,13 @@ import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchSiteDashboardProjection,
-  listRuntimeRequestObservations,
   WebhooksApiError,
-  type RuntimeRequestObservationGroup,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
 import {
+  listRuntimeRequestObservationsAction,
   updateRuntimeRequestObservationLifecycleAction,
   updateRuntimeRequestPolicyAction,
 } from "../../../actions";
@@ -50,20 +49,11 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
 
   let projection: SiteDeveloperToolsProjection | null = null;
-  let observations: RuntimeRequestObservationGroup[] = [];
   let error: unknown = null;
 
   try {
-    const [projectionPayload, observationResponse] = await Promise.all([
-      fetchSiteDashboardProjection(authToken, id, "developer_tools"),
-      listRuntimeRequestObservations(authToken, id, {
-        limit: 50,
-        lifecycle: "all",
-        sort: "last_seen_desc",
-      }),
-    ]);
+    const projectionPayload = await fetchSiteDashboardProjection(authToken, id, "developer_tools");
     projection = isDeveloperToolsProjection(projectionPayload) ? projectionPayload : null;
-    observations = observationResponse.groups;
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
@@ -131,8 +121,10 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           }
           runtimeRequestPolicyVersion={projection.runtimeRequests.policySummary?.version ?? null}
           propagation={projection.runtimeRequests.propagation ?? null}
-          observations={observations}
+          observations={[]}
+          observationsLoaded={false}
           canEdit={canEdit}
+          loadObservationsAction={listRuntimeRequestObservationsAction}
           saveAction={updateRuntimeRequestPolicyAction}
           lifecycleAction={updateRuntimeRequestObservationLifecycleAction}
           copy={buildRuntimeRequestsCopy(t)}
@@ -194,9 +186,18 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
       "dashboard.runtimeRequests.observations.description",
       "Grouped same-origin runtime requests seen by the serve worker.",
     ),
+    observationsDeferred: t(
+      "dashboard.runtimeRequests.observations.deferred",
+      "Load observed request groups when you need to review them.",
+    ),
     observationsEmpty: t(
       "dashboard.runtimeRequests.observations.empty",
       "No dynamic request groups have been observed.",
+    ),
+    loadObservations: t("dashboard.runtimeRequests.observations.load", "Load observations"),
+    loadingObservations: t(
+      "dashboard.runtimeRequests.observations.loading",
+      "Loading observations",
     ),
     method: t("dashboard.runtimeRequests.table.method", "Method"),
     path: t("dashboard.runtimeRequests.table.path", "Path"),

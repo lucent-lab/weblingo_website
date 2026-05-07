@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
+import { ActionForm } from "@/components/dashboard/action-form";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,11 @@ import {
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
+import {
+  cancelTranslationRunAction,
+  resumeTranslationRunAction,
+  retryFailedTranslationRunAction,
+} from "../../../actions";
 import {
   FocusedRouteErrorState,
   formatCount,
@@ -56,6 +62,8 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   const selectedTargetLang = normalizeTargetLang(resolvedSearchParams?.targetLang);
   const runsPage = readPageNumber(resolvedSearchParams?.runsPage);
   const deploymentsPage = readPageNumber(resolvedSearchParams?.deploymentsPage);
+  const canManageRuns =
+    auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && auth.mutationsAllowed;
 
   let runs: CustomerTranslationRunsResponse | null = null;
   let deployments: CustomerDeploymentHistoryResponse | null = null;
@@ -176,6 +184,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
         />
       ) : runs ? (
         <TranslationRunsCard
+          canManageRuns={canManageRuns}
           page={runsPage}
           response={runs}
           siteId={id}
@@ -188,12 +197,14 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
 }
 
 function TranslationRunsCard({
+  canManageRuns,
   page,
   response,
   siteId,
   t,
   targetLang,
 }: {
+  canManageRuns: boolean;
   page: number;
   response: CustomerTranslationRunsResponse;
   siteId: string;
@@ -234,6 +245,7 @@ function TranslationRunsCard({
                   })}
                 </p>
               ) : null}
+              <RunActions canManageRuns={canManageRuns} run={run} siteId={siteId} />
             </div>
           ))
         ) : (
@@ -249,6 +261,81 @@ function TranslationRunsCard({
       </CardContent>
     </Card>
   );
+}
+
+function RunActions({
+  canManageRuns,
+  run,
+  siteId,
+}: {
+  canManageRuns: boolean;
+  run: CustomerTranslationRunsResponse["runs"][number];
+  siteId: string;
+}) {
+  if (run.customerStatus === "queued" || run.customerStatus === "in_progress") {
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <ActionForm
+          action={cancelTranslationRunAction}
+          loading="Cancelling run..."
+          success="Translation run cancelled."
+          error="Unable to cancel run."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <input name="runId" type="hidden" value={run.id} />
+            <Button disabled={!canManageRuns} size="sm" type="submit" variant="outline">
+              Cancel run
+            </Button>
+          </>
+        </ActionForm>
+      </div>
+    );
+  }
+
+  if (run.customerStatus === "failed") {
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <ActionForm
+          action={retryFailedTranslationRunAction}
+          loading="Retrying run..."
+          success="Retry queued."
+          error="Unable to retry run."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <input name="runId" type="hidden" value={run.id} />
+            <Button disabled={!canManageRuns} size="sm" type="submit" variant="outline">
+              Retry failed pages
+            </Button>
+          </>
+        </ActionForm>
+      </div>
+    );
+  }
+
+  if (run.customerStatus === "cancelled") {
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <ActionForm
+          action={resumeTranslationRunAction}
+          loading="Resuming run..."
+          success="Translation resumed."
+          error="Unable to resume run."
+        >
+          <>
+            <input name="siteId" type="hidden" value={siteId} />
+            <input name="runId" type="hidden" value={run.id} />
+            <Button disabled={!canManageRuns} size="sm" type="submit" variant="outline">
+              Resume run
+            </Button>
+          </>
+        </ActionForm>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function DeploymentsCard({

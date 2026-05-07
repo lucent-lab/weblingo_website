@@ -33,6 +33,9 @@ vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
+vi.mock("../../../actions", () => ({
+  fetchSwitcherSnippetsAction: vi.fn(),
+}));
 vi.mock("../site-header", () => ({
   SiteHeader: () => null,
 }));

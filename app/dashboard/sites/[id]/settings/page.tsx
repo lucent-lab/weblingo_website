@@ -10,6 +10,8 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
+import { listSupportedLanguagesCached } from "@internal/dashboard/data";
+import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 import {
@@ -19,6 +21,8 @@ import {
   SummaryRow,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
+import { PageSectionNav } from "../page-section-nav";
+import { SiteSettingsForm } from "./site-settings-form";
 
 export const metadata = {
   title: "Settings",
@@ -37,16 +41,25 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const settingsAccess = deriveSiteSettingsAccess({
+    has: auth.has,
+    mutationsAllowed: auth.mutationsAllowed,
+  });
   const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
 
   let projection: SettingsProjection | null = null;
+  let supportedLanguages: Awaited<ReturnType<typeof listSupportedLanguagesCached>> = [];
   let error: unknown = null;
 
   try {
-    const payload = await fetchSiteDashboardProjection(authToken, id, "settings");
+    const [payload, supportedLanguagePayload] = await Promise.all([
+      fetchSiteDashboardProjection(authToken, id, "settings"),
+      settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
+    ]);
     projection = isSettingsProjection(payload) ? payload : null;
+    supportedLanguages = supportedLanguagePayload;
   } catch (err) {
     error = err;
     logProjectionError(id, auth, err);
@@ -68,6 +81,47 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
   const headerLabels = buildSiteHeaderLabels(t);
   const mutationsLocked = !auth.mutationsAllowed || !projection.access.mutationsAllowed;
+  const billingBlocked = settingsAccess.billingBlocked;
+  const lockedHelp = t("dashboard.site.settings.lockedHelp");
+  const crawlCaptureCopy = {
+    title: t("dashboard.site.settings.crawlCapture.title"),
+    description: t("dashboard.site.settings.crawlCapture.description"),
+    label: t("dashboard.site.settings.crawlCapture.label"),
+    help: t("dashboard.site.settings.crawlCapture.help"),
+    options: {
+      templatePlusHydrated: t("dashboard.site.settings.crawlCapture.option.template_plus_hydrated"),
+      templateOnly: t("dashboard.site.settings.crawlCapture.option.template_only"),
+      hydratedOnly: t("dashboard.site.settings.crawlCapture.option.hydrated_only"),
+    },
+  };
+  const clientRuntimeCopy = {
+    title: t("dashboard.site.settings.clientRuntime.title"),
+    description: t("dashboard.site.settings.clientRuntime.description"),
+    label: t("dashboard.site.settings.clientRuntime.label"),
+    help: t("dashboard.site.settings.clientRuntime.help"),
+  };
+  const spaRefreshCopy = {
+    title: t("dashboard.site.settings.spaRefresh.title"),
+    description: t("dashboard.site.settings.spaRefresh.description"),
+    label: t("dashboard.site.settings.spaRefresh.label"),
+    help: t("dashboard.site.settings.spaRefresh.help"),
+    note: t("dashboard.site.settings.spaRefresh.note"),
+    missingFallbackLabel: t("dashboard.site.settings.spaRefresh.missingFallback.label"),
+    missingFallbackHelp: t("dashboard.site.settings.spaRefresh.missingFallback.help"),
+    errorFallbackLabel: t("dashboard.site.settings.spaRefresh.errorFallback.label"),
+    errorFallbackHelp: t("dashboard.site.settings.spaRefresh.errorFallback.help"),
+    sectionScopeLabel: t("dashboard.site.settings.spaRefresh.sectionScope.label"),
+    sectionScopeHelp: t("dashboard.site.settings.spaRefresh.sectionScope.help"),
+    optionGlobalOnly: t("dashboard.site.settings.spaRefresh.option.globalOnly"),
+    optionBaseline: t("dashboard.site.settings.spaRefresh.option.baseline"),
+  };
+  const translatableAttributesCopy = {
+    title: t("dashboard.site.settings.translatableAttributes.title"),
+    description: t("dashboard.site.settings.translatableAttributes.description"),
+    label: t("dashboard.site.settings.translatableAttributes.label"),
+    help: t("dashboard.site.settings.translatableAttributes.help"),
+    placeholder: t("dashboard.site.settings.translatableAttributes.placeholder"),
+  };
 
   return (
     <div className="space-y-8">
@@ -84,72 +138,134 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         description="Settings changes are locked until this workspace can make dashboard mutations."
       />
 
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>Settings</CardTitle>
+      {billingBlocked || mutationsLocked ? (
+        <Card className="border-border/60 bg-muted/30">
+          <CardHeader>
+            <CardTitle>{billingBlocked ? "Billing action required" : "Settings locked"}</CardTitle>
             <CardDescription>
-              Focused configuration summary from the customer-safe settings projection.
+              {billingBlocked
+                ? "Update billing to resume editing this site."
+                : "This workspace cannot make settings changes right now."}
             </CardDescription>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
+      ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <SettingsCard title="Basic">
-          <SummaryRow label="Source URL" value={projection.basic.sourceUrl} />
-          <SummaryRow label="Profile" value={projection.basic.profile} />
-          <SummaryRow label="Serving mode" value={projection.basic.servingMode} />
-          <SummaryRow label="Created" value={formatDate(projection.site.createdAt)} />
-          <SummaryRow label="Updated" value={formatDate(projection.site.updatedAt)} />
-        </SettingsCard>
+      <PageSectionNav
+        title="Settings sections"
+        description="Focused configuration controls for source, routing, runtime, webhooks, and translation context."
+        links={[
+          { href: "#site-settings", label: "Site settings" },
+          { href: "#settings-summary", label: "Summary" },
+        ]}
+      />
 
-        <SettingsCard title="Routing">
-          <SummaryRow label="URL mode" value={projection.routing.urlMode} />
-          <SummaryRow label="Route prefixes" value={projection.routing.routePrefixes.length} />
-          <SummaryRow
-            label="Localized path templates"
-            value={projection.routing.localizedPathTemplates?.length ?? 0}
-          />
-        </SettingsCard>
+      <section id="site-settings" className="scroll-mt-24">
+        <SiteSettingsForm
+          siteId={projection.site.id}
+          sourceUrl={projection.basic.sourceUrl}
+          sourceLang={projection.settings.sourceLang}
+          targets={projection.settings.targetLangs}
+          aliases={projection.settings.aliases}
+          pattern={projection.settings.pattern ?? null}
+          maxLocales={projection.settings.maxLocales}
+          servingMode={projection.settings.servingMode}
+          crawlCaptureMode={projection.settings.crawlCaptureMode}
+          crawlCaptureCopy={crawlCaptureCopy}
+          clientRuntimeEnabled={projection.settings.clientRuntimeEnabled}
+          clientRuntimeCopy={clientRuntimeCopy}
+          spaRefresh={projection.settings.spaRefresh ?? null}
+          spaRefreshCopy={spaRefreshCopy}
+          translatableAttributes={projection.settings.translatableAttributes ?? null}
+          translatableAttributesCopy={translatableAttributesCopy}
+          webhookUrl={projection.settings.webhookUrl ?? ""}
+          webhookSecret=""
+          webhookEvents={projection.settings.webhookEvents}
+          canEditWebhooks={settingsAccess.canEditWebhooks}
+          lockedHelp={lockedHelp}
+          canEditBasics={settingsAccess.canEditBasics}
+          canEditLocales={settingsAccess.canEditLocales}
+          canEditServingMode={settingsAccess.canEditServingMode}
+          canEditCrawlCaptureMode={settingsAccess.canEditCrawlCaptureMode}
+          canEditClientRuntime={settingsAccess.canEditClientRuntime}
+          canEditSpaRefresh={settingsAccess.canEditSpaRefresh}
+          canEditTranslatableAttributes={settingsAccess.canEditTranslatableAttributes}
+          canEditProfile={settingsAccess.canEditProfile}
+          supportedLanguages={supportedLanguages}
+          displayLocale={locale}
+          initialBrandVoice={projection.settings.siteProfile?.brandVoice}
+          initialSiteProfileNotes={projection.settings.siteProfile?.description}
+        />
+      </section>
 
-        <SettingsCard title="Crawl">
-          <SummaryRow label="Capture mode" value={projection.crawl.captureMode} />
-          <SummaryRow label="Max depth" value={projection.crawl.maxDepth} />
-          <SummaryRow label="Crawl page cap" value={projection.crawl.crawlMaxPages} />
-        </SettingsCard>
+      <section id="settings-summary" className="scroll-mt-24 space-y-4">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Settings</CardTitle>
+              <CardDescription>
+                Focused configuration summary from the customer-safe settings projection.
+              </CardDescription>
+            </div>
+          </CardHeader>
+        </Card>
 
-        <SettingsCard title="Runtime">
-          <SummaryRow label="Client runtime" value={projection.runtime.clientRuntimeEnabled} />
-          <SummaryRow label="SPA refresh" value={projection.runtime.spaRefreshEnabled} />
-          <SummaryRow label="Footer required" value={projection.runtime.footerRequired} />
-          <SummaryRow label="CSP mode" value={projection.runtime.cspMode} />
-          <SummaryRow
-            label="Translatable attributes"
-            value={projection.runtime.translatableAttributes?.length ?? 0}
-          />
-        </SettingsCard>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SettingsCard title="Basic">
+            <SummaryRow label="Source URL" value={projection.basic.sourceUrl} />
+            <SummaryRow label="Profile" value={projection.basic.profile} />
+            <SummaryRow label="Serving mode" value={projection.basic.servingMode} />
+            <SummaryRow label="Created" value={formatDate(projection.site.createdAt)} />
+            <SummaryRow label="Updated" value={formatDate(projection.site.updatedAt)} />
+          </SettingsCard>
 
-        <SettingsCard title="Webhooks">
-          <SummaryRow label="URL" value={projection.webhooks.url} />
-          <SummaryRow label="Events" value={projection.webhooks.events.length} />
-          <SummaryRow label="Secret configured" value={projection.webhooks.hasSecret} />
-        </SettingsCard>
+          <SettingsCard title="Routing">
+            <SummaryRow label="URL mode" value={projection.routing.urlMode} />
+            <SummaryRow label="Route prefixes" value={projection.routing.routePrefixes.length} />
+            <SummaryRow
+              label="Localized path templates"
+              value={projection.routing.localizedPathTemplates?.length ?? 0}
+            />
+          </SettingsCard>
 
-        <SettingsCard title="Notifications">
-          <SummaryRow
-            label="Digest"
-            value={projection.notifications?.digestFrequency ?? "Not configured"}
-          />
-          <SummaryRow
-            label="Locale summaries"
-            value={
-              Object.keys(projection.notifications?.translationSummaryFrequencyByLocale ?? {})
-                .length
-            }
-          />
-        </SettingsCard>
-      </div>
+          <SettingsCard title="Crawl">
+            <SummaryRow label="Capture mode" value={projection.crawl.captureMode} />
+            <SummaryRow label="Max depth" value={projection.crawl.maxDepth} />
+            <SummaryRow label="Crawl page cap" value={projection.crawl.crawlMaxPages} />
+          </SettingsCard>
+
+          <SettingsCard title="Runtime">
+            <SummaryRow label="Client runtime" value={projection.runtime.clientRuntimeEnabled} />
+            <SummaryRow label="SPA refresh" value={projection.runtime.spaRefreshEnabled} />
+            <SummaryRow label="Footer required" value={projection.runtime.footerRequired} />
+            <SummaryRow label="CSP mode" value={projection.runtime.cspMode} />
+            <SummaryRow
+              label="Translatable attributes"
+              value={projection.runtime.translatableAttributes?.length ?? 0}
+            />
+          </SettingsCard>
+
+          <SettingsCard title="Webhooks">
+            <SummaryRow label="URL" value={projection.webhooks.url} />
+            <SummaryRow label="Events" value={projection.webhooks.events.length} />
+            <SummaryRow label="Secret configured" value={projection.webhooks.hasSecret} />
+          </SettingsCard>
+
+          <SettingsCard title="Notifications">
+            <SummaryRow
+              label="Digest"
+              value={projection.notifications?.digestFrequency ?? "Not configured"}
+            />
+            <SummaryRow
+              label="Locale summaries"
+              value={
+                Object.keys(projection.notifications?.translationSummaryFrequencyByLocale ?? {})
+                  .length
+              }
+            />
+          </SettingsCard>
+        </div>
+      </section>
     </div>
   );
 }

@@ -41,6 +41,8 @@ vi.mock("@internal/i18n", () => ({
 vi.mock("../../../actions", () => ({
   provisionDomainAction: vi.fn(),
   refreshDomainAction: vi.fn(),
+  setLocaleServingAction: vi.fn(),
+  translateAndServeAction: vi.fn(),
   verifyDomainAction: vi.fn(),
 }));
 vi.mock("../site-header", () => ({
@@ -68,6 +70,25 @@ describe("DomainsPage", () => {
         servingMode: "strict",
         routePrefixes: [{ targetLang: "fr", prefix: "/fr" }],
       },
+      languages: [
+        {
+          tag: "fr",
+          labelKey: "languages.fr",
+          enabled: true,
+          serveEnabled: true,
+          servingStatus: {
+            value: "ready",
+            rawStatus: "ready",
+            titleKey: "dashboard.status.serving.ready.title",
+          },
+          domain: "fr.example.com",
+          domainStatus: "pending",
+          routePrefix: "/fr",
+          alias: null,
+          lastPublishedAt: null,
+          lastTranslatedAt: null,
+        },
+      ],
       domains: [
         {
           domain: "fr.example.com",

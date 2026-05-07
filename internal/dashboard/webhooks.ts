@@ -371,6 +371,15 @@ const sitePageSummarySchema = z.object({
   lastVersionAt: z.string().nullable().optional(),
 });
 
+const customerCrawlStatusValueSchema = z.enum([
+  "not_started",
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+  "unknown",
+]);
+
 const sitePagesSummarySchema = z
   .object({
     lastCrawlStartedAt: z.string().nullable().optional(),
@@ -379,6 +388,8 @@ const sitePagesSummarySchema = z
     pagesPending: z.number().int().nonnegative(),
     nextEligibleCrawlAt: z.string().nullable().optional(),
     eligiblePageCount: z.number().int().nonnegative().nullable().optional(),
+    rawLatestCrawlStatus: z.string().nullable().optional(),
+    customerCrawlStatus: customerCrawlStatusValueSchema.optional(),
   })
   .strict();
 
@@ -709,14 +720,6 @@ const customerDomainStatusValueSchema = z.enum([
   "pending",
   "verifying",
   "verified",
-  "failed",
-  "unknown",
-]);
-const customerCrawlStatusValueSchema = z.enum([
-  "not_started",
-  "queued",
-  "in_progress",
-  "completed",
   "failed",
   "unknown",
 ]);
@@ -1074,6 +1077,7 @@ const siteDomainsProjectionResponseSchema = z
         routePrefixes: z.array(z.object({ targetLang: z.string(), prefix: z.string() }).strict()),
       })
       .strict(),
+    languages: z.array(customerLanguageStatusSchema),
     domains: z.array(customerDomainSummarySchema),
   })
   .strict();
@@ -1131,6 +1135,29 @@ const siteSettingsProjectionResponseSchema = z
         url: z.string().nullable().optional(),
         events: z.array(z.string()),
         hasSecret: z.boolean(),
+      })
+      .strict(),
+    settings: z
+      .object({
+        sourceLang: z.string(),
+        targetLangs: z.array(z.string()),
+        aliases: z.record(z.string(), z.string().nullable()),
+        pattern: z.string().nullable().optional(),
+        maxLocales: z.number().int().positive().nullable(),
+        servingMode: z.enum(["strict", "tolerant"]),
+        crawlCaptureMode: crawlCaptureModeSchema,
+        clientRuntimeEnabled: z.boolean(),
+        spaRefresh: spaRefreshSchema.nullable().optional(),
+        translatableAttributes: z.array(z.string()).nullable().optional(),
+        webhookUrl: z.string().nullable().optional(),
+        webhookEvents: z.array(webhookEventTypeSchema),
+        siteProfile: z
+          .object({
+            brandVoice: z.string().optional(),
+            description: z.string().optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     notifications: z
@@ -1516,6 +1543,15 @@ const authResponseSchema = z.object({
 
 const listSitePagesResponseSchema = z
   .object({
+    site: z
+      .object({
+        id: z.string(),
+        sourceUrl: z.string(),
+        status: z.enum(["active", "inactive"]),
+      })
+      .strict(),
+    status: siteCompactStatusResponseSchema,
+    pagesSummary: sitePagesSummarySchema,
     pages: z.array(sitePageSummarySchema),
     pagination: z
       .object({
@@ -3055,6 +3091,7 @@ function createDashboardE2eMockCustomerDashboardProjection(
           { targetLang: "ja", prefix: "/ja" },
         ],
       },
+      languages,
       domains,
     };
   }
@@ -3092,6 +3129,21 @@ function createDashboardE2eMockCustomerDashboardProjection(
         cspMode: "strict",
       },
       webhooks: { url: null, events: WEBHOOK_EVENT_TYPES.slice(), hasSecret: false },
+      settings: {
+        sourceLang: "en",
+        targetLangs: ["fr", "ja"],
+        aliases: { fr: "fr", ja: "ja" },
+        pattern: "https://{lang}.example.test",
+        maxLocales: 5,
+        servingMode: "strict" as const,
+        crawlCaptureMode: "template_plus_hydrated" as const,
+        clientRuntimeEnabled: true,
+        spaRefresh: null,
+        translatableAttributes: [],
+        webhookUrl: null,
+        webhookEvents: WEBHOOK_EVENT_TYPES.slice(),
+        siteProfile: {},
+      },
     };
   }
 
@@ -3804,6 +3856,22 @@ function resolveDashboardE2eMockPayload(input: {
     const allPages = createDashboardE2eMockPages(30);
     const pages = allPages.slice(offset, offset + limit);
     return {
+      site: {
+        id: sitePagesMatch[1],
+        sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+        status: "active" as const,
+      },
+      status: createDashboardE2eMockCompactStatus(sitePagesMatch[1]),
+      pagesSummary: {
+        lastCrawlStartedAt: new Date(Date.now() - 15 * 60_000).toISOString(),
+        lastCrawlFinishedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
+        pagesUpdated: 18,
+        pagesPending: 5,
+        nextEligibleCrawlAt: new Date().toISOString(),
+        eligiblePageCount: 5,
+        rawLatestCrawlStatus: "completed",
+        customerCrawlStatus: "completed" as const,
+      },
       pages,
       pagination: {
         limit,

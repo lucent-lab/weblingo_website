@@ -25,7 +25,10 @@ const copy: RuntimeRequestsCopy = {
   propagationStale: "Route cache stale",
   observationsTitle: "Observed requests",
   observationsDescription: "Grouped requests.",
+  observationsDeferred: "Load observations when needed.",
   observationsEmpty: "No observations.",
+  loadObservations: "Load observations",
+  loadingObservations: "Loading observations",
   method: "Method",
   path: "Path",
   likelyType: "Likely type",
@@ -131,6 +134,11 @@ afterEach(() => {
 function renderManager(options: { saveAction?: RuntimeRequestsManagerPropsSave } = {}) {
   const saveAction = options.saveAction ?? vi.fn(async () => ({ ok: true, message: "saved" }));
   const lifecycleAction = vi.fn(async () => ({ ok: true, message: "updated" }));
+  const loadObservationsAction = vi.fn(async () => ({
+    ok: true,
+    message: "loaded",
+    meta: { groups: [observation] },
+  }));
   render(
     <RuntimeRequestsManager
       siteId="site-1"
@@ -143,13 +151,15 @@ function renderManager(options: { saveAction?: RuntimeRequestsManagerPropsSave }
         stale: false,
       }}
       observations={[observation]}
+      observationsLoaded
       canEdit
+      loadObservationsAction={loadObservationsAction}
       saveAction={saveAction}
       lifecycleAction={lifecycleAction}
       copy={copy}
     />,
   );
-  return { saveAction, lifecycleAction };
+  return { saveAction, lifecycleAction, loadObservationsAction };
 }
 
 type RuntimeRequestsManagerPropsSave = (

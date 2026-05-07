@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSiteDashboardProjection: vi.fn(),
-  listRuntimeRequestObservations: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -35,7 +34,6 @@ vi.mock("@internal/dashboard/error-state", () => ({
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchSiteDashboardProjection: mocks.fetchSiteDashboardProjection,
-  listRuntimeRequestObservations: mocks.listRuntimeRequestObservations,
   WebhooksApiError: class WebhooksApiError extends Error {
     status = 500;
     details = null;
@@ -46,6 +44,7 @@ vi.mock("@internal/i18n", () => ({
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
 vi.mock("../../../actions", () => ({
+  listRuntimeRequestObservationsAction: vi.fn(),
   updateRuntimeRequestObservationLifecycleAction: vi.fn(),
   updateRuntimeRequestPolicyAction: vi.fn(),
 }));
@@ -83,7 +82,7 @@ function findElement(node: unknown, type: unknown): Record<string, unknown> | nu
 }
 
 describe("RuntimeRequestsPage", () => {
-  it("loads focused developer-tools projection and redacted observations", async () => {
+  it("loads only the focused developer-tools projection on first paint", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     const runtimeRequestPolicy = {
       schemaVersion: 1,
@@ -164,7 +163,6 @@ describe("RuntimeRequestsPage", () => {
         policyPreviewHref: "/api/sites/site-1/runtime-request-policy/preview",
       },
     });
-    mocks.listRuntimeRequestObservations.mockResolvedValue({ groups: [] });
 
     vi.resetModules();
     const { default: RuntimeRequestsPage } = await import("./page");
@@ -178,11 +176,6 @@ describe("RuntimeRequestsPage", () => {
       "site-1",
       "developer_tools",
     );
-    expect(mocks.listRuntimeRequestObservations).toHaveBeenCalledWith(authToken, "site-1", {
-      limit: 50,
-      lifecycle: "all",
-      sort: "last_seen_desc",
-    });
     expect(findElement(tree, mocks.SiteHeader)).toMatchObject({
       site: expect.objectContaining({ id: "site-1" }),
     });
@@ -193,6 +186,7 @@ describe("RuntimeRequestsPage", () => {
       runtimeRequestPolicyVersion: "site-config:v1",
       propagation: expect.objectContaining({ stale: false }),
       observations: [],
+      observationsLoaded: false,
     });
   });
 });

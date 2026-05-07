@@ -191,10 +191,10 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
             <input
               name="redirectTo"
               type="hidden"
-              value={`/dashboard/sites/${item.siteId}/admin`}
+              value={`/dashboard/sites/${item.siteId}/settings`}
             />
             <Button type="submit" variant="outline" className="w-full">
-              Open site admin
+              Open site settings
               <ArrowUpRight className="ml-2 h-4 w-4" />
             </Button>
           </form>

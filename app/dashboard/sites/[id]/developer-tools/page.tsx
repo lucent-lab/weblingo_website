@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { Code2, ExternalLink, ShieldCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
 
 import { MutationLockBanner } from "@/components/dashboard/mutation-lock-banner";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -16,6 +16,7 @@ import {
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
+import { fetchSwitcherSnippetsAction } from "../../../actions";
 import {
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
@@ -25,6 +26,7 @@ import {
   toneForStatus,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
+import { SwitcherSnippetsCard } from "./switcher-snippets-card";
 
 export const metadata = {
   title: "Developer tools",
@@ -135,23 +137,16 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <CardTitle className="text-lg">Snippets</CardTitle>
-              <CardDescription>Load snippet details only when you need them.</CardDescription>
-            </div>
+        <div className="space-y-3">
+          <div className="flex justify-end">
             <StatusValueBadge status={projection.snippets.available ? "ready" : "disabled"} />
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline">
-              <Link href={`/dashboard/sites/${projection.site.id}/admin#language-switcher`}>
-                <Code2 className="h-4 w-4" />
-                Open snippets
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+          <SwitcherSnippetsCard
+            siteId={projection.site.id}
+            available={projection.snippets.available}
+            action={fetchSwitcherSnippetsAction}
+          />
+        </div>
 
         <Card>
           <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">

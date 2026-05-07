@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { triggerPageCrawlAction } from "../../../actions";
+import { triggerCrawlAction, triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -15,7 +15,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
-  fetchSiteCompactStatus,
   fetchSitePages,
   WebhooksApiError,
   type SiteCompactStatusResponse,
@@ -93,21 +92,20 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let pageHasMore = false;
   let compactStatus: SiteCompactStatusResponse | null = null;
   let pagesSummary: SitePagesSummary | null = null;
+  let pageSite: { id: string; sourceUrl: string; status: "active" | "inactive" } | null = null;
   let error: unknown = null;
 
   try {
-    const [pagesPayload, statusPayload] = await Promise.all([
-      fetchSitePages(authToken, id, {
-        limit: PAGES_PAGE_SIZE,
-        offset,
-      }),
-      fetchSiteCompactStatus(authToken, id),
-    ]);
+    const pagesPayload = await fetchSitePages(authToken, id, {
+      limit: PAGES_PAGE_SIZE,
+      offset,
+    });
     pages = pagesPayload.pages;
     pageTotal = pagesPayload.pagination.total;
     pageHasMore = pagesPayload.pagination.hasMore;
-    compactStatus = statusPayload;
-    pagesSummary = buildPagesSummary(statusPayload);
+    compactStatus = pagesPayload.status;
+    pagesSummary = pagesPayload.pagesSummary;
+    pageSite = pagesPayload.site;
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
@@ -153,6 +151,17 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   }
 
   const dailyUsage = auth.account?.dailyCrawlUsage;
+  const maxDailySiteCrawls = auth.account?.featureFlags.maxDailyRecrawls ?? null;
+  const siteCrawlsUsed = dailyUsage?.siteCrawls ?? 0;
+  const siteCrawlsRemaining =
+    maxDailySiteCrawls === null ? null : Math.max(maxDailySiteCrawls - siteCrawlsUsed, 0);
+  const siteCrawlRemainingLabel =
+    maxDailySiteCrawls === null
+      ? t("dashboard.pages.summary.remainingUnlimited", "Unlimited")
+      : t("dashboard.pages.summary.remainingToday", "{remaining} remaining today", {
+          remaining: String(siteCrawlsRemaining ?? 0),
+        });
+  const siteCrawlLimitReached = maxDailySiteCrawls !== null && siteCrawlsUsed >= maxDailySiteCrawls;
   const maxDailyPageCrawls = auth.account?.featureFlags.maxDailyPageRecrawls ?? null;
   const pageCrawlsUsed = dailyUsage?.pageCrawls ?? 0;
   const pageCrawlsRemaining =
@@ -173,8 +182,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     currentPage - 1 <= 1 ? basePagesPath : `${basePagesPath}?page=${currentPage - 1}`;
   const nextPageHref = `${basePagesPath}?page=${currentPage + 1}`;
   const headerSite = {
-    id,
-    sourceUrl: `Site ${id}`,
+    id: pageSite?.id ?? id,
+    sourceUrl: pageSite?.sourceUrl ?? `Site ${id}`,
     status: compactStatus.siteStatus,
   };
 
@@ -232,6 +241,64 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
             }}
             locale={locale}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Force full website crawl</CardTitle>
+          <CardDescription>
+            Run a full crawl to capture source changes and refresh translations immediately.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              <p>
+                Remaining today:{" "}
+                <span className="font-semibold text-foreground">{siteCrawlRemainingLabel}</span>
+              </p>
+            </div>
+            {canCrawl ? (
+              <ActionForm
+                action={triggerCrawlAction}
+                loading="Starting crawl..."
+                success="Crawl enqueued."
+                error="Unable to enqueue crawl."
+                refreshOnSuccess={false}
+              >
+                <>
+                  <input name="siteId" type="hidden" value={id} />
+                  <input name="force" type="hidden" value="true" />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={!crawlReady || siteCrawlLimitReached}
+                    title={
+                      !crawlReady
+                        ? "Enable localization to crawl."
+                        : siteCrawlLimitReached
+                          ? "Daily site crawl limit reached."
+                          : "Enqueue a full-site crawl."
+                    }
+                  >
+                    Force full website crawl
+                  </Button>
+                </>
+              </ActionForm>
+            ) : (
+              <Button variant="outline" disabled>
+                Force full website crawl
+              </Button>
+            )}
+          </div>
+          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {siteCrawlLimitReached
+              ? "Daily crawl limit reached. Try again tomorrow or upgrade your plan."
+              : !crawlReady
+                ? "Enable localization before forcing a crawl."
+                : "Use this after publishing changes on your source site to refresh translations."}
+          </div>
         </CardContent>
       </Card>
 
@@ -367,16 +434,4 @@ function formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: s
     return eligibleNowLabel;
   }
   return formatTimestamp(value);
-}
-
-function buildPagesSummary(status: SiteCompactStatusResponse): SitePagesSummary {
-  const latestCrawlRun = status.latestCrawlRun ?? null;
-  return {
-    lastCrawlStartedAt: latestCrawlRun?.startedAt ?? null,
-    lastCrawlFinishedAt: latestCrawlRun?.finishedAt ?? null,
-    pagesUpdated: latestCrawlRun?.pagesUpdated ?? 0,
-    pagesPending: latestCrawlRun?.pagesPending ?? 0,
-    nextEligibleCrawlAt: null,
-    eligiblePageCount: null,
-  };
 }

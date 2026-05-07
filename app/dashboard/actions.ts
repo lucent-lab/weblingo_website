@@ -14,6 +14,7 @@ import {
   updateSiteShowcase,
   fetchSwitcherSnippets,
   getSiteShowcase,
+  listRuntimeRequestObservations,
   listTranslationSummaries,
   provisionDomain,
   refreshDomain,
@@ -845,7 +846,7 @@ export async function createSiteShowcaseAction(
     const result = await createSiteShowcase(auth, siteId, { websitePath, defaultLang });
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
     revalidatePath("/dashboard/ops/showcases");
     return succeeded("Showcase created.", {
       showcaseUrl: result.showcase.url,
@@ -894,7 +895,7 @@ export async function updateSiteShowcaseAction(
     });
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
     revalidatePath("/dashboard/ops/showcases");
     return succeeded("Showcase updated.", {
       showcaseUrl: result.showcase.url,
@@ -942,7 +943,7 @@ export async function updateSiteSettingsAction(
     });
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
 
     return succeeded("Site settings saved.");
   } catch (error) {
@@ -1101,6 +1102,41 @@ export async function updateRuntimeRequestPolicyAction(
   }
 }
 
+export async function listRuntimeRequestObservationsAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.webhooksAuth) {
+      return failed("Unable to authenticate dashboard request.");
+    }
+    if (!auth.has({ feature: "edit" })) {
+      return failed("Runtime request review is not enabled for this account.");
+    }
+
+    const response = await listRuntimeRequestObservations(auth.webhooksAuth, siteId, {
+      limit: 50,
+      lifecycle: "all",
+      sort: "last_seen_desc",
+    });
+    return succeeded("Runtime request observations loaded.", { groups: response.groups });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] listRuntimeRequestObservationsAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to load runtime request observations."),
+    );
+  }
+}
+
 export async function updateRuntimeRequestObservationLifecycleAction(
   _prevState: ActionResponse | undefined,
   formData: FormData,
@@ -1194,7 +1230,7 @@ export async function triggerManagedDemoForceCrawlAction(
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/history`);
     if (result.crawlStatus.enqueued) {
       return succeeded(
         result.targetLangs.length > 0
@@ -1280,8 +1316,8 @@ export async function translateAndServeAction(
     siteId,
     invalidateSitesList: shouldActivate,
     revalidatePaths: shouldActivate
-      ? [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`, "/dashboard"]
-      : [`/dashboard/sites/${siteId}`],
+      ? [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/domains`, "/dashboard"]
+      : [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/domains`],
     logLabel: "translateAndServeAction",
     fallbackError: "Unable to start translation and serving right now.",
     formatError: toTranslateAndServeError,
@@ -1478,7 +1514,7 @@ export async function cancelTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "cancelTranslationRunAction",
     fallbackError: "Unable to cancel the translation run.",
     mutate: (auth) => cancelTranslationRun(auth, siteId, runId),
@@ -1522,7 +1558,7 @@ export async function resumeTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "resumeTranslationRunAction",
     fallbackError: "Unable to resume the translation run.",
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
@@ -1544,7 +1580,7 @@ export async function retryFailedTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "retryFailedTranslationRunAction",
     fallbackError: "Unable to retry failed pages right now.",
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
@@ -1602,7 +1638,6 @@ export async function verifyDomainAction(
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -1648,7 +1683,6 @@ export async function provisionDomainAction(
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -1694,7 +1728,6 @@ export async function refreshDomainAction(
       return result;
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
@@ -1984,7 +2017,7 @@ export async function setLocaleServingAction(
       await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
     return succeeded(enabled ? "Serving enabled." : "Serving disabled.");
   } catch (error) {

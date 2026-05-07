@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { RefreshCw, ServerCog, ShieldCheck } from "lucide-react";
+import { ExternalLink, Languages, RefreshCw, ServerCog, ShieldCheck } from "lucide-react";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { MutationLockBanner } from "@/components/dashboard/mutation-lock-banner";
@@ -19,7 +19,13 @@ import {
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
-import { provisionDomainAction, refreshDomainAction, verifyDomainAction } from "../../../actions";
+import {
+  provisionDomainAction,
+  refreshDomainAction,
+  setLocaleServingAction,
+  translateAndServeAction,
+  verifyDomainAction,
+} from "../../../actions";
 import {
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
@@ -40,6 +46,7 @@ type DomainsPageProps = {
 
 type DomainsProjection = Extract<SiteDashboardProjectionResponse, { meta: { view: "domains" } }>;
 type CustomerDomain = DomainsProjection["domains"][number];
+type CustomerLanguage = DomainsProjection["languages"][number];
 
 export default async function DomainsPage({ params }: DomainsPageProps) {
   const { id } = await params;
@@ -78,6 +85,11 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
 
   const headerLabels = buildSiteHeaderLabels(t);
   const mutationsLocked = !auth.mutationsAllowed || !projection.access.mutationsAllowed;
+  const canTranslateAndServe =
+    canEdit &&
+    !mutationsLocked &&
+    Boolean(projection.access.features.crawl_trigger && projection.access.features.serve);
+  const canToggleServing = canEdit && projection.access.canToggleServing && !mutationsLocked;
 
   return (
     <div className="space-y-8">
@@ -147,6 +159,15 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
           </Card>
         )}
       </div>
+
+      <ServingLanguagesCard
+        canToggleServing={canToggleServing}
+        canTranslateAndServe={canTranslateAndServe}
+        languages={projection.languages}
+        siteId={projection.site.id}
+        siteStatus={projection.site.status}
+        t={t}
+      />
     </div>
   );
 }
@@ -260,6 +281,173 @@ function DomainActionForm({
         {label}
       </Button>
     </ActionForm>
+  );
+}
+
+function ServingLanguagesCard({
+  canToggleServing,
+  canTranslateAndServe,
+  languages,
+  siteId,
+  siteStatus,
+  t,
+}: {
+  canToggleServing: boolean;
+  canTranslateAndServe: boolean;
+  languages: CustomerLanguage[];
+  siteId: string;
+  siteStatus: string;
+  t: Translator;
+}) {
+  if (!languages.length) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Serving languages</CardTitle>
+        <CardDescription>
+          Serve translated pages on verified domains after a successful publish.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-lg border border-border/60">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Language</th>
+                <th className="px-3 py-2 text-left">Domain</th>
+                <th className="px-3 py-2 text-left">Serving</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {languages.map((language, index) => (
+                <ServingLanguageRow
+                  key={`${language.tag}:${language.domain ?? "domain"}:${index}`}
+                  canToggleServing={canToggleServing}
+                  canTranslateAndServe={canTranslateAndServe}
+                  language={language}
+                  siteId={siteId}
+                  siteStatus={siteStatus}
+                  t={t}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ServingLanguageRow({
+  canToggleServing,
+  canTranslateAndServe,
+  language,
+  siteId,
+  siteStatus,
+  t,
+}: {
+  canToggleServing: boolean;
+  canTranslateAndServe: boolean;
+  language: CustomerLanguage;
+  siteId: string;
+  siteStatus: string;
+  t: Translator;
+}) {
+  const servingValue = language.servingStatus.value;
+  const servingLabel = formatCustomerCopy(t, language.servingStatus.titleKey, {
+    fallback: formatCustomerStatusValue(servingValue),
+  });
+  const toggleLabel = language.serveEnabled ? "Disable serving" : "Enable serving";
+  const toggleValue = language.serveEnabled ? "false" : "true";
+  const canStartTranslation = canTranslateAndServe && servingValue === "ready";
+
+  return (
+    <tr className="border-t border-border/50">
+      <td className="px-3 py-3 align-top">
+        <div className="flex items-center gap-2 font-semibold text-foreground">
+          <Languages className="h-4 w-4 text-muted-foreground" />
+          {language.tag.toUpperCase()}
+        </div>
+        {language.alias ? (
+          <p className="mt-1 text-xs text-muted-foreground">Alias: {language.alias}</p>
+        ) : null}
+      </td>
+      <td className="px-3 py-3 align-top">
+        <div className="space-y-1">
+          <p className="text-foreground">{language.domain ?? "-"}</p>
+          {language.domainStatus ? <StatusValueBadge status={language.domainStatus} /> : null}
+        </div>
+      </td>
+      <td className="px-3 py-3 align-top">
+        <StatusBadge tone={toneForStatus(servingValue)}>{servingLabel}</StatusBadge>
+      </td>
+      <td className="px-3 py-3 text-right align-top">
+        <div className="flex flex-col items-end gap-2">
+          {servingValue === "live" && language.domain ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`https://${language.domain}`} rel="noreferrer" target="_blank">
+                <ExternalLink className="h-4 w-4" />
+                View live
+              </Link>
+            </Button>
+          ) : servingValue === "ready" ? (
+            <ActionForm
+              action={translateAndServeAction}
+              loading="Starting translation..."
+              success="Translation started."
+              error="Unable to start translation."
+              refreshOnSuccess={false}
+            >
+              <>
+                <input name="siteId" type="hidden" value={siteId} />
+                <input name="siteStatus" type="hidden" value={siteStatus} />
+                <input name="targetLang" type="hidden" value={language.tag} />
+                <Button
+                  disabled={!canStartTranslation}
+                  size="sm"
+                  title={canStartTranslation ? "Start translation and serving." : "Unavailable."}
+                  type="submit"
+                  variant="outline"
+                >
+                  Translate & serve
+                </Button>
+              </>
+            </ActionForm>
+          ) : servingValue === "needs_domain" ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/dashboard/sites/${siteId}/domains`}>Verify a domain</Link>
+            </Button>
+          ) : null}
+          {servingValue !== "inactive" ? (
+            <ActionForm
+              action={setLocaleServingAction}
+              loading="Updating serving..."
+              success="Serving updated."
+              error="Unable to update serving."
+            >
+              <>
+                <input name="siteId" type="hidden" value={siteId} />
+                <input name="targetLang" type="hidden" value={language.tag} />
+                <input name="enabled" type="hidden" value={toggleValue} />
+                <Button
+                  disabled={!canToggleServing}
+                  size="sm"
+                  title={toggleLabel}
+                  type="submit"
+                  variant="outline"
+                >
+                  {toggleLabel}
+                </Button>
+              </>
+            </ActionForm>
+          ) : null}
+        </div>
+      </td>
+    </tr>
   );
 }
 
