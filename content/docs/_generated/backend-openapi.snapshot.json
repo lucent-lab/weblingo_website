@@ -2275,6 +2275,952 @@
         ],
         "type": "object"
       },
+      "CustomerActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customerStatus": {
+            "enum": [
+              "queued",
+              "in_progress",
+              "completed",
+              "failed",
+              "cancelled",
+              "blocked",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "progress": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "failed": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "rawStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourcePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titleKey": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "customerStatus",
+          "titleKey"
+        ],
+        "type": "object"
+      },
+      "CustomerBlocker": {
+        "additionalProperties": false,
+        "properties": {
+          "affectedDomains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "affectedLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "area": {
+            "enum": [
+              "account",
+              "site",
+              "domain",
+              "serving",
+              "crawl",
+              "translation",
+              "deployment",
+              "publish",
+              "quota",
+              "runtime",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/CustomerSeverity"
+          },
+          "titleKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "area",
+          "severity",
+          "titleKey"
+        ],
+        "type": "object"
+      },
+      "CustomerCrawlStatusValue": {
+        "enum": [
+          "not_started",
+          "queued",
+          "in_progress",
+          "completed",
+          "failed",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "CustomerCtaRef": {
+        "additionalProperties": false,
+        "properties": {
+          "actionId": {
+            "type": "string"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "disabledReasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "href": {
+            "type": "string"
+          },
+          "labelKey": {
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "link",
+              "server_action"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "requiresConfirmation": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "labelKey"
+        ],
+        "type": "object"
+      },
+      "CustomerDeploymentHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "createdAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "customerError": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "customerStatus": {
+                  "enum": [
+                    "publishing",
+                    "published",
+                    "failed",
+                    "replaced",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                "descriptionKey": {
+                  "type": "string"
+                },
+                "eventId": {
+                  "type": "string"
+                },
+                "pageCount": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "params": {
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "type": "object"
+                },
+                "publishedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rawStatus": {
+                  "type": "string"
+                },
+                "titleKey": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rawStatus",
+                "customerStatus",
+                "titleKey"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/OffsetPagination"
+          },
+          "targetLang": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetLang",
+          "entries",
+          "pagination",
+          "generatedAt"
+        ],
+        "type": "object"
+      },
+      "CustomerDomainStatusValue": {
+        "enum": [
+          "not_configured",
+          "needs_dns",
+          "pending",
+          "verifying",
+          "verified",
+          "failed",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "CustomerDomainSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domain": {
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rawStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requiredDns": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "name",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "servingStatus": {
+            "$ref": "#/components/schemas/CustomerServingStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CustomerDomainStatusValue"
+          },
+          "targetLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "domain",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CustomerErrorArea": {
+        "enum": [
+          "account",
+          "domain",
+          "crawl",
+          "translation",
+          "deployment",
+          "publish",
+          "serving",
+          "runtime",
+          "quota",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "CustomerErrorSeverity": {
+        "enum": [
+          "info",
+          "warning",
+          "danger"
+        ],
+        "type": "string"
+      },
+      "CustomerErrorSummaryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "affectedDomains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "affectedLangs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "affectedPaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "area": {
+            "$ref": "#/components/schemas/CustomerErrorArea"
+          },
+          "code": {
+            "type": "string"
+          },
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "firstSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "params": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/CustomerErrorSeverity"
+          },
+          "titleKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "area",
+          "severity",
+          "code",
+          "titleKey"
+        ],
+        "type": "object"
+      },
+      "CustomerErrorSummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+            },
+            "type": "array"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/OffsetPagination"
+          }
+        },
+        "required": [
+          "errors",
+          "pagination",
+          "generatedAt"
+        ],
+        "type": "object"
+      },
+      "CustomerLanguageStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canServe": {
+            "type": "boolean"
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "domainStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerDomainStatusValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "labelKey": {
+            "type": "string"
+          },
+          "lastPublishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastTranslatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lockedReasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "routePrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "serveEnabled": {
+            "type": "boolean"
+          },
+          "servingStatus": {
+            "$ref": "#/components/schemas/CustomerServingStatus"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "enabled",
+          "serveEnabled",
+          "servingStatus"
+        ],
+        "type": "object"
+      },
+      "CustomerNextAction": {
+        "additionalProperties": false,
+        "properties": {
+          "blockedBy": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CustomerNextActionKind"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "type": "object"
+          },
+          "priority": {
+            "type": "number"
+          },
+          "severity": {
+            "enum": [
+              "none",
+              "info",
+              "warning",
+              "danger"
+            ],
+            "type": "string"
+          },
+          "titleKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "priority",
+          "severity",
+          "titleKey"
+        ],
+        "type": "object"
+      },
+      "CustomerNextActionKind": {
+        "enum": [
+          "none",
+          "fix_billing",
+          "create_site",
+          "activate_site",
+          "add_language",
+          "configure_domain",
+          "verify_domain",
+          "refresh_domain_status",
+          "start_crawl",
+          "wait_for_crawl",
+          "retry_crawl",
+          "review_source_selection",
+          "translate_and_publish",
+          "wait_for_translation",
+          "retry_translation",
+          "enable_serving",
+          "review_serving_issue",
+          "review_quota",
+          "view_live_site",
+          "contact_support"
+        ],
+        "type": "string"
+      },
+      "CustomerPagesSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "customerCrawlStatus": {
+            "$ref": "#/components/schemas/CustomerCrawlStatusValue"
+          },
+          "eligiblePageCount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "excludedPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "failedPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "includedPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "inventoryMayBeIncomplete": {
+            "type": "boolean"
+          },
+          "lastCrawlFinishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastCrawlStartedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextEligibleCrawlAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pagesPending": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "pagesUpdated": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "pendingPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rawLatestCrawlStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalKnownPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "translatedPages": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CustomerQuotaSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "labelKey": {
+            "type": "string"
+          },
+          "limit": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "remaining": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "resetsAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "near_limit",
+              "reached",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "used": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "labelKey",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CustomerServingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "cta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerCtaRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "lastChangedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rawStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titleKey": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/CustomerServingStatusValue"
+          }
+        },
+        "required": [
+          "value",
+          "titleKey"
+        ],
+        "type": "object"
+      },
+      "CustomerServingStatusValue": {
+        "enum": [
+          "not_configured",
+          "needs_domain",
+          "ready",
+          "live",
+          "degraded",
+          "disabled",
+          "inactive",
+          "blocked",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "CustomerSeverity": {
+        "enum": [
+          "success",
+          "info",
+          "warning",
+          "danger"
+        ],
+        "type": "string"
+      },
+      "CustomerSiteRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "servingMode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceLang": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sourceUrl",
+          "sourceLang",
+          "status"
+        ],
+        "type": "object"
+      },
       "DailyCrawlUsage": {
         "additionalProperties": false,
         "properties": {
@@ -2354,6 +3300,18 @@
           "agencyCustomers"
         ],
         "type": "object"
+      },
+      "DashboardProjectionView": {
+        "enum": [
+          "overview",
+          "languages",
+          "domains",
+          "settings",
+          "developer_tools",
+          "source_selection",
+          "quality"
+        ],
+        "type": "string"
       },
       "Deployment": {
         "additionalProperties": false,
@@ -2611,6 +3569,16 @@
           "status"
         ],
         "type": "object"
+      },
+      "DeploymentHistoryRouteResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ListDeploymentHistoryResponse"
+          },
+          {
+            "$ref": "#/components/schemas/CustomerDeploymentHistoryResponse"
+          }
+        ]
       },
       "DeploymentServingStatus": {
         "enum": [
@@ -4277,6 +5245,31 @@
           "translation.summary"
         ],
         "type": "string"
+      },
+      "OffsetPagination": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "nextOffset": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "limit",
+          "offset"
+        ],
+        "type": "object"
       },
       "PipelineStage": {
         "enum": [
@@ -6202,6 +7195,304 @@
         ],
         "type": "object"
       },
+      "SiteCompactStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "activeTranslationRuns": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "customerStatus": {
+                  "enum": [
+                    "queued",
+                    "in_progress",
+                    "completed",
+                    "failed",
+                    "cancelled",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "progress": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "completed": {
+                      "type": "number"
+                    },
+                    "failed": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "rawStatus": {
+                  "type": "string"
+                },
+                "targetLang": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "targetLang",
+                "rawStatus",
+                "customerStatus"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "currentActivity": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerActivity"
+            },
+            "type": "array"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "latestCrawlRun": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "customerError": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "customerStatus": {
+                    "$ref": "#/components/schemas/CustomerCrawlStatusValue"
+                  },
+                  "finishedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "pagesPending": {
+                    "type": "number"
+                  },
+                  "pagesUpdated": {
+                    "type": "number"
+                  },
+                  "rawStatus": {
+                    "type": "string"
+                  },
+                  "startedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "updatedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "rawStatus",
+                  "customerStatus"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "siteStatus": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "siteStatus",
+          "generatedAt"
+        ],
+        "type": "object"
+      },
+      "SiteCustomerOverviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "additionalProperties": false,
+            "properties": {
+              "accountId": {
+                "type": "string"
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              },
+              "planStatus": {
+                "type": "string"
+              },
+              "planType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "accountId",
+              "planType",
+              "planStatus",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerBlocker"
+            },
+            "type": "array"
+          },
+          "currentActivity": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerActivity"
+            },
+            "type": "array"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerDomainSummary"
+            },
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+            },
+            "type": "array"
+          },
+          "health": {
+            "additionalProperties": false,
+            "properties": {
+              "descriptionKey": {
+                "type": "string"
+              },
+              "lastImportantChangeAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "params": {
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "type": "object"
+              },
+              "status": {
+                "enum": [
+                  "healthy",
+                  "needs_setup",
+                  "in_progress",
+                  "degraded",
+                  "blocked",
+                  "inactive",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "titleKey": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "titleKey"
+            ],
+            "type": "object"
+          },
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerLanguageStatus"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "nextAction": {
+            "$ref": "#/components/schemas/CustomerNextAction"
+          },
+          "pagesSummary": {
+            "$ref": "#/components/schemas/CustomerPagesSummary"
+          },
+          "quotas": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerQuotaSnapshot"
+            },
+            "type": "array"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "account",
+          "health",
+          "nextAction",
+          "blockers",
+          "languages",
+          "domains",
+          "pagesSummary",
+          "currentActivity",
+          "errors",
+          "quotas"
+        ],
+        "type": "object"
+      },
       "SiteDashboardResponse": {
         "additionalProperties": false,
         "properties": {
@@ -6254,6 +7545,228 @@
         "required": [
           "site",
           "deployments"
+        ],
+        "type": "object"
+      },
+      "SiteDashboardRouteResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/SiteDashboardResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteCustomerOverviewResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteLanguagesProjectionResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteDomainsProjectionResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteSettingsProjectionResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteDeveloperToolsProjectionResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteSourceSelectionProjectionResponse"
+          },
+          {
+            "$ref": "#/components/schemas/SiteQualityProjectionResponse"
+          }
+        ]
+      },
+      "SiteDeveloperToolsProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canEditRuntime": {
+                "type": "boolean"
+              },
+              "canEditWebhooks": {
+                "type": "boolean"
+              },
+              "canViewRuntimeRequests": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canEditRuntime",
+              "canEditWebhooks",
+              "canViewRuntimeRequests",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "runtime": {
+            "additionalProperties": false,
+            "properties": {
+              "clientRuntimeEnabled": {
+                "type": "boolean"
+              },
+              "spaRefreshEnabled": {
+                "type": "boolean"
+              },
+              "switcherEnabled": {
+                "type": "boolean"
+              },
+              "translatableAttributes": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "runtimeRequests": {
+            "additionalProperties": false,
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "observationsHref": {
+                "type": "string"
+              },
+              "pageHref": {
+                "type": "string"
+              },
+              "policyPreviewHref": {
+                "type": "string"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "dismissedCount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "ignoredCount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lastSeenAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "openCount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "reviewedCount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "available"
+            ],
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          },
+          "snippets": {
+            "additionalProperties": false,
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "fetchHref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "available"
+            ],
+            "type": "object"
+          },
+          "webhooks": {
+            "additionalProperties": false,
+            "properties": {
+              "events": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "hasSecret": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "events",
+              "hasSecret"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access",
+          "runtime",
+          "webhooks",
+          "snippets",
+          "runtimeRequests"
         ],
         "type": "object"
       },
@@ -6369,6 +7882,134 @@
         ],
         "type": "object"
       },
+      "SiteDomainsProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canProvisionDomain": {
+                "type": "boolean"
+              },
+              "canRefreshDomain": {
+                "type": "boolean"
+              },
+              "canToggleServing": {
+                "type": "boolean"
+              },
+              "canUpdateRouting": {
+                "type": "boolean"
+              },
+              "canVerifyDomain": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canProvisionDomain",
+              "canRefreshDomain",
+              "canToggleServing",
+              "canUpdateRouting",
+              "canVerifyDomain",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerDomainSummary"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "routing": {
+            "additionalProperties": false,
+            "properties": {
+              "routePrefixes": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "prefix": {
+                      "type": "string"
+                    },
+                    "targetLang": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "targetLang",
+                    "prefix"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "servingMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "urlMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "routePrefixes"
+            ],
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access",
+          "routing",
+          "domains"
+        ],
+        "type": "object"
+      },
       "SiteHealthSummary": {
         "additionalProperties": false,
         "properties": {
@@ -6403,6 +8044,210 @@
           "readyPaths",
           "heartbeatKey",
           "runbookPath"
+        ],
+        "type": "object"
+      },
+      "SiteLanguagesProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canAddLanguage": {
+                "type": "boolean"
+              },
+              "canRemoveLanguage": {
+                "type": "boolean"
+              },
+              "canToggleServing": {
+                "type": "boolean"
+              },
+              "canUpdateLanguageAliases": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canAddLanguage",
+              "canRemoveLanguage",
+              "canToggleServing",
+              "canUpdateLanguageAliases",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "localeQuota": {
+            "additionalProperties": false,
+            "properties": {
+              "limit": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "remaining": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "used": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "used"
+            ],
+            "type": "object"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          },
+          "sourceLanguage": {
+            "additionalProperties": false,
+            "properties": {
+              "direction": {
+                "type": "string"
+              },
+              "labelKey": {
+                "type": "string"
+              },
+              "tag": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tag"
+            ],
+            "type": "object"
+          },
+          "targetLanguages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "alias": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "canRemove": {
+                  "type": "boolean"
+                },
+                "canServe": {
+                  "type": "boolean"
+                },
+                "domain": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "domainStatus": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CustomerDomainStatusValue"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "labelKey": {
+                  "type": "string"
+                },
+                "lastPublishedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastTranslatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lockedReasonCode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "routePrefix": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "serveEnabled": {
+                  "type": "boolean"
+                },
+                "servingStatus": {
+                  "$ref": "#/components/schemas/CustomerServingStatus"
+                },
+                "tag": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "canRemove",
+                "enabled",
+                "serveEnabled",
+                "servingStatus",
+                "tag"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access",
+          "sourceLanguage",
+          "targetLanguages",
+          "localeQuota"
         ],
         "type": "object"
       },
@@ -6469,6 +8314,12 @@
       "SitePagesSummary": {
         "additionalProperties": false,
         "properties": {
+          "eligiblePageCount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "lastCrawlFinishedAt": {
             "type": [
               "string",
@@ -6476,6 +8327,12 @@
             ]
           },
           "lastCrawlStartedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextEligibleCrawlAt": {
             "type": [
               "string",
               "null"
@@ -6540,6 +8397,127 @@
         ],
         "type": "object"
       },
+      "SiteQualityProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canEditSlugs": {
+                "type": "boolean"
+              },
+              "canUseConsistencyGovernance": {
+                "type": "boolean"
+              },
+              "canUseGlossary": {
+                "type": "boolean"
+              },
+              "canUseOverrides": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canEditSlugs",
+              "canUseConsistencyGovernance",
+              "canUseGlossary",
+              "canUseOverrides",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "glossarySummary": {
+            "additionalProperties": false,
+            "properties": {
+              "entriesCount": {
+                "type": "number"
+              },
+              "remainingSources": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "sourceLimit": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "entriesCount"
+            ],
+            "type": "object"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "overrideSummary": {
+            "additionalProperties": false,
+            "properties": {
+              "entriesCount": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          },
+          "slugSummary": {
+            "additionalProperties": false,
+            "properties": {
+              "conflicts": {
+                "type": "number"
+              },
+              "localizedSlugCount": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access"
+        ],
+        "type": "object"
+      },
       "SiteRetrySummary": {
         "additionalProperties": false,
         "properties": {
@@ -6565,6 +8543,316 @@
           "pagesPending",
           "pagesInProgress",
           "pagesFailed"
+        ],
+        "type": "object"
+      },
+      "SiteSettingsProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canChangeSourceUrl": {
+                "type": "boolean"
+              },
+              "canDeactivateSite": {
+                "type": "boolean"
+              },
+              "canDeleteSite": {
+                "type": "boolean"
+              },
+              "canEditBasic": {
+                "type": "boolean"
+              },
+              "canEditLocales": {
+                "type": "boolean"
+              },
+              "canEditRouting": {
+                "type": "boolean"
+              },
+              "canEditRuntime": {
+                "type": "boolean"
+              },
+              "canEditWebhooks": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canChangeSourceUrl",
+              "canDeactivateSite",
+              "canDeleteSite",
+              "canEditBasic",
+              "canEditLocales",
+              "canEditRouting",
+              "canEditRuntime",
+              "canEditWebhooks",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "basic": {
+            "additionalProperties": false,
+            "properties": {
+              "profile": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "servingMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sourceUrl"
+            ],
+            "type": "object"
+          },
+          "crawl": {
+            "additionalProperties": false,
+            "properties": {
+              "captureMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "crawlMaxPages": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "maxDepth": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "notifications": {
+            "additionalProperties": false,
+            "properties": {
+              "digestFrequency": {
+                "type": "string"
+              },
+              "translationSummaryFrequencyByLocale": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "routing": {
+            "additionalProperties": false,
+            "properties": {
+              "localizedPathTemplates": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "pattern": {
+                      "type": "string"
+                    },
+                    "targetLang": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "targetLang",
+                    "pattern"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "routePrefixes": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "prefix": {
+                      "type": "string"
+                    },
+                    "targetLang": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "targetLang",
+                    "prefix"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "urlMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "routePrefixes"
+            ],
+            "type": "object"
+          },
+          "runtime": {
+            "additionalProperties": false,
+            "properties": {
+              "clientRuntimeEnabled": {
+                "type": "boolean"
+              },
+              "cspMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "footerRequired": {
+                "type": "boolean"
+              },
+              "spaRefreshEnabled": {
+                "type": "boolean"
+              },
+              "translatableAttributes": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "site": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "profile": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "servingMode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceLang": {
+                "type": "string"
+              },
+              "sourceUrl": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "sourceLang",
+              "sourceUrl",
+              "status"
+            ],
+            "type": "object"
+          },
+          "webhooks": {
+            "additionalProperties": false,
+            "properties": {
+              "events": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "hasSecret": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "events",
+              "hasSecret"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access",
+          "basic",
+          "routing",
+          "crawl",
+          "runtime",
+          "webhooks"
         ],
         "type": "object"
       },
@@ -6631,6 +8919,216 @@
           "customerServingStatus",
           "showcaseServingStatus",
           "showcase"
+        ],
+        "type": "object"
+      },
+      "SiteSourceSelectionProjectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "additionalProperties": false,
+            "properties": {
+              "canEditSourceSelection": {
+                "type": "boolean"
+              },
+              "canPreviewSourceSelection": {
+                "type": "boolean"
+              },
+              "features": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              "lockedReasonCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mutationsAllowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canEditSourceSelection",
+              "canPreviewSourceSelection",
+              "features",
+              "mutationsAllowed"
+            ],
+            "type": "object"
+          },
+          "inventorySummary": {
+            "additionalProperties": false,
+            "properties": {
+              "excludedPageCount": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "includedPageCount": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "inventoryMayBeIncomplete": {
+                "type": "boolean"
+              },
+              "knownPageCount": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "additionalProperties": false,
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": 1,
+                "type": "number"
+              },
+              "view": {
+                "$ref": "#/components/schemas/DashboardProjectionView"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "schemaVersion",
+              "view"
+            ],
+            "type": "object"
+          },
+          "policy": {
+            "additionalProperties": false,
+            "properties": {
+              "fingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ruleLimit": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "rules": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "pattern": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "pattern"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "messageKey": {
+                      "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ]
+                      },
+                      "type": "object"
+                    },
+                    "severity": {
+                      "enum": [
+                        "info",
+                        "warning",
+                        "danger"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "severity",
+                    "messageKey"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "rules"
+            ],
+            "type": "object"
+          },
+          "preconditions": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedRouteConfigUpdatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expectedSourceSelectionFingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "site": {
+            "$ref": "#/components/schemas/CustomerSiteRef"
+          }
+        },
+        "required": [
+          "meta",
+          "site",
+          "access",
+          "policy",
+          "inventorySummary",
+          "preconditions"
         ],
         "type": "object"
       },
@@ -12477,7 +14975,7 @@
     },
     "/sites/{siteId}/dashboard": {
       "get": {
-        "description": "Returns a consolidated dashboard payload (site + deployments) with pages summary, optional operational summary for retry/DLQ/health links, and optional paginated pages when `includePages=true`.",
+        "description": "Returns the legacy consolidated dashboard payload when `view` is omitted. When `view` is supplied, returns the matching customer-safe dashboard projection and rejects legacy broad-dashboard query knobs.",
         "operationId": "sites.dashboard.get",
         "parameters": [
           {
@@ -12485,6 +14983,24 @@
             "name": "siteId",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional customer dashboard projection view. Recognized values are `overview`, `languages`, `domains`, `settings`, `developer_tools`, `source_selection`, and `quality`. Omit `view` for the legacy dashboard response.",
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "enum": [
+                "overview",
+                "languages",
+                "domains",
+                "settings",
+                "developer_tools",
+                "source_selection",
+                "quality"
+              ],
               "type": "string"
             }
           },
@@ -12586,7 +15102,7 @@
                   }
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/SiteDashboardResponse"
+                  "$ref": "#/components/schemas/SiteDashboardRouteResponse"
                 }
               }
             },
@@ -12763,7 +15279,19 @@
             }
           },
           {
-            "description": "Optional locale filter for deployment history (for example `fr`).",
+            "description": "Use `view=customer` for the customer-safe single-locale offset-paginated projection. Omit `view` for the legacy grouped history response.",
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "enum": [
+                "customer"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Locale filter for deployment history (for example `fr`). Required when `view=customer`.",
             "in": "query",
             "name": "targetLang",
             "required": false,
@@ -12780,6 +15308,17 @@
               "default": 10,
               "maximum": 50,
               "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of customer history entries to skip when `view=customer`. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
               "type": "integer"
             }
           }
@@ -12803,7 +15342,7 @@
                   "perLocaleLimit": 1
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/ListDeploymentHistoryResponse"
+                  "$ref": "#/components/schemas/DeploymentHistoryRouteResponse"
                 }
               }
             },
@@ -12855,7 +15394,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "List deployment history grouped by locale",
+        "summary": "List deployment history",
         "tags": [
           "Sites",
           "Deployments"
@@ -13349,6 +15888,122 @@
         "tags": [
           "Sites",
           "Domains"
+        ]
+      }
+    },
+    "/sites/{siteId}/errors/summary": {
+      "get": {
+        "description": "Returns a customer-safe, offset-paginated error summary for dashboard drill-downs. Overview projections may embed a capped error array, but this standalone route always returns required pagination.",
+        "operationId": "sites.errors.summary.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of customer-safe errors to return (1-50). Defaults to 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of customer-safe errors to skip. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "errors": [
+                    {
+                      "area": "account",
+                      "code": "string",
+                      "id": "string",
+                      "severity": "info",
+                      "titleKey": "string"
+                    }
+                  ],
+                  "generatedAt": "string",
+                  "pagination": {
+                    "limit": 1,
+                    "offset": 1
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerErrorSummaryResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get customer-safe site error summary",
+        "tags": [
+          "Sites"
         ]
       }
     },
@@ -15688,6 +18343,88 @@
           }
         ],
         "summary": "Preview source-selection tree nodes",
+        "tags": [
+          "Sites"
+        ]
+      }
+    },
+    "/sites/{siteId}/status": {
+      "get": {
+        "description": "Returns a compact customer-safe site status for dashboard polling. This endpoint is intended for active crawl or translation work and does not return full site details, page rows, deployment payloads, runtime observations, or dashboard internals.",
+        "operationId": "sites.status.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "generatedAt": "string",
+                  "siteId": "string",
+                  "siteStatus": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SiteCompactStatusResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get compact customer-safe site status",
         "tags": [
           "Sites"
         ]

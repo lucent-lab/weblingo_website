@@ -377,6 +377,8 @@ const sitePagesSummarySchema = z
     lastCrawlFinishedAt: z.string().nullable().optional(),
     pagesUpdated: z.number().int().nonnegative(),
     pagesPending: z.number().int().nonnegative(),
+    nextEligibleCrawlAt: z.string().nullable().optional(),
+    eligiblePageCount: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();
 
@@ -642,6 +644,679 @@ const listDeploymentHistoryResponseSchema = z
   })
   .strict();
 
+const dashboardProjectionViewSchema = z.enum([
+  "overview",
+  "languages",
+  "domains",
+  "settings",
+  "developer_tools",
+  "source_selection",
+  "quality",
+]);
+
+const customerScalarParamSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const customerParamsSchema = z.record(z.string(), customerScalarParamSchema);
+const customerSeveritySchema = z.enum(["success", "info", "warning", "danger"]);
+const customerErrorSeveritySchema = z.enum(["info", "warning", "danger"]);
+const customerErrorAreaSchema = z.enum([
+  "account",
+  "domain",
+  "crawl",
+  "translation",
+  "deployment",
+  "publish",
+  "serving",
+  "runtime",
+  "quota",
+  "unknown",
+]);
+const customerNextActionKindSchema = z.enum([
+  "none",
+  "fix_billing",
+  "create_site",
+  "activate_site",
+  "add_language",
+  "configure_domain",
+  "verify_domain",
+  "refresh_domain_status",
+  "start_crawl",
+  "wait_for_crawl",
+  "retry_crawl",
+  "review_source_selection",
+  "translate_and_publish",
+  "wait_for_translation",
+  "retry_translation",
+  "enable_serving",
+  "review_serving_issue",
+  "review_quota",
+  "view_live_site",
+  "contact_support",
+]);
+const customerServingStatusValueSchema = z.enum([
+  "not_configured",
+  "needs_domain",
+  "ready",
+  "live",
+  "degraded",
+  "disabled",
+  "inactive",
+  "blocked",
+  "unknown",
+]);
+const customerDomainStatusValueSchema = z.enum([
+  "not_configured",
+  "needs_dns",
+  "pending",
+  "verifying",
+  "verified",
+  "failed",
+  "unknown",
+]);
+const customerCrawlStatusValueSchema = z.enum([
+  "not_started",
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+  "unknown",
+]);
+const customerActivityStatusSchema = z.enum([
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+  "cancelled",
+  "blocked",
+  "unknown",
+]);
+const customerTranslationStatusSchema = z.enum([
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+  "cancelled",
+  "unknown",
+]);
+const customerDeploymentStatusSchema = z.enum([
+  "publishing",
+  "published",
+  "failed",
+  "replaced",
+  "unknown",
+]);
+const offsetPaginationSchema = z
+  .object({
+    limit: z.number().int().nonnegative(),
+    offset: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative().optional(),
+    nextOffset: z.number().int().nonnegative().nullable().optional(),
+  })
+  .strict();
+const customerCtaRefSchema = z
+  .object({
+    labelKey: z.string(),
+    href: z.string().optional(),
+    actionId: z.string().optional(),
+    method: z.enum(["link", "server_action"]).optional(),
+    requiresConfirmation: z.boolean().optional(),
+    disabled: z.boolean().optional(),
+    disabledReasonCode: z.string().nullable().optional(),
+    params: customerParamsSchema.optional(),
+  })
+  .strict();
+const customerSiteRefSchema = z
+  .object({
+    id: z.string(),
+    sourceUrl: z.string(),
+    sourceLang: z.string(),
+    status: z.string(),
+    profile: z.string().nullable().optional(),
+    servingMode: z.string().nullable().optional(),
+  })
+  .strict();
+const customerAccessSummarySchema = z
+  .object({
+    mutationsAllowed: z.boolean(),
+    lockedReasonCode: z.string().nullable().optional(),
+    features: z.record(z.string(), z.boolean()),
+  })
+  .strict();
+const customerNextActionSchema = z
+  .object({
+    kind: customerNextActionKindSchema,
+    priority: z.number(),
+    severity: z.enum(["none", "info", "warning", "danger"]),
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    params: customerParamsSchema.optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+    blockedBy: z.array(z.string()).optional(),
+  })
+  .strict();
+const customerBlockerSchema = z
+  .object({
+    code: z.string(),
+    area: z.enum([
+      "account",
+      "site",
+      "domain",
+      "serving",
+      "crawl",
+      "translation",
+      "deployment",
+      "publish",
+      "quota",
+      "runtime",
+      "unknown",
+    ]),
+    severity: customerSeveritySchema,
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    params: customerParamsSchema.optional(),
+    affectedLangs: z.array(z.string()).optional(),
+    affectedDomains: z.array(z.string()).optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerErrorSummaryItemSchema = z
+  .object({
+    id: z.string(),
+    area: customerErrorAreaSchema,
+    severity: customerErrorSeveritySchema,
+    code: z.string(),
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    params: customerParamsSchema.optional(),
+    firstSeenAt: z.string().nullable().optional(),
+    lastSeenAt: z.string().nullable().optional(),
+    affectedLangs: z.array(z.string()).optional(),
+    affectedPaths: z.array(z.string()).optional(),
+    affectedDomains: z.array(z.string()).optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerServingStatusSchema = z
+  .object({
+    value: customerServingStatusValueSchema,
+    rawStatus: z.string().nullable().optional(),
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    lastChangedAt: z.string().nullable().optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerDomainSummarySchema = z
+  .object({
+    domain: z.string(),
+    targetLang: z.string().nullable().optional(),
+    status: customerDomainStatusValueSchema,
+    rawStatus: z.string().nullable().optional(),
+    lastCheckedAt: z.string().nullable().optional(),
+    requiredDns: z
+      .array(
+        z
+          .object({
+            type: z.string(),
+            name: z.string(),
+            value: z.string(),
+          })
+          .strict(),
+      )
+      .optional(),
+    servingStatus: customerServingStatusSchema.optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerLanguageStatusSchema = z
+  .object({
+    tag: z.string(),
+    labelKey: z.string().optional(),
+    enabled: z.boolean(),
+    serveEnabled: z.boolean(),
+    servingStatus: customerServingStatusSchema,
+    domain: z.string().nullable().optional(),
+    domainStatus: customerDomainStatusValueSchema.nullable().optional(),
+    routePrefix: z.string().nullable().optional(),
+    alias: z.string().nullable().optional(),
+    lastPublishedAt: z.string().nullable().optional(),
+    lastTranslatedAt: z.string().nullable().optional(),
+    canServe: z.boolean().optional(),
+    lockedReasonCode: z.string().nullable().optional(),
+  })
+  .strict();
+const customerPagesSummarySchema = z
+  .object({
+    totalKnownPages: z.number().int().nonnegative().nullable().optional(),
+    includedPages: z.number().int().nonnegative().nullable().optional(),
+    excludedPages: z.number().int().nonnegative().nullable().optional(),
+    translatedPages: z.number().int().nonnegative().nullable().optional(),
+    pagesUpdated: z.number().int().nonnegative().nullable().optional(),
+    pendingPages: z.number().int().nonnegative().nullable().optional(),
+    pagesPending: z.number().int().nonnegative().nullable().optional(),
+    failedPages: z.number().int().nonnegative().nullable().optional(),
+    lastCrawlStartedAt: z.string().nullable().optional(),
+    lastCrawlFinishedAt: z.string().nullable().optional(),
+    nextEligibleCrawlAt: z.string().nullable().optional(),
+    eligiblePageCount: z.number().int().nonnegative().nullable().optional(),
+    inventoryMayBeIncomplete: z.boolean().optional(),
+    rawLatestCrawlStatus: z.string().nullable().optional(),
+    customerCrawlStatus: customerCrawlStatusValueSchema.optional(),
+  })
+  .strict();
+const customerActivitySchema = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    customerStatus: customerActivityStatusSchema,
+    rawStatus: z.string().nullable().optional(),
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    targetLang: z.string().nullable().optional(),
+    sourcePath: z.string().nullable().optional(),
+    startedAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+    finishedAt: z.string().nullable().optional(),
+    progress: z
+      .object({
+        completed: z.number().int().nonnegative().optional(),
+        total: z.number().int().nonnegative().optional(),
+        failed: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerQuotaSnapshotSchema = z
+  .object({
+    key: z.string(),
+    labelKey: z.string(),
+    used: z.number().int().nonnegative().nullable().optional(),
+    limit: z.number().int().nonnegative().nullable().optional(),
+    remaining: z.number().int().nonnegative().nullable().optional(),
+    resetsAt: z.string().nullable().optional(),
+    status: z.enum(["ok", "near_limit", "reached", "unknown"]),
+    cta: customerCtaRefSchema.nullable().optional(),
+  })
+  .strict();
+const customerErrorSummaryResponseSchema = z
+  .object({
+    errors: z.array(customerErrorSummaryItemSchema),
+    pagination: offsetPaginationSchema,
+    generatedAt: z.string(),
+  })
+  .strict();
+const dashboardProjectionMetaSchema = <TView extends z.infer<typeof dashboardProjectionViewSchema>>(
+  view: TView,
+) =>
+  z
+    .object({
+      view: z.literal(view),
+      generatedAt: z.string(),
+      schemaVersion: z.literal(1),
+    })
+    .strict();
+const siteCustomerOverviewResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("overview"),
+    site: customerSiteRefSchema,
+    account: z
+      .object({
+        accountId: z.string(),
+        planType: z.string(),
+        planStatus: z.string(),
+        mutationsAllowed: z.boolean(),
+      })
+      .strict(),
+    health: z
+      .object({
+        status: z.enum([
+          "healthy",
+          "needs_setup",
+          "in_progress",
+          "degraded",
+          "blocked",
+          "inactive",
+          "unknown",
+        ]),
+        titleKey: z.string(),
+        descriptionKey: z.string().optional(),
+        params: customerParamsSchema.optional(),
+        lastImportantChangeAt: z.string().nullable().optional(),
+      })
+      .strict(),
+    nextAction: customerNextActionSchema,
+    blockers: z.array(customerBlockerSchema),
+    languages: z.array(customerLanguageStatusSchema),
+    domains: z.array(customerDomainSummarySchema),
+    pagesSummary: customerPagesSummarySchema,
+    currentActivity: z.array(customerActivitySchema),
+    errors: z.array(customerErrorSummaryItemSchema),
+    quotas: z.array(customerQuotaSnapshotSchema),
+  })
+  .strict();
+const siteLanguagesProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("languages"),
+    site: customerSiteRefSchema,
+    access: customerAccessSummarySchema.extend({
+      canAddLanguage: z.boolean(),
+      canRemoveLanguage: z.boolean(),
+      canUpdateLanguageAliases: z.boolean(),
+      canToggleServing: z.boolean(),
+    }),
+    sourceLanguage: z
+      .object({
+        tag: z.string(),
+        labelKey: z.string().optional(),
+        direction: z.string().optional(),
+      })
+      .strict(),
+    targetLanguages: z.array(customerLanguageStatusSchema.extend({ canRemove: z.boolean() })),
+    localeQuota: z
+      .object({
+        used: z.number().int().nonnegative(),
+        limit: z.number().int().nonnegative().nullable().optional(),
+        remaining: z.number().int().nonnegative().nullable().optional(),
+      })
+      .strict(),
+  })
+  .strict();
+const siteDomainsProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("domains"),
+    site: customerSiteRefSchema,
+    access: customerAccessSummarySchema.extend({
+      canVerifyDomain: z.boolean(),
+      canRefreshDomain: z.boolean(),
+      canProvisionDomain: z.boolean(),
+      canUpdateRouting: z.boolean(),
+      canToggleServing: z.boolean(),
+    }),
+    routing: z
+      .object({
+        urlMode: z.string().nullable().optional(),
+        servingMode: z.string().nullable().optional(),
+        routePrefixes: z.array(z.object({ targetLang: z.string(), prefix: z.string() }).strict()),
+      })
+      .strict(),
+    domains: z.array(customerDomainSummarySchema),
+  })
+  .strict();
+const siteSettingsProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("settings"),
+    site: customerSiteRefSchema.extend({
+      createdAt: z.string().nullable().optional(),
+      updatedAt: z.string().nullable().optional(),
+    }),
+    access: customerAccessSummarySchema.extend({
+      canEditBasic: z.boolean(),
+      canChangeSourceUrl: z.boolean(),
+      canEditLocales: z.boolean(),
+      canEditRouting: z.boolean(),
+      canEditRuntime: z.boolean(),
+      canEditWebhooks: z.boolean(),
+      canDeactivateSite: z.boolean(),
+      canDeleteSite: z.boolean(),
+    }),
+    basic: z
+      .object({
+        sourceUrl: z.string(),
+        profile: z.string().nullable().optional(),
+        servingMode: z.string().nullable().optional(),
+      })
+      .strict(),
+    routing: z
+      .object({
+        urlMode: z.string().nullable().optional(),
+        routePrefixes: z.array(z.object({ targetLang: z.string(), prefix: z.string() }).strict()),
+        localizedPathTemplates: z
+          .array(z.object({ targetLang: z.string(), pattern: z.string() }).strict())
+          .optional(),
+      })
+      .strict(),
+    crawl: z
+      .object({
+        captureMode: z.string().nullable().optional(),
+        maxDepth: z.number().int().nonnegative().nullable().optional(),
+        crawlMaxPages: z.number().int().nonnegative().nullable().optional(),
+      })
+      .strict(),
+    runtime: z
+      .object({
+        clientRuntimeEnabled: z.boolean().optional(),
+        spaRefreshEnabled: z.boolean().optional(),
+        translatableAttributes: z.array(z.string()).optional(),
+        footerRequired: z.boolean().nullable().optional(),
+        cspMode: z.string().nullable().optional(),
+      })
+      .strict(),
+    webhooks: z
+      .object({
+        url: z.string().nullable().optional(),
+        events: z.array(z.string()),
+        hasSecret: z.boolean(),
+      })
+      .strict(),
+    notifications: z
+      .object({
+        digestFrequency: z.string().optional(),
+        translationSummaryFrequencyByLocale: z.record(z.string(), z.string()).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+const siteDeveloperToolsProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("developer_tools"),
+    site: customerSiteRefSchema,
+    access: customerAccessSummarySchema.extend({
+      canEditRuntime: z.boolean(),
+      canEditWebhooks: z.boolean(),
+      canViewRuntimeRequests: z.boolean(),
+    }),
+    runtime: z
+      .object({
+        clientRuntimeEnabled: z.boolean().optional(),
+        switcherEnabled: z.boolean().optional(),
+        spaRefreshEnabled: z.boolean().optional(),
+        translatableAttributes: z.array(z.string()).optional(),
+      })
+      .strict(),
+    webhooks: z
+      .object({
+        url: z.string().nullable().optional(),
+        events: z.array(z.string()),
+        hasSecret: z.boolean(),
+      })
+      .strict(),
+    snippets: z.object({ available: z.boolean(), fetchHref: z.string().optional() }).strict(),
+    runtimeRequests: z
+      .object({
+        available: z.boolean(),
+        summary: z
+          .object({
+            openCount: z.number().int().nonnegative().nullable().optional(),
+            reviewedCount: z.number().int().nonnegative().nullable().optional(),
+            dismissedCount: z.number().int().nonnegative().nullable().optional(),
+            ignoredCount: z.number().int().nonnegative().nullable().optional(),
+            lastSeenAt: z.string().nullable().optional(),
+          })
+          .strict()
+          .optional(),
+        pageHref: z.string().optional(),
+        observationsHref: z.string().optional(),
+        policyPreviewHref: z.string().optional(),
+      })
+      .strict(),
+  })
+  .strict();
+const siteSourceSelectionProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("source_selection"),
+    site: customerSiteRefSchema,
+    access: customerAccessSummarySchema.extend({
+      canEditSourceSelection: z.boolean(),
+      canPreviewSourceSelection: z.boolean(),
+    }),
+    policy: z
+      .object({
+        fingerprint: z.string().nullable().optional(),
+        updatedAt: z.string().nullable().optional(),
+        rules: z.array(
+          z
+            .object({
+              id: z.string().optional(),
+              kind: z.string(),
+              pattern: z.string(),
+              target: z.string().nullable().optional(),
+            })
+            .strict(),
+        ),
+        ruleLimit: z.number().int().nonnegative().nullable().optional(),
+        warnings: z
+          .array(
+            z
+              .object({
+                code: z.string(),
+                severity: customerErrorSeveritySchema,
+                messageKey: z.string(),
+                params: customerParamsSchema.optional(),
+              })
+              .strict(),
+          )
+          .optional(),
+      })
+      .strict(),
+    inventorySummary: z
+      .object({
+        knownPageCount: z.number().int().nonnegative().nullable().optional(),
+        includedPageCount: z.number().int().nonnegative().nullable().optional(),
+        excludedPageCount: z.number().int().nonnegative().nullable().optional(),
+        inventoryMayBeIncomplete: z.boolean().optional(),
+      })
+      .strict(),
+    preconditions: z
+      .object({
+        expectedRouteConfigUpdatedAt: z.string().nullable().optional(),
+        expectedSourceSelectionFingerprint: z.string().nullable().optional(),
+      })
+      .strict(),
+  })
+  .strict();
+const siteQualityProjectionResponseSchema = z
+  .object({
+    meta: dashboardProjectionMetaSchema("quality"),
+    site: customerSiteRefSchema,
+    access: customerAccessSummarySchema.extend({
+      canUseGlossary: z.boolean(),
+      canUseOverrides: z.boolean(),
+      canEditSlugs: z.boolean(),
+      canUseConsistencyGovernance: z.boolean(),
+    }),
+    glossarySummary: z
+      .object({
+        entriesCount: z.number().int().nonnegative(),
+        sourceLimit: z.number().int().nonnegative().nullable().optional(),
+        remainingSources: z.number().int().nonnegative().nullable().optional(),
+      })
+      .strict()
+      .optional(),
+    overrideSummary: z
+      .object({ entriesCount: z.number().int().nonnegative().optional() })
+      .strict()
+      .optional(),
+    slugSummary: z
+      .object({
+        localizedSlugCount: z.number().int().nonnegative().optional(),
+        conflicts: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+const siteDashboardProjectionResponseSchema = z.union([
+  siteCustomerOverviewResponseSchema,
+  siteLanguagesProjectionResponseSchema,
+  siteDomainsProjectionResponseSchema,
+  siteSettingsProjectionResponseSchema,
+  siteDeveloperToolsProjectionResponseSchema,
+  siteSourceSelectionProjectionResponseSchema,
+  siteQualityProjectionResponseSchema,
+]);
+const siteCompactStatusResponseSchema = z
+  .object({
+    siteId: z.string(),
+    siteStatus: z.string(),
+    latestCrawlRun: z
+      .object({
+        id: z.string(),
+        rawStatus: z.string(),
+        customerStatus: customerCrawlStatusValueSchema,
+        startedAt: z.string().nullable().optional(),
+        finishedAt: z.string().nullable().optional(),
+        updatedAt: z.string().nullable().optional(),
+        pagesUpdated: z.number().int().nonnegative().optional(),
+        pagesPending: z.number().int().nonnegative().optional(),
+        customerError: customerErrorSummaryItemSchema.nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    activeTranslationRuns: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            targetLang: z.string(),
+            rawStatus: z.string(),
+            customerStatus: customerTranslationStatusSchema,
+            updatedAt: z.string().nullable().optional(),
+            progress: z
+              .object({
+                completed: z.number().int().nonnegative().optional(),
+                total: z.number().int().nonnegative().optional(),
+                failed: z.number().int().nonnegative().optional(),
+              })
+              .strict()
+              .optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+    currentActivity: z.array(customerActivitySchema).optional(),
+    generatedAt: z.string(),
+  })
+  .strict();
+const customerDeploymentHistoryEntrySchema = z
+  .object({
+    eventId: z.string().optional(),
+    rawStatus: z.string(),
+    customerStatus: customerDeploymentStatusSchema,
+    titleKey: z.string(),
+    descriptionKey: z.string().optional(),
+    params: customerParamsSchema.optional(),
+    createdAt: z.string().nullable().optional(),
+    publishedAt: z.string().nullable().optional(),
+    pageCount: z.number().int().nonnegative().nullable().optional(),
+    customerError: customerErrorSummaryItemSchema.nullable().optional(),
+  })
+  .strict();
+const customerDeploymentHistoryResponseSchema = z
+  .object({
+    targetLang: z.string(),
+    entries: z.array(customerDeploymentHistoryEntrySchema),
+    pagination: offsetPaginationSchema,
+    generatedAt: z.string(),
+  })
+  .strict();
+const deploymentHistoryRouteResponseSchema = z.union([
+  listDeploymentHistoryResponseSchema,
+  customerDeploymentHistoryResponseSchema,
+]);
+
 const glossaryEntrySchema = z.object({
   source: z.string(),
   target: z.string(),
@@ -818,6 +1493,10 @@ const siteDashboardResponseSchema = z
     pagination: listSitePagesResponseSchema.shape.pagination.optional(),
   })
   .strict();
+const siteDashboardRouteResponseSchema = z.union([
+  siteDashboardResponseSchema,
+  siteDashboardProjectionResponseSchema,
+]);
 
 const sourceSelectionPreviewReasonSchema = z.enum([
   "included_by_default",
@@ -1589,12 +2268,24 @@ export type DeploymentCompleteness = z.infer<typeof deploymentCompletenessSchema
 export type DeploymentHistoryEntry = z.infer<typeof deploymentHistoryEntrySchema>;
 export type DeploymentHistoryByLocale = z.infer<typeof deploymentHistoryByLocaleSchema>;
 export type DeploymentHistoryResponse = z.infer<typeof listDeploymentHistoryResponseSchema>;
+export type DashboardProjectionView = z.infer<typeof dashboardProjectionViewSchema>;
+export type CustomerErrorSummaryItem = z.infer<typeof customerErrorSummaryItemSchema>;
+export type CustomerErrorSummaryResponse = z.infer<typeof customerErrorSummaryResponseSchema>;
+export type CustomerDeploymentHistoryEntry = z.infer<typeof customerDeploymentHistoryEntrySchema>;
+export type CustomerDeploymentHistoryResponse = z.infer<
+  typeof customerDeploymentHistoryResponseSchema
+>;
+export type DeploymentHistoryRouteResponse = z.infer<typeof deploymentHistoryRouteResponseSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type SitePagesSummary = z.infer<typeof sitePagesSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
+export type SiteCustomerOverviewResponse = z.infer<typeof siteCustomerOverviewResponseSchema>;
+export type SiteDashboardProjectionResponse = z.infer<typeof siteDashboardProjectionResponseSchema>;
+export type SiteDashboardRouteResponse = z.infer<typeof siteDashboardRouteResponseSchema>;
+export type SiteCompactStatusResponse = z.infer<typeof siteCompactStatusResponseSchema>;
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type ConsistencyStatus = z.infer<typeof consistencyStatusSchema>;
 export type ConsistencyBlockMode = z.infer<typeof consistencyBlockModeSchema>;
@@ -1681,8 +2372,21 @@ export const __webhooksZodContracts = {
   domainResponseSchema,
   listDeploymentsResponseSchema,
   listDeploymentHistoryResponseSchema,
+  customerDeploymentHistoryResponseSchema,
+  deploymentHistoryRouteResponseSchema,
   listSitePagesResponseSchema,
   siteDashboardResponseSchema,
+  siteDashboardRouteResponseSchema,
+  siteCustomerOverviewResponseSchema,
+  siteLanguagesProjectionResponseSchema,
+  siteDomainsProjectionResponseSchema,
+  siteSettingsProjectionResponseSchema,
+  siteDeveloperToolsProjectionResponseSchema,
+  siteSourceSelectionProjectionResponseSchema,
+  siteQualityProjectionResponseSchema,
+  siteCompactStatusResponseSchema,
+  customerErrorSummaryResponseSchema,
+  customerErrorSummaryItemSchema,
   sourceSelectionPreviewResponseSchema,
   sourceSelectionTreePreviewResponseSchema,
   runtimeRequestObservationGroupsResponseSchema,
@@ -1986,7 +2690,435 @@ function createDashboardE2eMockDeploymentHistory(limit: number) {
   };
 }
 
+function createDashboardE2eMockCustomerDeploymentHistory(
+  targetLang: string,
+  limit: number,
+  offset: number,
+) {
+  const now = Date.now();
+  const allEntries = Array.from({ length: 4 }, (_, index) => {
+    const createdAt = new Date(now - index * 3_600_000).toISOString();
+    const customerStatus = index === 0 ? "published" : "replaced";
+    return {
+      rawStatus: index === 0 ? "active" : "superseded",
+      customerStatus,
+      titleKey: `dashboard.history.deployment.${customerStatus}.title`,
+      descriptionKey: `dashboard.history.deployment.${customerStatus}.description`,
+      createdAt,
+      publishedAt: createdAt,
+      pageCount: 30 - index,
+      customerError: null,
+    };
+  });
+  const entries = allEntries.slice(offset, offset + limit);
+  return {
+    targetLang,
+    entries,
+    pagination: {
+      limit,
+      offset,
+      total: allEntries.length,
+      nextOffset: offset + entries.length < allEntries.length ? offset + entries.length : null,
+    },
+    generatedAt: new Date(now).toISOString(),
+  };
+}
+
+function createDashboardE2eMockProjectionSite(siteId: string) {
+  return {
+    id: siteId,
+    sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
+    sourceLang: "en",
+    status: "active",
+    profile: null,
+    servingMode: "strict",
+  };
+}
+
+function createDashboardE2eMockProjectionAccess() {
+  return {
+    mutationsAllowed: true,
+    lockedReasonCode: null,
+    features: {
+      edit: true,
+      crawl_trigger: true,
+      domain_verify: true,
+      serve: true,
+      glossary: true,
+      overrides: true,
+    },
+  };
+}
+
+function createDashboardE2eMockProjectionServingStatus(
+  value: z.infer<typeof customerServingStatusValueSchema> = "live",
+) {
+  return {
+    value,
+    rawStatus: value,
+    titleKey: `dashboard.status.serving.${value}.title`,
+    descriptionKey: `dashboard.status.serving.${value}.description`,
+  };
+}
+
+function createDashboardE2eMockProjectionLanguages() {
+  return [
+    {
+      tag: "fr",
+      labelKey: "languages.fr",
+      enabled: true,
+      serveEnabled: true,
+      servingStatus: createDashboardE2eMockProjectionServingStatus("live"),
+      domain: "fr.example.test",
+      domainStatus: "verified" as const,
+      routePrefix: "/fr",
+      alias: null,
+      lastPublishedAt: new Date().toISOString(),
+      lastTranslatedAt: new Date().toISOString(),
+      canServe: true,
+      lockedReasonCode: null,
+    },
+    {
+      tag: "ja",
+      labelKey: "languages.ja",
+      enabled: true,
+      serveEnabled: true,
+      servingStatus: createDashboardE2eMockProjectionServingStatus("needs_domain"),
+      domain: "verify.example.test",
+      domainStatus: "pending" as const,
+      routePrefix: "/ja",
+      alias: null,
+      lastPublishedAt: null,
+      lastTranslatedAt: new Date().toISOString(),
+      canServe: false,
+      lockedReasonCode: null,
+    },
+  ];
+}
+
+function createDashboardE2eMockProjectionDomains() {
+  return [
+    {
+      domain: "fr.example.test",
+      targetLang: "fr",
+      status: "verified" as const,
+      rawStatus: "verified",
+      lastCheckedAt: new Date().toISOString(),
+      servingStatus: createDashboardE2eMockProjectionServingStatus("live"),
+      cta: null,
+    },
+    {
+      domain: "verify.example.test",
+      targetLang: "ja",
+      status: "pending" as const,
+      rawStatus: "pending",
+      lastCheckedAt: new Date().toISOString(),
+      servingStatus: createDashboardE2eMockProjectionServingStatus("needs_domain"),
+      cta: {
+        labelKey: "dashboard.cta.verifyDomain",
+        actionId: "verify_domain",
+        method: "server_action" as const,
+        params: { domain: "verify.example.test" },
+      },
+    },
+  ];
+}
+
+function createDashboardE2eMockCustomerDashboardProjection(
+  siteId: string,
+  view: DashboardProjectionView,
+) {
+  const now = new Date().toISOString();
+  const site = createDashboardE2eMockProjectionSite(siteId);
+  const access = createDashboardE2eMockProjectionAccess();
+  const languages = createDashboardE2eMockProjectionLanguages();
+  const domains = createDashboardE2eMockProjectionDomains();
+  const meta = { view, generatedAt: now, schemaVersion: 1 as const };
+
+  if (view === "overview") {
+    return {
+      meta,
+      site,
+      account: {
+        accountId: DASHBOARD_E2E_MOCK_ACCOUNT_ID,
+        planType: "pro",
+        planStatus: "active",
+        mutationsAllowed: true,
+      },
+      health: {
+        status: "needs_setup" as const,
+        titleKey: "dashboard.health.needsSetup.title",
+        descriptionKey: "dashboard.health.needsSetup.description",
+        lastImportantChangeAt: now,
+      },
+      nextAction: {
+        kind: "verify_domain" as const,
+        priority: 20,
+        severity: "warning" as const,
+        titleKey: "dashboard.nextAction.verifyDomain.title",
+        descriptionKey: "dashboard.nextAction.verifyDomain.description",
+        cta: {
+          labelKey: "dashboard.cta.verifyDomain",
+          actionId: "verify_domain",
+          method: "server_action" as const,
+          params: { domain: "verify.example.test" },
+        },
+        blockedBy: ["domain_not_verified"],
+      },
+      blockers: [
+        {
+          code: "domain_not_verified",
+          area: "domain" as const,
+          severity: "warning" as const,
+          titleKey: "dashboard.blockers.domainNotVerified.title",
+          affectedDomains: ["verify.example.test"],
+        },
+      ],
+      languages,
+      domains,
+      pagesSummary: {
+        totalKnownPages: 30,
+        includedPages: 30,
+        excludedPages: 0,
+        translatedPages: 24,
+        pagesUpdated: 18,
+        pendingPages: 6,
+        pagesPending: 5,
+        failedPages: 0,
+        lastCrawlStartedAt: new Date(Date.now() - 15 * 60_000).toISOString(),
+        lastCrawlFinishedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
+        nextEligibleCrawlAt: now,
+        eligiblePageCount: 5,
+        inventoryMayBeIncomplete: false,
+        rawLatestCrawlStatus: "completed",
+        customerCrawlStatus: "completed" as const,
+      },
+      currentActivity: [],
+      errors: [
+        {
+          id: "domain_not_verified:domain:0",
+          area: "domain" as const,
+          severity: "warning" as const,
+          code: "domain_not_verified",
+          titleKey: "dashboard.blockers.domainNotVerified.title",
+          affectedDomains: ["verify.example.test"],
+        },
+      ],
+      quotas: [
+        {
+          key: "locales",
+          labelKey: "dashboard.quotas.locales",
+          used: 2,
+          limit: 5,
+          remaining: 3,
+          status: "ok" as const,
+        },
+      ],
+    };
+  }
+
+  if (view === "languages") {
+    return {
+      meta,
+      site,
+      access: {
+        ...access,
+        canAddLanguage: true,
+        canRemoveLanguage: true,
+        canUpdateLanguageAliases: true,
+        canToggleServing: true,
+      },
+      sourceLanguage: { tag: "en", labelKey: "languages.en", direction: "ltr" },
+      targetLanguages: languages.map((language) => ({ ...language, canRemove: true })),
+      localeQuota: { used: 2, limit: 5, remaining: 3 },
+    };
+  }
+
+  if (view === "domains") {
+    return {
+      meta,
+      site,
+      access: {
+        ...access,
+        canVerifyDomain: true,
+        canRefreshDomain: true,
+        canProvisionDomain: true,
+        canUpdateRouting: true,
+        canToggleServing: true,
+      },
+      routing: {
+        urlMode: "subdomain",
+        servingMode: "strict",
+        routePrefixes: [
+          { targetLang: "fr", prefix: "/fr" },
+          { targetLang: "ja", prefix: "/ja" },
+        ],
+      },
+      domains,
+    };
+  }
+
+  if (view === "settings") {
+    return {
+      meta,
+      site: { ...site, createdAt: now, updatedAt: now },
+      access: {
+        ...access,
+        canEditBasic: true,
+        canChangeSourceUrl: true,
+        canEditLocales: true,
+        canEditRouting: true,
+        canEditRuntime: true,
+        canEditWebhooks: true,
+        canDeactivateSite: true,
+        canDeleteSite: true,
+      },
+      basic: { sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL, profile: null, servingMode: "strict" },
+      routing: {
+        urlMode: "subdomain",
+        routePrefixes: [
+          { targetLang: "fr", prefix: "/fr" },
+          { targetLang: "ja", prefix: "/ja" },
+        ],
+        localizedPathTemplates: [],
+      },
+      crawl: { captureMode: "template_plus_hydrated", maxDepth: 3, crawlMaxPages: null },
+      runtime: {
+        clientRuntimeEnabled: true,
+        spaRefreshEnabled: false,
+        translatableAttributes: [],
+        footerRequired: false,
+        cspMode: "strict",
+      },
+      webhooks: { url: null, events: WEBHOOK_EVENT_TYPES.slice(), hasSecret: false },
+    };
+  }
+
+  if (view === "developer_tools") {
+    return {
+      meta,
+      site,
+      access: {
+        ...access,
+        canEditRuntime: true,
+        canEditWebhooks: true,
+        canViewRuntimeRequests: true,
+      },
+      runtime: {
+        clientRuntimeEnabled: true,
+        switcherEnabled: true,
+        spaRefreshEnabled: false,
+        translatableAttributes: [],
+      },
+      webhooks: { url: null, events: WEBHOOK_EVENT_TYPES.slice(), hasSecret: false },
+      snippets: { available: true, fetchHref: `/api/sites/${siteId}/switcher-snippets` },
+      runtimeRequests: {
+        available: true,
+        pageHref: `/dashboard/sites/${siteId}/runtime-requests`,
+        observationsHref: `/api/sites/${siteId}/runtime-requests/observations`,
+        policyPreviewHref: `/api/sites/${siteId}/runtime-request-policy/preview`,
+      },
+    };
+  }
+
+  if (view === "source_selection") {
+    return {
+      meta,
+      site,
+      access: {
+        ...access,
+        canEditSourceSelection: true,
+        canPreviewSourceSelection: true,
+      },
+      policy: {
+        fingerprint: "mock-source-selection",
+        updatedAt: now,
+        rules: [],
+        ruleLimit: 200,
+        warnings: [],
+      },
+      inventorySummary: {
+        knownPageCount: 30,
+        includedPageCount: 30,
+        excludedPageCount: 0,
+        inventoryMayBeIncomplete: false,
+      },
+      preconditions: {
+        expectedRouteConfigUpdatedAt: now,
+        expectedSourceSelectionFingerprint: "mock-source-selection",
+      },
+    };
+  }
+
+  return {
+    meta,
+    site,
+    access: {
+      ...access,
+      canUseGlossary: true,
+      canUseOverrides: true,
+      canEditSlugs: true,
+      canUseConsistencyGovernance: false,
+    },
+    glossarySummary: { entriesCount: 0, sourceLimit: 10, remainingSources: 10 },
+    overrideSummary: { entriesCount: 0 },
+    slugSummary: { localizedSlugCount: 0, conflicts: 0 },
+  };
+}
+
+function createDashboardE2eMockCompactStatus(siteId: string) {
+  const now = new Date().toISOString();
+  return {
+    siteId,
+    siteStatus: "active",
+    latestCrawlRun: {
+      id: "crawl-run-latest",
+      rawStatus: "completed",
+      customerStatus: "completed" as const,
+      startedAt: now,
+      finishedAt: now,
+      updatedAt: now,
+      pagesUpdated: 18,
+      pagesPending: 0,
+      customerError: null,
+    },
+    activeTranslationRuns: [],
+    currentActivity: [],
+    generatedAt: now,
+  };
+}
+
+function createDashboardE2eMockErrorSummary(limit: number, offset: number) {
+  const errors = [
+    {
+      id: "domain_not_verified:domain:0",
+      area: "domain" as const,
+      severity: "warning" as const,
+      code: "domain_not_verified",
+      titleKey: "dashboard.blockers.domainNotVerified.title",
+      affectedDomains: ["verify.example.test"],
+    },
+  ].slice(offset, offset + limit);
+  return {
+    errors,
+    pagination: {
+      limit,
+      offset,
+      total: 1,
+      nextOffset: offset + errors.length < 1 ? offset + errors.length : null,
+    },
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 function createDashboardE2eMockDashboardPayload(siteId: string, searchParams: URLSearchParams) {
+  const view = searchParams.get("view");
+  if (dashboardProjectionViewSchema.safeParse(view).success) {
+    return createDashboardE2eMockCustomerDashboardProjection(
+      siteId,
+      view as DashboardProjectionView,
+    );
+  }
   const includePages = searchParams.get("includePages") === "true";
   const limitRaw = Number(searchParams.get("limit") ?? "25");
   const offsetRaw = Number(searchParams.get("offset") ?? "0");
@@ -2550,6 +3682,20 @@ function resolveDashboardE2eMockPayload(input: {
     return createDashboardE2eMockDashboardPayload(siteDashboardMatch[1], url.searchParams);
   }
 
+  const siteStatusMatch = pathname.match(/^\/sites\/([^/]+)\/status$/);
+  if (siteStatusMatch && method === "GET") {
+    return createDashboardE2eMockCompactStatus(siteStatusMatch[1]);
+  }
+
+  const siteErrorSummaryMatch = pathname.match(/^\/sites\/([^/]+)\/errors\/summary$/);
+  if (siteErrorSummaryMatch && method === "GET") {
+    const limitRaw = Number(url.searchParams.get("limit") ?? "10");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 10;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    return createDashboardE2eMockErrorSummary(limit, offset);
+  }
+
   const runtimeObservationsMatch = pathname.match(
     /^\/sites\/([^/]+)\/runtime-requests\/observations$/,
   );
@@ -2656,7 +3802,16 @@ function resolveDashboardE2eMockPayload(input: {
   const deploymentHistoryMatch = pathname.match(/^\/sites\/([^/]+)\/deployments\/history$/);
   if (deploymentHistoryMatch && method === "GET") {
     const limitRaw = Number(url.searchParams.get("limit") ?? "5");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 5;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    if (url.searchParams.get("view") === "customer") {
+      return createDashboardE2eMockCustomerDeploymentHistory(
+        url.searchParams.get("targetLang") ?? "fr",
+        limit,
+        offset,
+      );
+    }
     return createDashboardE2eMockDeploymentHistory(limit);
   }
 
@@ -3423,6 +4578,67 @@ export async function fetchSiteDashboard(
   });
 }
 
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: DashboardProjectionView,
+): Promise<SiteDashboardProjectionResponse> {
+  const qs = new URLSearchParams({ view });
+  return request({
+    path: `/sites/${siteId}/dashboard?${qs.toString()}`,
+    auth,
+    schema: siteDashboardProjectionResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function fetchSiteCustomerOverview(
+  auth: AuthInput,
+  siteId: string,
+): Promise<SiteCustomerOverviewResponse> {
+  return request({
+    path: `/sites/${siteId}/dashboard?view=overview`,
+    auth,
+    schema: siteCustomerOverviewResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function fetchSiteCompactStatus(
+  auth: AuthInput,
+  siteId: string,
+): Promise<SiteCompactStatusResponse> {
+  return request({
+    path: `/sites/${siteId}/status`,
+    auth,
+    schema: siteCompactStatusResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function fetchCustomerErrorSummary(
+  auth: AuthInput,
+  siteId: string,
+  options?: { limit?: number; offset?: number },
+): Promise<CustomerErrorSummaryResponse> {
+  const qs = new URLSearchParams();
+  if (typeof options?.limit === "number") {
+    qs.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    qs.set("offset", String(options.offset));
+  }
+  const path = qs.size
+    ? `/sites/${siteId}/errors/summary?${qs.toString()}`
+    : `/sites/${siteId}/errors/summary`;
+  return request({
+    path,
+    auth,
+    schema: customerErrorSummaryResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
 export async function previewSourceSelection(
   auth: AuthInput,
   siteId: string,
@@ -3897,6 +5113,29 @@ export async function fetchDeploymentHistory(
     path,
     auth,
     schema: listDeploymentHistoryResponseSchema,
+    timeoutProfile: "detail",
+  });
+}
+
+export async function fetchCustomerDeploymentHistory(
+  auth: AuthInput,
+  siteId: string,
+  options: { targetLang: string; limit?: number; offset?: number },
+): Promise<CustomerDeploymentHistoryResponse> {
+  const searchParams = new URLSearchParams({
+    view: "customer",
+    targetLang: options.targetLang,
+  });
+  if (typeof options.limit === "number") {
+    searchParams.set("limit", String(options.limit));
+  }
+  if (typeof options.offset === "number") {
+    searchParams.set("offset", String(options.offset));
+  }
+  return request({
+    path: `/sites/${siteId}/deployments/history?${searchParams.toString()}`,
+    auth,
+    schema: customerDeploymentHistoryResponseSchema,
     timeoutProfile: "detail",
   });
 }

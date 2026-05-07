@@ -412,6 +412,8 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}", method: "get" },
       { path: "/sites/{siteId}", method: "patch" },
       { path: "/sites/{siteId}/dashboard", method: "get" },
+      { path: "/sites/{siteId}/status", method: "get" },
+      { path: "/sites/{siteId}/errors/summary", method: "get" },
       { path: "/sites/{siteId}/source-selection/preview", method: "post" },
       { path: "/sites/{siteId}/source-selection/tree-preview", method: "post" },
       { path: "/sites/{siteId}/runtime-requests/observations", method: "get" },
@@ -576,6 +578,54 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { name: "ListSitePagesResponse", schema: __webhooksZodContracts.listSitePagesResponseSchema },
       { name: "SiteDashboardResponse", schema: __webhooksZodContracts.siteDashboardResponseSchema },
       {
+        name: "SiteDashboardRouteResponse",
+        schema: __webhooksZodContracts.siteDashboardRouteResponseSchema,
+      },
+      {
+        name: "SiteCustomerOverviewResponse",
+        schema: __webhooksZodContracts.siteCustomerOverviewResponseSchema,
+      },
+      {
+        name: "SiteLanguagesProjectionResponse",
+        schema: __webhooksZodContracts.siteLanguagesProjectionResponseSchema,
+      },
+      {
+        name: "SiteDomainsProjectionResponse",
+        schema: __webhooksZodContracts.siteDomainsProjectionResponseSchema,
+      },
+      {
+        name: "SiteSettingsProjectionResponse",
+        schema: __webhooksZodContracts.siteSettingsProjectionResponseSchema,
+      },
+      {
+        name: "SiteDeveloperToolsProjectionResponse",
+        schema: __webhooksZodContracts.siteDeveloperToolsProjectionResponseSchema,
+      },
+      {
+        name: "SiteSourceSelectionProjectionResponse",
+        schema: __webhooksZodContracts.siteSourceSelectionProjectionResponseSchema,
+      },
+      {
+        name: "SiteQualityProjectionResponse",
+        schema: __webhooksZodContracts.siteQualityProjectionResponseSchema,
+      },
+      {
+        name: "SiteCompactStatusResponse",
+        schema: __webhooksZodContracts.siteCompactStatusResponseSchema,
+      },
+      {
+        name: "CustomerErrorSummaryResponse",
+        schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
+      },
+      {
+        name: "DeploymentHistoryRouteResponse",
+        schema: __webhooksZodContracts.deploymentHistoryRouteResponseSchema,
+      },
+      {
+        name: "CustomerDeploymentHistoryResponse",
+        schema: __webhooksZodContracts.customerDeploymentHistoryResponseSchema,
+      },
+      {
         name: "SourceSelectionPreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionPreviewResponseSchema,
       },
@@ -611,7 +661,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     }
   });
 
-  it("fails when required backend source-selection response fields are missing from website schemas", async () => {
+  it("fails when required backend dashboard contract fields are missing from website schemas", async () => {
     const spec = readOpenApiSpecFromEnv();
     const definitionsIndex = buildOpenApiDefinitionsIndex(spec);
 
@@ -625,6 +675,22 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "SourceSelectionTreePreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionTreePreviewResponseSchema,
+      },
+      {
+        name: "SiteCustomerOverviewResponse",
+        schema: __webhooksZodContracts.siteCustomerOverviewResponseSchema,
+      },
+      {
+        name: "SiteCompactStatusResponse",
+        schema: __webhooksZodContracts.siteCompactStatusResponseSchema,
+      },
+      {
+        name: "CustomerErrorSummaryResponse",
+        schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
+      },
+      {
+        name: "CustomerDeploymentHistoryResponse",
+        schema: __webhooksZodContracts.customerDeploymentHistoryResponseSchema,
       },
     ];
 
