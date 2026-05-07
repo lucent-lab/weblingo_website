@@ -755,6 +755,65 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     expect(parsed.runs[0]?.customerError?.area).toBe("translation");
   });
 
+  it("accepts customer-safe error summaries on the other dashboard surfaces", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    __webhooksZodContracts.siteCompactStatusResponseSchema.parse({
+      siteId: "site-1",
+      siteStatus: "active",
+      latestCrawlRun: {
+        id: "crawl-1",
+        rawStatus: "failed",
+        customerStatus: "failed",
+        customerError: {
+          id: "crawl:crawl-1",
+          area: "crawl",
+          severity: "danger",
+          code: "crawl_failed",
+          titleKey: "dashboard.errors.crawlFailed.title",
+        },
+      },
+      activeTranslationRuns: [],
+      currentActivity: [],
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    __webhooksZodContracts.customerDeploymentHistoryResponseSchema.parse({
+      targetLang: "fr",
+      entries: [
+        {
+          rawStatus: "failed",
+          customerStatus: "failed",
+          titleKey: "dashboard.history.deployment.failed.title",
+          customerError: {
+            id: "deployment_failed:fr:2026-05-07T00:00:00.000Z",
+            area: "deployment",
+            severity: "danger",
+            code: "deployment_failed",
+            titleKey: "dashboard.errors.deploymentFailed.title",
+          },
+        },
+      ],
+      pagination: { limit: 10, offset: 0, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    __webhooksZodContracts.customerErrorSummaryResponseSchema.parse({
+      errors: [
+        {
+          id: "domain_not_verified:domain:example.com",
+          area: "domain",
+          severity: "warning",
+          code: "domain_not_verified",
+          titleKey: "dashboard.errors.domainNotVerified.title",
+        },
+      ],
+      pagination: { limit: 10, offset: 0, total: 1, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+  });
+
   it("parses managed demo create responses that include showcase-aware site fields", async () => {
     vi.resetModules();
     const { __webhooksZodContracts } = await import("./webhooks");
