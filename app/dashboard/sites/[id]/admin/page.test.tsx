@@ -145,5 +145,7 @@ describe("SiteAdminPage", () => {
       siteId: "site-1",
       sourceLang: "ja",
     });
+    expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
+    expect(mocks.getSiteShowcase).not.toHaveBeenCalled();
   });
 });

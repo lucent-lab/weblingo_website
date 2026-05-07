@@ -60,6 +60,7 @@ const copy: SourceSelectionCopy = {
   previewLoading: "Previewing rules...",
   previewReady: "Preview is current.",
   previewBlocked: "Preview failed. Save is blocked.",
+  preview: "Preview source paths",
   pagesTitle: "Known source pages",
   pagesDescription: "Backend decisions.",
   pagesEmpty: "No known pages returned by preview.",
@@ -372,6 +373,11 @@ async function runPreviewTimer() {
   });
 }
 
+async function requestPreview() {
+  fireEvent.click(screen.getByRole("button", { name: "Preview source paths" }));
+  await runPreviewTimer();
+}
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -379,6 +385,18 @@ afterEach(() => {
 });
 
 describe("SourceSelectionManager", () => {
+  it("does not fetch a tree preview on first paint", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText("No known pages returned by preview.")).toBeTruthy();
+  });
+
   it("previews proposed flat rules before saving and saves through the provided action", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -421,7 +439,7 @@ describe("SourceSelectionManager", () => {
       routeConfigUpdatedAt: "2026-05-04T00:00:00.000Z",
       sourceSelectionFingerprint: "backend-fingerprint-before-save",
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -499,7 +517,7 @@ describe("SourceSelectionManager", () => {
     }));
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -543,7 +561,7 @@ describe("SourceSelectionManager", () => {
     }));
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     expect(screen.getByPlaceholderText("/blog/*")).toBeTruthy();
@@ -573,7 +591,7 @@ describe("SourceSelectionManager", () => {
     const saveAction = vi.fn<SaveSourceSelectionAction>(() => save.promise);
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -706,7 +724,7 @@ describe("SourceSelectionManager", () => {
         { action: "include", pattern: "/ja" },
       ],
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("/blog/post-1")).toBeTruthy();
     expect(screen.getAllByText("/blog/drafts/one").length).toBeGreaterThan(0);
@@ -801,7 +819,7 @@ describe("SourceSelectionManager", () => {
       .mockResolvedValueOnce(initialPreview()) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("Searches globally across known backend source paths.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search source paths"), {
@@ -857,7 +875,7 @@ describe("SourceSelectionManager", () => {
     globalThis.fetch = fetchMock as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     const treeGrid = screen.getByRole("treegrid", { name: "Known source pages" });
     expect(treeGrid.getAttribute("aria-colcount")).toBe("4");
@@ -926,7 +944,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("High-impact preview")).toBeTruthy();
     expect(
@@ -983,7 +1001,7 @@ describe("SourceSelectionManager", () => {
         { action: "exclude", pattern: "/old/*" },
       ],
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("2/200 rules used")).toBeTruthy();
     expect(screen.getByText(/known discovered source paths/i)).toBeTruthy();
@@ -1035,7 +1053,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getAllByText(copy.partialInventoryNote).length).toBeGreaterThan(0);
   });
@@ -1094,7 +1112,7 @@ describe("SourceSelectionManager", () => {
       ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
     expect(screen.getByText("/blog/post-1")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
@@ -1154,7 +1172,7 @@ describe("SourceSelectionManager", () => {
       ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await runPreviewTimer();
@@ -1206,7 +1224,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager({ initialRules: [{ action: "exclude", pattern: "/products/*" }] });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("/about")).toBeTruthy();
     expect(screen.getByText("Included by default")).toBeTruthy();
@@ -1278,7 +1296,7 @@ describe("SourceSelectionManager", () => {
       .mockImplementationOnce(() => second.promise) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add exclude rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/products/*" } });

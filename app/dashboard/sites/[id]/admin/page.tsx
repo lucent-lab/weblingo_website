@@ -6,12 +6,10 @@ import { Info } from "lucide-react";
 import { InternalAdminPolicyCard } from "./internal-admin-policy-card";
 import { PageSectionNav } from "../page-section-nav";
 import { SiteAdminForm } from "./site-admin-form";
-import { SiteShowcaseCard } from "./site-showcase-card";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DeploymentCompletenessBadge } from "@/components/dashboard/deployment-completeness-badge";
-import { DeploymentHistoryTable } from "@/components/dashboard/deployment-history-table";
 
 import {
   activateSiteAction,
@@ -35,16 +33,7 @@ import {
 } from "@internal/dashboard/data";
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import {
-  fetchDeploymentHistory,
-  getSiteShowcase,
-  WebhooksApiError,
-  type Deployment,
-  type DeploymentHistoryByLocale,
-  type Site,
-  type SiteShowcaseResponse,
-  type SupportedLanguage,
-} from "@internal/dashboard/webhooks";
+import { type Deployment, type Site, type SupportedLanguage } from "@internal/dashboard/webhooks";
 import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
@@ -73,30 +62,17 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale: displayLocale }));
   let site: Site | null = null;
   let deployments: Deployment[] = [];
-  let deploymentHistory: DeploymentHistoryByLocale[] = [];
-  let deploymentHistoryLimit: number | null = null;
   let activeSiteCount: number | null = null;
   let error: unknown = null;
   let supportedLanguages: SupportedLanguage[] = [];
-  let showcaseState: SiteShowcaseResponse | null = null;
-  let showcaseError: string | null = null;
-  let showcaseMissingConfirmed = false;
   const canManageShowcase = hasActorInternalOps(auth);
 
-  const [
-    siteDashboardResult,
-    deploymentHistoryResult,
-    sitesResult,
-    supportedLanguagesResult,
-    showcaseResult,
-  ] = await Promise.allSettled([
+  const [siteDashboardResult, sitesResult, supportedLanguagesResult] = await Promise.allSettled([
     getSiteDashboardCached(auth.webhooksAuth!, id, {
       includeOperationalSummary: false,
     }),
-    fetchDeploymentHistory(auth.webhooksAuth!, id, { limit: 5 }),
     listSitesCached(auth.webhooksAuth!),
     settingsAccess.canEditLocales ? listSupportedLanguagesCached() : Promise.resolve([]),
-    canManageShowcase ? getSiteShowcase(auth.webhooksAuth!, id) : Promise.resolve(null),
   ]);
 
   if (siteDashboardResult.status === "fulfilled") {
@@ -104,16 +80,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
     deployments = siteDashboardResult.value.deployments;
   } else {
     error = siteDashboardResult.reason;
-  }
-
-  if (deploymentHistoryResult.status === "fulfilled") {
-    deploymentHistory = deploymentHistoryResult.value.history;
-    deploymentHistoryLimit = deploymentHistoryResult.value.perLocaleLimit;
-  } else {
-    console.warn(
-      "[dashboard] fetchDeploymentHistory failed while loading site admin:",
-      deploymentHistoryResult.reason,
-    );
   }
 
   if (sitesResult.status === "fulfilled") {
@@ -124,21 +90,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
 
   if (supportedLanguagesResult.status === "fulfilled") {
     supportedLanguages = supportedLanguagesResult.value;
-  }
-
-  if (showcaseResult.status === "fulfilled") {
-    showcaseState = showcaseResult.value;
-  } else if (
-    showcaseResult.reason instanceof WebhooksApiError &&
-    showcaseResult.reason.status === 404
-  ) {
-    showcaseState = null;
-    showcaseMissingConfirmed = true;
-  } else if (showcaseResult.status === "rejected") {
-    showcaseError =
-      showcaseResult.reason instanceof Error
-        ? showcaseResult.reason.message
-        : "Unable to load showcase state right now.";
   }
 
   if (!site) {
@@ -205,13 +156,10 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const deploymentRouteHelpLabel = t("dashboard.deployments.route.helpLabel");
   const deploymentRouteHelp = t("dashboard.deployments.route.help");
   const deploymentHistoryTitle = t("dashboard.deployments.history.title", "Deployment history");
-  const deploymentHistoryDescription = deploymentHistoryLimit
-    ? t(
-        "dashboard.deployments.history.descriptionWithLimit",
-        "Recent deployment attempts per locale (latest {limit} each).",
-        { limit: String(deploymentHistoryLimit) },
-      )
-    : t("dashboard.deployments.history.description", "Recent deployment attempts per locale.");
+  const deploymentHistoryDescription = t(
+    "dashboard.deployments.history.onDemandDescription",
+    "Recent publish attempts are available from the focused history view.",
+  );
   const servingLanguagesTitle = t("dashboard.serving.languages.title");
   const servingLanguagesDescription = t("dashboard.serving.languages.description");
   const servingLanguageLabel = t("dashboard.serving.languages.columns.language");
@@ -446,17 +394,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
           initialSiteProfileNotes={siteProfileNotes}
         />
       </section>
-      {canManageShowcase ? (
-        <SiteShowcaseCard
-          siteId={site.id}
-          sourceUrl={site.sourceUrl}
-          targetLangs={targetLangs}
-          showcaseState={showcaseState}
-          showcaseMissingConfirmed={showcaseMissingConfirmed}
-          fetchError={showcaseError}
-        />
-      ) : null}
-
       <section id="localization" className="scroll-mt-24">
         <Card className="border-border/60 bg-muted/20">
           <CardHeader>
@@ -911,9 +848,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
             <CardTitle>{deploymentHistoryTitle}</CardTitle>
             <CardDescription>{deploymentHistoryDescription}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <DeploymentHistoryTable history={deploymentHistory} locale={displayLocale} />
-          </CardContent>
         </Card>
       </section>
 

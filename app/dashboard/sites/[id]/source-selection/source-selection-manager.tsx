@@ -87,6 +87,7 @@ export type SourceSelectionCopy = {
   previewLoading: string;
   previewReady: string;
   previewBlocked: string;
+  preview: string;
   pagesTitle: string;
   pagesDescription: string;
   pagesEmpty: string;
@@ -172,6 +173,7 @@ export function SourceSelectionManager({
   const [preview, setPreview] = useState<SourceSelectionTreePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [isPreviewLoading, setPreviewLoading] = useState(false);
+  const [previewRequestKey, setPreviewRequestKey] = useState(0);
   const [lastSuccessfulPreviewFingerprint, setLastSuccessfulPreviewFingerprint] = useState("");
   const [parentPath, setParentPath] = useState("/");
   const [pathSearch, setPathSearch] = useState("");
@@ -211,20 +213,24 @@ export function SourceSelectionManager({
     draftFingerprintRef.current = draftFingerprint;
   }, [draftFingerprint]);
 
+  const requestPreview = useCallback(() => {
+    setPreviewRequestKey((current) => current + 1);
+  }, []);
   const updateDraftRules = useCallback(
     (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => {
       setDraftRules((current) => updater(current));
       setCursorStack([]);
       setSaveResult(null);
+      requestPreview();
     },
-    [],
+    [requestPreview],
   );
   const currentCursor = cursorStack[cursorStack.length - 1] ?? null;
   const trimmedPathSearch = pathSearch.trim();
   const hasPathSearch = trimmedPathSearch.length > 0;
 
   useEffect(() => {
-    if (!canEdit) {
+    if (!canEdit || previewRequestKey === 0) {
       return;
     }
 
@@ -298,6 +304,7 @@ export function SourceSelectionManager({
     draftFingerprint,
     hasPathSearch,
     parentPath,
+    previewRequestKey,
     siteId,
     trimmedPathSearch,
   ]);
@@ -358,19 +365,28 @@ export function SourceSelectionManager({
   };
 
   const visibleTreeRows = currentPreview?.nodes ?? [];
-  const openFolder = useCallback((path: string) => {
-    setParentPath(path);
-    setPathSearch("");
-    setCursorStack([]);
-  }, []);
+  const openFolder = useCallback(
+    (path: string) => {
+      setParentPath(path);
+      setPathSearch("");
+      setCursorStack([]);
+      requestPreview();
+    },
+    [requestPreview],
+  );
   const openParentFolder = useCallback(() => {
     setParentPath(parentSourcePath(parentPath));
     setCursorStack([]);
-  }, [parentPath]);
-  const updatePathSearch = useCallback((value: string) => {
-    setPathSearch(value);
-    setCursorStack([]);
-  }, []);
+    requestPreview();
+  }, [parentPath, requestPreview]);
+  const updatePathSearch = useCallback(
+    (value: string) => {
+      setPathSearch(value);
+      setCursorStack([]);
+      requestPreview();
+    },
+    [requestPreview],
+  );
 
   const pagination = currentPreview?.pagination ?? null;
   const paginationStart =
@@ -429,6 +445,14 @@ export function SourceSelectionManager({
                 error={previewError}
               />
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={requestPreview}
+                  disabled={isPreviewLoading || isSaving}
+                >
+                  {copy.preview}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -559,7 +583,10 @@ export function SourceSelectionManager({
                       size="sm"
                       variant="outline"
                       disabled={cursorStack.length === 0 || isPreviewLoading}
-                      onClick={() => setCursorStack((current) => current.slice(0, -1))}
+                      onClick={() => {
+                        setCursorStack((current) => current.slice(0, -1));
+                        requestPreview();
+                      }}
                     >
                       {copy.previousPage}
                     </Button>
@@ -568,11 +595,12 @@ export function SourceSelectionManager({
                       size="sm"
                       variant="outline"
                       disabled={!pagination.hasMore || isPreviewLoading}
-                      onClick={() =>
+                      onClick={() => {
                         setCursorStack((current) =>
                           pagination.nextCursor ? [...current, pagination.nextCursor] : current,
-                        )
-                      }
+                        );
+                        requestPreview();
+                      }}
                     >
                       {copy.nextPage}
                     </Button>

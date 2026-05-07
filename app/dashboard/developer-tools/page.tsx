@@ -16,7 +16,7 @@ export default async function DeveloperToolsPage() {
   const token = auth.webhooksAuth?.token;
   const expiresAt = auth.webhooksAuth?.expiresAt ?? "—";
   const user = auth.user;
-  const authorizationHeader = token ? `Bearer ${token}` : "Not authenticated";
+  const authorizationStatus = token ? "Available for this session" : "Not authenticated";
   const expiryLabel = token ? `Expires at ${expiresAt}` : "No token";
   const tokenBadgeVariant = token ? "outline" : "destructive";
 
@@ -59,12 +59,12 @@ export default async function DeveloperToolsPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           <label className="text-xs font-semibold uppercase text-muted-foreground">
-            Authorization header
+            Authorization status
           </label>
-          <Input readOnly value={authorizationHeader} />
+          <Input readOnly value={authorizationStatus} />
           <p className="text-xs text-muted-foreground">
-            Do not store this token in long-lived storage. Regenerate from the Supabase session
-            before expiry or whenever the API returns 401.
+            The dashboard keeps the short-lived token server-side and does not display bearer
+            credentials in customer UI.
           </p>
         </CardContent>
       </Card>

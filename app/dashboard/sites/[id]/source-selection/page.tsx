@@ -237,6 +237,7 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
       "dashboard.sourceSelection.preview.blocked",
       "Preview failed. Save is blocked.",
     ),
+    preview: t("dashboard.sourceSelection.preview.action", "Preview source paths"),
     pagesTitle: t("dashboard.sourceSelection.pages.title", "Known source pages"),
     pagesDescription: t(
       "dashboard.sourceSelection.pages.description",

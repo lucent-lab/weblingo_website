@@ -61,9 +61,7 @@ export function CrawlSummaryClient({
   }
 
   const showError = latestCrawlRun.customerStatus === "failed";
-  const errorText = showError
-    ? (latestCrawlRun.customerError?.code ?? latestCrawlRun.rawStatus ?? "-")
-    : "-";
+  const errorText = showError ? (latestCrawlRun.customerError?.code ?? "Crawl failed") : "-";
   const errorTone = showError ? "text-destructive" : "text-muted-foreground";
 
   return (
@@ -71,7 +69,7 @@ export function CrawlSummaryClient({
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{statusLabel}</div>
         <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.customerStatus)}>
-          {statusLabels[latestCrawlRun.customerStatus] ?? latestCrawlRun.customerStatus}
+          {statusLabels[latestCrawlRun.customerStatus] ?? "Status unavailable"}
         </Badge>
       </div>
       <div className="space-y-1">
