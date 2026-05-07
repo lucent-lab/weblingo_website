@@ -6,6 +6,17 @@ Purpose: single source of truth for the customer dashboard. Includes API contrac
 
 - `docs/dashboard-flow-and-use-cases.md` — UX flows tied to these endpoints.
 - `docs/AGENCY_CLIENT_APP_GUIDE.md` — agency-specific plan gating guidance.
+- `docs/reports/customer-dashboard-refactor-v6-website-contract-2026-05-05.md` — M6.5.2
+  customer dashboard refactor contract for website routes, client schemas, request budgets,
+  and smoke coverage.
+
+## M6.5.2 refactor note
+
+The current customer dashboard refactor contract is captured in
+`docs/reports/customer-dashboard-refactor-v6-website-contract-2026-05-05.md`. Use that report for
+the M6.5.2 route IA, projection, pagination, customer-safe-copy, and request-budget rules. This
+integration guide remains the longer-lived API and UX reference and should be updated as M6.5.2
+contracts graduate from implementation contract to stable dashboard behavior.
 
 ## Table of Contents
 

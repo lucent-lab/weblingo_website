@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Briefcase, Globe, LayoutDashboard, MonitorPlay, Users, Wrench } from "lucide-react";
 
 import { DashboardNav } from "./_components/dashboard-nav";
@@ -25,8 +26,8 @@ import {
 import { logout } from "@/app/auth/logout/actions";
 import {
   getActiveAgencyCustomers,
+  getDashboardAuth,
   hasActorInternalOps,
-  requireDashboardAuth,
   type DashboardAuth,
 } from "@internal/dashboard/auth";
 import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
@@ -44,7 +45,14 @@ type DashboardLayoutProps = {
 };
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const auth = await requireDashboardAuth();
+  const auth = await getDashboardAuth();
+  if (!auth.user || !auth.session) {
+    redirect("/auth/login");
+  }
+  if (!auth.webhooksAuth || !auth.account) {
+    return children;
+  }
+
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const email = auth.user?.email ?? "—";
   const isAgency = auth.actorAccount?.planType === "agency";
@@ -372,7 +380,7 @@ function SitesUsageFallback() {
   );
 }
 
-function buildWorkspaceOptions(auth: Awaited<ReturnType<typeof requireDashboardAuth>>) {
+function buildWorkspaceOptions(auth: DashboardAuth) {
   const actorId = auth.actorAccountId ?? auth.actorAccount?.accountId;
   if (!actorId) {
     return [];

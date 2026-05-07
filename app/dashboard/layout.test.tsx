@@ -1,0 +1,57 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const getDashboardAuth = vi.fn();
+const redirect = vi.fn((path: string) => {
+  throw new Error(`redirect:${path}`);
+});
+
+vi.mock("next/navigation", () => ({ redirect }));
+
+vi.mock("next/headers", () => ({
+  headers: vi.fn(async () => new Headers()),
+}));
+
+vi.mock("@internal/dashboard/auth", () => ({
+  getDashboardAuth,
+  getActiveAgencyCustomers: vi.fn(() => []),
+  hasActorInternalOps: vi.fn(() => false),
+}));
+
+vi.mock("@internal/dashboard/data", () => ({
+  listSitesCached: vi.fn(),
+}));
+
+describe("DashboardLayout", () => {
+  beforeEach(() => {
+    getDashboardAuth.mockReset();
+    redirect.mockClear();
+  });
+
+  it("renders no-account children without re-entering the dashboard account redirect", async () => {
+    const { default: DashboardLayout } = await import("./layout");
+    const children = <div data-testid="no-account-child" />;
+
+    getDashboardAuth.mockResolvedValueOnce({
+      user: { id: "user-1", email: "user@example.com" },
+      session: { access_token: "token" },
+      webhooksAuth: null,
+      account: null,
+    });
+
+    await expect(DashboardLayout({ children })).resolves.toBe(children);
+    expect(redirect).not.toHaveBeenCalledWith("/dashboard/no-account");
+  });
+
+  it("still redirects anonymous users to login from the parent dashboard layout", async () => {
+    const { default: DashboardLayout } = await import("./layout");
+
+    getDashboardAuth.mockResolvedValueOnce({
+      user: null,
+      session: null,
+      webhooksAuth: null,
+      account: null,
+    });
+
+    await expect(DashboardLayout({ children: <div /> })).rejects.toThrow("redirect:/auth/login");
+  });
+});
