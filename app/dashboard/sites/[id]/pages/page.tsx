@@ -10,16 +10,17 @@ import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
-import { getSiteDashboardCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
+  fetchSite,
+  fetchSiteCompactStatus,
+  fetchSitePages,
   WebhooksApiError,
-  type Deployment,
   type Site,
+  type SiteCompactStatusResponse,
   type SitePageSummary,
   type SitePagesSummary,
 } from "@internal/dashboard/webhooks";
@@ -58,26 +59,12 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
   const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
   const activateHelp = t("dashboard.site.status.activateHelp");
-  const servingTitle = t("dashboard.serving.languages.title");
-  const servingDescription = t("dashboard.serving.languages.description");
-  const servingLanguageLabel = t("dashboard.serving.languages.columns.language");
-  const servingDomainLabel = t("dashboard.serving.languages.columns.domain");
-  const servingStatusLabel = t("dashboard.serving.languages.columns.serving");
-  const servingActiveLabel = t("dashboard.deployments.activeId.label");
-  const deploymentsEmpty = t("dashboard.deployments.empty");
   const crawlSummaryTitle = t("dashboard.crawl.summary.title");
   const crawlSummaryDescription = t("dashboard.crawl.summary.description");
   const crawlSummaryEmpty = t("dashboard.crawl.summary.empty");
   const crawlStatusLabel = t("dashboard.crawl.summary.status");
-  const crawlTriggerLabel = t("dashboard.crawl.summary.trigger");
-  const crawlCaptureModeLabel = t("dashboard.crawl.summary.captureMode");
   const crawlStartedLabel = t("dashboard.crawl.summary.startedAt");
   const crawlFinishedLabel = t("dashboard.crawl.summary.finishedAt");
-  const crawlLastSuccessfulLabel = t("dashboard.crawl.summary.lastSuccessful");
-  const crawlDiscoveredLabel = t("dashboard.crawl.summary.discovered");
-  const crawlEnqueuedLabel = t("dashboard.crawl.summary.enqueued");
-  const crawlSelectedLabel = t("dashboard.crawl.summary.selected");
-  const crawlSkippedLabel = t("dashboard.crawl.summary.skippedDueToLimit");
   const crawlErrorLabel = t("dashboard.crawl.summary.error");
   const pagesTitle = t("dashboard.pages.title");
   const pagesDescription = t("dashboard.pages.description");
@@ -95,49 +82,42 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const lastChangeLabel = t("dashboard.pages.columns.lastChange");
   const pageNextCrawlLabel = t("dashboard.pages.columns.nextCrawl");
   const eligibleNowLabel = t("dashboard.pages.eligibleNow");
-  const servingStatusLabels = {
-    inactive: t("dashboard.serving.status.inactive"),
-    disabled: t("dashboard.serving.status.disabled"),
-    needs_domain: t("dashboard.serving.status.needsDomain"),
-    ready: t("dashboard.serving.status.ready"),
-    serving: t("dashboard.serving.status.serving"),
-    degraded: t("dashboard.serving.status.degraded", "Degraded"),
-  };
   const crawlStatusLabels = {
+    not_started: t("dashboard.crawl.status.notStarted", "Not started"),
+    queued: t("dashboard.crawl.status.queued", "Queued"),
     in_progress: t("dashboard.crawl.status.inProgress"),
     completed: t("dashboard.crawl.status.completed"),
     failed: t("dashboard.crawl.status.failed"),
-  };
-  const crawlTriggerLabels = {
-    cron: t("dashboard.crawl.trigger.cron"),
-    queue: t("dashboard.crawl.trigger.queue"),
+    unknown: t("dashboard.crawl.status.unknown", "Unknown"),
   };
 
   let site: Site | null = null;
   let pages: SitePageSummary[] = [];
   let pageTotal = 0;
   let pageHasMore = false;
-  let deployments: Deployment[] = [];
+  let compactStatus: SiteCompactStatusResponse | null = null;
   let pagesSummary: SitePagesSummary | null = null;
   let error: unknown = null;
 
   try {
-    const payload = await getSiteDashboardCached(authToken, id, {
-      includePages: true,
-      includeOperationalSummary: false,
-      limit: PAGES_PAGE_SIZE,
-      offset,
-    });
-    site = payload.site;
-    pages = payload.pages ?? [];
-    pageTotal = payload.pagination?.total ?? 0;
-    pageHasMore = payload.pagination?.hasMore ?? false;
-    deployments = payload.deployments ?? [];
-    pagesSummary = payload.pagesSummary ?? null;
+    const [sitePayload, pagesPayload, statusPayload] = await Promise.all([
+      fetchSite(authToken, id),
+      fetchSitePages(authToken, id, {
+        limit: PAGES_PAGE_SIZE,
+        offset,
+      }),
+      fetchSiteCompactStatus(authToken, id),
+    ]);
+    site = sitePayload;
+    pages = pagesPayload.pages;
+    pageTotal = pagesPayload.pagination.total;
+    pageHasMore = pagesPayload.pagination.hasMore;
+    compactStatus = statusPayload;
+    pagesSummary = buildPagesSummary(statusPayload);
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSiteDashboard failed", {
+      console.warn("[dashboard] fetchSitePages failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -147,14 +127,14 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchSiteDashboard failed (unknown error)", {
+      console.warn("[dashboard] fetchSitePages failed (unknown error)", {
         siteId: id,
         message: error,
       });
     }
   }
 
-  if (!site) {
+  if (!site || !compactStatus) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
@@ -191,13 +171,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         });
   const pageCrawlLimitReached = maxDailyPageCrawls !== null && pageCrawlsUsed >= maxDailyPageCrawls;
   const crawlReady = site.status === "active";
-  const targetLangs = Array.from(new Set(site.locales.map((locale) => locale.targetLang)));
-  const deploymentsByLang = new Map(
-    deployments.map((deployment) => [deployment.targetLang, deployment]),
-  );
-  const servingRows = targetLangs
-    .map((lang) => deploymentsByLang.get(lang))
-    .filter((deployment): deployment is Deployment => Boolean(deployment));
   const totalPages = Math.max(1, Math.ceil(pageTotal / PAGES_PAGE_SIZE));
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = pageHasMore;
@@ -229,21 +202,15 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         <CardContent>
           <CrawlSummaryClient
             siteId={site.id}
-            initialSite={site}
+            initialStatus={compactStatus}
             emptyLabel={crawlSummaryEmpty}
             statusLabel={crawlStatusLabel}
-            triggerLabel={crawlTriggerLabel}
-            captureModeLabel={crawlCaptureModeLabel}
             startedLabel={crawlStartedLabel}
             finishedLabel={crawlFinishedLabel}
-            lastSuccessfulLabel={crawlLastSuccessfulLabel}
-            discoveredLabel={crawlDiscoveredLabel}
-            enqueuedLabel={crawlEnqueuedLabel}
-            selectedLabel={crawlSelectedLabel}
-            skippedLabel={crawlSkippedLabel}
+            pagesUpdatedLabel={pagesSummaryUpdatedLabel}
+            pagesPendingLabel={pagesSummaryPendingLabel}
             errorLabel={crawlErrorLabel}
             statusLabels={crawlStatusLabels}
-            triggerLabels={crawlTriggerLabels}
           />
         </CardContent>
       </Card>
@@ -314,75 +281,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           </CardContent>
         </Card>
       ) : null}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{servingTitle}</CardTitle>
-          <CardDescription>{servingDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {servingRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{deploymentsEmpty}</p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{servingLanguageLabel}</th>
-                    <th className="px-3 py-2 text-left">{servingDomainLabel}</th>
-                    <th className="px-3 py-2 text-left">{servingStatusLabel}</th>
-                    <th className="px-3 py-2 text-left">{servingActiveLabel}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {servingRows.map((deployment) => {
-                    const domainStatus = deployment.domainStatus ?? null;
-                    const servingLabel =
-                      servingStatusLabels[deployment.servingStatus] ?? deployment.servingStatus;
-                    const servingVariant = resolveServingStatusVariant(deployment.servingStatus);
-                    const domainVariant = resolveDomainStatusVariant(domainStatus);
-                    return (
-                      <tr
-                        key={
-                          deployment.deploymentId ??
-                          `${deployment.targetLang}-${deployment.domain ?? "domain"}`
-                        }
-                        className="border-t border-border/50"
-                      >
-                        <td className="px-3 py-3 align-top font-semibold text-foreground">
-                          {deployment.targetLang.toUpperCase()}
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-foreground">{deployment.domain ?? "—"}</span>
-                            {domainStatus ? (
-                              <Badge variant={domainVariant}>{domainStatus}</Badge>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <Badge variant={servingVariant}>{servingLabel}</Badge>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <span
-                            className={
-                              deployment.activeDeploymentId
-                                ? "font-mono text-foreground"
-                                : "text-muted-foreground"
-                            }
-                          >
-                            {deployment.activeDeploymentId ?? "—"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -518,28 +416,14 @@ function formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: s
   return formatTimestamp(value);
 }
 
-function resolveServingStatusVariant(status: Deployment["servingStatus"]) {
-  switch (status) {
-    case "serving":
-      return "default";
-    case "ready":
-      return "secondary";
-    case "disabled":
-    case "needs_domain":
-    case "inactive":
-    default:
-      return "outline";
-  }
-}
-
-function resolveDomainStatusVariant(status: Deployment["domainStatus"] | null) {
-  switch (status) {
-    case "verified":
-      return "secondary";
-    case "failed":
-      return "destructive";
-    case "pending":
-    default:
-      return "outline";
-  }
+function buildPagesSummary(status: SiteCompactStatusResponse): SitePagesSummary {
+  const latestCrawlRun = status.latestCrawlRun ?? null;
+  return {
+    lastCrawlStartedAt: latestCrawlRun?.startedAt ?? null,
+    lastCrawlFinishedAt: latestCrawlRun?.finishedAt ?? null,
+    pagesUpdated: latestCrawlRun?.pagesUpdated ?? 0,
+    pagesPending: latestCrawlRun?.pagesPending ?? 0,
+    nextEligibleCrawlAt: null,
+    eligiblePageCount: null,
+  };
 }

@@ -4,44 +4,35 @@ import { useCallback } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { usePoll } from "@internal/dashboard/use-poll";
-import type { Site } from "@internal/dashboard/webhooks";
+import type { SiteCompactStatusResponse } from "@internal/dashboard/webhooks";
 
 type CrawlSummaryClientProps = {
   siteId: string;
-  initialSite: Site;
+  initialStatus: SiteCompactStatusResponse;
   emptyLabel: string;
   statusLabel: string;
-  triggerLabel: string;
-  captureModeLabel: string;
   startedLabel: string;
   finishedLabel: string;
-  lastSuccessfulLabel: string;
-  discoveredLabel: string;
-  enqueuedLabel: string;
-  selectedLabel: string;
-  skippedLabel: string;
+  pagesUpdatedLabel: string;
+  pagesPendingLabel: string;
   errorLabel: string;
-  statusLabels: Record<"in_progress" | "completed" | "failed", string>;
-  triggerLabels: Record<"cron" | "queue", string>;
+  statusLabels: Record<
+    NonNullable<SiteCompactStatusResponse["latestCrawlRun"]>["customerStatus"],
+    string
+  >;
 };
 
 export function CrawlSummaryClient({
   siteId,
-  initialSite,
+  initialStatus,
   emptyLabel,
   statusLabel,
-  triggerLabel,
-  captureModeLabel,
   startedLabel,
   finishedLabel,
-  lastSuccessfulLabel,
-  discoveredLabel,
-  enqueuedLabel,
-  selectedLabel,
-  skippedLabel,
+  pagesUpdatedLabel,
+  pagesPendingLabel,
   errorLabel,
   statusLabels,
-  triggerLabels,
 }: CrawlSummaryClientProps) {
   const fetchStatus = useCallback(async () => {
     const response = await fetch(`/api/dashboard/sites/${siteId}/status`, {
@@ -50,55 +41,38 @@ export function CrawlSummaryClient({
     if (!response.ok) {
       throw new Error("Unable to load site status.");
     }
-    const data = (await response.json()) as { site: Site };
-    return data.site;
+    return (await response.json()) as SiteCompactStatusResponse;
   }, [siteId]);
 
-  const isTerminal = useCallback((value: Site) => {
-    const latestCrawlRun = value.latestCrawlRun ?? null;
-    if (!latestCrawlRun) {
-      return true;
-    }
-    return latestCrawlRun.status === "completed" || latestCrawlRun.status === "failed";
-  }, []);
+  const isTerminal = useCallback((value: SiteCompactStatusResponse) => !hasActiveWork(value), []);
 
-  const { value: site } = usePoll<Site>({
-    enabled: true,
+  const { value: status } = usePoll<SiteCompactStatusResponse>({
+    enabled: hasActiveWork(initialStatus),
     intervalMs: 3000,
     fetcher: fetchStatus,
     isTerminal,
-    initial: initialSite,
+    initial: initialStatus,
   });
 
-  const latestCrawlRun = site.latestCrawlRun ?? null;
+  const latestCrawlRun = status.latestCrawlRun ?? null;
 
   if (!latestCrawlRun) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   }
 
-  const lastSuccessfulAt = resolveLastSuccessfulAt(latestCrawlRun);
-  const showError = latestCrawlRun.status === "failed";
-  const errorText = showError ? (latestCrawlRun.error ?? "—") : "—";
-  const errorTone =
-    showError && latestCrawlRun.error ? "text-destructive" : "text-muted-foreground";
+  const showError = latestCrawlRun.customerStatus === "failed";
+  const errorText = showError
+    ? (latestCrawlRun.customerError?.code ?? latestCrawlRun.rawStatus ?? "-")
+    : "-";
+  const errorTone = showError ? "text-destructive" : "text-muted-foreground";
 
   return (
     <div className="grid gap-4 text-sm md:grid-cols-2">
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{statusLabel}</div>
-        <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.status)}>
-          {statusLabels[latestCrawlRun.status] ?? latestCrawlRun.status}
+        <Badge variant={resolveCrawlStatusVariant(latestCrawlRun.customerStatus)}>
+          {statusLabels[latestCrawlRun.customerStatus] ?? latestCrawlRun.customerStatus}
         </Badge>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{triggerLabel}</div>
-        <span className="font-mono text-foreground">
-          {triggerLabels[latestCrawlRun.trigger] ?? latestCrawlRun.trigger}
-        </span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{captureModeLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.crawlCaptureMode ?? "—"}</span>
       </div>
       <div className="space-y-1">
         <div className="text-xs uppercase text-muted-foreground">{startedLabel}</div>
@@ -109,26 +83,12 @@ export function CrawlSummaryClient({
         <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.finishedAt)}</span>
       </div>
       <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{lastSuccessfulLabel}</div>
-        <span className="text-muted-foreground">{formatTimestamp(lastSuccessfulAt)}</span>
+        <div className="text-xs uppercase text-muted-foreground">{pagesUpdatedLabel}</div>
+        <span className="font-mono text-foreground">{latestCrawlRun.pagesUpdated ?? "-"}</span>
       </div>
       <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{discoveredLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesDiscovered ?? "—"}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{enqueuedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.pagesEnqueued ?? "—"}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{selectedLabel}</div>
-        <span className="font-mono text-foreground">{latestCrawlRun.selectedCount ?? "—"}</span>
-      </div>
-      <div className="space-y-1">
-        <div className="text-xs uppercase text-muted-foreground">{skippedLabel}</div>
-        <span className="font-mono text-foreground">
-          {latestCrawlRun.skippedDueToLimitCount ?? "—"}
-        </span>
+        <div className="text-xs uppercase text-muted-foreground">{pagesPendingLabel}</div>
+        <span className="font-mono text-foreground">{latestCrawlRun.pagesPending ?? "-"}</span>
       </div>
       <div className="space-y-1 md:col-span-2">
         <div className="text-xs uppercase text-muted-foreground">{errorLabel}</div>
@@ -149,21 +109,30 @@ function formatTimestamp(value?: string | null): string {
   return date.toLocaleString();
 }
 
-function resolveLastSuccessfulAt(
-  latestCrawlRun: NonNullable<Site["latestCrawlRun"]>,
-): string | null {
-  if (latestCrawlRun.status !== "completed") {
-    return null;
+function hasActiveWork(status: SiteCompactStatusResponse): boolean {
+  const latestCrawlRun = status.latestCrawlRun ?? null;
+  if (
+    latestCrawlRun?.customerStatus === "queued" ||
+    latestCrawlRun?.customerStatus === "in_progress"
+  ) {
+    return true;
   }
-  return latestCrawlRun.finishedAt ?? latestCrawlRun.updatedAt ?? latestCrawlRun.startedAt ?? null;
+  return (
+    status.activeTranslationRuns?.some(
+      (run) => run.customerStatus === "queued" || run.customerStatus === "in_progress",
+    ) ?? false
+  );
 }
 
-function resolveCrawlStatusVariant(status: "in_progress" | "completed" | "failed") {
+function resolveCrawlStatusVariant(
+  status: NonNullable<SiteCompactStatusResponse["latestCrawlRun"]>["customerStatus"],
+) {
   switch (status) {
     case "completed":
       return "secondary";
     case "failed":
       return "destructive";
+    case "queued":
     case "in_progress":
     default:
       return "outline";
