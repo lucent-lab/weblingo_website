@@ -45,6 +45,31 @@ test.describe("dashboard smoke", () => {
     await expect(page.getByRole("button", { name: "Translate & serve" })).toHaveCount(0);
   });
 
+  test("loads focused dashboard routes", async ({ page }) => {
+    await page.goto(`/dashboard/sites/${SITE_ID}/domains`);
+    await expect(page.getByRole("heading", { name: "Domains" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check DNS" }).first()).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/settings`);
+    await expect(page.getByRole("heading", { name: "Settings" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Runtime" })).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/developer-tools`);
+    await expect(page.getByRole("heading", { name: "Developer tools" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open runtime requests" })).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/runtime-requests`);
+    await expect(page.getByRole("heading", { name: "Runtime requests" }).first()).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/quality`);
+    await expect(page.getByRole("heading", { name: "Quality" }).first()).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/history`);
+    await expect(page.getByRole("heading", { name: "History" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Translation runs" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Deployments" })).toBeVisible();
+  });
+
   test("shows focused crawl trigger feedback", async ({ page }) => {
     await page.goto(`/dashboard/sites/${SITE_ID}/admin`);
     await page.getByRole("button", { name: "Force full website crawl" }).click();

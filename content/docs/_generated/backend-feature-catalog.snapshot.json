@@ -1720,6 +1720,32 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "sites.translationRuns.list",
+        "path": "/sites/:siteId/translation-runs"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.translationRuns",
+      "id": "api.sites.translationRuns.list",
+      "name": "List customer translation runs",
+      "playbooks": [
+        {
+          "anchor": "playbook-3-crawl-and-translate-lifecycle",
+          "id": "playbook-3",
+          "title": "Playbook 3: Crawl and Translate Lifecycle"
+        }
+      ],
+      "routeIds": [
+        "sites.translationRuns.list"
+      ],
+      "stability": "Beta",
+      "summary": "Lists customer-safe translation run summaries with offset pagination. Optional targetLang filters the list to one locale.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "sites.translationRuns.resume",
         "path": "/sites/:siteId/translation-runs/:runId/resume"

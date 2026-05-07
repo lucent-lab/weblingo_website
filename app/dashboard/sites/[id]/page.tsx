@@ -143,7 +143,19 @@ export default async function SitePage({ params }: SitePageProps) {
             <Link href={`/dashboard/sites/${site.id}/source-selection`}>Source selection</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/admin`}>Settings</Link>
+            <Link href={`/dashboard/sites/${site.id}/domains`}>Domains</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/sites/${site.id}/quality`}>Quality</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/sites/${site.id}/developer-tools`}>Developer tools</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/sites/${site.id}/history`}>History</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/sites/${site.id}/settings`}>Settings</Link>
           </Button>
           <Button asChild variant="link">
             <Link href="/dashboard">Back to dashboard</Link>

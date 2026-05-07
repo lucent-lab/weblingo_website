@@ -3221,6 +3221,119 @@
         ],
         "type": "object"
       },
+      "CustomerTranslationRunsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generatedAt": {
+            "type": "string"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/OffsetPagination"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerTranslationRunSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runs",
+          "pagination",
+          "generatedAt"
+        ],
+        "type": "object"
+      },
+      "CustomerTranslationRunStatus": {
+        "enum": [
+          "queued",
+          "in_progress",
+          "completed",
+          "failed",
+          "cancelled",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "CustomerTranslationRunSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerError": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customerStatus": {
+            "$ref": "#/components/schemas/CustomerTranslationRunStatus"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "progress": {
+            "additionalProperties": false,
+            "properties": {
+              "completed": {
+                "type": "number"
+              },
+              "failed": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "completed",
+              "total",
+              "failed"
+            ],
+            "type": "object"
+          },
+          "rawStatus": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "targetLang",
+          "rawStatus",
+          "customerStatus",
+          "progress"
+        ],
+        "type": "object"
+      },
       "DailyCrawlUsage": {
         "additionalProperties": false,
         "properties": {
@@ -18687,6 +18800,104 @@
           }
         ],
         "summary": "Translate a site without recrawling",
+        "tags": [
+          "Sites",
+          "Translation Runs"
+        ]
+      }
+    },
+    "/sites/{siteId}/translation-runs": {
+      "get": {
+        "description": "Lists customer-safe translation run summaries with offset pagination. Optional targetLang filters the list to one locale.",
+        "operationId": "sites.translationRuns.list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "generatedAt": "string",
+                  "pagination": {
+                    "limit": 1,
+                    "offset": 1
+                  },
+                  "runs": [
+                    {
+                      "customerStatus": "queued",
+                      "id": "string",
+                      "progress": {
+                        "completed": 1,
+                        "failed": 1,
+                        "total": 1
+                      },
+                      "rawStatus": "string",
+                      "targetLang": "string"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerTranslationRunsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List customer translation runs",
         "tags": [
           "Sites",
           "Translation Runs"

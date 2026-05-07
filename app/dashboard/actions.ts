@@ -1603,6 +1603,7 @@ export async function verifyDomainAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -1648,6 +1649,7 @@ export async function provisionDomainAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -1693,6 +1695,7 @@ export async function refreshDomainAction(
     });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`

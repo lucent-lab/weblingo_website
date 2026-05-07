@@ -106,7 +106,7 @@ export function SiteHeader({
           ) : null
         ) : null}
         <Button asChild variant="outline">
-          <Link href={`/dashboard/sites/${site.id}/admin`} title="Settings">
+          <Link href={`/dashboard/sites/${site.id}/settings`} title="Settings">
             Settings
           </Link>
         </Button>

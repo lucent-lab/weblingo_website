@@ -134,9 +134,11 @@ Local/dev TXT verification flow:
    - `operationId`: `sites.crawl_translate.trigger`
 4. Translate without recrawl (translation run):
    - `operationId`: `sites.translate`
-5. Observe run status:
+5. List run history for dashboard/customer history:
+   - `operationId`: `sites.translationRuns.list`
+6. Observe run status:
    - `operationId`: `sites.translationRuns.get`
-6. Operational controls:
+7. Operational controls:
    - `operationId`: `sites.translationRuns.cancel`
    - `operationId`: `sites.translationRuns.resume`
 

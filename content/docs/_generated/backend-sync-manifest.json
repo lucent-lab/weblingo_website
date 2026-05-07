@@ -2,16 +2,16 @@
   "generatedAt": "2026-05-07T19:11:02+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
-      "bytes": 83999,
-      "sha256": "03b953fc36b252841bbb037d1929d61c58e47e5ec38b8c8eb1f5e0a1c2346350"
+      "bytes": 84841,
+      "sha256": "11d13bae70953dfb0ada80b6cfb2ad47a5c00daf4fab4cd028e42a57e1fb4f81"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 523618,
-      "sha256": "a7fe0d7495fc815e8c93c70b6ff7035cf3424032632dbcaa5c7a5f6e9e32d634"
+      "bytes": 529119,
+      "sha256": "4056322b26cb5aeb3b110c48296522b957d4c27586de214ccf0b28eb7e05259c"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
-      "bytes": 8020,
-      "sha256": "f2e27b0da1cf8eed20edab466f7569f0f61b2f1f12269911e95555a6f74f78f0"
+      "bytes": 8121,
+      "sha256": "b91ad4723cf66f5b74313eaa18d92100ba8891bf58125176a03c8d20f2d18f1e"
     }
   },
   "requiredEnv": [
@@ -20,16 +20,16 @@
   "schemaVersion": 1,
   "sourceFiles": {
     "docs/reference/API_PLAYBOOKS.md": {
-      "bytes": 8020,
-      "sha256": "f2e27b0da1cf8eed20edab466f7569f0f61b2f1f12269911e95555a6f74f78f0"
+      "bytes": 8121,
+      "sha256": "b91ad4723cf66f5b74313eaa18d92100ba8891bf58125176a03c8d20f2d18f1e"
     },
     "docs/reference/feature-catalog.generated.json": {
-      "bytes": 78393,
-      "sha256": "a80fef8df06dd2014738cec1d19e1383b1d211b94729b5373279b2fb9fc59c2d"
+      "bytes": 79219,
+      "sha256": "37d9dc131bcd1c9971961f95ad223e0625e33f438f9219fb721ad261686bf0d9"
     },
     "docs/reference/openapi.json": {
-      "bytes": 409176,
-      "sha256": "c7f65019f59dbaa0338f97aa30f22a8a230db39476b293902000367a30f6d293"
+      "bytes": 413263,
+      "sha256": "eb33f53b1ef105dacae4e69f40105cf6cb5a98e02687e5356c64cf3124d91ce2"
     }
   },
   "sourceRepoCommitTimestamp": "2026-05-07T19:11:02+09:00",

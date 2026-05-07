@@ -427,6 +427,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}/translate", method: "post" },
       { path: "/sites/{siteId}/locales/{targetLang}/serve", method: "post" },
       { path: "/sites/{siteId}/locales/{targetLang}/translation-summary", method: "put" },
+      { path: "/sites/{siteId}/translation-runs", method: "get" },
       { path: "/sites/{siteId}/translation-runs/{runId}", method: "get" },
       { path: "/sites/{siteId}/translation-runs/{runId}/cancel", method: "post" },
       { path: "/sites/{siteId}/translation-runs/{runId}/resume", method: "post" },

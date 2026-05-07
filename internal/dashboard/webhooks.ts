@@ -946,6 +946,40 @@ const customerErrorSummaryResponseSchema = z
     generatedAt: z.string(),
   })
   .strict();
+const customerTranslationRunSummarySchema = z
+  .object({
+    id: z.string(),
+    targetLang: z.string(),
+    rawStatus: z.string(),
+    customerStatus: z.enum([
+      "queued",
+      "in_progress",
+      "completed",
+      "failed",
+      "cancelled",
+      "unknown",
+    ]),
+    progress: z
+      .object({
+        completed: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+      })
+      .strict(),
+    startedAt: z.string().nullable().optional(),
+    finishedAt: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
+    customerError: customerErrorSummaryItemSchema.nullable().optional(),
+  })
+  .strict();
+const customerTranslationRunsResponseSchema = z
+  .object({
+    runs: z.array(customerTranslationRunSummarySchema),
+    pagination: offsetPaginationSchema,
+    generatedAt: z.string(),
+  })
+  .strict();
 const dashboardProjectionMetaSchema = <TView extends z.infer<typeof dashboardProjectionViewSchema>>(
   view: TView,
 ) =>
@@ -2288,6 +2322,8 @@ export type CustomerDeploymentHistoryResponse = z.infer<
 >;
 export type DeploymentHistoryRouteResponse = z.infer<typeof deploymentHistoryRouteResponseSchema>;
 export type TranslationRun = z.infer<typeof translationRunSchema>;
+export type CustomerTranslationRunSummary = z.infer<typeof customerTranslationRunSummarySchema>;
+export type CustomerTranslationRunsResponse = z.infer<typeof customerTranslationRunsResponseSchema>;
 export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type SitePagesSummary = z.infer<typeof sitePagesSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
@@ -2379,6 +2415,7 @@ export const __webhooksZodContracts = {
   translateSiteResponseSchema,
   setLocaleServingResponseSchema,
   translationRunResponseSchema,
+  customerTranslationRunsResponseSchema,
   resumeTranslationRunResponseSchema,
   domainResponseSchema,
   listDeploymentsResponseSchema,
@@ -2730,6 +2767,59 @@ function createDashboardE2eMockCustomerDeploymentHistory(
       offset,
       total: allEntries.length,
       nextOffset: offset + entries.length < allEntries.length ? offset + entries.length : null,
+    },
+    generatedAt: new Date(now).toISOString(),
+  };
+}
+
+function createDashboardE2eMockCustomerTranslationRuns(
+  targetLang: string | null,
+  limit: number,
+  offset: number,
+) {
+  const now = Date.now();
+  const allRuns = ["fr", "ja"].flatMap((lang) =>
+    Array.from({ length: 3 }, (_, index) => {
+      const createdAt = new Date(
+        now - index * 4_000_000 - (lang === "ja" ? 1_000_000 : 0),
+      ).toISOString();
+      const failed = index === 2;
+      return {
+        id: `tr-${lang}-${index + 1}`,
+        targetLang: lang,
+        rawStatus: failed ? "failed" : index === 0 ? "completed" : "in_progress",
+        customerStatus: failed ? "failed" : index === 0 ? "completed" : "in_progress",
+        progress: {
+          completed: failed ? 12 : 30 - index * 3,
+          total: 30,
+          failed: failed ? 2 : 0,
+        },
+        startedAt: createdAt,
+        finishedAt: index === 1 ? null : createdAt,
+        createdAt,
+        updatedAt: createdAt,
+        customerError: failed
+          ? {
+              id: `translation_run_failed:tr-${lang}-${index + 1}`,
+              area: "translation" as const,
+              severity: "danger" as const,
+              code: "translation_run_failed",
+              titleKey: "dashboard.errors.translationRunFailed.title",
+              lastSeenAt: createdAt,
+            }
+          : null,
+      };
+    }),
+  );
+  const filtered = targetLang ? allRuns.filter((run) => run.targetLang === targetLang) : allRuns;
+  const runs = filtered.slice(offset, offset + limit);
+  return {
+    runs,
+    pagination: {
+      limit,
+      offset,
+      total: filtered.length,
+      nextOffset: offset + runs.length < filtered.length ? offset + runs.length : null,
     },
     generatedAt: new Date(now).toISOString(),
   };
@@ -3736,6 +3826,19 @@ function resolveDashboardE2eMockPayload(input: {
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 10;
     const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
     return createDashboardE2eMockErrorSummary(limit, offset);
+  }
+
+  const siteTranslationRunsMatch = pathname.match(/^\/sites\/([^/]+)\/translation-runs$/);
+  if (siteTranslationRunsMatch && method === "GET") {
+    const limitRaw = Number(url.searchParams.get("limit") ?? "10");
+    const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 10;
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
+    return createDashboardE2eMockCustomerTranslationRuns(
+      url.searchParams.get("targetLang"),
+      limit,
+      offset,
+    );
   }
 
   const runtimeObservationsMatch = pathname.match(
@@ -5061,6 +5164,32 @@ export async function fetchTranslationRun(auth: AuthInput, siteId: string, runId
     timeoutProfile: "detail",
   });
   return data.run;
+}
+
+export async function fetchCustomerTranslationRuns(
+  auth: AuthInput,
+  siteId: string,
+  options?: { targetLang?: string; limit?: number; offset?: number },
+): Promise<CustomerTranslationRunsResponse> {
+  const searchParams = new URLSearchParams();
+  if (options?.targetLang) {
+    searchParams.set("targetLang", options.targetLang);
+  }
+  if (typeof options?.limit === "number") {
+    searchParams.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    searchParams.set("offset", String(options.offset));
+  }
+  const path = searchParams.size
+    ? `/sites/${siteId}/translation-runs?${searchParams.toString()}`
+    : `/sites/${siteId}/translation-runs`;
+  return request({
+    path,
+    auth,
+    schema: customerTranslationRunsResponseSchema,
+    timeoutProfile: "detail",
+  });
 }
 
 export async function cancelTranslationRun(auth: AuthInput, siteId: string, runId: string) {
