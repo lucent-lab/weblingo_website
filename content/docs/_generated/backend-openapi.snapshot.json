@@ -7670,8 +7670,58 @@
               "pageHref": {
                 "type": "string"
               },
+              "policy": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RuntimeRequestPolicyConfig"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "policyPreviewHref": {
                 "type": "string"
+              },
+              "policySummary": {
+                "additionalProperties": false,
+                "properties": {
+                  "fingerprint": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastUpdatedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rulesCount": {
+                    "type": "number"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "rulesCount"
+                ],
+                "type": "object"
+              },
+              "propagation": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RuntimeRequestPolicyPropagation"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "summary": {
                 "additionalProperties": false,

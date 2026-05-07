@@ -4,8 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
-  hasActorInternalOps: vi.fn(() => false),
-  fetchSite: vi.fn(),
   fetchSitePages: vi.fn(),
   fetchSiteCompactStatus: vi.fn(),
   getSiteDashboardCached: vi.fn(),
@@ -29,7 +27,6 @@ vi.mock("@/components/dashboard/action-form", () => ({
   ActionForm: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("@internal/dashboard/auth", () => ({
-  hasActorInternalOps: mocks.hasActorInternalOps,
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
 vi.mock("@internal/dashboard/data", () => ({
@@ -42,7 +39,6 @@ vi.mock("@internal/dashboard/error-state", () => ({
   })),
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
-  fetchSite: mocks.fetchSite,
   fetchSitePages: mocks.fetchSitePages,
   fetchSiteCompactStatus: mocks.fetchSiteCompactStatus,
   WebhooksApiError: class WebhooksApiError extends Error {
@@ -61,26 +57,8 @@ vi.mock("./crawl-summary.client", () => ({
   CrawlSummaryClient: mocks.CrawlSummaryClient,
 }));
 vi.mock("../../../actions", () => ({
-  triggerManagedDemoForceCrawlAction: vi.fn(),
   triggerPageCrawlAction: vi.fn(),
 }));
-
-function makeSite() {
-  return {
-    id: "site-1",
-    accountId: "acct-1",
-    sourceUrl: "https://example.com",
-    status: "active",
-    servingMode: "strict",
-    maxLocales: null,
-    siteProfile: null,
-    webhookEvents: [],
-    locales: [{ sourceLang: "en", targetLang: "fr", serveEnabled: true }],
-    domains: [],
-    latestCrawlRun: null,
-    managedDemo: false,
-  };
-}
 
 function makeCompactStatus() {
   return {
@@ -126,7 +104,6 @@ describe("SitePagesPage", () => {
       actingAsCustomer: false,
       subjectFallbackToActor: false,
     });
-    mocks.fetchSite.mockResolvedValue(makeSite());
     mocks.fetchSitePages.mockResolvedValue({
       pages: [
         {
@@ -155,7 +132,6 @@ describe("SitePagesPage", () => {
     });
 
     expect(isValidElement(tree)).toBe(true);
-    expect(mocks.fetchSite).toHaveBeenCalledWith(webhooksAuth, "site-1");
     expect(mocks.fetchSitePages).toHaveBeenCalledWith(webhooksAuth, "site-1", {
       limit: 25,
       offset: 0,

@@ -146,12 +146,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
   const deploymentStatusLabel = t("dashboard.deployments.status.label");
   const deploymentStatusHelpLabel = t("dashboard.deployments.status.helpLabel");
   const deploymentStatusHelp = t("dashboard.deployments.status.help");
-  const deploymentIdLabel = t("dashboard.deployments.id.label");
-  const deploymentIdHelpLabel = t("dashboard.deployments.id.helpLabel");
-  const deploymentIdHelp = t("dashboard.deployments.id.help");
-  const activeDeploymentLabel = t("dashboard.deployments.activeId.label");
-  const activeDeploymentHelpLabel = t("dashboard.deployments.activeId.helpLabel");
-  const activeDeploymentHelp = t("dashboard.deployments.activeId.help");
   const deploymentRouteLabel = t("dashboard.deployments.route.label");
   const deploymentRouteHelpLabel = t("dashboard.deployments.route.helpLabel");
   const deploymentRouteHelp = t("dashboard.deployments.route.help");
@@ -376,7 +370,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
             placeholder: translatableAttributesPlaceholder,
           }}
           webhookUrl={site.webhookUrl ?? ""}
-          webhookSecret={site.webhookSecret ?? ""}
+          webhookSecret=""
           webhookEvents={site.webhookEvents}
           canEditWebhooks={settingsAccess.canEditWebhooks}
           lockedHelp={lockedHelp}
@@ -790,20 +784,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                       </th>
                       <th className="px-3 py-2 text-left">
                         <InfoHeader
-                          label={deploymentIdLabel}
-                          helpLabel={deploymentIdHelpLabel}
-                          helpText={deploymentIdHelp}
-                        />
-                      </th>
-                      <th className="px-3 py-2 text-left">
-                        <InfoHeader
-                          label={activeDeploymentLabel}
-                          helpLabel={activeDeploymentHelpLabel}
-                          helpText={activeDeploymentHelp}
-                        />
-                      </th>
-                      <th className="px-3 py-2 text-left">
-                        <InfoHeader
                           label={deploymentRouteLabel}
                           helpLabel={deploymentRouteHelpLabel}
                           helpText={deploymentRouteHelp}
@@ -813,7 +793,7 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                   </thead>
                   <tbody>
                     {deployments.map((deployment) => (
-                      <tr key={`${deployment.targetLang}-${deployment.deploymentId ?? "none"}`}>
+                      <tr key={`${deployment.targetLang}-${deployment.routePrefix ?? "route"}`}>
                         <td className="px-3 py-3 align-top font-semibold text-foreground">
                           {deployment.targetLang.toUpperCase()}
                         </td>
@@ -822,12 +802,6 @@ export default async function SiteAdminPage({ params }: SiteAdminPageProps) {
                             <Badge variant="outline">{deployment.status}</Badge>
                             <DeploymentCompletenessBadge completeness={deployment.completeness} />
                           </div>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          {renderOptionalValue(deployment.deploymentId, true)}
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          {renderOptionalValue(deployment.activeDeploymentId, true)}
                         </td>
                         <td className="px-3 py-3 align-top text-muted-foreground">
                           {renderOptionalValue(deployment.routePrefix, false)}

@@ -1136,6 +1136,17 @@ const siteDeveloperToolsProjectionResponseSchema = z
     runtimeRequests: z
       .object({
         available: z.boolean(),
+        policy: runtimeRequestPolicyConfigSchema.nullable().optional(),
+        policySummary: z
+          .object({
+            rulesCount: z.number().int().nonnegative(),
+            fingerprint: z.string().nullable().optional(),
+            version: z.string().nullable().optional(),
+            lastUpdatedAt: z.string().nullable().optional(),
+          })
+          .strict()
+          .optional(),
+        propagation: runtimeRequestPolicyPropagationSchema.nullable().optional(),
         summary: z
           .object({
             openCount: z.number().int().nonnegative().nullable().optional(),
@@ -3014,6 +3025,18 @@ function createDashboardE2eMockCustomerDashboardProjection(
       snippets: { available: true, fetchHref: `/api/sites/${siteId}/switcher-snippets` },
       runtimeRequests: {
         available: true,
+        policy: createDashboardE2eMockRuntimeRequestPolicy(),
+        policySummary: {
+          rulesCount: 0,
+          fingerprint: JSON.stringify({ schemaVersion: 1, rules: [] }),
+          version: `site-config:${now}`,
+          lastUpdatedAt: now,
+        },
+        propagation: {
+          servedVersion: `site-config:${now}`,
+          expectedVersion: `site-config:${now}`,
+          stale: false,
+        },
         pageHref: `/dashboard/sites/${siteId}/runtime-requests`,
         observationsHref: `/api/sites/${siteId}/runtime-requests/observations`,
         policyPreviewHref: `/api/sites/${siteId}/runtime-request-policy/preview`,

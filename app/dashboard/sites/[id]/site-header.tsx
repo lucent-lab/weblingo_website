@@ -10,6 +10,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { Site } from "@internal/dashboard/webhooks";
 
+type SiteHeaderSite = Pick<Site, "id" | "sourceUrl"> & {
+  status: Site["status"] | string;
+  domains?: Site["domains"];
+};
+
 export function SiteHeader({
   site,
   canEdit,
@@ -21,7 +26,7 @@ export function SiteHeader({
   activateHelpLabel,
   activateHelp,
 }: {
-  site: Site;
+  site: SiteHeaderSite;
   canEdit: boolean;
   canPauseTranslations: boolean;
   canResumeTranslations: boolean;
@@ -31,7 +36,7 @@ export function SiteHeader({
   activateHelpLabel: string;
   activateHelp: string;
 }) {
-  const verifiedDomains = site.domains.filter((domain) => domain.status === "verified").length;
+  const verifiedDomains = site.domains?.filter((domain) => domain.status === "verified").length;
   const isActive = site.status === "active";
   const canToggleStatus = isActive ? canPauseTranslations : canResumeTranslations;
   const nextStatus = isActive ? "inactive" : "active";
@@ -80,7 +85,7 @@ export function SiteHeader({
               </Popover>
             </div>
           ) : null}
-          <span>{verifiedDomains} verified domain(s)</span>
+          {verifiedDomains !== undefined ? <span>{verifiedDomains} verified domain(s)</span> : null}
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -115,7 +120,7 @@ export function SiteHeader({
   );
 }
 
-function StatusBadge({ status }: { status: Site["status"] }) {
+function StatusBadge({ status }: { status: SiteHeaderSite["status"] }) {
   if (status === "active") {
     return <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>;
   }

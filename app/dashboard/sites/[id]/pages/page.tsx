@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { triggerManagedDemoForceCrawlAction, triggerPageCrawlAction } from "../../../actions";
+import { triggerPageCrawlAction } from "../../../actions";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -12,14 +12,12 @@ import { CrawlSummaryClient } from "./crawl-summary.client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
+import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
-  fetchSite,
   fetchSiteCompactStatus,
   fetchSitePages,
   WebhooksApiError,
-  type Site,
   type SiteCompactStatusResponse,
   type SitePageSummary,
   type SitePagesSummary,
@@ -53,7 +51,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
-  const canForceManagedDemoCrawl = hasActorInternalOps(auth);
   const deactivateLabel = t("dashboard.site.status.deactivate");
   const reactivateLabel = t("dashboard.site.status.reactivate");
   const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
@@ -91,7 +88,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     unknown: t("dashboard.crawl.status.unknown", "Unknown"),
   };
 
-  let site: Site | null = null;
   let pages: SitePageSummary[] = [];
   let pageTotal = 0;
   let pageHasMore = false;
@@ -100,15 +96,13 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   let error: unknown = null;
 
   try {
-    const [sitePayload, pagesPayload, statusPayload] = await Promise.all([
-      fetchSite(authToken, id),
+    const [pagesPayload, statusPayload] = await Promise.all([
       fetchSitePages(authToken, id, {
         limit: PAGES_PAGE_SIZE,
         offset,
       }),
       fetchSiteCompactStatus(authToken, id),
     ]);
-    site = sitePayload;
     pages = pagesPayload.pages;
     pageTotal = pagesPayload.pagination.total;
     pageHasMore = pagesPayload.pagination.hasMore;
@@ -134,7 +128,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
     }
   }
 
-  if (!site || !compactStatus) {
+  if (!compactStatus) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
@@ -170,20 +164,24 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           remaining: String(pageCrawlsRemaining ?? 0),
         });
   const pageCrawlLimitReached = maxDailyPageCrawls !== null && pageCrawlsUsed >= maxDailyPageCrawls;
-  const crawlReady = site.status === "active";
+  const crawlReady = compactStatus.siteStatus === "active";
   const totalPages = Math.max(1, Math.ceil(pageTotal / PAGES_PAGE_SIZE));
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = pageHasMore;
-  const basePagesPath = `/dashboard/sites/${site.id}/pages`;
+  const basePagesPath = `/dashboard/sites/${id}/pages`;
   const previousPageHref =
     currentPage - 1 <= 1 ? basePagesPath : `${basePagesPath}?page=${currentPage - 1}`;
   const nextPageHref = `${basePagesPath}?page=${currentPage + 1}`;
-  const showManagedDemoForceCard = canForceManagedDemoCrawl && site.managedDemo === true;
+  const headerSite = {
+    id,
+    sourceUrl: `Site ${id}`,
+    status: compactStatus.siteStatus,
+  };
 
   return (
     <div className="space-y-8">
       <SiteHeader
-        site={site}
+        site={headerSite}
         canEdit={canEdit}
         canPauseTranslations={canPauseTranslations}
         canResumeTranslations={canResumeTranslations}
@@ -201,7 +199,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         </CardHeader>
         <CardContent>
           <CrawlSummaryClient
-            siteId={site.id}
+            siteId={id}
             initialStatus={compactStatus}
             emptyLabel={crawlSummaryEmpty}
             statusLabel={crawlStatusLabel}
@@ -236,51 +234,6 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           />
         </CardContent>
       </Card>
-
-      {showManagedDemoForceCard ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Managed demo force refresh</CardTitle>
-            <CardDescription>
-              Force a full crawl for this managed demo without counting customer manual usage.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Account cohort:{" "}
-                  <span className="font-semibold text-foreground">Managed demo</span>
-                </p>
-                <p>Use this when a managed demo keeps serving an older rendered snapshot.</p>
-              </div>
-              <ActionForm
-                action={triggerManagedDemoForceCrawlAction}
-                loading="Starting forced pipeline refresh..."
-                success="Forced pipeline refresh enqueued."
-                error="Unable to enqueue forced pipeline refresh."
-                refreshOnSuccess={false}
-              >
-                <>
-                  <input name="siteId" type="hidden" value={site.id} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={!crawlReady}
-                    title={
-                      crawlReady
-                        ? "Force a full pipeline refresh for this managed demo."
-                        : "Enable localization to force a pipeline refresh."
-                    }
-                  >
-                    Force managed demo refresh
-                  </Button>
-                </>
-              </ActionForm>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card>
         <CardHeader>
@@ -330,7 +283,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                               refreshOnSuccess={false}
                             >
                               <>
-                                <input name="siteId" type="hidden" value={site.id} />
+                                <input name="siteId" type="hidden" value={id} />
                                 <input name="pageId" type="hidden" value={page.id} />
                                 <Button
                                   type="submit"

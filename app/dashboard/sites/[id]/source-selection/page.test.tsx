@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
-  fetchSite: vi.fn(),
+  fetchSiteDashboardProjection: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -33,7 +33,7 @@ vi.mock("@internal/dashboard/error-state", () => ({
   })),
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
-  fetchSite: mocks.fetchSite,
+  fetchSiteDashboardProjection: mocks.fetchSiteDashboardProjection,
   WebhooksApiError: class WebhooksApiError extends Error {},
 }));
 vi.mock("@internal/i18n", () => ({
@@ -87,18 +87,35 @@ describe("SourceSelectionPage", () => {
       actingAsCustomer: false,
       subjectFallbackToActor: false,
     });
-    mocks.fetchSite.mockResolvedValue({
-      id: "site-1",
-      routeConfig: {
-        sourceSelection: {
-          rules: [
-            {
-              action: "canonical_source",
-              pattern: "/blog/alias/*",
-              canonicalSourcePattern: "/blog/*",
-            },
-          ],
-        },
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "source_selection" },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "active",
+      },
+      access: {
+        mutationsAllowed: true,
+        features: {},
+        canEditSourceSelection: true,
+        canPreviewSourceSelection: true,
+      },
+      policy: {
+        rules: [
+          {
+            kind: "canonical",
+            pattern: "/blog/alias/*",
+            target: "/blog/*",
+          },
+        ],
+      },
+      inventorySummary: {
+        knownPageCount: 0,
+      },
+      preconditions: {
+        expectedRouteConfigUpdatedAt: "2026-05-07T00:00:00.000Z",
+        expectedSourceSelectionFingerprint: "fingerprint",
       },
     });
 
@@ -114,5 +131,10 @@ describe("SourceSelectionPage", () => {
       title: "Unsupported source-selection rules",
       message: "Editing is blocked to avoid deleting unsupported rules.",
     });
+    expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(
+      { token: "token", subjectAccountId: "acct-1" },
+      "site-1",
+      "source_selection",
+    );
   });
 });

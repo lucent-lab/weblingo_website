@@ -91,6 +91,7 @@ describe("SiteAdminPage", () => {
         servingMode: "strict",
         maxLocales: null,
         siteProfile: {},
+        webhookSecret: "plaintext-secret",
         webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
         routeConfig: {
           sourceLang: "ja",
@@ -144,6 +145,7 @@ describe("SiteAdminPage", () => {
     expect(siteAdminForm).toMatchObject({
       siteId: "site-1",
       sourceLang: "ja",
+      webhookSecret: "",
     });
     expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
     expect(mocks.getSiteShowcase).not.toHaveBeenCalled();

@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
-  fetchSite,
+  fetchSiteDashboardProjection,
   listRuntimeRequestObservations,
   WebhooksApiError,
   type RuntimeRequestObservationGroup,
-  type Site,
+  type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
@@ -32,6 +32,11 @@ type RuntimeRequestsPageProps = {
   params: Promise<{ id: string }>;
 };
 
+type SiteDeveloperToolsProjection = Extract<
+  SiteDashboardProjectionResponse,
+  { meta: { view: "developer_tools" } }
+>;
+
 export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
@@ -44,17 +49,20 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   const canPauseTranslations = auth.has({ feature: "edit" });
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
 
-  let site: Site | null = null;
+  let projection: SiteDeveloperToolsProjection | null = null;
   let observations: RuntimeRequestObservationGroup[] = [];
   let error: unknown = null;
 
   try {
-    site = await fetchSite(authToken, id);
-    const observationResponse = await listRuntimeRequestObservations(authToken, id, {
-      limit: 50,
-      lifecycle: "all",
-      sort: "last_seen_desc",
-    });
+    const [projectionPayload, observationResponse] = await Promise.all([
+      fetchSiteDashboardProjection(authToken, id, "developer_tools"),
+      listRuntimeRequestObservations(authToken, id, {
+        limit: 50,
+        lifecycle: "all",
+        sort: "last_seen_desc",
+      }),
+    ]);
+    projection = isDeveloperToolsProjection(projectionPayload) ? projectionPayload : null;
     observations = observationResponse.groups;
   } catch (err) {
     error = err;
@@ -76,7 +84,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
     }
   }
 
-  if (!site) {
+  if (!projection) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load runtime requests",
@@ -103,7 +111,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   return (
     <div className="space-y-8">
       <SiteHeader
-        site={site}
+        site={projection.site}
         canEdit={canEdit}
         canPauseTranslations={canPauseTranslations}
         canResumeTranslations={canResumeTranslations}
@@ -116,13 +124,13 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
 
       {canEdit ? (
         <RuntimeRequestsManager
-          siteId={site.id}
-          initialPolicy={site.routeConfig?.runtimeRequestPolicy}
+          siteId={projection.site.id}
+          initialPolicy={projection.runtimeRequests.policy}
           runtimeRequestPolicyFingerprint={
-            site.routeConfig?.runtimeRequestPolicyFingerprint ?? null
+            projection.runtimeRequests.policySummary?.fingerprint ?? null
           }
-          runtimeRequestPolicyVersion={site.routeConfig?.runtimeRequestPolicyVersion ?? null}
-          propagation={site.routeConfig?.runtimeRequestPolicyPropagation ?? null}
+          runtimeRequestPolicyVersion={projection.runtimeRequests.policySummary?.version ?? null}
+          propagation={projection.runtimeRequests.propagation ?? null}
           observations={observations}
           canEdit={canEdit}
           saveAction={updateRuntimeRequestPolicyAction}
@@ -158,6 +166,12 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
       )}
     </div>
   );
+}
+
+function isDeveloperToolsProjection(
+  payload: SiteDashboardProjectionResponse,
+): payload is SiteDeveloperToolsProjection {
+  return payload.meta.view === "developer_tools";
 }
 
 function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {

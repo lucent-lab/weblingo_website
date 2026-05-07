@@ -6,13 +6,23 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import { fetchSite, WebhooksApiError, type Site } from "@internal/dashboard/webhooks";
+import {
+  fetchSiteDashboardProjection,
+  WebhooksApiError,
+  type SiteDashboardProjectionResponse,
+  type SourceSelectionRule,
+} from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
 import { updateSourceSelectionAction } from "../../../actions";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { SourceSelectionManager, type SourceSelectionCopy } from "./source-selection-manager";
+
+type SiteSourceSelectionProjection = Extract<
+  SiteDashboardProjectionResponse,
+  { meta: { view: "source_selection" } }
+>;
 
 export const metadata = {
   title: "Source selection",
@@ -40,15 +50,16 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
   const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
   const activateHelp = t("dashboard.site.status.activateHelp");
 
-  let site: Site | null = null;
+  let projection: SiteSourceSelectionProjection | null = null;
   let error: unknown = null;
 
   try {
-    site = await fetchSite(authToken, id);
+    const payload = await fetchSiteDashboardProjection(authToken, id, "source_selection");
+    projection = isSourceSelectionProjection(payload) ? payload : null;
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSite failed", {
+      console.warn("[dashboard] fetch source selection projection failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -58,14 +69,14 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchSite failed (unknown error)", {
+      console.warn("[dashboard] fetch source selection projection failed (unknown error)", {
         siteId: id,
         message: error,
       });
     }
   }
 
-  if (!site) {
+  if (!projection) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
@@ -89,15 +100,16 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
     notFound();
   }
 
-  const initialSourceSelectionRules = site.routeConfig?.sourceSelection?.rules ?? [];
-  const hasUnsupportedSourceSelectionRules = initialSourceSelectionRules.some(
-    (rule) => rule.action !== "include" && rule.action !== "exclude",
-  );
+  const initialSourceSelectionRules = projection.policy.rules
+    .map(toEditableSourceSelectionRule)
+    .filter((rule): rule is SourceSelectionRule => rule !== null);
+  const hasUnsupportedSourceSelectionRules =
+    projection.policy.rules.length !== initialSourceSelectionRules.length;
 
   return (
     <div className="space-y-8">
       <SiteHeader
-        site={site}
+        site={projection.site}
         canEdit={canEdit}
         canPauseTranslations={canPauseTranslations}
         canResumeTranslations={canResumeTranslations}
@@ -125,10 +137,12 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         />
       ) : canEdit ? (
         <SourceSelectionManager
-          siteId={site.id}
+          siteId={projection.site.id}
           initialRules={initialSourceSelectionRules}
-          routeConfigUpdatedAt={site.routeConfig?.updatedAt ?? null}
-          sourceSelectionFingerprint={site.routeConfig?.sourceSelectionFingerprint ?? null}
+          routeConfigUpdatedAt={projection.preconditions.expectedRouteConfigUpdatedAt ?? null}
+          sourceSelectionFingerprint={
+            projection.preconditions.expectedSourceSelectionFingerprint ?? null
+          }
           canEdit={canEdit}
           saveAction={updateSourceSelectionAction}
           copy={buildSourceSelectionCopy(t)}
@@ -162,6 +176,12 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
       )}
     </div>
   );
+}
+
+function isSourceSelectionProjection(
+  payload: SiteDashboardProjectionResponse,
+): payload is SiteSourceSelectionProjection {
+  return payload.meta.view === "source_selection";
 }
 
 function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
@@ -335,5 +355,17 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
         "Excluded because include rules create an allowlist",
       ),
     },
+  };
+}
+
+function toEditableSourceSelectionRule(
+  rule: SiteSourceSelectionProjection["policy"]["rules"][number],
+): SourceSelectionRule | null {
+  if (rule.kind !== "include" && rule.kind !== "exclude") {
+    return null;
+  }
+  return {
+    action: rule.kind,
+    pattern: rule.pattern,
   };
 }

@@ -133,7 +133,6 @@ export function SiteAdminForm({
   canEditTranslatableAttributes,
   canEditProfile,
   webhookUrl: initialWebhookUrl,
-  webhookSecret: initialWebhookSecret,
   webhookEvents: initialWebhookEvents,
   canEditWebhooks,
   clientRuntimeCopy,
@@ -182,7 +181,7 @@ export function SiteAdminForm({
     (initialTranslatableAttributes ?? []).join(", "),
   );
   const [webhookUrl, setWebhookUrl] = useState<string>(initialWebhookUrl ?? "");
-  const [webhookSecret, setWebhookSecret] = useState<string>(initialWebhookSecret ?? "");
+  const [webhookSecret, setWebhookSecret] = useState<string>("");
   const [webhookEvents, setWebhookEvents] = useState<KnownWebhookEventType[]>(
     () => initialWebhookEvents,
   );
