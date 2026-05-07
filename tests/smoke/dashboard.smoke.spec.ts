@@ -64,9 +64,11 @@ test.describe("dashboard smoke", () => {
     await page.goto(`/dashboard/sites/${SITE_ID}/quality`);
     await expect(page.getByRole("heading", { name: "Quality" }).first()).toBeVisible();
 
-    await page.goto(`/dashboard/sites/${SITE_ID}/history`);
+    await page.goto(`/dashboard/sites/${SITE_ID}/history?targetLang=fr`);
     await expect(page.getByRole("heading", { name: "History" }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Translation runs" })).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/history?targetLang=fr&historyType=deployments`);
     await expect(page.getByRole("heading", { name: "Deployments" })).toBeVisible();
   });
 

@@ -86,6 +86,7 @@ describe("SettingsPage", () => {
     expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
     expect(mocks.getSiteShowcase).not.toHaveBeenCalled();
     expect(mocks.listRuntimeRequestObservations).not.toHaveBeenCalled();
+    expect(collectHrefs(tree)).not.toContain("/dashboard/sites/site-1/admin");
   });
 });
 
@@ -108,4 +109,19 @@ function makeSite() {
     sourceLang: "en",
     status: "active",
   };
+}
+
+function collectHrefs(node: unknown): string[] {
+  if (node == null || typeof node === "boolean") {
+    return [];
+  }
+  if (Array.isArray(node)) {
+    return node.flatMap(collectHrefs);
+  }
+  if (!isValidElement(node)) {
+    return [];
+  }
+  const props = node.props as { href?: unknown; children?: unknown };
+  const own = typeof props.href === "string" ? [props.href] : [];
+  return [...own, ...collectHrefs(props.children)];
 }

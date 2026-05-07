@@ -1,34 +1,30 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
 import {
   fetchCustomerDeploymentHistory,
   fetchCustomerTranslationRuns,
-  fetchSiteDashboardProjection,
   WebhooksApiError,
   type CustomerDeploymentHistoryResponse,
   type CustomerTranslationRunsResponse,
-  type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
 import {
-  buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatCount,
   formatDate,
   StatusValueBadge,
   toneForStatus,
 } from "../focused-route-utils";
-import { SiteHeader } from "../site-header";
 
 export const metadata = {
   title: "History",
@@ -37,19 +33,17 @@ export const metadata = {
 
 const PAGE_SIZE = 10;
 
+type HistoryKind = "runs" | "deployments";
+
 type HistoryPageProps = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<{
     targetLang?: string;
+    historyType?: string;
     runsPage?: string;
     deploymentsPage?: string;
   }>;
 };
-
-type LanguagesProjection = Extract<
-  SiteDashboardProjectionResponse,
-  { meta: { view: "languages" } }
->;
 
 export default async function HistoryPage({ params, searchParams }: HistoryPageProps) {
   const { id } = await params;
@@ -58,65 +52,37 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
-  const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
+  const historyType = readHistoryKind(resolvedSearchParams?.historyType);
+  const selectedTargetLang = normalizeTargetLang(resolvedSearchParams?.targetLang);
   const runsPage = readPageNumber(resolvedSearchParams?.runsPage);
   const deploymentsPage = readPageNumber(resolvedSearchParams?.deploymentsPage);
 
-  let projection: LanguagesProjection | null = null;
-  let error: unknown = null;
-
-  try {
-    const payload = await fetchSiteDashboardProjection(authToken, id, "languages");
-    projection = isLanguagesProjection(payload) ? payload : null;
-  } catch (err) {
-    error = err;
-    logProjectionError(id, auth, err);
-  }
-
-  if (!projection) {
-    if (error) {
-      return (
-        <FocusedRouteErrorState
-          error={error}
-          title="Unable to load history"
-          description="We could not complete your request. You can retry or return to the dashboard."
-          message="Unable to load history."
-        />
-      );
-    }
-    notFound();
-  }
-
-  const selectedTargetLang = resolveSelectedTargetLang(
-    projection.targetLanguages.map((language) => language.tag),
-    resolvedSearchParams?.targetLang,
-  );
   let runs: CustomerTranslationRunsResponse | null = null;
   let deployments: CustomerDeploymentHistoryResponse | null = null;
+  let error: unknown = null;
 
   if (selectedTargetLang) {
     try {
-      [runs, deployments] = await Promise.all([
-        fetchCustomerTranslationRuns(authToken, id, {
-          targetLang: selectedTargetLang,
-          limit: PAGE_SIZE,
-          offset: (runsPage - 1) * PAGE_SIZE,
-        }),
-        fetchCustomerDeploymentHistory(authToken, id, {
+      if (historyType === "deployments") {
+        deployments = await fetchCustomerDeploymentHistory(authToken, id, {
           targetLang: selectedTargetLang,
           limit: PAGE_SIZE,
           offset: (deploymentsPage - 1) * PAGE_SIZE,
-        }),
-      ]);
+        });
+      } else {
+        runs = await fetchCustomerTranslationRuns(authToken, id, {
+          targetLang: selectedTargetLang,
+          limit: PAGE_SIZE,
+          offset: (runsPage - 1) * PAGE_SIZE,
+        });
+      }
     } catch (err) {
       error = err;
-      logHistoryError(id, selectedTargetLang, auth, err);
+      logHistoryError(id, selectedTargetLang, historyType, auth, err);
     }
   }
 
-  if (error && selectedTargetLang && (!runs || !deployments)) {
+  if (error && selectedTargetLang) {
     return (
       <FocusedRouteErrorState
         error={error}
@@ -127,78 +93,98 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
     );
   }
 
-  const headerLabels = buildSiteHeaderLabels(t);
-
   return (
     <div className="space-y-8">
-      <SiteHeader
-        site={projection.site}
-        canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        {...headerLabels}
-      />
-
       <Card>
         <CardHeader>
           <CardTitle>History</CardTitle>
           <CardDescription>
-            Translation runs and deployment events are loaded for one selected locale at a time.
+            Translation runs and deployment events load for one locale and one history stream at a
+            time.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <nav aria-label="History locale" className="flex flex-wrap gap-2">
-            {projection.targetLanguages.map((language) => (
-              <Button
-                asChild
-                key={language.tag}
-                size="sm"
-                variant={language.tag === selectedTargetLang ? "default" : "outline"}
-              >
-                <Link href={historyHref(projection.site.id, { targetLang: language.tag })}>
-                  {language.tag.toUpperCase()}
+        <CardContent className="space-y-4">
+          <form
+            action={`/dashboard/sites/${id}/history`}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <input name="historyType" type="hidden" value={historyType} />
+            <div className="w-full max-w-xs space-y-1">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="targetLang">
+                Target locale
+              </label>
+              <Input
+                id="targetLang"
+                name="targetLang"
+                defaultValue={selectedTargetLang ?? ""}
+                placeholder="fr"
+              />
+            </div>
+            <Button type="submit">
+              <Search className="h-4 w-4" />
+              Load history
+            </Button>
+          </form>
+
+          {selectedTargetLang ? (
+            <nav aria-label="History stream" className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant={historyType === "runs" ? "default" : "outline"}>
+                <Link
+                  href={historyHref(id, {
+                    targetLang: selectedTargetLang,
+                    historyType: "runs",
+                  })}
+                >
+                  Translation runs
                 </Link>
               </Button>
-            ))}
-          </nav>
+              <Button
+                asChild
+                size="sm"
+                variant={historyType === "deployments" ? "default" : "outline"}
+              >
+                <Link
+                  href={historyHref(id, {
+                    targetLang: selectedTargetLang,
+                    historyType: "deployments",
+                  })}
+                >
+                  Deployments
+                </Link>
+              </Button>
+            </nav>
+          ) : null}
         </CardContent>
       </Card>
 
-      {selectedTargetLang && runs && deployments ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <TranslationRunsCard
-            page={runsPage}
-            response={runs}
-            siteId={projection.site.id}
-            t={t}
-            targetLang={selectedTargetLang}
-          />
-          <DeploymentsCard
-            page={deploymentsPage}
-            response={deployments}
-            siteId={projection.site.id}
-            t={t}
-            targetLang={selectedTargetLang}
-          />
-        </div>
-      ) : (
+      {!selectedTargetLang ? (
         <Card>
           <CardHeader>
-            <CardTitle>No target languages</CardTitle>
+            <CardTitle>Select a locale</CardTitle>
             <CardDescription>
-              Add a target language before translation and deployment history is available.
+              Choose a target locale before loading translation or deployment history.
             </CardDescription>
           </CardHeader>
         </Card>
-      )}
+      ) : historyType === "deployments" && deployments ? (
+        <DeploymentsCard
+          page={deploymentsPage}
+          response={deployments}
+          siteId={id}
+          t={t}
+          targetLang={selectedTargetLang}
+        />
+      ) : runs ? (
+        <TranslationRunsCard
+          page={runsPage}
+          response={runs}
+          siteId={id}
+          t={t}
+          targetLang={selectedTargetLang}
+        />
+      ) : null}
     </div>
   );
-}
-
-function isLanguagesProjection(
-  payload: SiteDashboardProjectionResponse,
-): payload is LanguagesProjection {
-  return payload.meta.view === "languages";
 }
 
 function TranslationRunsCard({
@@ -255,10 +241,10 @@ function TranslationRunsCard({
         )}
         <PaginationLinks
           currentPage={page}
+          historyType="runs"
           nextOffset={response.pagination.nextOffset}
           siteId={siteId}
           targetLang={targetLang}
-          type="runs"
         />
       </CardContent>
     </Card>
@@ -311,10 +297,6 @@ function DeploymentsCard({
               </div>
               <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                 <HistoryMetric label="Pages" value={formatCount(entry.pageCount)} />
-                <HistoryMetric
-                  label="Raw status"
-                  value={formatCustomerStatusValue(entry.rawStatus)}
-                />
               </div>
             </div>
           ))
@@ -323,10 +305,10 @@ function DeploymentsCard({
         )}
         <PaginationLinks
           currentPage={page}
+          historyType="deployments"
           nextOffset={response.pagination.nextOffset}
           siteId={siteId}
           targetLang={targetLang}
-          type="deployments"
         />
       </CardContent>
     </Card>
@@ -344,24 +326,31 @@ function HistoryMetric({ label, value }: { label: string; value: string }) {
 
 function PaginationLinks({
   currentPage,
+  historyType,
   nextOffset,
   siteId,
   targetLang,
-  type,
 }: {
   currentPage: number;
+  historyType: HistoryKind;
   nextOffset?: number | null;
   siteId: string;
   targetLang: string;
-  type: "runs" | "deployments";
 }) {
   const previousPage = Math.max(1, currentPage - 1);
   const nextPage = nextOffset == null ? null : currentPage + 1;
+  const pageParam = historyType === "runs" ? "runsPage" : "deploymentsPage";
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       {currentPage > 1 ? (
         <Button asChild size="sm" variant="outline">
-          <Link href={historyHref(siteId, { targetLang, [`${type}Page`]: String(previousPage) })}>
+          <Link
+            href={historyHref(siteId, {
+              targetLang,
+              historyType,
+              [pageParam]: String(previousPage),
+            })}
+          >
             <ChevronLeft className="h-4 w-4" />
             Previous
           </Link>
@@ -375,7 +364,13 @@ function PaginationLinks({
       <span className="text-sm text-muted-foreground">Page {currentPage}</span>
       {nextPage ? (
         <Button asChild size="sm" variant="outline">
-          <Link href={historyHref(siteId, { targetLang, [`${type}Page`]: String(nextPage) })}>
+          <Link
+            href={historyHref(siteId, {
+              targetLang,
+              historyType,
+              [pageParam]: String(nextPage),
+            })}
+          >
             Next
             <ChevronRight className="h-4 w-4" />
           </Link>
@@ -397,14 +392,13 @@ function readPageNumber(rawValue?: string): number {
   return Math.max(1, Number.parseInt(rawValue, 10));
 }
 
-function resolveSelectedTargetLang(targetLangs: string[], requested?: string): string | null {
-  if (!targetLangs.length) {
-    return null;
-  }
-  if (requested && targetLangs.includes(requested)) {
-    return requested;
-  }
-  return targetLangs[0];
+function readHistoryKind(rawValue?: string): HistoryKind {
+  return rawValue === "deployments" ? "deployments" : "runs";
+}
+
+function normalizeTargetLang(rawValue?: string): string | null {
+  const value = rawValue?.trim();
+  return value ? value : null;
 }
 
 function historyHref(siteId: string, params: Record<string, string | undefined>) {
@@ -418,32 +412,10 @@ function historyHref(siteId: string, params: Record<string, string | undefined>)
   return `/dashboard/sites/${siteId}/history${suffix}`;
 }
 
-function logProjectionError(
-  siteId: string,
-  auth: Awaited<ReturnType<typeof requireDashboardAuth>>,
-  err: unknown,
-) {
-  if (err instanceof WebhooksApiError) {
-    console.warn("[dashboard] fetch history languages projection failed", {
-      siteId,
-      status: err.status,
-      message: err.message,
-      details: err.details ?? null,
-      subjectAccountId: auth.subjectAccountId,
-      actorAccountId: auth.actorAccountId,
-      actingAsCustomer: auth.actingAsCustomer,
-    });
-  } else {
-    console.warn("[dashboard] fetch history languages projection failed (unknown error)", {
-      siteId,
-      message: err,
-    });
-  }
-}
-
 function logHistoryError(
   siteId: string,
   targetLang: string,
+  historyType: HistoryKind,
   auth: Awaited<ReturnType<typeof requireDashboardAuth>>,
   err: unknown,
 ) {
@@ -451,6 +423,7 @@ function logHistoryError(
     console.warn("[dashboard] fetch history failed", {
       siteId,
       targetLang,
+      historyType,
       status: err.status,
       message: err.message,
       details: err.details ?? null,
@@ -462,6 +435,7 @@ function logHistoryError(
     console.warn("[dashboard] fetch history failed (unknown error)", {
       siteId,
       targetLang,
+      historyType,
       message: err,
     });
   }

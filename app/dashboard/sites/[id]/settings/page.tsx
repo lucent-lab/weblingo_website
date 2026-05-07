@@ -1,12 +1,8 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Settings2 } from "lucide-react";
-
 import { MutationLockBanner } from "@/components/dashboard/mutation-lock-banner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import {
@@ -89,19 +85,13 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
       />
 
       <Card>
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <CardHeader>
           <div>
             <CardTitle>Settings</CardTitle>
             <CardDescription>
               Focused configuration summary from the customer-safe settings projection.
             </CardDescription>
           </div>
-          <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${projection.site.id}/admin`}>
-              <Settings2 className="h-4 w-4" />
-              Advanced edit
-            </Link>
-          </Button>
         </CardHeader>
       </Card>
 

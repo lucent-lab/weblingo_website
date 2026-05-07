@@ -18818,6 +18818,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Optional locale filter for customer-safe translation run summaries.",
+            "in": "query",
+            "name": "targetLang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum translation runs to include (1-50). Defaults to 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of translation runs to skip. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
