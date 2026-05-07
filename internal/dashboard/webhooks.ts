@@ -4447,13 +4447,21 @@ async function request<T>({
   const result = schema.safeParse(parsed);
   if (!result.success) {
     logTiming(response.status, false, "schema_mismatch");
+    const details = {
+      code: "response_schema_mismatch",
+      issues: result.error.issues,
+    };
     console.error("[webhooks] response schema mismatch", {
       path,
       method,
       status: response.status,
-      issues: result.error.issues,
+      issues: details.issues,
     });
-    throw result.error;
+    throw new WebhooksApiError(
+      "The WebLingo API returned an unexpected dashboard response.",
+      response.status,
+      details,
+    );
   }
   logTiming(response.status, true);
   return result.data;

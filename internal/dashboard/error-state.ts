@@ -115,8 +115,19 @@ function classifyDashboardErrorKind(error: unknown): DashboardErrorKind {
 }
 
 function resolveDashboardErrorMessage(error: unknown, fallbackMessage?: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
+  if (error instanceof WebhooksApiError) {
+    if (error.status === 401 || error.status === 403) {
+      return "Your session cannot view this dashboard data.";
+    }
+    if (error.status === 404) {
+      return "The requested dashboard data could not be found.";
+    }
+    if (error.status === 504) {
+      return "The dashboard request timed out. Retry in a moment.";
+    }
+    if (error.status >= 500) {
+      return "The dashboard service is unavailable right now.";
+    }
   }
   return fallbackMessage ?? "Something went wrong while loading the dashboard.";
 }

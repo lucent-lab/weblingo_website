@@ -370,6 +370,31 @@ describe("dashboard capability actions", () => {
     expect(verifyDomain).not.toHaveBeenCalled();
   });
 
+  it("does not return raw provider details from domain action failures", async () => {
+    verifyDomain.mockRejectedValue(
+      new MockWebhooksApiError("raw provider failure secret-token", 500, {
+        errors: [{ code: "raw_code", message: "raw dns provider body" }],
+      }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      const { verifyDomainAction } = await import("./actions");
+      const formData = new FormData();
+      formData.set("siteId", "site-1");
+      formData.set("domain", "fr.example.com");
+
+      const result = await verifyDomainAction(undefined, formData);
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toBe("The dashboard service is unavailable right now.");
+      expect(result.message).not.toContain("secret-token");
+      expect(result.message).not.toContain("raw dns provider body");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("saves source-selection rules through the site PATCH payload", async () => {
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },

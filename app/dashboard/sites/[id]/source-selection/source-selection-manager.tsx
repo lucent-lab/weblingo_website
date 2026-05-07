@@ -304,7 +304,7 @@ export function SourceSelectionManager({
             return;
           }
           if (!response.ok) {
-            setPreviewError(extractPreviewError(body, response.status));
+            setPreviewError(extractPreviewError(body, copy.previewErrorTitle));
             setPreviewLoading(false);
             return;
           }
@@ -318,8 +318,9 @@ export function SourceSelectionManager({
           if (controller.signal.aborted || requestId !== requestIdRef.current) {
             return;
           }
+          console.error("[dashboard] source selection preview failed:", error);
           setPreviewError({
-            message: error instanceof Error ? error.message : copy.previewErrorTitle,
+            message: copy.previewErrorTitle,
             validation: [],
           });
           setPreviewLoading(false);
@@ -392,9 +393,10 @@ export function SourceSelectionManager({
           setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
         }
       } catch (error) {
+        console.error("[dashboard] source selection save failed:", error);
         setSaveResult({
           ok: false,
-          message: error instanceof Error ? error.message : copy.previewErrorTitle,
+          message: copy.previewErrorTitle,
         });
       } finally {
         setSaving(false);
@@ -908,10 +910,7 @@ function ValidationAlert({ copy, error }: { copy: SourceSelectionCopy; error: Pr
           {error.validation.length ? (
             <ul className="list-disc space-y-1 pl-5">
               {error.validation.map((item, index) => (
-                <li key={`${item.field ?? "field"}-${index}`}>
-                  {item.field ? <span className="font-mono">{item.field}: </span> : null}
-                  {item.message}
-                </li>
+                <li key={`${item.field ?? "field"}-${index}`}>{item.message}</li>
               ))}
             </ul>
           ) : null}
@@ -1554,34 +1553,49 @@ function parentSourcePath(path: string): string {
   return `/${segments.slice(0, -1).join("/")}`;
 }
 
-function extractPreviewError(body: unknown, status: number): PreviewError {
+function extractPreviewError(body: unknown, fallbackMessage: string): PreviewError {
   const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const message =
-    typeof record.error === "string" && record.error.trim()
-      ? record.error
-      : `Preview failed with status ${status}.`;
   const details = record.details;
   const detailsRecord =
     details && typeof details === "object" ? (details as Record<string, unknown>) : {};
   const validation = detailsRecord.validation;
   const validationItems = Array.isArray(validation) ? validation : validation ? [validation] : [];
   return {
-    message,
+    message: fallbackMessage,
     validation: validationItems.flatMap((item) => {
       if (!item || typeof item !== "object") {
         return [];
       }
       const validationRecord = item as Record<string, unknown>;
-      const itemMessage =
-        typeof validationRecord.message === "string" ? validationRecord.message : message;
       return [
         {
           field: typeof validationRecord.field === "string" ? validationRecord.field : undefined,
-          message: itemMessage,
+          message: formatSourceSelectionValidationMessage(validationRecord, fallbackMessage),
         },
       ];
     }),
   };
+}
+
+function formatSourceSelectionValidationMessage(
+  validation: Record<string, unknown>,
+  fallbackMessage: string,
+): string {
+  const field = typeof validation.field === "string" ? validation.field : "";
+  const message = typeof validation.message === "string" ? validation.message : "";
+  if (/at most 200|too many/i.test(message)) {
+    return "Source selection can include at most 200 rules.";
+  }
+  if (/collides|duplicate/i.test(message)) {
+    return "This rule overlaps another source selection rule.";
+  }
+  if (/exact paths|wildcards|wildcard/i.test(message)) {
+    return "Use an exact path or a /* wildcard pattern.";
+  }
+  if (field.includes("pattern")) {
+    return "Review this source selection pattern and preview again.";
+  }
+  return fallbackMessage;
 }
 
 function readSavedRouteTokens(meta: Record<string, unknown> | undefined): {

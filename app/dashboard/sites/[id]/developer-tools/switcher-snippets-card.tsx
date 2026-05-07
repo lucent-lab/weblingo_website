@@ -40,9 +40,10 @@ export function SwitcherSnippetsCard({ siteId, available, action }: SwitcherSnip
     void action(undefined, formData)
       .then(setResult)
       .catch((error) => {
+        console.error("[dashboard] switcher snippets load failed:", error);
         setResult({
           ok: false,
-          message: error instanceof Error ? error.message : "Unable to fetch switcher snippets.",
+          message: "Unable to fetch switcher snippets.",
         });
       })
       .finally(() => setLoading(false));

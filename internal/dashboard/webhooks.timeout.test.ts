@@ -65,6 +65,62 @@ describe("webhooks request wrapper", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
+  it("rejects schema mismatches with a safe public error", async () => {
+    const fetchSpy = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          runs: [
+            {
+              id: "run-1",
+              customerError: {
+                area: "raw_internal_area",
+              },
+            },
+          ],
+          pagination: { limit: 10, offset: 0, nextOffset: null },
+          generatedAt: "2026-05-07T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { fetchCustomerTranslationRuns, WebhooksApiError } = await import("./webhooks");
+
+      let caught: unknown;
+      try {
+        await fetchCustomerTranslationRuns("token", "site-1", {
+          targetLang: "it",
+          limit: 10,
+          offset: 0,
+        });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(WebhooksApiError);
+      expect(caught).toMatchObject({
+        message: "The WebLingo API returned an unexpected dashboard response.",
+        status: 200,
+        details: {
+          code: "response_schema_mismatch",
+        },
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[webhooks] response schema mismatch",
+        expect.objectContaining({
+          path: "/sites/site-1/translation-runs?targetLang=it&limit=10&offset=0",
+          issues: expect.any(Array),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("applies endpoint timeout profiles for list/detail/auth requests", async () => {
     const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");

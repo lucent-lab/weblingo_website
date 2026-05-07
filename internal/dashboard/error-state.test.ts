@@ -35,5 +35,23 @@ describe("dashboard error state", () => {
 
     expect(view.kind).toBe("backend_unavailable");
     expect(view.title).toBe("Dashboard service unavailable");
+    expect(view.message).toBe("The dashboard service is unavailable right now.");
+  });
+
+  it("does not render raw schema or implementation errors to dashboard UI", () => {
+    const view = resolveDashboardErrorView(
+      new Error(
+        '[{"code":"invalid_value","path":["runs",5,"customerError","area"],"message":"Invalid option"}]',
+      ),
+      {
+        title: "Unable to load history",
+        description: "Fallback description",
+        message: "Unable to load history.",
+      },
+    );
+
+    expect(view.kind).toBe("unknown");
+    expect(view.message).toBe("Unable to load history.");
+    expect(view.message).not.toContain("invalid_value");
   });
 });

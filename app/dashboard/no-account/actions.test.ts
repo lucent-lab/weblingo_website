@@ -60,4 +60,29 @@ describe("claimAccount", () => {
     expect(invalidateDashboardBootstrapCache).toHaveBeenCalledWith("supabase-access-token");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
   });
+
+  it("does not return raw account-claim backend errors", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: { access_token: "supabase-access-token" } },
+        }),
+      },
+    });
+    fetchWithTimeout.mockResolvedValue(
+      new Response(JSON.stringify({ error: "raw backend claim failure secret" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const { claimAccount } = await import("./actions");
+    const result = await claimAccount(undefined, new FormData());
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Unable to claim dashboard access.",
+      meta: undefined,
+    });
+  });
 });

@@ -1422,6 +1422,7 @@ describe("SourceSelectionManager", () => {
       "invalid pattern",
       "/blog*",
       validationError("sourceSelection.rules[0].pattern must use exact paths or /* wildcards"),
+      "Use an exact path or a /* wildcard pattern.",
     ],
     [
       "duplicate pattern",
@@ -1430,6 +1431,7 @@ describe("SourceSelectionManager", () => {
         "sourceSelection.rules[1].pattern collides with another source-selection rule",
         "sourceSelection.rules[1].pattern",
       ),
+      "This rule overlaps another source selection rule.",
     ],
     [
       "too many rules",
@@ -1438,10 +1440,11 @@ describe("SourceSelectionManager", () => {
         "sourceSelection.rules must contain at most 200 rules",
         "sourceSelection.rules",
       ),
+      "Source selection can include at most 200 rules.",
     ],
   ])(
     "shows %s validation and blocks save without discarding edits",
-    async (_name, pattern, body) => {
+    async (_name, pattern, body, safeMessage) => {
       vi.useFakeTimers();
       globalThis.fetch = vi.fn(
         async () =>
@@ -1461,7 +1464,9 @@ describe("SourceSelectionManager", () => {
       await runPreviewTimer();
 
       expect(screen.getByText("Rules need changes")).toBeTruthy();
-      expect(screen.getAllByText(body.details.validation.message).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(safeMessage).length).toBeGreaterThan(0);
+      expect(document.body.textContent).not.toContain(body.details.validation.message);
+      expect(document.body.textContent).not.toContain("sourceSelection.rules");
       expect(screen.getByDisplayValue(pattern)).toBeTruthy();
       expect(
         (screen.getByRole("button", { name: /save source selection/i }) as HTMLButtonElement)

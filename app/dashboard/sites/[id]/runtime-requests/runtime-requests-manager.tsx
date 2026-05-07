@@ -261,9 +261,10 @@ export function RuntimeRequestsManager({
         }
       })
       .catch((error) => {
+        console.error("[dashboard] runtime observations load failed:", error);
         setObservationLoadResult({
           ok: false,
-          message: error instanceof Error ? error.message : copy.previewBlocked,
+          message: copy.previewBlocked,
         });
       })
       .finally(() => setLoadingObservations(false));
@@ -311,7 +312,8 @@ export function RuntimeRequestsManager({
         setPreview(body as RuntimeRequestPolicyPreviewResponse);
         setPreviewFingerprint(draftFingerprint);
       } catch (error) {
-        setPreviewError(error instanceof Error ? error.message : copy.previewBlocked);
+        console.error("[dashboard] runtime request policy preview failed:", error);
+        setPreviewError(copy.previewBlocked);
       } finally {
         setPreviewing(false);
       }
@@ -352,9 +354,10 @@ export function RuntimeRequestsManager({
         setPreview(null);
         setPreviewFingerprint("");
       } catch (error) {
+        console.error("[dashboard] runtime request policy save failed:", error);
         setSaveResult({
           ok: false,
-          message: error instanceof Error ? error.message : copy.previewBlocked,
+          message: copy.previewBlocked,
         });
       } finally {
         setSaving(false);
@@ -1271,13 +1274,7 @@ function formatDate(value: string | undefined): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function extractPreviewMessage(value: unknown, copy: RuntimeRequestsCopy): string {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const record = value as Record<string, unknown>;
-    if (typeof record.error === "string") {
-      return record.error;
-    }
-  }
+function extractPreviewMessage(_value: unknown, copy: RuntimeRequestsCopy): string {
   return copy.previewErrorFallback;
 }
 

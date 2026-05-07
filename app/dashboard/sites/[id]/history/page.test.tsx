@@ -1,5 +1,7 @@
+// @vitest-environment happy-dom
+import { cleanup, render, screen } from "@testing-library/react";
 import { isValidElement, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
@@ -48,6 +50,10 @@ vi.mock("../site-header", () => ({
 describe("HistoryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("does not load history streams until a target locale is selected", async () => {
@@ -131,6 +137,34 @@ describe("HistoryPage", () => {
     expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
     expect(collectText(tree)).not.toContain("Raw status");
     expect(collectText(tree)).not.toContain("active");
+  });
+
+  it("renders a customer-safe error state when history schema validation fails", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.fetchCustomerTranslationRuns.mockRejectedValue(
+      new Error(
+        '[{"code":"invalid_value","path":["runs",5,"customerError","area"],"message":"Invalid option"}]',
+      ),
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { default: HistoryPage } = await import("./page");
+      const tree = await HistoryPage({
+        params: Promise.resolve({ id: "site-1" }),
+        searchParams: Promise.resolve({ targetLang: "it", historyType: "runs" }),
+      });
+
+      render(tree);
+      const text = screen.getByText("Unable to load history.").textContent ?? "";
+      expect(text).toContain("Unable to load history.");
+      expect(document.body.textContent).not.toContain("invalid_value");
+      expect(document.body.textContent).not.toContain("customerError");
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 

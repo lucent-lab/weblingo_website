@@ -130,16 +130,22 @@ function isRuntimeRequestLifecycle(value: string): value is RuntimeRequestLifecy
 }
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
-  const isDev = process.env.NODE_ENV !== "production";
-  if (error instanceof Error) {
-    const message = error.message.trim();
-    if (!message) {
-      return fallback;
+  if (error instanceof WebhooksApiError) {
+    if (error.status === 0) {
+      return "Unable to reach the dashboard service. Try again in a moment.";
     }
-    if (!isDev && message.includes("NEXT_PUBLIC_WEBHOOKS_API_BASE")) {
-      return fallback;
+    if (error.status === 401 || error.status === 403) {
+      return "Your session cannot perform this dashboard action.";
     }
-    return isDev ? message : fallback;
+    if (error.status === 404) {
+      return "The requested dashboard data could not be found.";
+    }
+    if (error.status === 504) {
+      return "The dashboard action timed out. Try again in a moment.";
+    }
+    if (error.status >= 500) {
+      return "The dashboard service is unavailable right now.";
+    }
   }
   return fallback;
 }
@@ -158,66 +164,7 @@ function toFriendlyDashboardActionErrorWithDetails(
   error: unknown,
   fallback: string,
 ): { message: string; details?: string | null } {
-  const message = toFriendlyDashboardActionError(error, fallback);
-  const details = extractSafeErrorDetails(error);
-  return { message, details };
-}
-
-function extractSafeErrorDetails(error: unknown): string | null {
-  if (!(error instanceof WebhooksApiError)) {
-    return null;
-  }
-  return formatCloudflareErrorDetails(error.details);
-}
-
-function formatCloudflareErrorDetails(details: unknown): string | null {
-  if (!details || typeof details !== "object") {
-    return null;
-  }
-  const payload = details as Record<string, unknown>;
-  const parts = [
-    ...extractErrorMessages(payload.errors),
-    ...extractErrorMessages(payload.messages),
-  ];
-  const normalized = Array.from(new Set(parts.map((entry) => entry.trim()))).filter(Boolean);
-  if (!normalized.length) {
-    return null;
-  }
-  return normalized.map((entry) => truncateText(entry, 200)).join("\n");
-}
-
-function extractErrorMessages(value: unknown): string[] {
-  if (!value) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => extractErrorMessages(entry));
-  }
-  if (typeof value === "string") {
-    return [value];
-  }
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const code = typeof record.code === "string" ? record.code.trim() : "";
-    const message = typeof record.message === "string" ? record.message.trim() : "";
-    if (code && message) {
-      return [`${code}: ${message}`];
-    }
-    if (message) {
-      return [message];
-    }
-    if (code) {
-      return [code];
-    }
-  }
-  return [];
-}
-
-function truncateText(value: string, limit: number) {
-  if (value.length <= limit) {
-    return value;
-  }
-  return `${value.slice(0, Math.max(0, limit - 3))}...`;
+  return { message: toFriendlyDashboardActionError(error, fallback), details: null };
 }
 
 function isNextRedirectError(error: unknown): boolean {
@@ -2096,10 +2043,7 @@ export async function updateGlossaryAction(
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to save glossary.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to save glossary."));
   }
 }
 
@@ -2250,10 +2194,7 @@ export async function createOverrideAction(
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to save override.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to save override."));
   }
 }
 
@@ -2292,10 +2233,7 @@ export async function updateSlugAction(
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to update slug.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to update slug."));
   }
 }
 
