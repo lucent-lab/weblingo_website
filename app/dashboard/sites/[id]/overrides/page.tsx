@@ -62,7 +62,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;

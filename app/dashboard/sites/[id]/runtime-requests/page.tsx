@@ -45,7 +45,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
 
   let projection: SiteDeveloperToolsProjection | null = null;
@@ -98,6 +98,10 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
     notFound();
   }
 
+  const canViewRuntimeRequests =
+    projection.runtimeRequests.available && projection.access.canViewRuntimeRequests;
+  const canEditRuntimeRequests = canViewRuntimeRequests && canEdit;
+
   return (
     <div className="space-y-8">
       <SiteHeader
@@ -112,7 +116,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
         activateHelp={t("dashboard.site.status.activateHelp")}
       />
 
-      {canEdit ? (
+      {canViewRuntimeRequests ? (
         <RuntimeRequestsManager
           siteId={projection.site.id}
           initialPolicy={projection.runtimeRequests.policy}
@@ -123,7 +127,8 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           propagation={projection.runtimeRequests.propagation ?? null}
           observations={[]}
           observationsLoaded={false}
-          canEdit={canEdit}
+          canEdit={canEditRuntimeRequests}
+          canLoadObservations={canViewRuntimeRequests}
           loadObservationsAction={listRuntimeRequestObservationsAction}
           saveAction={updateRuntimeRequestPolicyAction}
           lifecycleAction={updateRuntimeRequestObservationLifecycleAction}

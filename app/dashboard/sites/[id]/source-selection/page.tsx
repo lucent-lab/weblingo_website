@@ -42,7 +42,7 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const deactivateLabel = t("dashboard.site.status.deactivate");
   const reactivateLabel = t("dashboard.site.status.reactivate");
@@ -269,6 +269,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     filterHelp: t(
       "dashboard.sourceSelection.filter.help",
       "Searches globally across known backend source paths.",
+    ),
+    filterMinLength: t(
+      "dashboard.sourceSelection.filter.minLength",
+      "Enter at least {count} characters to search.",
     ),
     filterNoResults: t(
       "dashboard.sourceSelection.filter.noResults",

@@ -49,7 +49,7 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
 
   let projection: DeveloperToolsProjection | null = null;

@@ -153,6 +153,7 @@ type RuntimeRequestsManagerProps = {
   observations: RuntimeRequestObservationGroup[];
   observationsLoaded?: boolean;
   canEdit: boolean;
+  canLoadObservations?: boolean;
   loadObservationsAction: (
     prevState: ActionResponse | undefined,
     formData: FormData,
@@ -177,6 +178,7 @@ export function RuntimeRequestsManager({
   observations,
   observationsLoaded: initialObservationsLoaded = true,
   canEdit,
+  canLoadObservations = canEdit,
   loadObservationsAction,
   saveAction,
   lifecycleAction,
@@ -232,7 +234,7 @@ export function RuntimeRequestsManager({
     !previewBlocksSave;
 
   const loadObservations = () => {
-    if (!canEdit || isLoadingObservations) {
+    if (!canLoadObservations || isLoadingObservations) {
       return;
     }
     setLoadingObservations(true);
@@ -409,7 +411,7 @@ export function RuntimeRequestsManager({
             <Button
               type="button"
               variant="outline"
-              disabled={!canEdit || isLoadingObservations}
+              disabled={!canLoadObservations || isLoadingObservations}
               onClick={loadObservations}
             >
               {isLoadingObservations ? (

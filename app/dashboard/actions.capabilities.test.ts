@@ -105,6 +105,14 @@ describe("dashboard capability actions", () => {
     withWebhooksAuth.mockImplementation(async (callback: (auth: { token: string }) => unknown) =>
       callback({ token: "webhooks-token" }),
     );
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      actorWebhooksAuth: { token: "actor-token", subjectAccountId: "acct-admin" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
     hasActorInternalOps.mockReturnValue(true);
     validateSourceUrl.mockReturnValue(null);
     parseLocaleAliases.mockImplementation((raw: string) => (raw ? JSON.parse(raw) : undefined));
@@ -243,6 +251,123 @@ describe("dashboard capability actions", () => {
     });
     expect(buildSiteSettingsUpdatePayload).not.toHaveBeenCalled();
     expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("does not send empty site settings updates to the backend", async () => {
+    deriveSiteSettingsAccess.mockReturnValue({
+      billingBlocked: false,
+      canEditBasics: true,
+      canEditLocales: true,
+      canEditServingMode: true,
+      canEditCrawlCaptureMode: true,
+      canEditClientRuntime: true,
+      canEditSpaRefresh: true,
+      canEditTranslatableAttributes: true,
+      canEditProfile: true,
+      canEditWebhooks: true,
+    });
+    buildSiteSettingsUpdatePayload.mockReturnValue({ ok: true, payload: {} });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+
+    const result = await updateSiteSettingsAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Choose at least one setting to update.",
+      meta: undefined,
+    });
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks focused dashboard mutations when the workspace mutation lock is active", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { updateSiteStatusAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("status", "inactive");
+
+    const result = await updateSiteStatusAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Your plan is not active. Update billing to pause localization.",
+      meta: undefined,
+    });
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks notification preference mutations when the workspace mutation lock is active", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { setTranslationSummaryPreferenceAction, upsertDigestSubscriptionAction } =
+      await import("./actions");
+    const digestFormData = new FormData();
+    digestFormData.set("siteId", "site-1");
+    digestFormData.set("email", "alerts@example.com");
+    digestFormData.set("frequency", "weekly");
+    const summaryFormData = new FormData();
+    summaryFormData.set("siteId", "site-1");
+    summaryFormData.set("targetLang", "fr");
+    summaryFormData.set("frequency", "daily");
+
+    await expect(upsertDigestSubscriptionAction(undefined, digestFormData)).resolves.toEqual({
+      ok: false,
+      message: "Your plan is not active. Update billing to update digest notifications.",
+      meta: undefined,
+    });
+    await expect(
+      setTranslationSummaryPreferenceAction(undefined, summaryFormData),
+    ).resolves.toEqual({
+      ok: false,
+      message:
+        "Your plan is not active. Update billing to update translation summary notifications.",
+      meta: undefined,
+    });
+    expect(upsertDigestSubscription).not.toHaveBeenCalled();
+    expect(setTranslationSummaryPreference).not.toHaveBeenCalled();
+  });
+
+  it("blocks domain mutations when domain verification is not enabled", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "starter", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(
+        (check: { allFeatures?: string[] }) =>
+          check.allFeatures?.every((feature) => feature !== "domain_verify") ?? true,
+      ),
+    });
+
+    const { verifyDomainAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("domain", "fr.example.com");
+
+    const result = await verifyDomainAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Domain verification is not enabled for this account.",
+      meta: undefined,
+    });
+    expect(verifyDomain).not.toHaveBeenCalled();
   });
 
   it("saves source-selection rules through the site PATCH payload", async () => {

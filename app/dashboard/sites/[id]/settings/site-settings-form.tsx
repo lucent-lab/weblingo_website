@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
 import { TargetLanguagePicker } from "../../target-language-picker";
@@ -145,6 +146,8 @@ export function SiteSettingsForm({
   initialSiteProfileNotes = "",
 }: SiteSettingsFormProps) {
   const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const [targets, setTargets] = useState<string[]>(() => initialTargets);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {
     const entries = Object.entries(aliases).filter(
@@ -263,6 +266,13 @@ export function SiteSettingsForm({
     success: "Site settings saved.",
     error: "Unable to update site settings.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
   const hasEditableSection =
     canEditBasics ||
     canEditLocales ||

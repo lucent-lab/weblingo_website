@@ -58,6 +58,7 @@ import {
   parseWebhookEvents,
   validateSourceUrl,
 } from "@internal/dashboard/site-settings";
+import type { WebLingoFeature } from "@internal/dashboard/entitlements";
 
 import { withWebhooksAuth } from "./_lib/webhooks-token";
 
@@ -65,6 +66,18 @@ export type ActionResponse = {
   ok: boolean;
   message: string;
   meta?: Record<string, unknown>;
+};
+
+type DashboardMutationAuth = DashboardAuth & {
+  account: NonNullable<DashboardAuth["account"]>;
+  webhooksAuth: WebhooksAuthContext;
+};
+
+type DashboardMutationGate = {
+  actionLabel: string;
+  permissionError: string;
+  feature?: WebLingoFeature;
+  allFeatures?: readonly WebLingoFeature[];
 };
 
 const failed = (message: string, meta?: Record<string, unknown>): ActionResponse => ({
@@ -235,6 +248,25 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
   return `Your plan is ${status}. Update billing to ${actionLabel}.`;
 }
 
+async function requireDashboardMutationAuth(
+  gate: DashboardMutationGate,
+): Promise<{ ok: true; auth: DashboardMutationAuth } | { ok: false; response: ActionResponse }> {
+  const auth = await requireDashboardAuth();
+  if (!auth.account || !auth.webhooksAuth) {
+    return { ok: false, response: failed("Unable to resolve account entitlements.") };
+  }
+  if (!auth.mutationsAllowed) {
+    return { ok: false, response: failed(formatBillingBlockMessage(auth, gate.actionLabel)) };
+  }
+  if (gate.feature && !auth.has({ feature: gate.feature })) {
+    return { ok: false, response: failed(gate.permissionError) };
+  }
+  if (gate.allFeatures?.length && !auth.has({ allFeatures: gate.allFeatures })) {
+    return { ok: false, response: failed(gate.permissionError) };
+  }
+  return { ok: true, auth: auth as DashboardMutationAuth };
+}
+
 async function invalidateDashboardCaches(
   auth: WebhooksAuthContext,
   siteId: string,
@@ -252,18 +284,23 @@ async function runSiteMutation<T>(options: {
   revalidatePaths: string[];
   logLabel: string;
   fallbackError: string;
+  gate: DashboardMutationGate;
   mutate: (auth: WebhooksAuthContext) => Promise<T>;
   onSuccess: (result: T) => ActionResponse;
   formatError?: (error: unknown, fallback: string) => string;
 }): Promise<ActionResponse> {
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await options.mutate(auth);
-      await invalidateDashboardCaches(auth, options.siteId, {
+    const mutationAuth = await requireDashboardMutationAuth(options.gate);
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await options.mutate(auth.webhooksAuth);
+      await invalidateDashboardCaches(auth.webhooksAuth, options.siteId, {
         invalidateSitesList: options.invalidateSitesList,
       });
       return response;
-    });
+    })(mutationAuth.auth);
     for (const path of options.revalidatePaths) {
       revalidatePath(path);
     }
@@ -935,6 +972,9 @@ export async function updateSiteSettingsAction(
     if (!update.ok) {
       return failed(update.error);
     }
+    if (Object.keys(update.payload).length === 0) {
+      return failed("Choose at least one setting to update.");
+    }
 
     await updateSite(auth.webhooksAuth, siteId, update.payload);
 
@@ -1116,9 +1156,6 @@ export async function listRuntimeRequestObservationsAction(
     if (!auth.webhooksAuth) {
       return failed("Unable to authenticate dashboard request.");
     }
-    if (!auth.has({ feature: "edit" })) {
-      return failed("Runtime request review is not enabled for this account.");
-    }
 
     const response = await listRuntimeRequestObservations(auth.webhooksAuth, siteId, {
       limit: 50,
@@ -1198,9 +1235,14 @@ export async function triggerCrawlAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerCrawlAction",
     fallbackError: "Unable to enqueue a crawl right now.",
+    gate: {
+      actionLabel: "start crawls",
+      permissionError: "Crawl triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => triggerCrawl(auth, siteId, force ? { force } : undefined),
     onSuccess: (status) => {
       if (status.enqueued) {
@@ -1279,6 +1321,11 @@ export async function triggerCrawlTranslateAction(
     revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerCrawlTranslateAction",
     fallbackError: "Unable to queue crawl + translate right now.",
+    gate: {
+      actionLabel: "queue crawl and translation",
+      permissionError: "Crawl and translation triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) =>
       triggerCrawlTranslate(auth, siteId, {
         targetLangs,
@@ -1321,6 +1368,11 @@ export async function translateAndServeAction(
     logLabel: "translateAndServeAction",
     fallbackError: "Unable to start translation and serving right now.",
     formatError: toTranslateAndServeError,
+    gate: {
+      actionLabel: "start translation and serving",
+      permissionError: "Translation and serving is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger", "serve"],
+    },
     mutate: async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
@@ -1361,12 +1413,19 @@ export async function upsertDigestSubscriptionAction(
   }
 
   try {
-    const subscription = await withWebhooksAuth(async (auth) =>
-      upsertDigestSubscription(auth, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update digest notifications",
+      permissionError: "Digest notification settings are not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const subscription = await (async (auth) =>
+      upsertDigestSubscription(auth.webhooksAuth, {
         email,
         frequency: frequencyRaw as DigestFrequency,
-      }),
-    );
+      }))(mutationAuth.auth);
     revalidatePath("/dashboard");
     if (siteId) {
       revalidatePath(`/dashboard/sites/${siteId}`);
@@ -1407,16 +1466,24 @@ export async function setTranslationSummaryPreferenceAction(
   }
 
   try {
-    const preference = await withWebhooksAuth(async (auth) => {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update translation summary notifications",
+      permissionError: "Translation summary settings are not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const preference = await (async (auth) => {
       const response = await setTranslationSummaryPreference(
-        auth,
+        auth.webhooksAuth,
         siteId,
         targetLang,
         frequencyRaw as TranslationSummaryFrequency,
       );
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
       return response;
-    });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded(`Summary notifications for ${targetLang} set to ${preference.frequency}.`, {
       preference,
@@ -1517,6 +1584,11 @@ export async function cancelTranslationRunAction(
     revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "cancelTranslationRunAction",
     fallbackError: "Unable to cancel the translation run.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => cancelTranslationRun(auth, siteId, runId),
     onSuccess: () => succeeded("Translation run cancelled."),
   });
@@ -1561,6 +1633,11 @@ export async function resumeTranslationRunAction(
     revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "resumeTranslationRunAction",
     fallbackError: "Unable to resume the translation run.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
     onSuccess: (result) => succeeded(buildResumeToast("resume", result)),
   });
@@ -1583,6 +1660,11 @@ export async function retryFailedTranslationRunAction(
     revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "retryFailedTranslationRunAction",
     fallbackError: "Unable to retry failed pages right now.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
     onSuccess: (result) => succeeded(buildResumeToast("retry", result)),
   });
@@ -1602,9 +1684,14 @@ export async function triggerPageCrawlAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerPageCrawlAction",
     fallbackError: "Unable to enqueue a page crawl right now.",
+    gate: {
+      actionLabel: "start page crawls",
+      permissionError: "Page crawl triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => triggerPageCrawl(auth, siteId, pageId),
     onSuccess: (status) => {
       if (status.enqueued) {
@@ -1632,11 +1719,19 @@ export async function verifyDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await verifyDomain(auth, siteId, domain, overrideToken);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "verify domains",
+      permissionError: "Domain verification is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await verifyDomain(auth.webhooksAuth, siteId, domain, overrideToken);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
@@ -1677,11 +1772,19 @@ export async function provisionDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await provisionDomain(auth, siteId, domain);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "provision domains",
+      permissionError: "Domain provisioning is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await provisionDomain(auth.webhooksAuth, siteId, domain);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
@@ -1722,11 +1825,19 @@ export async function refreshDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await refreshDomain(auth, siteId, domain);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "refresh domain status",
+      permissionError: "Domain status refresh is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await refreshDomain(auth.webhooksAuth, siteId, domain);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
@@ -1780,12 +1891,22 @@ export async function updateGlossaryAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await updateGlossary(auth, siteId, entries, retranslate);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage glossary entries",
+      permissionError: "Glossary editing is not enabled for this account.",
+      allFeatures: ["edit", "glossary"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await updateGlossary(auth.webhooksAuth, siteId, entries, retranslate);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+      return response;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Glossary saved.", { crawlStatus: result.crawlStatus });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1818,8 +1939,16 @@ export async function upsertConsistencyCpmEntryAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await upsertConsistencyCpm(auth, siteId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage consistency governance",
+      permissionError: "Consistency governance editing is not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await upsertConsistencyCpm(auth.webhooksAuth, siteId, {
         targetLang,
         sourceLang: sourceLangRaw || undefined,
         entries: [
@@ -1831,8 +1960,8 @@ export async function upsertConsistencyCpmEntryAction(
           },
         ],
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-    });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Canonical phrase updated.");
   } catch (error) {
@@ -1869,14 +1998,22 @@ export async function updateConsistencyBlockAction(
     .filter(Boolean);
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await updateConsistencyBlock(auth, siteId, blockId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage consistency governance",
+      permissionError: "Consistency governance editing is not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await updateConsistencyBlock(auth.webhooksAuth, siteId, blockId, {
         status: status as "proposed" | "approved" | "frozen",
         mode: mode as "strict" | "prefer",
         members: members.length ? members : undefined,
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-    });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Consistency block updated.");
   } catch (error) {
@@ -1903,17 +2040,27 @@ export async function createOverrideAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await createOverride(auth, siteId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage manual overrides",
+      permissionError: "Manual overrides are not enabled for this account.",
+      allFeatures: ["edit", "overrides"],
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await createOverride(auth.webhooksAuth, siteId, {
         segmentId,
         targetLang,
         text,
         contextHashScope,
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
       return response;
-    });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Override saved.", { override: result });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1940,12 +2087,22 @@ export async function updateSlugAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await updateSlug(auth, siteId, { pageId, lang, path });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage localized slugs",
+      permissionError: "Localized slug editing is not enabled for this account.",
+      allFeatures: ["edit", "slug_edit"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await updateSlug(auth.webhooksAuth, siteId, { pageId, lang, path });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+      return response;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Slug saved and crawl enqueued.", { status: result.crawlStatus });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1974,11 +2131,19 @@ export async function updateSiteStatusAction(
   }
 
   try {
-    const updated = await withWebhooksAuth(async (auth) => {
-      const updatedSite = await updateSite(auth, siteId, { status });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return updatedSite;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: status === "active" ? "enable localization" : "pause localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const updated = await (async (auth) => {
+      const updatedSite = await updateSite(auth.webhooksAuth, siteId, { status });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return updatedSite;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded(
@@ -2012,10 +2177,18 @@ export async function setLocaleServingAction(
   const enabled = enabledRaw === "true";
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await setLocaleServing(auth, siteId, targetLang, enabled);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update serving settings",
+      permissionError: "Serving controls are not enabled for this account.",
+      allFeatures: ["edit", "serve"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await setLocaleServing(auth.webhooksAuth, siteId, targetLang, enabled);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/domains`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
@@ -2042,10 +2215,18 @@ export async function deactivateSiteAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await deactivateSite(auth, siteId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "pause localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await deactivateSite(auth.webhooksAuth, siteId);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded("Localization paused. You can re-enable it anytime from this page.");
@@ -2071,10 +2252,18 @@ export async function activateSiteAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await updateSite(auth, siteId, { status: "active" });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "enable localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await updateSite(auth.webhooksAuth, siteId, { status: "active" });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded("Localization enabled.");

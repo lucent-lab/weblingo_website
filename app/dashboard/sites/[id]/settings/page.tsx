@@ -46,7 +46,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     mutationsAllowed: auth.mutationsAllowed,
   });
   const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
 
   let projection: SettingsProjection | null = null;

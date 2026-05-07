@@ -187,6 +187,66 @@ describe("RuntimeRequestsPage", () => {
       propagation: expect.objectContaining({ stale: false }),
       observations: [],
       observationsLoaded: false,
+      canEdit: true,
+      canLoadObservations: true,
+    });
+  });
+
+  it("keeps runtime observations readable when edit mutations are locked", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth: authToken,
+      mutationsAllowed: false,
+      has: vi.fn((check: { feature?: string }) => check.feature !== "edit"),
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+      subjectFallbackToActor: false,
+    });
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "developer_tools" },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "active",
+      },
+      access: {
+        mutationsAllowed: false,
+        lockedReasonCode: "billing_inactive",
+        features: {},
+        canEditRuntime: false,
+        canEditWebhooks: false,
+        canViewRuntimeRequests: true,
+      },
+      runtime: {},
+      webhooks: { url: null, events: [], hasSecret: false },
+      snippets: { available: false },
+      runtimeRequests: {
+        available: true,
+        policy: { schemaVersion: 1, mode: "standard", enabled: true, rules: [] },
+        policySummary: {
+          rulesCount: 0,
+          fingerprint: "fingerprint-1",
+          version: "site-config:v1",
+          lastUpdatedAt: null,
+        },
+        propagation: null,
+      },
+    });
+
+    vi.resetModules();
+    const { default: RuntimeRequestsPage } = await import("./page");
+
+    const tree = await RuntimeRequestsPage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+
+    expect(findElement(tree, mocks.RuntimeRequestsManager)).toMatchObject({
+      siteId: "site-1",
+      canEdit: false,
+      canLoadObservations: true,
+      observationsLoaded: false,
     });
   });
 });

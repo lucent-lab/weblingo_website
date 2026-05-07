@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 import { createOverrideAction, updateSlugAction, type ActionResponse } from "../../actions";
 
@@ -14,6 +15,8 @@ const initialState: ActionResponse = { ok: false, message: "" };
 
 export function OverrideForm({ siteId }: { siteId: string }) {
   const [state, formAction, pending] = useActionState(createOverrideAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const messageId = "override-status";
   const submitWithToast = useActionToast({
     formAction,
@@ -23,6 +26,13 @@ export function OverrideForm({ siteId }: { siteId: string }) {
     success: "Override saved.",
     error: "Unable to save override.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
 
   return (
     <Card>
@@ -99,6 +109,8 @@ export function OverrideForm({ siteId }: { siteId: string }) {
 
 export function SlugForm({ siteId }: { siteId: string }) {
   const [state, formAction, pending] = useActionState(updateSlugAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const messageId = "slug-status";
   const submitWithToast = useActionToast({
     formAction,
@@ -108,6 +120,13 @@ export function SlugForm({ siteId }: { siteId: string }) {
     success: "Slug saved.",
     error: "Unable to save slug.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
 
   return (
     <Card>

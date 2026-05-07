@@ -5,9 +5,13 @@ import { ArrowUpRight, ExternalLink } from "lucide-react";
 
 import { ManagedDemoCreateForm } from "./managed-demo-create-form";
 
+import { createSiteShowcaseAction, updateSiteShowcaseAction } from "@/app/dashboard/actions";
+import { ActionForm } from "@/components/dashboard/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { resolvePreferredLocale } from "@internal/i18n";
@@ -78,6 +82,8 @@ export default async function OpsShowcasesPage() {
         displayLocale={displayLocale}
       />
 
+      <AttachShowcaseCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Demo inventory</CardTitle>
@@ -104,6 +110,46 @@ export default async function OpsShowcasesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function AttachShowcaseCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Attach showcase to existing site</CardTitle>
+        <CardDescription>
+          Use this when a managed-demo site exists but does not yet have a public showcase
+          namespace.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ActionForm
+          action={createSiteShowcaseAction}
+          loading="Creating showcase..."
+          success="Showcase created."
+          error="Unable to create showcase."
+          refreshOnSuccess={true}
+          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] lg:items-end"
+        >
+          <Field label="Site ID" htmlFor="showcase-site-id">
+            <Input id="showcase-site-id" name="siteId" placeholder="site_..." required />
+          </Field>
+          <Field label="Website path" htmlFor="showcase-website-path">
+            <Input
+              id="showcase-website-path"
+              name="websitePath"
+              placeholder="example.com"
+              required
+            />
+          </Field>
+          <Field label="Default locale" htmlFor="showcase-default-lang">
+            <Input id="showcase-default-lang" name="defaultLang" placeholder="fr" />
+          </Field>
+          <Button type="submit">Create showcase</Button>
+        </ActionForm>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -186,6 +232,47 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
               ))}
             </div>
           </div>
+          <ActionForm
+            action={updateSiteShowcaseAction}
+            loading="Updating showcase..."
+            success="Showcase updated."
+            error="Unable to update showcase."
+            refreshOnSuccess={true}
+            className="rounded-xl border border-border/60 bg-muted/20 p-3"
+          >
+            <input name="siteId" type="hidden" value={item.siteId} />
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Default lang
+                <select
+                  name="defaultLang"
+                  defaultValue={item.showcase.defaultLang ?? ""}
+                  className="h-9 rounded-md border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal text-foreground"
+                >
+                  <option value="">No default</option>
+                  {item.showcaseLocales.map((locale) => (
+                    <option key={locale.targetLang} value={locale.targetLang}>
+                      {locale.targetLang.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Namespace status
+                <select
+                  name="status"
+                  defaultValue={item.showcase.status}
+                  className="h-9 rounded-md border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal text-foreground"
+                >
+                  <option value="active">active</option>
+                  <option value="disabled">disabled</option>
+                </select>
+              </label>
+              <Button type="submit" variant="outline" className="w-full">
+                Update showcase
+              </Button>
+            </div>
+          </ActionForm>
           <form action={setWorkspaceAction}>
             <input name="subjectAccountId" type="hidden" value={item.accountId} />
             <input

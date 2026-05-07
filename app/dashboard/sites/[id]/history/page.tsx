@@ -280,6 +280,7 @@ function RunActions({
           loading="Cancelling run..."
           success="Translation run cancelled."
           error="Unable to cancel run."
+          refreshOnSuccess={true}
         >
           <>
             <input name="siteId" type="hidden" value={siteId} />
@@ -301,6 +302,7 @@ function RunActions({
           loading="Retrying run..."
           success="Retry queued."
           error="Unable to retry run."
+          refreshOnSuccess={true}
         >
           <>
             <input name="siteId" type="hidden" value={siteId} />
@@ -322,6 +324,7 @@ function RunActions({
           loading="Resuming run..."
           success="Translation resumed."
           error="Unable to resume run."
+          refreshOnSuccess={true}
         >
           <>
             <input name="siteId" type="hidden" value={siteId} />

@@ -42,6 +42,8 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 350;
 const PREVIEW_PAGE_SIZE = 100;
+const PREVIEW_CACHE_LIMIT = 30;
+const SOURCE_SELECTION_MIN_SEARCH_LENGTH = 3;
 const SOURCE_SELECTION_RULE_LIMIT = 200;
 const SOURCE_SELECTION_RULE_LIMIT_WARNING_THRESHOLD = 180;
 
@@ -94,6 +96,7 @@ export type SourceSelectionCopy = {
   filterLabel: string;
   filterPlaceholder: string;
   filterHelp: string;
+  filterMinLength: string;
   filterNoResults: string;
   clearFilter: string;
   inventoryNote: string;
@@ -188,6 +191,7 @@ export function SourceSelectionManager({
   const [isSaving, setSaving] = useState(false);
   const requestIdRef = useRef(0);
   const draftFingerprintRef = useRef("");
+  const previewCacheRef = useRef(new Map<string, SourceSelectionTreePreviewResponse>());
 
   const draftConfig = useMemo(() => toSourceSelectionConfig(draftRules), [draftRules]);
   const persistedConfig = useMemo(() => toSourceSelectionConfig(persistedRules), [persistedRules]);
@@ -198,7 +202,6 @@ export function SourceSelectionManager({
   );
   const hasUnsavedChanges = draftFingerprint !== persistedFingerprint;
   const previewIsCurrent = lastSuccessfulPreviewFingerprint === draftFingerprint;
-  const currentPreview = previewIsCurrent && !previewError ? preview : null;
   const controlsCanEdit = canEdit && !isSaving;
   const canSave =
     canEdit &&
@@ -228,9 +231,39 @@ export function SourceSelectionManager({
   const currentCursor = cursorStack[cursorStack.length - 1] ?? null;
   const trimmedPathSearch = pathSearch.trim();
   const hasPathSearch = trimmedPathSearch.length > 0;
+  const pathSearchTooShort =
+    hasPathSearch && trimmedPathSearch.length < SOURCE_SELECTION_MIN_SEARCH_LENGTH;
+  const previewShell = previewIsCurrent && !previewError ? preview : null;
+  const currentPreview = previewShell && !pathSearchTooShort ? previewShell : null;
+  const previewCacheKey = useMemo(
+    () =>
+      JSON.stringify({
+        siteId,
+        draftFingerprint,
+        cursor: currentCursor,
+        search: hasPathSearch ? trimmedPathSearch : null,
+        parentPath: hasPathSearch ? null : parentPath,
+        limit: PREVIEW_PAGE_SIZE,
+      }),
+    [currentCursor, draftFingerprint, hasPathSearch, parentPath, siteId, trimmedPathSearch],
+  );
 
   useEffect(() => {
     if (!canEdit || previewRequestKey === 0) {
+      return;
+    }
+    if (pathSearchTooShort) {
+      setPreviewLoading(false);
+      setPreviewError(null);
+      return;
+    }
+
+    const cachedPreview = previewCacheRef.current.get(previewCacheKey);
+    if (cachedPreview) {
+      setPreview(cachedPreview);
+      setPreviewError(null);
+      setLastSuccessfulPreviewFingerprint(draftFingerprint);
+      setPreviewLoading(false);
       return;
     }
 
@@ -275,7 +308,9 @@ export function SourceSelectionManager({
             setPreviewLoading(false);
             return;
           }
-          setPreview(body as SourceSelectionTreePreviewResponse);
+          const parsedPreview = body as SourceSelectionTreePreviewResponse;
+          rememberPreview(previewCacheRef.current, previewCacheKey, parsedPreview);
+          setPreview(parsedPreview);
           setPreviewError(null);
           setLastSuccessfulPreviewFingerprint(draftFingerprint);
           setPreviewLoading(false);
@@ -304,6 +339,8 @@ export function SourceSelectionManager({
     draftFingerprint,
     hasPathSearch,
     parentPath,
+    pathSearchTooShort,
+    previewCacheKey,
     previewRequestKey,
     siteId,
     trimmedPathSearch,
@@ -508,7 +545,7 @@ export function SourceSelectionManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {currentPreview ? (
+              {previewShell ? (
                 <div className="rounded-md border border-border/60 bg-muted/10 p-3">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                     <Field
@@ -521,8 +558,17 @@ export function SourceSelectionManager({
                         id="source-selection-path-filter"
                         value={pathSearch}
                         placeholder={copy.filterPlaceholder}
+                        minLength={SOURCE_SELECTION_MIN_SEARCH_LENGTH}
                         onChange={(event) => updatePathSearch(event.target.value)}
                       />
+                      {pathSearchTooShort ? (
+                        <p className="text-xs text-muted-foreground" role="status">
+                          {copy.filterMinLength.replace(
+                            "{count}",
+                            String(SOURCE_SELECTION_MIN_SEARCH_LENGTH),
+                          )}
+                        </p>
+                      ) : null}
                     </Field>
                     <Button
                       type="button"
@@ -549,17 +595,21 @@ export function SourceSelectionManager({
                       </div>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {currentPreview.inventory.complete
-                      ? copy.inventoryNote
-                      : copy.partialInventoryNote}
-                  </p>
+                  {currentPreview ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {currentPreview.inventory.complete
+                        ? copy.inventoryNote
+                        : copy.partialInventoryNote}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {visibleTreeRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {hasPathSearch ? copy.filterNoResults : copy.pagesEmpty}
-                </p>
+                !pathSearchTooShort ? (
+                  <p className="text-sm text-muted-foreground">
+                    {hasPathSearch ? copy.filterNoResults : copy.pagesEmpty}
+                  </p>
+                ) : null
               ) : (
                 <SourceSelectionTree
                   canEdit={controlsCanEdit}
@@ -613,6 +663,24 @@ export function SourceSelectionManager({
       </Card>
     </div>
   );
+}
+
+function rememberPreview(
+  cache: Map<string, SourceSelectionTreePreviewResponse>,
+  key: string,
+  preview: SourceSelectionTreePreviewResponse,
+) {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+  cache.set(key, preview);
+  while (cache.size > PREVIEW_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      return;
+    }
+    cache.delete(oldestKey);
+  }
 }
 
 function RulesList({

@@ -47,7 +47,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
   const deactivateLabel = t("dashboard.site.status.deactivate");
@@ -265,7 +265,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                 loading="Starting crawl..."
                 success="Crawl enqueued."
                 error="Unable to enqueue crawl."
-                refreshOnSuccess={false}
+                refreshOnSuccess={true}
               >
                 <>
                   <input name="siteId" type="hidden" value={id} />
@@ -347,7 +347,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                               loading="Starting page crawl..."
                               success="Page crawl enqueued."
                               error="Unable to enqueue page crawl."
-                              refreshOnSuccess={false}
+                              refreshOnSuccess={true}
                             >
                               <>
                                 <input name="siteId" type="hidden" value={id} />

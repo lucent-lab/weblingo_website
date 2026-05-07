@@ -61,8 +61,16 @@ test.describe("dashboard smoke", () => {
     await page.goto(`/dashboard/sites/${SITE_ID}/runtime-requests`);
     await expect(page.getByRole("heading", { name: "Runtime requests" }).first()).toBeVisible();
 
+    await page.goto(`/dashboard/sites/${SITE_ID}/source-selection`);
+    await expect(page.getByRole("heading", { name: "Source selection" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Preview source paths" })).toBeVisible();
+
     await page.goto(`/dashboard/sites/${SITE_ID}/quality`);
     await expect(page.getByRole("heading", { name: "Quality" }).first()).toBeVisible();
+
+    await page.goto(`/dashboard/sites/${SITE_ID}/overrides`);
+    await expect(page.getByRole("heading", { name: "Translation rules" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Glossary" }).first()).toBeVisible();
 
     await page.goto(`/dashboard/sites/${SITE_ID}/history?targetLang=fr`);
     await expect(page.getByRole("heading", { name: "History" }).first()).toBeVisible();

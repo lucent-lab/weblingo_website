@@ -67,6 +67,7 @@ const copy: SourceSelectionCopy = {
   filterLabel: "Search source paths",
   filterPlaceholder: "/blog",
   filterHelp: "Searches globally across known backend source paths.",
+  filterMinLength: "Enter at least {count} characters to search.",
   filterNoResults: "No backend source paths match the search.",
   clearFilter: "Clear filter",
   inventoryNote:
@@ -838,6 +839,155 @@ describe("SourceSelectionManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
     await runPreviewTimer();
     expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
+  });
+
+  it("waits for a minimum search length before calling the backend search", async () => {
+    vi.useFakeTimers();
+    const initialPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/drafts/one",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const searchPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/drafts/two",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+          inventory: {
+            knownPagesTotal: 2,
+            resultNodesTotal: 2,
+            resultMode: "search",
+            summaryScope: "global_known_pages",
+            resultScope: "filtered_tree_nodes",
+            search: "dra",
+            maxPageSize: 200,
+            complete: true,
+          },
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(initialPreview)
+      .mockResolvedValueOnce(searchPreview);
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await requestPreview();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByLabelText("Search source paths"), {
+      target: { value: "dr" },
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Enter at least 3 characters to search.")).toBeTruthy();
+    expect(screen.queryByText("No backend source paths match the search.")).toBeNull();
+    expect(screen.queryByText("/blog/drafts/one")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Search source paths"), {
+      target: { value: "dra" },
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("search=dra"),
+      expect.any(Object),
+    );
+    expect(screen.getAllByText("/blog/drafts/two").length).toBeGreaterThan(0);
+  });
+
+  it("reuses session-cached tree previews when returning to the same folder", async () => {
+    vi.useFakeTimers();
+    const rootPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/post-1",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const blogPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/post-2",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+          inventory: {
+            knownPagesTotal: 1,
+            resultNodesTotal: 1,
+            resultMode: "children",
+            summaryScope: "global_known_pages",
+            resultScope: "filtered_tree_nodes",
+            parentPath: "/blog",
+            maxPageSize: 200,
+            complete: true,
+          },
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const fetchMock = vi.fn().mockResolvedValueOnce(rootPreview).mockResolvedValueOnce(blogPreview);
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await requestPreview();
+    fireEvent.click(screen.getByRole("button", { name: "Open folder /blog" }));
+    await runPreviewTimer();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Parent folder" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("/blog/post-1").length).toBeGreaterThan(0);
   });
 
   it("exposes backend rows as a keyboard navigable treegrid", async () => {

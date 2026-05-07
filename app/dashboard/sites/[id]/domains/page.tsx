@@ -55,7 +55,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
+  const canPauseTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
   const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
 
   let projection: DomainsProjection | null = null;
@@ -272,7 +272,13 @@ function DomainActionForm({
   siteStatus: string;
 }) {
   return (
-    <ActionForm action={action} loading={loading} success={label} error={`Unable to ${label}.`}>
+    <ActionForm
+      action={action}
+      loading={loading}
+      success={label}
+      error={`Unable to ${label}.`}
+      refreshOnSuccess={true}
+    >
       <input type="hidden" name="siteId" value={siteId} />
       <input type="hidden" name="domain" value={domain} />
       <input type="hidden" name="siteStatus" value={siteStatus} />
@@ -400,7 +406,7 @@ function ServingLanguageRow({
               loading="Starting translation..."
               success="Translation started."
               error="Unable to start translation."
-              refreshOnSuccess={false}
+              refreshOnSuccess={true}
             >
               <>
                 <input name="siteId" type="hidden" value={siteId} />
@@ -428,6 +434,7 @@ function ServingLanguageRow({
               loading="Updating serving..."
               success="Serving updated."
               error="Unable to update serving."
+              refreshOnSuccess={true}
             >
               <>
                 <input name="siteId" type="hidden" value={siteId} />
