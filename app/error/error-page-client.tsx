@@ -65,6 +65,8 @@ export default function ErrorPageClient() {
         title={errorView.title}
         description={errorView.description}
         message={errorView.message}
+        nextSteps={errorView.nextSteps}
+        referenceCode={errorView.referenceCode}
         headerBadge={<Badge variant="outline">Status: error</Badge>}
         actions={
           <>

@@ -71,8 +71,16 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         <FocusedRouteErrorState
           error={error}
           title="Unable to load settings"
-          description="We could not complete your request. You can retry or return to the dashboard."
-          message="Unable to load settings."
+          description="We could not load the editable site settings for this workspace."
+          message="Unable to load site settings."
+          siteId={id}
+          retryHref={`/dashboard/sites/${id}/settings`}
+          retryLabel="Retry settings"
+          nextSteps={[
+            "Retry settings.",
+            "Open the site overview to check current health and next actions.",
+            "Contact support with the reference code if settings remain unavailable.",
+          ]}
         />
       );
     }

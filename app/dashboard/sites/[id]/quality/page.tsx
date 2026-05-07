@@ -64,8 +64,16 @@ export default async function QualityPage({ params }: QualityPageProps) {
         <FocusedRouteErrorState
           error={error}
           title="Unable to load quality"
-          description="We could not complete your request. You can retry or return to the dashboard."
-          message="Unable to load quality."
+          description="We could not load translation quality and coverage data for this site."
+          message="Unable to load quality data."
+          siteId={id}
+          retryHref={`/dashboard/sites/${id}/quality`}
+          retryLabel="Retry quality"
+          nextSteps={[
+            "Retry quality data.",
+            "Open the site overview to check current blockers and activity.",
+            "Contact support with the reference code if quality data remains unavailable.",
+          ]}
         />
       );
     }

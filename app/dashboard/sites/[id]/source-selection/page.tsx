@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
@@ -80,8 +81,7 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
-        description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+        description: "We could not load source selection rules. No rule changes were saved.",
         message: "Unable to load source selection.",
       });
       return (
@@ -89,10 +89,26 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton
+                href={`/dashboard/sites/${id}/source-selection`}
+                label="Retry source selection"
+              />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Dashboard home</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20source%20selection%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );

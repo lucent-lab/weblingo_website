@@ -1,6 +1,9 @@
 import Link from "next/link";
 
+import { Home, LifeBuoy } from "lucide-react";
+
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { StatusBadge, type StatusTone } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,22 +29,55 @@ export function FocusedRouteErrorState({
   title,
   description,
   message,
+  siteId,
+  retryHref,
+  retryLabel = "Retry section",
+  nextSteps,
 }: {
   error: unknown;
   title: string;
   description: string;
   message: string;
+  siteId?: string;
+  retryHref?: string;
+  retryLabel?: string;
+  nextSteps?: string[];
 }) {
   const errorView = resolveDashboardErrorView(error, { title, description, message });
+  const supportSubject = encodeURIComponent(
+    `Dashboard ${errorView.kind}${errorView.referenceCode ? ` ${errorView.referenceCode}` : ""}`,
+  );
   return (
     <ErrorStateCard
       title={errorView.title}
       description={errorView.description}
       message={errorView.message}
+      nextSteps={nextSteps ?? errorView.nextSteps}
+      referenceCode={errorView.referenceCode}
       actions={
-        <Button asChild variant="outline">
-          <Link href="/dashboard">Back to dashboard</Link>
-        </Button>
+        <>
+          {retryHref ? <DashboardRetryButton href={retryHref} label={retryLabel} /> : null}
+          {siteId ? (
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/sites/${siteId}`}>
+                <Home className="h-4 w-4" aria-hidden="true" />
+                Site overview
+              </Link>
+            </Button>
+          ) : null}
+          <Button asChild variant="outline">
+            <Link href="/dashboard">
+              <Home className="h-4 w-4" aria-hidden="true" />
+              Dashboard home
+            </Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <a href={`mailto:contact@weblingo.app?subject=${supportSubject}`}>
+              <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+              Contact support
+            </a>
+          </Button>
+        </>
       }
     />
   );

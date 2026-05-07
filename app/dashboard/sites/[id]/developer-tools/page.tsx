@@ -69,8 +69,16 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
         <FocusedRouteErrorState
           error={error}
           title="Unable to load developer tools"
-          description="We could not complete your request. You can retry or return to the dashboard."
+          description="We could not load runtime configuration, snippets, and request tools for this site."
           message="Unable to load developer tools."
+          siteId={id}
+          retryHref={`/dashboard/sites/${id}/developer-tools`}
+          retryLabel="Retry tools"
+          nextSteps={[
+            "Retry developer tools.",
+            "Open the site overview if you need to continue with non-developer tasks.",
+            "Contact support with the reference code if these tools remain unavailable.",
+          ]}
         />
       );
     }

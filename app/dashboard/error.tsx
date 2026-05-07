@@ -42,14 +42,9 @@ export default function DashboardError({
       <ErrorStateCard
         title={errorView.title}
         description={errorView.description}
-        message={
-          <>
-            {errorView.message}
-            {error.digest ? (
-              <span className="ml-2 text-muted-foreground">(digest: {error.digest})</span>
-            ) : null}
-          </>
-        }
+        message={errorView.message}
+        nextSteps={errorView.nextSteps}
+        referenceCode={errorView.referenceCode}
         headerBadge={<Badge variant="outline">Status: error</Badge>}
         actions={
           <>

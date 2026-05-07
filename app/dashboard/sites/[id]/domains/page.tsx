@@ -75,8 +75,16 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
         <FocusedRouteErrorState
           error={error}
           title="Unable to load domains"
-          description="We could not complete your request. You can retry or return to the dashboard."
-          message="Unable to load domains."
+          description="We could not load domain verification and serving readiness for this site."
+          message="Unable to load domain setup."
+          siteId={id}
+          retryHref={`/dashboard/sites/${id}/domains`}
+          retryLabel="Retry domains"
+          nextSteps={[
+            "Retry domain setup.",
+            "Open the site overview to continue with other site work.",
+            "Contact support with the reference code if domain setup remains unavailable.",
+          ]}
         />
       );
     }

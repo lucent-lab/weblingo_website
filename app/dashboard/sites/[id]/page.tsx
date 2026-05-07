@@ -8,6 +8,7 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { MutationLockBanner } from "@/components/dashboard/mutation-lock-banner";
 import { NextActionCard } from "@/components/dashboard/next-action-card";
 import { QuotaMeter } from "@/components/dashboard/quota-meter";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { StatusBadge, type StatusTone } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,7 +72,7 @@ export default async function SitePage({ params }: SitePageProps) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+          "We could not load the site overview. No site settings or translations were changed.",
         message: "Unable to load the site overview.",
       });
       return (
@@ -79,10 +80,20 @@ export default async function SitePage({ params }: SitePageProps) {
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton href={`/dashboard/sites/${id}`} label="Retry overview" />
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Dashboard home</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20site%20overview%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );

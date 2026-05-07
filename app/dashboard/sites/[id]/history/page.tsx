@@ -91,12 +91,26 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   }
 
   if (error && selectedTargetLang) {
+    const retryHref = historyHref(id, {
+      targetLang: selectedTargetLang,
+      historyType,
+      runsPage: historyType === "runs" ? String(runsPage) : undefined,
+      deploymentsPage: historyType === "deployments" ? String(deploymentsPage) : undefined,
+    });
     return (
       <FocusedRouteErrorState
         error={error}
         title="Unable to load history"
-        description="We could not complete your request. You can retry or return to the dashboard."
-        message="Unable to load history."
+        description="We could not load the selected history stream. The rest of your site dashboard is still available."
+        message="Unable to load the selected history stream."
+        siteId={id}
+        retryHref={retryHref}
+        retryLabel="Retry history"
+        nextSteps={[
+          "Retry this history view once.",
+          "Switch to another locale or history stream if you need a different record.",
+          "Contact support with the reference code below if retry shows this screen.",
+        ]}
       />
     );
   }

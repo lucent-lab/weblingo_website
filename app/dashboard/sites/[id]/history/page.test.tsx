@@ -32,7 +32,16 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   fetchCustomerDeploymentHistory: mocks.fetchCustomerDeploymentHistory,
   fetchCustomerTranslationRuns: mocks.fetchCustomerTranslationRuns,
   fetchDeploymentHistory: mocks.fetchDeploymentHistory,
-  WebhooksApiError: class WebhooksApiError extends Error {},
+  WebhooksApiError: class WebhooksApiError extends Error {
+    status: number;
+    details?: unknown;
+
+    constructor(message: string, status: number, details?: unknown) {
+      super(message);
+      this.status = status;
+      this.details = details;
+    }
+  },
 }));
 vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: mocks.resolvePreferredLocale,
@@ -142,15 +151,23 @@ describe("HistoryPage", () => {
   it("renders a customer-safe error state when history schema validation fails", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
-    mocks.fetchCustomerTranslationRuns.mockRejectedValue(
-      new Error(
-        '[{"code":"invalid_value","path":["runs",5,"customerError","area"],"message":"Invalid option"}]',
-      ),
-    );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     try {
       vi.resetModules();
+      const { WebhooksApiError } = await import("@internal/dashboard/webhooks");
+      mocks.fetchCustomerTranslationRuns.mockRejectedValue(
+        new WebhooksApiError("The WebLingo API returned an unexpected dashboard response.", 200, {
+          code: "response_schema_mismatch",
+          issues: [
+            {
+              code: "invalid_value",
+              path: ["runs", 5, "customerError", "area"],
+              message: "Invalid option",
+            },
+          ],
+        }),
+      );
       const { default: HistoryPage } = await import("./page");
       const tree = await HistoryPage({
         params: Promise.resolve({ id: "site-1" }),
@@ -158,8 +175,13 @@ describe("HistoryPage", () => {
       });
 
       render(tree);
-      const text = screen.getByText("Unable to load history.").textContent ?? "";
-      expect(text).toContain("Unable to load history.");
+      expect(screen.getByText("This section cannot be shown safely")).toBeTruthy();
+      expect(screen.getByText("What happened")).toBeTruthy();
+      expect(screen.getByText("What you can do")).toBeTruthy();
+      expect(screen.getByText("Retry history")).toBeTruthy();
+      expect(screen.getByText("Site overview")).toBeTruthy();
+      expect(screen.getByText("Contact support")).toBeTruthy();
+      expect(document.body.textContent).toContain("Support reference: response_schema_mismatch");
       expect(document.body.textContent).not.toContain("invalid_value");
       expect(document.body.textContent).not.toContain("customerError");
     } finally {

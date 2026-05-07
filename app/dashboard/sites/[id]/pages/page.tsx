@@ -7,6 +7,7 @@ import { triggerCrawlAction, triggerPageCrawlAction } from "../../../actions";
 import { ActionForm } from "@/components/dashboard/action-form";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
 
@@ -131,7 +132,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+          "We could not load crawl status for this site. No crawl was started or changed.",
         message: "Unable to load site pages.",
       });
       return (
@@ -139,10 +140,23 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton href={`/dashboard/sites/${id}/pages`} label="Retry pages" />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Dashboard home</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20pages%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );

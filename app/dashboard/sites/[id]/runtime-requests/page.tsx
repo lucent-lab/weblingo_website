@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
@@ -78,8 +79,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load runtime requests",
-        description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+        description: "We could not load runtime request observations for this site.",
         message: "Unable to load runtime requests.",
       });
       return (
@@ -87,10 +87,26 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton
+                href={`/dashboard/sites/${id}/runtime-requests`}
+                label="Retry requests"
+              />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}/developer-tools`}>Developer tools</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20runtime%20requests%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );
