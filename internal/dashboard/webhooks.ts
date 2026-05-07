@@ -2951,6 +2951,13 @@ function createDashboardE2eMockProjectionDomains() {
       status: "pending" as const,
       rawStatus: "pending",
       lastCheckedAt: new Date().toISOString(),
+      requiredDns: [
+        {
+          type: "CNAME",
+          name: "verify.example.test",
+          value: "mock-site.t.weblingo.app",
+        },
+      ],
       servingStatus: createDashboardE2eMockProjectionServingStatus("needs_domain"),
       cta: {
         labelKey: "dashboard.cta.verifyDomain",

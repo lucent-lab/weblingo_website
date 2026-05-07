@@ -82,6 +82,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
     }
     notFound();
   }
+  assertDomainSetupInstructions(projection.domains);
 
   const headerLabels = buildSiteHeaderLabels(t);
   const mutationsLocked = !auth.mutationsAllowed || !projection.access.mutationsAllowed;
@@ -195,8 +196,12 @@ function DomainCard({
   canProvision: boolean;
   t: Translator;
 }) {
+  const dnsMode = domain.status === "verified" ? null : resolveDomainDnsMode(domain);
+  const showVerify = dnsMode === "txt";
+  const showProvision = dnsMode === "cname";
+
   return (
-    <Card>
+    <Card id={domainAnchorId(domain.domain)} className="scroll-mt-24">
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <CardTitle className="break-words text-lg">{domain.domain}</CardTitle>
@@ -216,39 +221,80 @@ function DomainCard({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        <DomainActionForm
-          action={verifyDomainAction}
-          domain={domain.domain}
-          enabled={canVerify}
-          icon={<ShieldCheck className="h-4 w-4" />}
-          label="Check DNS"
-          loading="Checking DNS..."
-          siteId={siteId}
-          siteStatus={siteStatus}
-        />
-        <DomainActionForm
-          action={provisionDomainAction}
-          domain={domain.domain}
-          enabled={canProvision}
-          icon={<ServerCog className="h-4 w-4" />}
-          label="Provision domain"
-          loading="Requesting provisioning..."
-          siteId={siteId}
-          siteStatus={siteStatus}
-        />
-        <DomainActionForm
-          action={refreshDomainAction}
-          domain={domain.domain}
-          enabled={canRefresh}
-          icon={<RefreshCw className="h-4 w-4" />}
-          label="Refresh status"
-          loading="Refreshing domain..."
-          siteId={siteId}
-          siteStatus={siteStatus}
-        />
+      <CardContent className="space-y-4">
+        {domain.status !== "verified" ? <DomainDnsRecords domain={domain} /> : null}
+        <div className="flex flex-wrap gap-2">
+          {showVerify ? (
+            <DomainActionForm
+              action={verifyDomainAction}
+              domain={domain.domain}
+              enabled={canVerify}
+              icon={<ShieldCheck className="h-4 w-4" />}
+              label="Verify domain"
+              loading="Checking DNS..."
+              siteId={siteId}
+              siteStatus={siteStatus}
+            />
+          ) : null}
+          {showProvision ? (
+            <DomainActionForm
+              action={provisionDomainAction}
+              domain={domain.domain}
+              enabled={canProvision}
+              icon={<ServerCog className="h-4 w-4" />}
+              label="Provision domain"
+              loading="Requesting provisioning..."
+              siteId={siteId}
+              siteStatus={siteStatus}
+            />
+          ) : null}
+          <DomainActionForm
+            action={refreshDomainAction}
+            domain={domain.domain}
+            enabled={canRefresh}
+            icon={<RefreshCw className="h-4 w-4" />}
+            label="Refresh status"
+            loading="Refreshing domain..."
+            siteId={siteId}
+            siteStatus={siteStatus}
+          />
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function DomainDnsRecords({ domain }: { domain: CustomerDomain }) {
+  const records = domain.requiredDns ?? [];
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
+      <div>
+        <p className="text-sm font-medium text-foreground">Required DNS record</p>
+        <p className="text-xs text-muted-foreground">
+          Add this record at your DNS provider, then run the matching action below.
+        </p>
+      </div>
+      <div className="overflow-x-auto rounded-md border border-border/60 bg-background">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left">Type</th>
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => (
+              <tr className="border-t border-border/50" key={`${record.type}:${record.name}`}>
+                <td className="px-3 py-2 font-mono text-xs">{record.type}</td>
+                <td className="px-3 py-2 font-mono text-xs">{record.name}</td>
+                <td className="break-all px-3 py-2 font-mono text-xs">{record.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -423,9 +469,13 @@ function ServingLanguageRow({
                 </Button>
               </>
             </ActionForm>
+          ) : servingValue === "needs_domain" && language.domain ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`#${domainAnchorId(language.domain)}`}>Review DNS setup</Link>
+            </Button>
           ) : servingValue === "needs_domain" ? (
             <Button asChild size="sm" variant="outline">
-              <Link href={`/dashboard/sites/${siteId}/domains`}>Verify a domain</Link>
+              <Link href={`/dashboard/sites/${siteId}/settings`}>Configure domain</Link>
             </Button>
           ) : null}
           {servingValue !== "inactive" ? (
@@ -456,6 +506,34 @@ function ServingLanguageRow({
       </td>
     </tr>
   );
+}
+
+function assertDomainSetupInstructions(domains: CustomerDomain[]) {
+  const missing = domains.find(
+    (domain) =>
+      domain.status !== "verified" && (!domain.requiredDns || domain.requiredDns.length === 0),
+  );
+  if (missing) {
+    throw new Error(`Missing DNS setup instructions for customer domain ${missing.domain}.`);
+  }
+}
+
+function resolveDomainDnsMode(domain: CustomerDomain): "cname" | "txt" {
+  const records = domain.requiredDns ?? [];
+  if (records.some((record) => record.type.toUpperCase() === "CNAME")) {
+    return "cname";
+  }
+  if (records.some((record) => record.type.toUpperCase() === "TXT")) {
+    return "txt";
+  }
+  throw new Error(`Unsupported DNS setup record type for customer domain ${domain.domain}.`);
+}
+
+function domainAnchorId(domain: string): string {
+  return `domain-${domain
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
 }
 
 function logProjectionError(

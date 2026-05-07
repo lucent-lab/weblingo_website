@@ -550,9 +550,10 @@ function resolveCustomerCtaHref({
     case "fix_billing":
       return pricingPath;
     case "configure_domain":
+      return `/dashboard/sites/${siteId}/settings`;
     case "verify_domain":
     case "refresh_domain_status":
-      return `/dashboard/sites/${siteId}/domains`;
+      return resolveFocusedDomainHref(action, siteId);
     case "review_source_selection":
       return `/dashboard/sites/${siteId}/source-selection`;
     case "start_crawl":
@@ -574,6 +575,19 @@ function fallbackCtaLabel(action: NonNullable<CustomerCta>): string {
     return formatCustomerStatusValue(action.actionId);
   }
   return "Review";
+}
+
+function resolveFocusedDomainHref(action: CustomerCta, siteId: string): string {
+  const domain = typeof action?.params?.domain === "string" ? action.params.domain.trim() : "";
+  const anchor = domain ? `#${domainAnchorId(domain)}` : "";
+  return `/dashboard/sites/${siteId}/domains${anchor}`;
+}
+
+function domainAnchorId(domain: string): string {
+  return `domain-${domain
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
 }
 
 function formatActivityDescription(item: CustomerActivity): string {

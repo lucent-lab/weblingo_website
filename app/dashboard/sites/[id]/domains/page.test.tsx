@@ -1,5 +1,7 @@
+// @vitest-environment happy-dom
+import { cleanup, render, screen } from "@testing-library/react";
 import { isValidElement, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
@@ -50,6 +52,10 @@ vi.mock("../site-header", () => ({
 }));
 
 describe("DomainsPage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("uses the domains dashboard projection without legacy dashboard or history fetches", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
@@ -77,9 +83,9 @@ describe("DomainsPage", () => {
           enabled: true,
           serveEnabled: true,
           servingStatus: {
-            value: "ready",
-            rawStatus: "ready",
-            titleKey: "dashboard.status.serving.ready.title",
+            value: "needs_domain",
+            rawStatus: "needs_domain",
+            titleKey: "dashboard.status.serving.needs_domain.title",
           },
           domain: "fr.example.com",
           domainStatus: "pending",
@@ -96,6 +102,13 @@ describe("DomainsPage", () => {
           status: "pending",
           rawStatus: "pending",
           lastCheckedAt: null,
+          requiredDns: [
+            {
+              type: "TXT",
+              name: "_weblingo.fr.example.com",
+              value: "verify-fr-token",
+            },
+          ],
           servingStatus: {
             value: "needs_domain",
             rawStatus: "needs_domain",
@@ -110,9 +123,58 @@ describe("DomainsPage", () => {
     const tree = await DomainsPage({ params: Promise.resolve({ id: "site-1" }) });
 
     expect(isValidElement(tree)).toBe(true);
+    render(tree);
     expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(authToken, "site-1", "domains");
     expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
     expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
+    expect(screen.getByText("_weblingo.fr.example.com")).toBeTruthy();
+    expect(screen.getByText("verify-fr-token")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Review DNS setup" }).getAttribute("href")).toBe(
+      "#domain-fr-example-com",
+    );
+    expect(screen.queryByRole("link", { name: "Verify a domain" })?.getAttribute("href")).not.toBe(
+      "/dashboard/sites/site-1/domains",
+    );
+  });
+
+  it("fails closed when an unverified domain has no DNS setup instructions", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "domains", generatedAt: "2026-05-07T00:00:00.000Z", schemaVersion: 1 },
+      site: makeSite(),
+      access: {
+        mutationsAllowed: true,
+        features: {},
+        canVerifyDomain: true,
+        canRefreshDomain: true,
+        canProvisionDomain: true,
+        canUpdateRouting: true,
+        canToggleServing: true,
+      },
+      routing: {
+        urlMode: "subdomain",
+        servingMode: "strict",
+        routePrefixes: [],
+      },
+      languages: [],
+      domains: [
+        {
+          domain: "missing.example.com",
+          targetLang: "fr",
+          status: "pending",
+          rawStatus: "pending",
+          lastCheckedAt: null,
+        },
+      ],
+    });
+
+    vi.resetModules();
+    const { default: DomainsPage } = await import("./page");
+
+    await expect(DomainsPage({ params: Promise.resolve({ id: "site-1" }) })).rejects.toThrow(
+      /missing dns setup instructions/i,
+    );
   });
 });
 

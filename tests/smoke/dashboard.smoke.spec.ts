@@ -41,14 +41,17 @@ test.describe("dashboard smoke", () => {
 
     await expect(page.getByRole("heading", { name: "Verify a domain" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Provision domain" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Check DNS" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Verify domain" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Translate & serve" })).toHaveCount(0);
   });
 
   test("loads focused dashboard routes", async ({ page }) => {
     await page.goto(`/dashboard/sites/${SITE_ID}/domains`);
     await expect(page.getByRole("heading", { name: "Domains" }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Check DNS" }).first()).toBeVisible();
+    await expect(page.getByText("Required DNS record")).toBeVisible();
+    await expect(page.getByText("mock-site.t.weblingo.app")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Provision domain" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Review DNS setup" }).first()).toBeVisible();
 
     await page.goto(`/dashboard/sites/${SITE_ID}/settings`);
     await expect(page.getByRole("heading", { name: "Settings" }).first()).toBeVisible();

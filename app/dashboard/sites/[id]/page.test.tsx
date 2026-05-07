@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { isValidElement } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 
@@ -165,6 +165,10 @@ describe("SitePage", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("loads the customer overview projection without the legacy broad dashboard request", async () => {
     const webhooksAuth = {
       token: "token",
@@ -194,6 +198,10 @@ describe("SitePage", () => {
     });
 
     expect(isValidElement(tree)).toBe(true);
+    render(tree);
+    expect(screen.getByRole("link", { name: /verify domain/i }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1/domains#domain-fr-example-com",
+    );
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
     expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
   });
