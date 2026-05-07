@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WebhooksAuthContext } from "./auth";
-import type { SiteDashboardResponse } from "./webhooks";
+import type { SiteCustomerOverviewResponse, SiteDashboardResponse } from "./webhooks";
 
 const redisMock = {
   get: vi.fn(),
@@ -18,6 +18,7 @@ vi.mock("@/internal/core/redis", () => ({
 
 vi.mock("./webhooks", () => ({
   fetchSiteDashboard: vi.fn(),
+  fetchSiteCustomerOverview: vi.fn(),
   listSites: vi.fn(),
   listSupportedLanguages: vi.fn(),
 }));
@@ -54,6 +55,63 @@ function makeDashboardPayload(): SiteDashboardResponse {
       total: 0,
       hasMore: false,
     },
+  };
+}
+
+function makeCustomerOverviewPayload(): SiteCustomerOverviewResponse {
+  return {
+    meta: {
+      view: "overview",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      schemaVersion: 1,
+    },
+    site: {
+      id: "site-1",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      status: "active",
+      profile: null,
+      servingMode: "strict",
+    },
+    account: {
+      accountId: "acct-1",
+      planType: "starter",
+      planStatus: "active",
+      mutationsAllowed: true,
+    },
+    health: {
+      status: "healthy",
+      titleKey: "dashboard.health.healthy.title",
+      descriptionKey: "dashboard.health.healthy.description",
+      lastImportantChangeAt: null,
+    },
+    nextAction: {
+      kind: "none",
+      priority: 0,
+      severity: "none",
+      titleKey: "dashboard.nextAction.none.title",
+      descriptionKey: "dashboard.nextAction.none.description",
+      cta: null,
+    },
+    blockers: [],
+    languages: [],
+    domains: [],
+    pagesSummary: {
+      totalKnownPages: 0,
+      includedPages: 0,
+      excludedPages: 0,
+      translatedPages: 0,
+      pendingPages: 0,
+      failedPages: 0,
+      nextEligibleCrawlAt: null,
+      eligiblePageCount: 0,
+      inventoryMayBeIncomplete: false,
+      rawLatestCrawlStatus: null,
+      customerCrawlStatus: "not_started",
+    },
+    currentActivity: [],
+    errors: [],
+    quotas: [],
   };
 }
 
@@ -158,6 +216,57 @@ describe("dashboard data caches", () => {
     expect(redisMock.sadd).not.toHaveBeenCalled();
   });
 
+  it("fetches customer overview projection without the legacy broad dashboard request", async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue("OK");
+    redisMock.sadd.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+
+    const payload = makeCustomerOverviewPayload();
+    const { fetchSiteDashboard, fetchSiteCustomerOverview } = await import("./webhooks");
+    const mockedFetchSiteDashboard = vi.mocked(fetchSiteDashboard);
+    const mockedFetchSiteCustomerOverview = vi.mocked(fetchSiteCustomerOverview);
+    mockedFetchSiteCustomerOverview.mockResolvedValue(payload);
+
+    const { getSiteCustomerOverviewCached } = await import("./data");
+    const auth = makeAuth();
+    const result = await getSiteCustomerOverviewCached(auth, "site-1");
+
+    expect(result).toEqual(payload);
+    expect(mockedFetchSiteCustomerOverview).toHaveBeenCalledWith(auth, "site-1");
+    expect(mockedFetchSiteDashboard).not.toHaveBeenCalled();
+    expect(redisMock.set).toHaveBeenCalledWith(expect.any(String), payload, { ex: 30 });
+    const cacheKey = redisMock.set.mock.calls[0][0];
+    expect(cacheKey.startsWith("dashboard:site-dashboard-projection:")).toBe(true);
+    expect(redisMock.sadd).toHaveBeenCalledWith(
+      expect.stringContaining("dashboard:site-dashboard:index:"),
+      cacheKey,
+    );
+  });
+
+  it("keeps customer overview projection cache scoped by subject account", async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue("OK");
+    redisMock.sadd.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+
+    const payload = makeCustomerOverviewPayload();
+    const { fetchSiteCustomerOverview } = await import("./webhooks");
+    vi.mocked(fetchSiteCustomerOverview).mockResolvedValue(payload);
+
+    const { getSiteCustomerOverviewCached } = await import("./data");
+
+    await getSiteCustomerOverviewCached(makeAuth("acct-1"), "site-1");
+    await getSiteCustomerOverviewCached(makeAuth("acct-2"), "site-1");
+
+    expect(redisMock.set).toHaveBeenCalledTimes(2);
+    const firstCacheKey = redisMock.set.mock.calls[0]?.[0];
+    const secondCacheKey = redisMock.set.mock.calls[1]?.[0];
+    expect(typeof firstCacheKey).toBe("string");
+    expect(typeof secondCacheKey).toBe("string");
+    expect(firstCacheKey).not.toBe(secondCacheKey);
+  });
+
   it("keeps operational summary variants in separate cache buckets", async () => {
     redisMock.get.mockResolvedValue(null);
     redisMock.set.mockResolvedValue("OK");
@@ -211,6 +320,9 @@ describe("dashboard data caches", () => {
     expect(
       deletedKeys.filter((key) => key.startsWith("dashboard:site-dashboard:")).length,
     ).toBeGreaterThanOrEqual(2);
+    expect(deletedKeys.some((key) => key.startsWith("dashboard:site-dashboard-projection:"))).toBe(
+      true,
+    );
     expect(deletedKeys.some((key) => key.startsWith("dashboard:site-dashboard:index:"))).toBe(true);
   });
 });

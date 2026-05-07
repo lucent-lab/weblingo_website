@@ -136,18 +136,18 @@ details.code = "unsupported_error_summary_cursor";
 
 Route tests must assert route-specific worker calls after normal dashboard auth/layout.
 
-| Route | First-load budget | Must not call on first paint |
-| --- | --- | --- |
-| `/dashboard` | `listSites` max once after dedupe | site detail, site dashboard aggregate, pages, history |
-| `/dashboard/sites/[id]` | one overview projection or fallback `includePages=false&includeOperationalSummary=false` | `includePages=true`, pages, deployment history, showcase, source preview, snippets |
-| `/dashboard/sites/[id]/pages` | one direct pages call | full site detail polling, dashboard aggregate once direct endpoint exists |
-| `/dashboard/sites/[id]/source-selection` | one source-selection projection | SSR preview, mount-time preview, read-only preview |
-| `/dashboard/sites/[id]/quality` | one quality projection | consistency scans unless expanded and enabled |
-| `/dashboard/sites/[id]/domains` | one domains projection | deployment history, pages, source preview |
-| `/dashboard/sites/[id]/settings` | one settings projection | deployment history, showcase, duplicate site-list slot count |
-| `/dashboard/sites/[id]/developer-tools` | one developer-tools projection | dashboard JWT, snippets before explicit action |
-| `/dashboard/sites/[id]/runtime-requests` | one redacted observations/list call on route visit | overview/settings preload |
-| `/dashboard/sites/[id]/history` | one selected history endpoint | overview/page fetches beyond nav/layout |
+| Route                                    | First-load budget                                                                        | Must not call on first paint                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `/dashboard`                             | `listSites` max once after dedupe                                                        | site detail, site dashboard aggregate, pages, history                              |
+| `/dashboard/sites/[id]`                  | one overview projection or fallback `includePages=false&includeOperationalSummary=false` | `includePages=true`, pages, deployment history, showcase, source preview, snippets |
+| `/dashboard/sites/[id]/pages`            | one direct pages call                                                                    | full site detail polling, dashboard aggregate once direct endpoint exists          |
+| `/dashboard/sites/[id]/source-selection` | one source-selection projection                                                          | SSR preview, mount-time preview, read-only preview                                 |
+| `/dashboard/sites/[id]/quality`          | one quality projection                                                                   | consistency scans unless expanded and enabled                                      |
+| `/dashboard/sites/[id]/domains`          | one domains projection                                                                   | deployment history, pages, source preview                                          |
+| `/dashboard/sites/[id]/settings`         | one settings projection                                                                  | deployment history, showcase, duplicate site-list slot count                       |
+| `/dashboard/sites/[id]/developer-tools`  | one developer-tools projection                                                           | dashboard JWT, snippets before explicit action                                     |
+| `/dashboard/sites/[id]/runtime-requests` | one redacted observations/list call on route visit                                       | overview/settings preload                                                          |
+| `/dashboard/sites/[id]/history`          | one selected history endpoint                                                            | overview/page fetches beyond nav/layout                                            |
 
 ## Polling Rules
 
@@ -155,8 +155,10 @@ Compact status polling starts only when initial server state indicates live work
 
 ```ts
 latestCrawlRun?.customerStatus === "queued" ||
-latestCrawlRun?.customerStatus === "in_progress" ||
-activeTranslationRuns.some((run) => run.customerStatus === "queued" || run.customerStatus === "in_progress");
+  latestCrawlRun?.customerStatus === "in_progress" ||
+  activeTranslationRuns.some(
+    (run) => run.customerStatus === "queued" || run.customerStatus === "in_progress",
+  );
 ```
 
 Completed, failed, absent, or terminal initial states must produce zero immediate client

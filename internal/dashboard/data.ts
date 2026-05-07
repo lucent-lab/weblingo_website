@@ -8,9 +8,11 @@ import type { WebhooksAuthContext } from "./auth";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import {
   fetchSiteDashboard,
+  fetchSiteCustomerOverview,
   listSites,
   listSupportedLanguages,
   type SiteDashboardResponse,
+  type SiteCustomerOverviewResponse,
   type SiteSummary,
   type SupportedLanguage,
 } from "./webhooks";
@@ -18,6 +20,7 @@ import {
 const SITES_CACHE_NAMESPACE = "dashboard:sites";
 const SITE_DASHBOARD_CACHE_NAMESPACE = "dashboard:site-dashboard";
 const SITE_DASHBOARD_CACHE_INDEX_NAMESPACE = "dashboard:site-dashboard:index";
+const SITE_DASHBOARD_PROJECTION_CACHE_NAMESPACE = "dashboard:site-dashboard-projection";
 const LANGUAGES_CACHE_KEY = "dashboard:supported-languages";
 const SITES_CACHE_TTL_SECONDS = 600;
 const SITE_DASHBOARD_CACHE_TTL_SECONDS = 30;
@@ -26,6 +29,7 @@ const LANGUAGES_CACHE_TTL_SECONDS = 21600;
 
 const sitesInflight = new Map<string, Promise<SiteSummary[]>>();
 const siteDashboardInflight = new Map<string, Promise<SiteDashboardResponse>>();
+const siteCustomerOverviewInflight = new Map<string, Promise<SiteCustomerOverviewResponse>>();
 const languagesInflight = new Map<string, Promise<SupportedLanguage[]>>();
 
 function shouldBypassDashboardCache(): boolean {
@@ -103,6 +107,11 @@ function getSiteDashboardCacheKey(
 function getSiteDashboardCacheIndexKey(subjectAccountId: string, siteId: string): string {
   const digest = hashToken(`${subjectAccountId}:${siteId}`);
   return `${SITE_DASHBOARD_CACHE_INDEX_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
+}
+
+function getSiteCustomerOverviewCacheKey(subjectAccountId: string, siteId: string): string {
+  const digest = hashToken(`${subjectAccountId}:${siteId}:view:overview`);
+  return `${SITE_DASHBOARD_PROJECTION_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
 }
 
 export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
@@ -242,6 +251,53 @@ export const getSiteDashboardCached = cache(
   },
 );
 
+export const getSiteCustomerOverviewCached = cache(
+  async (auth: WebhooksAuthContext, siteId: string): Promise<SiteCustomerOverviewResponse> => {
+    if (shouldBypassDashboardCache()) {
+      return fetchSiteCustomerOverview(auth, siteId);
+    }
+
+    const cacheKey = getSiteCustomerOverviewCacheKey(auth.subjectAccountId, siteId);
+    const indexKey = getSiteDashboardCacheIndexKey(auth.subjectAccountId, siteId);
+
+    try {
+      const cached = await redis.get<SiteCustomerOverviewResponse>(cacheKey);
+      if (cached) {
+        console.info("[dashboard] site customer overview cache hit");
+        return cached;
+      }
+    } catch (error) {
+      console.warn("[dashboard] site customer overview cache read failed:", error);
+    }
+
+    console.info("[dashboard] site customer overview cache miss");
+
+    const inflight = siteCustomerOverviewInflight.get(cacheKey);
+    if (inflight) {
+      return inflight;
+    }
+
+    const promise = (async () => {
+      const payload = await fetchSiteCustomerOverview(auth, siteId);
+      try {
+        await redis.set(cacheKey, payload, { ex: SITE_DASHBOARD_CACHE_TTL_SECONDS });
+        await redis.sadd(indexKey, cacheKey);
+        await redis.expire(indexKey, SITE_DASHBOARD_CACHE_INDEX_TTL_SECONDS);
+      } catch (error) {
+        console.warn("[dashboard] site customer overview cache write/index failed:", error);
+      }
+      return payload;
+    })();
+
+    siteCustomerOverviewInflight.set(cacheKey, promise);
+    try {
+      return await promise;
+    } finally {
+      siteCustomerOverviewInflight.delete(cacheKey);
+    }
+  },
+);
+
 export async function invalidateSitesCache(auth: WebhooksAuthContext): Promise<void> {
   if (shouldBypassDashboardCache()) {
     return;
@@ -271,6 +327,7 @@ export async function invalidateSiteDashboardCache(
       limit: 25,
       offset: 0,
     }),
+    getSiteCustomerOverviewCacheKey(auth.subjectAccountId, siteId),
     indexKey,
   ]);
   try {
