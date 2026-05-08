@@ -17,6 +17,7 @@ vi.mock("@/internal/core/redis", () => ({
 }));
 
 vi.mock("./webhooks", () => ({
+  fetchSiteDashboardProjection: vi.fn(),
   fetchSiteCustomerOverview: vi.fn(),
   listSites: vi.fn(),
   listSupportedLanguages: vi.fn(),
@@ -150,13 +151,67 @@ describe("dashboard data caches", () => {
     );
   });
 
-  it("resolves target locales from the cached site summary contract", async () => {
-    redisMock.get.mockResolvedValue(null);
-    redisMock.set.mockResolvedValue("OK");
-
-    const { listSites } = await import("./webhooks");
+  it("resolves target locales from the focused languages projection", async () => {
+    const { fetchSiteDashboardProjection, listSites } = await import("./webhooks");
+    const mockedProjection = vi.mocked(fetchSiteDashboardProjection);
     const mockedListSites = vi.mocked(listSites);
     const auth = makeAuth();
+    mockedProjection.mockResolvedValue({
+      meta: {
+        view: "languages",
+        generatedAt: "2026-01-01T00:00:00.000Z",
+        schemaVersion: 1,
+      },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "active",
+        profile: null,
+        servingMode: "strict",
+      },
+      access: {
+        mutationsAllowed: true,
+        features: {},
+        canUseGlossary: true,
+        canUseOverrides: true,
+        canEditSlugs: true,
+        canUseConsistencyGovernance: true,
+        canAddLanguage: true,
+        canRemoveLanguage: true,
+        canUpdateLanguageAliases: true,
+        canToggleServing: true,
+      },
+      sourceLanguage: { tag: "en" },
+      targetLanguages: [
+        {
+          tag: "ja",
+          labelKey: "languages.ja",
+          servingStatus: { value: "not_live", rawStatus: null },
+          deployment: null,
+          canRemove: true,
+        },
+        {
+          tag: "fr",
+          labelKey: "languages.fr",
+          servingStatus: { value: "not_live", rawStatus: null },
+          deployment: null,
+          canRemove: true,
+        },
+        {
+          tag: "fr",
+          labelKey: "languages.fr",
+          servingStatus: { value: "not_live", rawStatus: null },
+          deployment: null,
+          canRemove: true,
+        },
+      ],
+      localeQuota: {
+        used: 3,
+        limit: null,
+        remaining: null,
+      },
+    } as never);
     mockedListSites.mockResolvedValue([
       {
         id: "site-1",
@@ -179,7 +234,8 @@ describe("dashboard data caches", () => {
     const targetLangs = await getSiteTargetLangsCached(auth, "site-1");
 
     expect(targetLangs).toEqual(["fr", "ja"]);
-    expect(mockedListSites).toHaveBeenCalledWith(auth);
+    expect(mockedProjection).toHaveBeenCalledWith(auth, "site-1", "languages");
+    expect(mockedListSites).not.toHaveBeenCalled();
   });
 
   it("keeps customer overview projection cache scoped by subject account", async () => {

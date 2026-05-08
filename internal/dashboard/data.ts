@@ -7,6 +7,7 @@ import { redis } from "@/internal/core/redis";
 import type { WebhooksAuthContext } from "./auth";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import {
+  fetchSiteDashboardProjection,
   fetchSiteCustomerOverview,
   listSites,
   listSupportedLanguages,
@@ -113,11 +114,8 @@ export const getSiteSummaryCached = cache(async (auth: WebhooksAuthContext, site
 });
 
 export const getSiteTargetLangsCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
-  const site = await getSiteSummaryCached(auth, siteId);
-  if (!site) {
-    return null;
-  }
-  return normalizeTargetLangs(site.targetLangs);
+  const projection = await fetchSiteDashboardProjection(auth, siteId, "languages");
+  return normalizeTargetLangs(projection.targetLanguages.map((language) => language.tag));
 });
 
 export const listSupportedLanguagesCached = cache(async () => {
