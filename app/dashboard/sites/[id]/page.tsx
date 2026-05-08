@@ -578,7 +578,7 @@ function resolveCustomerCtaHref({
     case "view_live_site":
       return action.href ?? null;
     default:
-      return `/dashboard/sites/${siteId}/settings`;
+      return null;
   }
 }
 

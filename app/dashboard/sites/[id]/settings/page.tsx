@@ -15,6 +15,7 @@ import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 import {
+  buildSiteHeaderAccess,
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatDate,
@@ -45,9 +46,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     has: auth.has,
     mutationsAllowed: auth.mutationsAllowed,
   });
-  const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess(auth);
 
   let projection: SettingsProjection | null = null;
   let supportedLanguages: Awaited<ReturnType<typeof listSupportedLanguagesCached>> = [];
@@ -135,9 +134,9 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     <div className="space-y-8">
       <SiteHeader
         site={projection.site}
-        canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
+        canEdit={siteHeaderAccess.canEdit}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
         {...headerLabels}
       />
 

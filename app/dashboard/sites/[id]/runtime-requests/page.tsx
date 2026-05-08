@@ -19,6 +19,7 @@ import {
   updateRuntimeRequestObservationLifecycleAction,
   updateRuntimeRequestPolicyAction,
 } from "../../../actions";
+import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { RuntimeRequestsManager, type RuntimeRequestsCopy } from "./runtime-requests-manager";
@@ -45,9 +46,9 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
+  const canEdit = siteHeaderAccess.canEdit;
+  const headerLabels = buildSiteHeaderLabels(t);
 
   let projection: SiteDeveloperToolsProjection | null = null;
   let error: unknown = null;
@@ -124,13 +125,13 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
       <SiteHeader
         site={projection.site}
         canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        deactivateLabel={t("dashboard.site.status.deactivate")}
-        reactivateLabel={t("dashboard.site.status.reactivate")}
-        deactivateConfirm={t("dashboard.site.status.deactivateConfirm")}
-        activateHelpLabel={t("dashboard.site.status.activateHelpLabel")}
-        activateHelp={t("dashboard.site.status.activateHelp")}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        deactivateLabel={headerLabels.deactivateLabel}
+        reactivateLabel={headerLabels.reactivateLabel}
+        deactivateConfirm={headerLabels.deactivateConfirm}
+        activateHelpLabel={headerLabels.activateHelpLabel}
+        activateHelp={headerLabels.activateHelp}
       />
 
       {canViewRuntimeRequests ? (

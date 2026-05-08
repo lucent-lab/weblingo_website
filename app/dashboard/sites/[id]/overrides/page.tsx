@@ -29,6 +29,7 @@ import {
   formatConsistencyLocaleScopeLabel,
   selectConsistencyLocaleScope,
 } from "../consistency/locale-scope";
+import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
 import {
   fetchConsistencyBlocks,
   fetchConsistencyCpm,
@@ -62,17 +63,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
+  const canEdit = siteHeaderAccess.canEdit;
   const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
   const canSlugs = auth.has({ allFeatures: ["edit", "slug_edit"] }) && mutationsAllowed;
-  const deactivateLabel = t("dashboard.site.status.deactivate");
-  const reactivateLabel = t("dashboard.site.status.reactivate");
-  const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
-  const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
-  const activateHelp = t("dashboard.site.status.activateHelp");
+  const headerLabels = buildSiteHeaderLabels(t);
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
   const pageNavTitle = t("dashboard.site.overrides.pageNav.title");
@@ -190,13 +186,13 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       <SiteHeader
         site={site}
         canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        deactivateLabel={deactivateLabel}
-        reactivateLabel={reactivateLabel}
-        deactivateConfirm={deactivateConfirm}
-        activateHelpLabel={activateHelpLabel}
-        activateHelp={activateHelp}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        deactivateLabel={headerLabels.deactivateLabel}
+        reactivateLabel={headerLabels.reactivateLabel}
+        deactivateConfirm={headerLabels.deactivateConfirm}
+        activateHelpLabel={headerLabels.activateHelpLabel}
+        activateHelp={headerLabels.activateHelp}
       />
 
       <Card>

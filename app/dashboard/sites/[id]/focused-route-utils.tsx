@@ -24,6 +24,18 @@ export function buildSiteHeaderLabels(t: Translator) {
   };
 }
 
+export function buildSiteHeaderAccess(auth: {
+  has(requirement: { feature: "edit" }): boolean;
+  mutationsAllowed: boolean;
+}) {
+  const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
+  return {
+    canEdit,
+    canPauseTranslations: canEdit,
+    canResumeTranslations: canEdit,
+  };
+}
+
 export function FocusedRouteErrorState({
   error,
   title,

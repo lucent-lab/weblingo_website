@@ -258,4 +258,42 @@ describe("SitePage", () => {
       consoleError.mockRestore();
     }
   });
+
+  it("does not route unknown next-action CTAs to a legacy fallback surface", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: null,
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    const overview = makeOverview();
+    overview.nextAction.cta = {
+      labelKey: "dashboard.cta.reviewUnknown",
+      actionId: "unknown_backend_action",
+      method: "link",
+    } as never;
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(overview);
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    const tree = await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+
+    render(tree);
+    expect(screen.queryByRole("link", { name: /unknown backend action/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /review unknown/i })).toBeNull();
+  });
 });

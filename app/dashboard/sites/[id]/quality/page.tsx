@@ -18,6 +18,7 @@ import {
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 import {
+  buildSiteHeaderAccess,
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatCount,
@@ -43,9 +44,7 @@ export default async function QualityPage({ params }: QualityPageProps) {
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
-  const canResumeTranslations = auth.has({ feature: "edit" }) && auth.mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess(auth);
 
   let projection: QualityProjection | null = null;
   let error: unknown = null;
@@ -87,9 +86,9 @@ export default async function QualityPage({ params }: QualityPageProps) {
     <div className="space-y-8">
       <SiteHeader
         site={projection.site}
-        canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
+        canEdit={siteHeaderAccess.canEdit}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
         {...headerLabels}
       />
 
