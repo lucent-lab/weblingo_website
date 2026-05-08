@@ -84,6 +84,33 @@ describe("HistoryPage", () => {
     expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
   });
 
+  it("renders a customer-safe error state when target locales cannot load", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.getSiteTargetLangsCached.mockRejectedValue(new Error("locale cache unavailable"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { default: HistoryPage } = await import("./page");
+      const tree = await HistoryPage({
+        params: Promise.resolve({ id: "site-1" }),
+        searchParams: Promise.resolve({ targetLang: "fr" }),
+      });
+
+      render(tree);
+      expect(screen.getByText("Unable to load history")).toBeTruthy();
+      expect(document.body.textContent).toContain(
+        "We could not load the configured target locales for this site.",
+      );
+      expect(screen.getByText("Retry history")).toBeTruthy();
+      expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
+      expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it("loads only customer-safe translation runs for the selected locale", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));

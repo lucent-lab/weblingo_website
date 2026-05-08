@@ -58,7 +58,28 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
-  const targetLangs = await getSiteTargetLangsCached(authToken, id);
+  let targetLangs: string[] | null;
+  try {
+    targetLangs = await getSiteTargetLangsCached(authToken, id);
+  } catch (err) {
+    logHistoryError(id, null, "runs", auth, err);
+    return (
+      <FocusedRouteErrorState
+        error={err}
+        title="Unable to load history"
+        description="We could not load the configured target locales for this site. The rest of your site dashboard is still available."
+        message="Unable to load the configured target locales."
+        siteId={id}
+        retryHref={historyHref(id, {})}
+        retryLabel="Retry history"
+        nextSteps={[
+          "Retry this history view once.",
+          "Return to the site overview if you need to continue managing this site.",
+          "Contact support if retry shows this screen.",
+        ]}
+      />
+    );
+  }
   if (targetLangs === null) {
     notFound();
   }
@@ -538,7 +559,7 @@ function historyHref(siteId: string, params: Record<string, string | undefined>)
 
 function logHistoryError(
   siteId: string,
-  targetLang: string,
+  targetLang: string | null,
   historyType: HistoryKind,
   auth: Awaited<ReturnType<typeof requireDashboardAuth>>,
   err: unknown,
