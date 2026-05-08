@@ -55,6 +55,27 @@ describe("HeroOutcomeRotator", () => {
     expect(screen.getByText("signups")).toBeTruthy();
   });
 
+  it("resolves scrambled outcome text after the incoming transition ends", () => {
+    stubMatchMedia(false);
+
+    render(
+      <HeroOutcomeRotator
+        outcomes={["conversions", "bookings", "signups", "revenue"]}
+        prefix="Turn international traffic into"
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(560);
+    });
+
+    expect(screen.getByText("bookings")).toBeTruthy();
+  });
+
   it("stays on the first outcome when reduced motion is enabled", () => {
     stubMatchMedia(true);
 
