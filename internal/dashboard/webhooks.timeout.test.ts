@@ -260,6 +260,39 @@ describe("webhooks request wrapper", () => {
     }
   });
 
+  it("rejects dashboard projection responses with the wrong view", async () => {
+    const fetchSpy = vi.fn(async () => jsonResponse(makeCustomerOverviewResponse()));
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { fetchSiteDashboardProjection, WebhooksApiError } = await import("./webhooks");
+
+      let caught: unknown;
+      try {
+        await fetchSiteDashboardProjection("token", "site-1", "domains");
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(WebhooksApiError);
+      expect(caught).toMatchObject({
+        status: 200,
+        details: { code: "response_schema_mismatch" },
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[webhooks] response schema mismatch",
+        expect.objectContaining({
+          path: "/sites/site-1/dashboard?view=domains",
+          issues: expect.any(Array),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("applies endpoint timeout profiles for list/detail/auth requests", async () => {
     const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");

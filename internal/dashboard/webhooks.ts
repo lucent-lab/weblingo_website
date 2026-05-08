@@ -2275,6 +2275,16 @@ export type SitePagesSummary = z.infer<typeof sitePagesSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
 export type SiteCustomerOverviewResponse = z.infer<typeof siteCustomerOverviewResponseSchema>;
+export type SiteLanguagesProjectionResponse = z.infer<typeof siteLanguagesProjectionResponseSchema>;
+export type SiteDomainsProjectionResponse = z.infer<typeof siteDomainsProjectionResponseSchema>;
+export type SiteSettingsProjectionResponse = z.infer<typeof siteSettingsProjectionResponseSchema>;
+export type SiteDeveloperToolsProjectionResponse = z.infer<
+  typeof siteDeveloperToolsProjectionResponseSchema
+>;
+export type SiteSourceSelectionProjectionResponse = z.infer<
+  typeof siteSourceSelectionProjectionResponseSchema
+>;
+export type SiteQualityProjectionResponse = z.infer<typeof siteQualityProjectionResponseSchema>;
 export type SiteDashboardProjectionResponse = z.infer<typeof siteDashboardProjectionResponseSchema>;
 export type SiteDashboardRouteResponse = z.infer<typeof siteDashboardRouteResponseSchema>;
 export type SiteCompactStatusResponse = z.infer<typeof siteCompactStatusResponseSchema>;
@@ -4651,15 +4661,71 @@ export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> 
 export async function fetchSiteDashboardProjection(
   auth: AuthInput,
   siteId: string,
+  view: "overview",
+): Promise<SiteCustomerOverviewResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "languages",
+): Promise<SiteLanguagesProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "domains",
+): Promise<SiteDomainsProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "settings",
+): Promise<SiteSettingsProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "developer_tools",
+): Promise<SiteDeveloperToolsProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "source_selection",
+): Promise<SiteSourceSelectionProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
+  view: "quality",
+): Promise<SiteQualityProjectionResponse>;
+export async function fetchSiteDashboardProjection(
+  auth: AuthInput,
+  siteId: string,
   view: DashboardProjectionView,
 ): Promise<SiteDashboardProjectionResponse> {
   const qs = new URLSearchParams({ view });
   return request({
     path: `/sites/${siteId}/dashboard?${qs.toString()}`,
     auth,
-    schema: siteDashboardProjectionResponseSchema,
+    schema: dashboardProjectionSchemaForView(view),
     timeoutProfile: "detail",
   });
+}
+
+function dashboardProjectionSchemaForView(
+  view: DashboardProjectionView,
+): z.ZodSchema<SiteDashboardProjectionResponse> {
+  switch (view) {
+    case "overview":
+      return siteCustomerOverviewResponseSchema;
+    case "languages":
+      return siteLanguagesProjectionResponseSchema;
+    case "domains":
+      return siteDomainsProjectionResponseSchema;
+    case "settings":
+      return siteSettingsProjectionResponseSchema;
+    case "developer_tools":
+      return siteDeveloperToolsProjectionResponseSchema;
+    case "source_selection":
+      return siteSourceSelectionProjectionResponseSchema;
+    case "quality":
+      return siteQualityProjectionResponseSchema;
+  }
 }
 
 export async function fetchSiteCustomerOverview(

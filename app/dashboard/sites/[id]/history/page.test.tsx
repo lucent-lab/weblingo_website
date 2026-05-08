@@ -139,6 +139,9 @@ describe("HistoryPage", () => {
   it("loads only customer deployment history and does not render raw deployment status", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.resolveLocaleTranslator.mockResolvedValueOnce({
+      t: (key: string) => key,
+    });
     mocks.fetchCustomerDeploymentHistory.mockResolvedValue({
       targetLang: "fr",
       entries: [
@@ -151,6 +154,24 @@ describe("HistoryPage", () => {
           publishedAt: "2026-05-07T00:01:00.000Z",
           pageCount: 3,
           customerError: null,
+        },
+        {
+          rawStatus: "failed",
+          customerStatus: "failed",
+          titleKey: "dashboard.history.deployment.failed.title",
+          descriptionKey: "dashboard.history.deployment.failed.description",
+          createdAt: "2026-05-07T00:02:00.000Z",
+          publishedAt: null,
+          pageCount: null,
+          customerError: {
+            id: "deployment_failed:fr:2026-05-07T00:02:00.000Z",
+            area: "deployment",
+            severity: "danger",
+            code: "deployment_failed",
+            titleKey: "dashboard.errors.deploymentFailed.title",
+            descriptionKey: "dashboard.errors.deploymentFailed.description",
+            lastSeenAt: "2026-05-07T00:02:00.000Z",
+          },
         },
       ],
       pagination: { limit: 10, offset: 0, nextOffset: null },
@@ -171,8 +192,12 @@ describe("HistoryPage", () => {
       offset: 0,
     });
     expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
-    expect(collectText(tree)).not.toContain("Raw status");
-    expect(collectText(tree)).not.toContain("active");
+    render(tree);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("dashboard.history.deployment.failed.description");
+    expect(text).toContain("dashboard.errors.deploymentFailed.title");
+    expect(text).not.toContain("Raw status");
+    expect(text).not.toContain("active");
   });
 
   it("rejects unknown target locales before loading a history stream", async () => {
@@ -247,21 +272,4 @@ function makeAuth(authToken: { token: string; subjectAccountId: string }) {
     subjectAccountId: "acct-1",
     actingAsCustomer: false,
   };
-}
-
-function collectText(node: unknown): string {
-  if (node == null || typeof node === "boolean") {
-    return "";
-  }
-  if (typeof node === "string" || typeof node === "number") {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(collectText).join(" ");
-  }
-  if (!isValidElement(node)) {
-    return "";
-  }
-  const props = node.props as { children?: unknown };
-  return collectText(props.children);
 }

@@ -432,6 +432,14 @@ function DeploymentsCard({
                       params: entry.params,
                     })}
                   </p>
+                  {entry.descriptionKey ? (
+                    <p className="text-xs text-muted-foreground">
+                      {formatCustomerCopy(t, entry.descriptionKey, {
+                        fallback: formatCustomerStatusValue(entry.customerStatus),
+                        params: entry.params,
+                      })}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     Published {formatDate(entry.publishedAt ?? entry.createdAt)}
                   </p>
@@ -443,6 +451,14 @@ function DeploymentsCard({
               <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                 <HistoryMetric label="Pages" value={formatCount(entry.pageCount)} />
               </div>
+              {entry.customerError ? (
+                <p className="mt-3 text-sm text-destructive">
+                  {formatCustomerCopy(t, entry.customerError.titleKey, {
+                    fallback: formatCustomerStatusValue(entry.customerError.code),
+                    params: entry.customerError.params,
+                  })}
+                </p>
+              ) : null}
             </div>
           ))
         ) : (
