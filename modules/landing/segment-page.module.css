@@ -198,6 +198,75 @@
   color: hsl(var(--foreground));
 }
 
+.heroGlyphField {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  color: hsl(var(--primary) / 0.58);
+  overflow: hidden;
+  user-select: none;
+}
+
+.heroGlyphCanvas {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+}
+
+.heroGlyphField[data-glyph-renderer="webgl"] .heroGlyphCanvas {
+  opacity: 1;
+}
+
+.heroGlyphField[data-glyph-renderer="webgl"] .heroGlyphAmbient {
+  opacity: 0;
+  animation: none;
+}
+
+.heroGlyphAmbient {
+  position: absolute;
+  display: inline-block;
+  font-family:
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic",
+    "Apple SD Gothic Neo",
+    "Noto Sans CJK JP",
+    "Noto Sans",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: var(--glyph-size);
+  font-weight: 600;
+  line-height: 1;
+  text-rendering: geometricprecision;
+}
+
+.heroGlyphAmbient {
+  left: var(--glyph-x);
+  top: var(--glyph-y);
+  color: hsl(var(--primary) / 0.68);
+  opacity: var(--glyph-opacity);
+  transform: translate(-50%, -50%) rotate(var(--glyph-rotate));
+  animation: hero-glyph-float var(--glyph-duration) ease-in-out var(--glyph-delay) infinite
+    alternate;
+}
+
+@keyframes hero-glyph-float {
+  from {
+    transform: translate(-50%, -50%) translateY(-4px) rotate(var(--glyph-rotate));
+  }
+
+  to {
+    transform: translate(-50%, -50%) translateY(5px) rotate(var(--glyph-rotate));
+  }
+}
+
 @keyframes segment-rotator-in {
   from {
     opacity: 0;
@@ -239,6 +308,10 @@
 }
 
 @media (max-width: 640px) {
+  .heroGlyphField {
+    opacity: 0.72;
+  }
+
   .heroRotator {
     display: inline;
   }
@@ -280,5 +353,13 @@
   .timelineCard {
     opacity: 1;
     transform: none;
+  }
+
+  .heroGlyphField {
+    opacity: 0.45;
+  }
+
+  .heroGlyphAmbient {
+    animation: none !important;
   }
 }

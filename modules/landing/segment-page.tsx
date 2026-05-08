@@ -14,6 +14,7 @@ import {
 } from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
+import { HeroGlyphField } from "./components/hero-glyph-field";
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
 import { HowStepsTimeline } from "./components/how-steps-timeline";
 import { InViewCountUp } from "./components/in-view-count-up";
@@ -60,10 +61,11 @@ export async function LandingSegmentPage({
       />
       <section
         id="try"
-        className="section-reveal relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
+        className="section-reveal relative isolate overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
       >
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
-        <div className="relative mx-auto max-w-6xl">
+        <HeroGlyphField />
+        <div className="relative z-10 mx-auto max-w-6xl">
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
               <h1 className="mb-6 text-4xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
