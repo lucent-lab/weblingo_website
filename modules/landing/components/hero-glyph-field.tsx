@@ -20,7 +20,11 @@ type AmbientGlyph = {
   y: string;
 };
 
-const GLYPHS = ["A", "é", "ñ", "文", "語", "あ", "カ", "한", "글", "λ", "Ж", "Д"] as const;
+const TRAIL_GLYPHS = ["A", "é", "ñ", "文", "語", "あ", "カ", "한", "글", "λ", "Ж", "Д"] as const;
+const MAX_TRAIL_GLYPHS = 34;
+const MIN_CURSOR_DISTANCE_PX = 24;
+const MIN_TRAIL_DISTANCE_PX = 30;
+const TRAIL_THROTTLE_MS = 72;
 const AMBIENT_GLYPHS: ReadonlyArray<AmbientGlyph> = [
   {
     glyph: "文",
@@ -144,84 +148,6 @@ const AMBIENT_GLYPHS: ReadonlyArray<AmbientGlyph> = [
   },
 ] as const;
 
-const ATLAS_CELL_SIZE = 64;
-const FRAME_MS = 1_000 / 30;
-const RAIN_COLUMN_COUNT = 38;
-const RAIN_GLYPHS_PER_COLUMN = 22;
-const PARTICLE_COUNT = RAIN_COLUMN_COUNT * RAIN_GLYPHS_PER_COLUMN;
-const VERTEX_SHADER = `#version 300 es
-precision highp float;
-
-in vec2 aCorner;
-in vec4 aSeed;
-in float aGlyph;
-in float aSize;
-in float aTrail;
-
-uniform vec2 uResolution;
-uniform vec2 uPointer;
-uniform float uPointerStrength;
-uniform float uTime;
-uniform float uGlyphCount;
-
-out vec2 vUv;
-out float vGlyph;
-out float vAlpha;
-
-void main() {
-  float t = uTime * aSeed.z + aSeed.w;
-  vec2 pos = vec2(aSeed.x, fract(aSeed.y + t));
-  pos.x += sin(t * 0.86 + aTrail * 4.0) * 0.004;
-
-  float ringFade = 0.0;
-  if (uPointer.x >= 0.0) {
-    vec2 diff = pos - uPointer;
-    diff.x *= uResolution.x / max(uResolution.y, 1.0);
-    float distanceToPointer = length(diff);
-    float innerFade = smoothstep(0.055, 0.095, distanceToPointer);
-    float outerFade = 1.0 - smoothstep(0.26, 0.42, distanceToPointer);
-    ringFade = innerFade * outerFade * uPointerStrength;
-  }
-
-  vec2 pixelPosition = pos * uResolution;
-  pixelPosition.y += sin(t * 1.13 + aSeed.x * 7.0) * 2.0;
-
-  float edgeFade =
-    smoothstep(0.0, 0.035, pos.x) *
-    (1.0 - smoothstep(0.965, 1.0, pos.x)) *
-    smoothstep(0.0, 0.035, pos.y) *
-    (1.0 - smoothstep(0.965, 1.0, pos.y));
-  float headGlow = 1.0 - smoothstep(0.0, 0.18, aTrail);
-  float trailFade = mix(1.0, 0.22, aTrail);
-  float pulse = 0.72 + 0.28 * sin(t * 1.7 + aSeed.w * 5.0);
-  vAlpha = edgeFade * ringFade * (0.18 + trailFade * 0.38 + headGlow * 0.32) * pulse;
-  vGlyph = mod(aGlyph + floor(uTime * (1.2 + aSeed.z * 8.0) + aSeed.w * 17.0 + aTrail * 5.0), uGlyphCount);
-  vUv = aCorner + 0.5;
-
-  vec2 clip = ((pixelPosition + aCorner * aSize) / uResolution) * 2.0 - 1.0;
-  gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
-}
-`;
-const FRAGMENT_SHADER = `#version 300 es
-precision highp float;
-
-in vec2 vUv;
-in float vGlyph;
-in float vAlpha;
-
-uniform sampler2D uAtlas;
-uniform vec3 uColor;
-uniform float uGlyphCount;
-
-out vec4 outColor;
-
-void main() {
-  vec2 atlasUv = vec2((vGlyph + vUv.x) / uGlyphCount, vUv.y);
-  float glyphAlpha = texture(uAtlas, atlasUv).a;
-  outColor = vec4(uColor, glyphAlpha * vAlpha);
-}
-`;
-
 function getAmbientStyle(glyph: AmbientGlyph) {
   return {
     "--glyph-delay": glyph.delay,
@@ -234,149 +160,23 @@ function getAmbientStyle(glyph: AmbientGlyph) {
   } as CSSProperties;
 }
 
-function compileShader(gl: WebGL2RenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    return null;
-  }
-
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    gl.deleteShader(shader);
-    return null;
-  }
-
-  return shader;
+function pickTrailGlyph(index: number) {
+  return TRAIL_GLYPHS[index % TRAIL_GLYPHS.length] ?? TRAIL_GLYPHS[0];
 }
 
-function createProgram(gl: WebGL2RenderingContext) {
-  const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-  if (!vertexShader || !fragmentShader) {
-    if (vertexShader) {
-      gl.deleteShader(vertexShader);
-    }
-    if (fragmentShader) {
-      gl.deleteShader(fragmentShader);
-    }
-    return null;
-  }
-
-  const program = gl.createProgram();
-  if (!program) {
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
-    return null;
-  }
-
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  gl.deleteShader(vertexShader);
-  gl.deleteShader(fragmentShader);
-
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    gl.deleteProgram(program);
-    return null;
-  }
-
-  return program;
-}
-
-function createGlyphAtlas() {
-  const canvas = document.createElement("canvas");
-  canvas.width = ATLAS_CELL_SIZE * GLYPHS.length;
-  canvas.height = ATLAS_CELL_SIZE;
-
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return null;
-  }
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "white";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font =
-    '600 42px "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Apple SD Gothic Neo", "Noto Sans CJK JP", "Noto Sans", system-ui, sans-serif';
-
-  GLYPHS.forEach((glyph, index) => {
-    context.fillText(glyph, index * ATLAS_CELL_SIZE + ATLAS_CELL_SIZE / 2, ATLAS_CELL_SIZE / 2);
-  });
-
-  return canvas;
-}
-
-function createParticleData() {
-  const seeds = new Float32Array(PARTICLE_COUNT * 4);
-  const glyphs = new Float32Array(PARTICLE_COUNT);
-  const sizes = new Float32Array(PARTICLE_COUNT);
-  const trails = new Float32Array(PARTICLE_COUNT);
-
-  for (let column = 0; column < RAIN_COLUMN_COUNT; column += 1) {
-    const columnJitter = (Math.random() - 0.5) * 0.42;
-    const columnX = Math.min(
-      0.98,
-      Math.max(0.02, (column + 0.5 + columnJitter) / RAIN_COLUMN_COUNT),
-    );
-    const phase = Math.random();
-    const speed = 0.065 + Math.random() * 0.075;
-
-    for (let trailIndex = 0; trailIndex < RAIN_GLYPHS_PER_COLUMN; trailIndex += 1) {
-      const index = column * RAIN_GLYPHS_PER_COLUMN + trailIndex;
-      const trail = trailIndex / Math.max(1, RAIN_GLYPHS_PER_COLUMN - 1);
-      const streamGap = 0.031 + Math.random() * 0.006;
-      const seedOffset = index * 4;
-      seeds[seedOffset] = columnX;
-      seeds[seedOffset + 1] = phase - trailIndex * streamGap;
-      seeds[seedOffset + 2] = speed;
-      seeds[seedOffset + 3] = Math.random();
-      glyphs[index] = (column + trailIndex) % GLYPHS.length;
-      sizes[index] = 15 + Math.random() * 10;
-      trails[index] = trail;
-    }
-  }
-
-  return { glyphs, seeds, sizes, trails };
-}
-
-function bindInstanceAttribute(
-  gl: WebGL2RenderingContext,
-  program: WebGLProgram,
-  name: string,
-  data: Float32Array,
-  size: number,
-) {
-  const location = gl.getAttribLocation(program, name);
-  if (location < 0) {
-    return null;
-  }
-
-  const buffer = gl.createBuffer();
-  if (!buffer) {
-    return null;
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(location);
-  gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
-  gl.vertexAttribDivisor(location, 1);
-
-  return buffer;
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const trailIndexRef = useRef(0);
+  const trailCountRef = useRef(0);
 
   useEffect(() => {
     const root = rootRef.current;
-    const canvas = canvasRef.current;
     const heroSection = root?.closest("section");
-    if (!root || !canvas || !heroSection || typeof window.matchMedia !== "function") {
+    if (!root || !heroSection || typeof window.matchMedia !== "function") {
       return;
     }
 
@@ -387,211 +187,126 @@ export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
       return;
     }
 
-    const gl = canvas.getContext("webgl2", {
-      alpha: true,
-      antialias: false,
-      depth: false,
-      powerPreference: "low-power",
-      premultipliedAlpha: false,
-      stencil: false,
-    });
-    if (!gl) {
-      return;
-    }
-
-    const program = createProgram(gl);
-    const glyphAtlas = createGlyphAtlas();
-    if (!program || !glyphAtlas) {
-      if (program) {
-        gl.deleteProgram(program);
-      }
-      return;
-    }
-
-    root.dataset.glyphRenderer = "webgl";
-
-    const quadBuffer = gl.createBuffer();
-    const texture = gl.createTexture();
-    const vertexArray = gl.createVertexArray();
-    if (!quadBuffer || !texture || !vertexArray) {
-      root.dataset.glyphRenderer = "fallback";
-      if (quadBuffer) {
-        gl.deleteBuffer(quadBuffer);
-      }
-      if (texture) {
-        gl.deleteTexture(texture);
-      }
-      if (vertexArray) {
-        gl.deleteVertexArray(vertexArray);
-      }
-      gl.deleteProgram(program);
-      return;
-    }
-
-    const { glyphs, seeds, sizes, trails } = createParticleData();
-    const buffers: WebGLBuffer[] = [quadBuffer];
     const rect = { height: 1, left: 0, top: 0, width: 1 };
-    let animationFrame: number | null = null;
-    let isVisible = true;
-    let isPointerInside = false;
-    let lastFrameTime = 0;
-    let pointerStrength = 0;
-    let pointerX = -1;
-    let pointerY = -1;
-
-    gl.bindVertexArray(vertexArray);
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]),
-      gl.STATIC_DRAW,
-    );
-
-    const cornerLocation = gl.getAttribLocation(program, "aCorner");
-    if (cornerLocation < 0) {
-      root.dataset.glyphRenderer = "fallback";
-      gl.deleteBuffer(quadBuffer);
-      gl.deleteTexture(texture);
-      gl.deleteVertexArray(vertexArray);
-      gl.deleteProgram(program);
-      return;
-    }
-    gl.enableVertexAttribArray(cornerLocation);
-    gl.vertexAttribPointer(cornerLocation, 2, gl.FLOAT, false, 0, 0);
-
-    for (const buffer of [
-      bindInstanceAttribute(gl, program, "aSeed", seeds, 4),
-      bindInstanceAttribute(gl, program, "aGlyph", glyphs, 1),
-      bindInstanceAttribute(gl, program, "aSize", sizes, 1),
-      bindInstanceAttribute(gl, program, "aTrail", trails, 1),
-    ]) {
-      if (!buffer) {
-        root.dataset.glyphRenderer = "fallback";
-        buffers.forEach((createdBuffer) => gl.deleteBuffer(createdBuffer));
-        gl.deleteTexture(texture);
-        gl.deleteVertexArray(vertexArray);
-        gl.deleteProgram(program);
-        return;
-      }
-      buffers.push(buffer);
-    }
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, glyphAtlas);
-
-    gl.useProgram(program);
-    gl.uniform1i(gl.getUniformLocation(program, "uAtlas"), 0);
-    gl.uniform1f(gl.getUniformLocation(program, "uGlyphCount"), GLYPHS.length);
-    gl.uniform3f(gl.getUniformLocation(program, "uColor"), 0.13, 0.03, 0.32);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-    const resolutionLocation = gl.getUniformLocation(program, "uResolution");
-    const pointerLocation = gl.getUniformLocation(program, "uPointer");
-    const pointerStrengthLocation = gl.getUniformLocation(program, "uPointerStrength");
-    const timeLocation = gl.getUniformLocation(program, "uTime");
+    const recentTrails: Array<{ x: number; y: number }> = [];
+    let lastPointer: { x: number; y: number } | null = null;
+    let lastTrailTime = 0;
 
     const updateRect = () => {
-      const bounds = canvas.getBoundingClientRect();
+      const bounds = heroSection.getBoundingClientRect();
       rect.left = bounds.left;
       rect.top = bounds.top;
       rect.width = Math.max(1, bounds.width);
       rect.height = Math.max(1, bounds.height);
     };
 
-    const resizeCanvas = () => {
-      updateRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      gl.viewport(0, 0, canvas.width, canvas.height);
+    const pruneTrails = () => {
+      while (trailCountRef.current > MAX_TRAIL_GLYPHS) {
+        const trail = root.querySelector(`.${styles.heroGlyphTrail}`);
+        if (!trail) {
+          trailCountRef.current = 0;
+          return;
+        }
+        trail.remove();
+        trailCountRef.current -= 1;
+      }
     };
 
-    const render = (time: number) => {
-      if (!isVisible || document.visibilityState === "hidden") {
-        animationFrame = window.requestAnimationFrame(render);
+    const removeTrail = (trail: HTMLSpanElement) => {
+      if (!trail.isConnected) {
         return;
       }
-
-      if (time - lastFrameTime < FRAME_MS) {
-        animationFrame = window.requestAnimationFrame(render);
-        return;
-      }
-
-      lastFrameTime = time;
-      pointerStrength = isPointerInside
-        ? Math.min(1, pointerStrength + 0.18)
-        : pointerStrength * 0.9;
-      if (pointerStrength < 0.01) {
-        pointerStrength = 0;
-        pointerX = -1;
-        pointerY = -1;
-      }
-
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(program);
-      gl.bindVertexArray(vertexArray);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform2f(resolutionLocation, rect.width, rect.height);
-      gl.uniform2f(pointerLocation, pointerX, pointerY);
-      gl.uniform1f(pointerStrengthLocation, pointerStrength);
-      gl.uniform1f(timeLocation, time / 1_000);
-      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, PARTICLE_COUNT);
-      animationFrame = window.requestAnimationFrame(render);
+      trail.remove();
+      trailCountRef.current = Math.max(0, trailCountRef.current - 1);
     };
 
     const onPointerMove = (event: PointerEvent) => {
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
-      if (x < 0 || y < 0 || x > 1 || y > 1) {
+      const now = window.performance.now();
+      if (now - lastTrailTime < TRAIL_THROTTLE_MS) {
         return;
       }
 
-      pointerX = x;
-      pointerY = y;
-      isPointerInside = true;
-      pointerStrength = 1;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
+        lastPointer = null;
+        return;
+      }
+
+      const previous = lastPointer;
+      lastPointer = { x, y };
+      if (!previous) {
+        return;
+      }
+
+      const velocityX = x - previous.x;
+      const velocityY = y - previous.y;
+      const speed = Math.hypot(velocityX, velocityY);
+      if (speed < 5) {
+        return;
+      }
+
+      const glyphIndex = trailIndexRef.current;
+      const movementLength = Math.max(1, speed);
+      const offsetDirectionX = -velocityY / movementLength;
+      const offsetDirectionY = velocityX / movementLength;
+      const offsetSign = glyphIndex % 2 === 0 ? 1 : -1;
+      const offsetDistance = MIN_CURSOR_DISTANCE_PX + (glyphIndex % 3) * 7;
+      const spawnX = clamp(x + offsetDirectionX * offsetSign * offsetDistance, 0, rect.width);
+      const spawnY = clamp(y + offsetDirectionY * offsetSign * offsetDistance, 0, rect.height);
+      const overlapsRecentTrail = recentTrails.some(
+        (trail) => Math.hypot(trail.x - spawnX, trail.y - spawnY) < MIN_TRAIL_DISTANCE_PX,
+      );
+      if (overlapsRecentTrail) {
+        return;
+      }
+
+      trailIndexRef.current += 1;
+      recentTrails.push({ x: spawnX, y: spawnY });
+      if (recentTrails.length > 10) {
+        recentTrails.splice(0, recentTrails.length - 10);
+      }
+
+      const trail = document.createElement("span");
+      trail.className = styles.heroGlyphTrail;
+      trail.textContent = pickTrailGlyph(glyphIndex);
+      trail.style.left = `${spawnX}px`;
+      trail.style.top = `${spawnY}px`;
+      trail.style.setProperty("--glyph-alpha", speed > 35 ? "0.34" : "0.26");
+      trail.style.setProperty(
+        "--glyph-drift-x",
+        `${Math.max(-30, Math.min(30, velocityX * 0.55))}px`,
+      );
+      trail.style.setProperty(
+        "--glyph-drift-y",
+        `${Math.max(-30, Math.min(30, velocityY * 0.55))}px`,
+      );
+      trail.style.setProperty("--glyph-duration", `${speed > 35 ? 760 : 900}ms`);
+      trail.style.setProperty("--glyph-rotate", `${-8 + (glyphIndex % 5) * 4}deg`);
+      trail.style.setProperty("--glyph-size", `${18 + (glyphIndex % 4) * 3}px`);
+      trail.style.setProperty("--glyph-spin", `${speed > 35 ? 12 : 6}deg`);
+
+      root.append(trail);
+      trailCountRef.current += 1;
+      pruneTrails();
+
+      const cleanup = () => removeTrail(trail);
+      trail.addEventListener("animationend", cleanup, { once: true });
+      window.setTimeout(cleanup, 1_200);
+      lastTrailTime = now;
     };
 
-    const onPointerLeave = () => {
-      isPointerInside = false;
-    };
-
-    const resizeObserver = new ResizeObserver(resizeCanvas);
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
-      isVisible = Boolean(entry?.isIntersecting);
-    });
-
-    resizeCanvas();
-    resizeObserver.observe(canvas);
-    intersectionObserver.observe(heroSection);
+    updateRect();
     heroSection.addEventListener("pointermove", onPointerMove, { passive: true });
-    heroSection.addEventListener("pointerleave", onPointerLeave, { passive: true });
     window.addEventListener("scroll", updateRect, { passive: true });
-    window.addEventListener("resize", resizeCanvas, { passive: true });
-    animationFrame = window.requestAnimationFrame(render);
+    window.addEventListener("resize", updateRect, { passive: true });
 
     return () => {
-      root.dataset.glyphRenderer = "fallback";
-      resizeObserver.disconnect();
-      intersectionObserver.disconnect();
       heroSection.removeEventListener("pointermove", onPointerMove);
-      heroSection.removeEventListener("pointerleave", onPointerLeave);
       window.removeEventListener("scroll", updateRect);
-      window.removeEventListener("resize", resizeCanvas);
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-      buffers.forEach((buffer) => gl.deleteBuffer(buffer));
-      gl.deleteTexture(texture);
-      gl.deleteVertexArray(vertexArray);
-      gl.deleteProgram(program);
+      window.removeEventListener("resize", updateRect);
+      root.querySelectorAll(`.${styles.heroGlyphTrail}`).forEach((trail) => trail.remove());
+      trailCountRef.current = 0;
     };
   }, []);
 
@@ -600,10 +315,8 @@ export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
       ref={rootRef}
       aria-hidden="true"
       className={cn(styles.heroGlyphField, className)}
-      data-glyph-renderer="fallback"
       data-testid="hero-glyph-field"
     >
-      <canvas ref={canvasRef} className={styles.heroGlyphCanvas} />
       {AMBIENT_GLYPHS.map((glyph, index) => (
         <span
           key={`${glyph.glyph}-${index}`}

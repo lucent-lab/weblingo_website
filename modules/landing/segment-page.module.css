@@ -204,28 +204,14 @@
   inset: 0;
   z-index: 0;
   color: hsl(var(--primary) / 0.58);
+  opacity: 0.9;
+  mix-blend-mode: multiply;
   overflow: hidden;
   user-select: none;
 }
 
-.heroGlyphCanvas {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  width: 100%;
-  opacity: 0;
-}
-
-.heroGlyphField[data-glyph-renderer="webgl"] .heroGlyphCanvas {
-  opacity: 1;
-}
-
-.heroGlyphField[data-glyph-renderer="webgl"] .heroGlyphAmbient {
-  opacity: 0;
-  animation: none;
-}
-
-.heroGlyphAmbient {
+.heroGlyphAmbient,
+.heroGlyphTrail {
   position: absolute;
   display: inline-block;
   font-family:
@@ -257,6 +243,14 @@
     alternate;
 }
 
+.heroGlyphTrail {
+  color: hsl(var(--primary) / 0.56);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92) rotate(var(--glyph-rotate));
+  animation: hero-glyph-trail var(--glyph-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
 @keyframes hero-glyph-float {
   from {
     transform: translate(-50%, -50%) translateY(-4px) rotate(var(--glyph-rotate));
@@ -264,6 +258,23 @@
 
   to {
     transform: translate(-50%, -50%) translateY(5px) rotate(var(--glyph-rotate));
+  }
+}
+
+@keyframes hero-glyph-trail {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92) rotate(var(--glyph-rotate));
+  }
+
+  18% {
+    opacity: var(--glyph-alpha);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--glyph-drift-x)), calc(-50% + var(--glyph-drift-y)))
+      scale(1.15) rotate(calc(var(--glyph-rotate) + var(--glyph-spin)));
   }
 }
 
@@ -309,7 +320,7 @@
 
 @media (max-width: 640px) {
   .heroGlyphField {
-    opacity: 0.72;
+    opacity: 0.52;
   }
 
   .heroRotator {
@@ -356,10 +367,11 @@
   }
 
   .heroGlyphField {
-    opacity: 0.45;
+    opacity: 0.38;
   }
 
-  .heroGlyphAmbient {
+  .heroGlyphAmbient,
+  .heroGlyphTrail {
     animation: none !important;
   }
 }
