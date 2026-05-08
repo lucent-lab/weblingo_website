@@ -11,7 +11,6 @@ import type { AccountMe } from "./webhooks";
 import {
   exchangeWebhooksToken,
   fetchDashboardBootstrap,
-  WebhooksApiError,
   type AgencyCustomersResponse,
 } from "./webhooks";
 import { createHas, type HasCheck } from "./entitlements";
@@ -43,7 +42,6 @@ export type DashboardAuth = {
   actorAccountId: string | null;
   subjectAccountId: string | null;
   actingAsCustomer: boolean;
-  subjectFallbackToActor: boolean;
   actorPlanActive: boolean;
   subjectPlanActive: boolean;
   mutationsAllowed: boolean;
@@ -72,41 +70,6 @@ const BOOTSTRAP_CACHE_EXPIRY_BUFFER_SECONDS = 60;
 const DASHBOARD_E2E_ACCOUNT_ID = "acct-e2e-smoke";
 const DASHBOARD_E2E_TOKEN = "dashboard-e2e-smoke-token";
 
-const FALLBACK_FEATURE_FLAGS: AccountMe["featureFlags"] = {
-  editEnabled: false,
-  slugEditEnabled: false,
-  glossaryEnabled: false,
-  overridesEnabled: false,
-  tmWriteEnabled: false,
-  publishEnabled: false,
-  pipelineAllowed: false,
-  serveAllowed: false,
-  siteCreateEnabled: false,
-  localeUpdateEnabled: false,
-  domainVerifyEnabled: false,
-  crawlTriggerEnabled: false,
-  crawlCaptureModeEnabled: false,
-  clientRuntimeToggleEnabled: false,
-  translatableAttributesEnabled: false,
-  renderEnabled: false,
-  agencyActionsEnabled: false,
-  internalOpsEnabled: false,
-  demoMode: false,
-  maxSites: null,
-  maxLocales: null,
-  maxDailyRecrawls: null,
-  maxDailyPageRecrawls: null,
-  maxGlossarySources: null,
-  featurePreview: [],
-};
-
-const FALLBACK_QUOTAS: AccountMe["quotas"] = {
-  maxSites: null,
-  freeQuota: null,
-  starterQuota: null,
-  proQuota: null,
-};
-
 type TokenEntitlements = Awaited<ReturnType<typeof exchangeWebhooksToken>>["entitlements"];
 
 type BootstrapCacheEntry = {
@@ -126,38 +89,6 @@ type BootstrapOptions = {
 };
 
 const bootstrapInflight = new Map<string, Promise<BootstrapCacheEntry>>();
-
-function buildFallbackAccount(accountId: string, entitlements: TokenEntitlements): AccountMe {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    accountId,
-    planType: entitlements.planType,
-    planStatus: entitlements.planStatus,
-    featureFlags: FALLBACK_FEATURE_FLAGS,
-    dailyCrawlUsage: {
-      date: today,
-      siteCrawls: 0,
-      pageCrawls: 0,
-    },
-    usageCounters: {
-      periodStart: today,
-      periodEnd: today,
-      pagesPublished: 0,
-      charsTranslated: 0,
-      rebuildsTriggered: 0,
-      dailySiteCrawls: 0,
-      dailyPageCrawls: 0,
-    },
-    quotaLimits: {
-      maxSites: null,
-      translationChars: null,
-      dailySiteCrawls: null,
-      dailyPageCrawls: null,
-      previewRequests: null,
-    },
-    quotas: FALLBACK_QUOTAS,
-  };
-}
 
 function normalizeSubjectAccountId(subjectAccountId?: string | null): string {
   return subjectAccountId?.trim() ?? "";
@@ -314,7 +245,6 @@ function buildDashboardE2eMockAuth(): DashboardAuth {
     actorAccountId: DASHBOARD_E2E_ACCOUNT_ID,
     subjectAccountId: DASHBOARD_E2E_ACCOUNT_ID,
     actingAsCustomer: false,
-    subjectFallbackToActor: false,
     actorPlanActive: true,
     subjectPlanActive: true,
     mutationsAllowed: true,
@@ -351,38 +281,19 @@ async function getBootstrap({
   }
 
   const promise = (async () => {
-    let payload: BootstrapCacheEntry;
-    try {
-      const bootstrap = await fetchDashboardBootstrap(supabaseAccessToken, {
-        subjectAccountId,
-        includeAgencyCustomers,
-      });
-      payload = {
-        token: bootstrap.token,
-        expiresAt: bootstrap.expiresAt,
-        entitlements: bootstrap.entitlements,
-        actorAccountId: bootstrap.actorAccountId,
-        subjectAccountId: bootstrap.subjectAccountId,
-        account: bootstrap.account,
-        agencyCustomers: bootstrap.agencyCustomers,
-      };
-    } catch (error) {
-      if (error instanceof WebhooksApiError && error.status === 403) {
-        console.warn("[dashboard] bootstrap returned 403; using fallback entitlements.");
-        const tokenResponse = await exchangeWebhooksToken(supabaseAccessToken, subjectAccountId);
-        payload = {
-          token: tokenResponse.token,
-          expiresAt: tokenResponse.expiresAt,
-          entitlements: tokenResponse.entitlements,
-          actorAccountId: tokenResponse.actorAccountId,
-          subjectAccountId: tokenResponse.subjectAccountId,
-          account: buildFallbackAccount(tokenResponse.subjectAccountId, tokenResponse.entitlements),
-          agencyCustomers: null,
-        };
-      } else {
-        throw error;
-      }
-    }
+    const bootstrap = await fetchDashboardBootstrap(supabaseAccessToken, {
+      subjectAccountId,
+      includeAgencyCustomers,
+    });
+    const payload: BootstrapCacheEntry = {
+      token: bootstrap.token,
+      expiresAt: bootstrap.expiresAt,
+      entitlements: bootstrap.entitlements,
+      actorAccountId: bootstrap.actorAccountId,
+      subjectAccountId: bootstrap.subjectAccountId,
+      account: bootstrap.account,
+      agencyCustomers: bootstrap.agencyCustomers,
+    };
 
     if (!shouldBypassBootstrapCache()) {
       const ttlSeconds = getBootstrapCacheTtlSeconds(payload.expiresAt);
@@ -450,7 +361,6 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
       actorAccountId: null,
       subjectAccountId: null,
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
       actorPlanActive: false,
       subjectPlanActive: false,
       mutationsAllowed: false,
@@ -479,26 +389,20 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   let subjectAuth = actorAuth;
   let subjectAccount = actorAccount;
   let actingAsCustomer = false;
-  let subjectFallbackToActor = false;
   if (
     requestedSubjectId &&
     requestedSubjectId !== actorBootstrap.subjectAccountId &&
     allowedSubjectIds.has(requestedSubjectId)
   ) {
-    try {
-      subjectBootstrap = await getBootstrap({
-        supabaseAccessToken: session.access_token,
-        subjectAccountId: requestedSubjectId,
-      });
-      subjectAuth = buildWebhooksAuthContext(subjectBootstrap, session.access_token);
-      subjectAccount = subjectBootstrap.account;
-      actingAsCustomer = true;
-    } catch (error) {
-      subjectFallbackToActor = true;
-      console.warn("[dashboard] subject account exchange failed:", error);
-    }
+    subjectBootstrap = await getBootstrap({
+      supabaseAccessToken: session.access_token,
+      subjectAccountId: requestedSubjectId,
+    });
+    subjectAuth = buildWebhooksAuthContext(subjectBootstrap, session.access_token);
+    subjectAccount = subjectBootstrap.account;
+    actingAsCustomer = true;
   } else if (requestedSubjectId && requestedSubjectId !== actorBootstrap.subjectAccountId) {
-    subjectFallbackToActor = true;
+    throw new Error("Requested dashboard workspace is not available for this account.");
   }
 
   const actorPlanActive = actorAccount.planStatus === "active";
@@ -523,7 +427,6 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     actorAccountId: actorBootstrap.actorAccountId,
     subjectAccountId: subjectBootstrap.subjectAccountId,
     actingAsCustomer,
-    subjectFallbackToActor,
     actorPlanActive,
     subjectPlanActive,
     mutationsAllowed,

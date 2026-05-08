@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchCustomerDeploymentHistory: vi.fn(),
   fetchCustomerTranslationRuns: vi.fn(),
-  fetchDeploymentHistory: vi.fn(),
   getSiteTargetLangsCached: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
@@ -35,7 +34,6 @@ vi.mock("@internal/dashboard/data", () => ({
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchCustomerDeploymentHistory: mocks.fetchCustomerDeploymentHistory,
   fetchCustomerTranslationRuns: mocks.fetchCustomerTranslationRuns,
-  fetchDeploymentHistory: mocks.fetchDeploymentHistory,
   WebhooksApiError: class WebhooksApiError extends Error {
     status: number;
     details?: unknown;
@@ -84,7 +82,6 @@ describe("HistoryPage", () => {
     expect(isValidElement(tree)).toBe(true);
     expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
     expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
-    expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
   });
 
   it("loads only customer-safe translation runs for the selected locale", async () => {
@@ -110,7 +107,6 @@ describe("HistoryPage", () => {
       offset: 0,
     });
     expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
-    expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
   });
 
   it("loads only customer deployment history and does not render raw deployment status", async () => {
@@ -148,7 +144,6 @@ describe("HistoryPage", () => {
       offset: 0,
     });
     expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
-    expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
     expect(collectText(tree)).not.toContain("Raw status");
     expect(collectText(tree)).not.toContain("active");
   });
@@ -224,7 +219,6 @@ function makeAuth(authToken: { token: string; subjectAccountId: string }) {
     actorAccountId: "acct-1",
     subjectAccountId: "acct-1",
     actingAsCustomer: false,
-    subjectFallbackToActor: false,
   };
 }
 

@@ -3624,74 +3624,8 @@
         ],
         "type": "string"
       },
-      "DeploymentHistoryByLocale": {
-        "additionalProperties": false,
-        "properties": {
-          "entries": {
-            "items": {
-              "$ref": "#/components/schemas/DeploymentHistoryEntry"
-            },
-            "type": "array"
-          },
-          "targetLang": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "targetLang",
-          "entries"
-        ],
-        "type": "object"
-      },
-      "DeploymentHistoryEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "activatedAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "artifactManifest": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "createdAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "deploymentId": {
-            "type": "string"
-          },
-          "routePrefix": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "deploymentId",
-          "status"
-        ],
-        "type": "object"
-      },
       "DeploymentHistoryRouteResponse": {
-        "anyOf": [
-          {
-            "$ref": "#/components/schemas/ListDeploymentHistoryResponse"
-          },
-          {
-            "$ref": "#/components/schemas/CustomerDeploymentHistoryResponse"
-          }
-        ]
+        "$ref": "#/components/schemas/CustomerDeploymentHistoryResponse"
       },
       "DeploymentServingStatus": {
         "enum": [
@@ -4690,25 +4624,6 @@
         "required": [
           "customers",
           "summary"
-        ],
-        "type": "object"
-      },
-      "ListDeploymentHistoryResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "history": {
-            "items": {
-              "$ref": "#/components/schemas/DeploymentHistoryByLocale"
-            },
-            "type": "array"
-          },
-          "perLocaleLimit": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "history",
-          "perLocaleLimit"
         ],
         "type": "object"
       },
@@ -7639,66 +7554,8 @@
         ],
         "type": "object"
       },
-      "SiteDashboardResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "deployments": {
-            "items": {
-              "$ref": "#/components/schemas/Deployment"
-            },
-            "type": "array"
-          },
-          "operationalSummary": {
-            "$ref": "#/components/schemas/SiteOperationalSummary"
-          },
-          "pages": {
-            "items": {
-              "$ref": "#/components/schemas/SitePageSummary"
-            },
-            "type": "array"
-          },
-          "pagesSummary": {
-            "$ref": "#/components/schemas/SitePagesSummary"
-          },
-          "pagination": {
-            "additionalProperties": false,
-            "properties": {
-              "hasMore": {
-                "type": "boolean"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "total": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "limit",
-              "offset",
-              "total",
-              "hasMore"
-            ],
-            "type": "object"
-          },
-          "site": {
-            "$ref": "#/components/schemas/Site"
-          }
-        },
-        "required": [
-          "site",
-          "deployments"
-        ],
-        "type": "object"
-      },
       "SiteDashboardRouteResponse": {
         "anyOf": [
-          {
-            "$ref": "#/components/schemas/SiteDashboardResponse"
-          },
           {
             "$ref": "#/components/schemas/SiteCustomerOverviewResponse"
           },
@@ -7966,61 +7823,6 @@
         ],
         "type": "object"
       },
-      "SiteDlqSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "complete": {
-            "type": "boolean"
-          },
-          "invalidEntries": {
-            "type": "number"
-          },
-          "monitorPath": {
-            "type": "string"
-          },
-          "newest": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "oldest": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "perWorker": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "type": "object"
-          },
-          "replayPath": {
-            "type": "string"
-          },
-          "total": {
-            "type": "number"
-          },
-          "truncated": {
-            "type": "boolean"
-          },
-          "unreadableEntries": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "total",
-          "perWorker",
-          "truncated",
-          "complete",
-          "invalidEntries",
-          "unreadableEntries",
-          "monitorPath",
-          "replayPath"
-        ],
-        "type": "object"
-      },
       "SiteDomain": {
         "additionalProperties": false,
         "properties": {
@@ -8210,43 +8012,6 @@
           "routing",
           "languages",
           "domains"
-        ],
-        "type": "object"
-      },
-      "SiteHealthSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "heartbeatKey": {
-            "type": "string"
-          },
-          "readyPaths": {
-            "additionalProperties": false,
-            "properties": {
-              "ops": {
-                "type": "string"
-              },
-              "serve": {
-                "type": "string"
-              },
-              "webhooks": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "webhooks",
-              "serve",
-              "ops"
-            ],
-            "type": "object"
-          },
-          "runbookPath": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "readyPaths",
-          "heartbeatKey",
-          "runbookPath"
         ],
         "type": "object"
       },
@@ -8480,40 +8245,6 @@
         ],
         "type": "object"
       },
-      "SiteOperationalSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "dlq": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SiteDlqSummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "health": {
-            "$ref": "#/components/schemas/SiteHealthSummary"
-          },
-          "retry": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SiteRetrySummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "retry",
-          "dlq",
-          "health"
-        ],
-        "type": "object"
-      },
       "SitePagesSummary": {
         "additionalProperties": false,
         "properties": {
@@ -8727,34 +8458,6 @@
           "meta",
           "site",
           "access"
-        ],
-        "type": "object"
-      },
-      "SiteRetrySummary": {
-        "additionalProperties": false,
-        "properties": {
-          "activeRunCount": {
-            "type": "number"
-          },
-          "pagesCompleted": {
-            "type": "number"
-          },
-          "pagesFailed": {
-            "type": "number"
-          },
-          "pagesInProgress": {
-            "type": "number"
-          },
-          "pagesPending": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "activeRunCount",
-          "pagesCompleted",
-          "pagesPending",
-          "pagesInProgress",
-          "pagesFailed"
         ],
         "type": "object"
       },
@@ -15290,7 +14993,7 @@
     },
     "/sites/{siteId}/dashboard": {
       "get": {
-        "description": "Returns the legacy consolidated dashboard payload when `view` is omitted. When `view` is supplied, returns the matching customer-safe dashboard projection and rejects legacy broad-dashboard query knobs.",
+        "description": "Returns the requested customer-safe dashboard projection. The `view` query parameter is required; broad dashboard query knobs are rejected.",
         "operationId": "sites.dashboard.get",
         "parameters": [
           {
@@ -15302,10 +15005,10 @@
             }
           },
           {
-            "description": "Optional customer dashboard projection view. Recognized values are `overview`, `languages`, `domains`, `settings`, `developer_tools`, `source_selection`, and `quality`. Omit `view` for the legacy dashboard response.",
+            "description": "Customer dashboard projection view. Recognized values are `overview`, `languages`, `domains`, `settings`, `developer_tools`, `source_selection`, and `quality`.",
             "in": "query",
             "name": "view",
-            "required": false,
+            "required": true,
             "schema": {
               "enum": [
                 "overview",
@@ -15318,49 +15021,6 @@
               ],
               "type": "string"
             }
-          },
-          {
-            "description": "When true, include `pages` + `pagination` in the response. Defaults to false.",
-            "in": "query",
-            "name": "includePages",
-            "required": false,
-            "schema": {
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          {
-            "description": "When false, omit `operationalSummary` and skip retry/DLQ aggregation. Defaults to true.",
-            "in": "query",
-            "name": "includeOperationalSummary",
-            "required": false,
-            "schema": {
-              "default": true,
-              "type": "boolean"
-            }
-          },
-          {
-            "description": "Maximum number of pages to return when includePages=true (1-200). Defaults to 25.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 200,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Number of pages to skip when includePages=true. Defaults to 0.",
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "type": "integer"
-            }
           }
         ],
         "responses": {
@@ -15368,52 +15028,85 @@
             "content": {
               "application/json": {
                 "example": {
-                  "deployments": [
+                  "account": {
+                    "accountId": "string",
+                    "mutationsAllowed": true,
+                    "planStatus": "string",
+                    "planType": "string"
+                  },
+                  "blockers": [
                     {
-                      "completeness": {
-                        "discoveredPages": 10,
-                        "pendingPages": 3,
-                        "percentage": 70,
-                        "status": "partial",
-                        "translatedPages": 7
-                      },
+                      "area": "account",
+                      "code": "string",
+                      "severity": "success",
+                      "titleKey": "string"
+                    }
+                  ],
+                  "currentActivity": [
+                    {
+                      "customerStatus": "queued",
+                      "id": "string",
+                      "titleKey": "string",
+                      "type": "string"
+                    }
+                  ],
+                  "domains": [
+                    {
+                      "domain": "string",
+                      "status": "not_configured"
+                    }
+                  ],
+                  "errors": [
+                    {
+                      "area": "account",
+                      "code": "string",
+                      "id": "string",
+                      "severity": "info",
+                      "titleKey": "string"
+                    }
+                  ],
+                  "health": {
+                    "status": "healthy",
+                    "titleKey": "string"
+                  },
+                  "languages": [
+                    {
+                      "enabled": true,
                       "serveEnabled": true,
-                      "servingStatus": "inactive",
-                      "stateDrift": {
-                        "classes": [
-                          "active_pointer_manifest_missing"
-                        ],
-                        "drifted": true,
-                        "runbook": "docs/ops/V1_OPERATIONS.md#state-drift-monitoring--alerts"
+                      "servingStatus": {
+                        "titleKey": "string"
                       },
-                      "status": "string",
-                      "targetLang": "string"
+                      "tag": "string"
+                    }
+                  ],
+                  "meta": {
+                    "generatedAt": "string",
+                    "schemaVersion": 1,
+                    "view": "overview"
+                  },
+                  "nextAction": {
+                    "kind": "none",
+                    "priority": 1,
+                    "severity": "none",
+                    "titleKey": "string"
+                  },
+                  "pagesSummary": {
+                    "excludedPages": 1,
+                    "includedPages": 1,
+                    "totalKnownPages": 1
+                  },
+                  "quotas": [
+                    {
+                      "key": "string",
+                      "labelKey": "string",
+                      "status": "ok"
                     }
                   ],
                   "site": {
-                    "accountId": "string",
-                    "domains": [
-                      {
-                        "domain": "string",
-                        "status": "pending",
-                        "verificationToken": "string"
-                      }
-                    ],
                     "id": "string",
-                    "locales": [
-                      {
-                        "serveEnabled": true,
-                        "sourceLang": "string",
-                        "targetLang": "string"
-                      }
-                    ],
-                    "maxLocales": 1,
-                    "servingMode": "strict",
+                    "sourceLang": "string",
                     "sourceUrl": "string",
-                    "status": "active",
-                    "webhookEvents": [
-                      "translation.completed"
-                    ]
+                    "status": "string"
                   }
                 },
                 "schema": {
@@ -15583,6 +15276,7 @@
     },
     "/sites/{siteId}/deployments/history": {
       "get": {
+        "description": "Returns customer-safe single-locale offset-paginated deployment history. `view=customer` and `targetLang` are required.",
         "operationId": "sites.deployments.history.list",
         "parameters": [
           {
@@ -15594,10 +15288,10 @@
             }
           },
           {
-            "description": "Use `view=customer` for the customer-safe single-locale offset-paginated projection. Omit `view` for the legacy grouped history response.",
+            "description": "Must be `customer` for the customer-safe single-locale offset-paginated projection.",
             "in": "query",
             "name": "view",
-            "required": false,
+            "required": true,
             "schema": {
               "enum": [
                 "customer"
@@ -15606,16 +15300,16 @@
             }
           },
           {
-            "description": "Locale filter for deployment history (for example `fr`). Required when `view=customer`.",
+            "description": "Locale filter for deployment history (for example `fr`).",
             "in": "query",
             "name": "targetLang",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "description": "Maximum entries per locale to include (1-50). Defaults to 10.",
+            "description": "Maximum customer history entries to include (1-50). Defaults to 10.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -15627,7 +15321,7 @@
             }
           },
           {
-            "description": "Number of customer history entries to skip when `view=customer`. Defaults to 0.",
+            "description": "Number of customer history entries to skip. Defaults to 0.",
             "in": "query",
             "name": "offset",
             "required": false,
@@ -15643,18 +15337,19 @@
             "content": {
               "application/json": {
                 "example": {
-                  "history": [
+                  "entries": [
                     {
-                      "entries": [
-                        {
-                          "deploymentId": "string",
-                          "status": "string"
-                        }
-                      ],
-                      "targetLang": "string"
+                      "customerStatus": "publishing",
+                      "rawStatus": "string",
+                      "titleKey": "string"
                     }
                   ],
-                  "perLocaleLimit": 1
+                  "generatedAt": "string",
+                  "pagination": {
+                    "limit": 1,
+                    "offset": 1
+                  },
+                  "targetLang": "string"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/DeploymentHistoryRouteResponse"
@@ -15709,7 +15404,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "List deployment history",
+        "summary": "List customer deployment history",
         "tags": [
           "Sites",
           "Deployments"

@@ -89,7 +89,6 @@ describe("SourceSelectionPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSiteDashboardProjection.mockResolvedValue({
       meta: { view: "source_selection" },
@@ -151,7 +150,6 @@ describe("SourceSelectionPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSiteDashboardProjection.mockResolvedValue({
       meta: { view: "source_selection" },

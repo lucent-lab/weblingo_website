@@ -123,7 +123,6 @@ describe("RuntimeRequestsPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSiteDashboardProjection.mockResolvedValue({
       meta: { view: "developer_tools" },
@@ -201,7 +200,6 @@ describe("RuntimeRequestsPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSiteDashboardProjection.mockResolvedValue({
       meta: { view: "developer_tools" },

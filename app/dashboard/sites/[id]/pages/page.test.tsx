@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSitePages: vi.fn(),
-  getSiteDashboardCached: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -28,9 +27,7 @@ vi.mock("@/components/dashboard/action-form", () => ({
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
-vi.mock("@internal/dashboard/data", () => ({
-  getSiteDashboardCached: mocks.getSiteDashboardCached,
-}));
+vi.mock("@internal/dashboard/data", () => ({}));
 vi.mock("@internal/dashboard/error-state", () => ({
   resolveDashboardErrorView: vi.fn((error, fallback) => ({
     ...fallback,
@@ -101,7 +98,6 @@ describe("SitePagesPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSitePages.mockResolvedValue({
       site: {
@@ -150,6 +146,5 @@ describe("SitePagesPage", () => {
       limit: 25,
       offset: 0,
     });
-    expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
   });
 });

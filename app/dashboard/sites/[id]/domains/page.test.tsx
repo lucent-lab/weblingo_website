@@ -6,8 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSiteDashboardProjection: vi.fn(),
-  getSiteDashboardCached: vi.fn(),
-  fetchDeploymentHistory: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -28,12 +26,9 @@ vi.mock("@/components/dashboard/action-form", () => ({
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
-vi.mock("@internal/dashboard/data", () => ({
-  getSiteDashboardCached: mocks.getSiteDashboardCached,
-}));
+vi.mock("@internal/dashboard/data", () => ({}));
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchSiteDashboardProjection: mocks.fetchSiteDashboardProjection,
-  fetchDeploymentHistory: mocks.fetchDeploymentHistory,
   WebhooksApiError: class WebhooksApiError extends Error {
     status: number;
     details?: unknown;
@@ -134,8 +129,6 @@ describe("DomainsPage", () => {
     expect(isValidElement(tree)).toBe(true);
     render(tree);
     expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(authToken, "site-1", "domains");
-    expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
-    expect(mocks.fetchDeploymentHistory).not.toHaveBeenCalled();
     expect(screen.getByText("_weblingo.fr.example.com")).toBeTruthy();
     expect(screen.getByText("verify-fr-token")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Review DNS setup" }).getAttribute("href")).toBe(
@@ -205,7 +198,6 @@ function makeAuth(authToken: { token: string; subjectAccountId: string }) {
     actorAccountId: "acct-1",
     subjectAccountId: "acct-1",
     actingAsCustomer: false,
-    subjectFallbackToActor: false,
   };
 }
 

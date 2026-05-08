@@ -47,7 +47,6 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   actorAccountId: null,
   subjectAccountId,
   actingAsCustomer: false,
-  subjectFallbackToActor: false,
   actorPlanActive: true,
   subjectPlanActive: true,
   mutationsAllowed: true,

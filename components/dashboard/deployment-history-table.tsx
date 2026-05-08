@@ -1,18 +1,17 @@
-import { type DeploymentHistoryByLocale } from "@internal/dashboard/webhooks";
+import { type CustomerDeploymentHistoryResponse } from "@internal/dashboard/webhooks";
 import { Badge } from "@/components/ui/badge";
 
 type DeploymentHistoryTableProps = {
-  history: DeploymentHistoryByLocale[];
+  history: CustomerDeploymentHistoryResponse;
   locale?: string;
 };
 
 type HistoryRow = {
   targetLang: string;
-  deploymentId: string;
+  title: string;
   status: string;
-  activatedAt?: string | null;
   createdAt?: string | null;
-  routePrefix?: string | null;
+  publishedAt?: string | null;
 };
 
 export function DeploymentHistoryTable({ history, locale = "en" }: DeploymentHistoryTableProps) {
@@ -32,31 +31,29 @@ export function DeploymentHistoryTable({ history, locale = "en" }: DeploymentHis
         <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
           <tr>
             <th className="px-3 py-2 text-left">Locale</th>
-            <th className="px-3 py-2 text-left">Deployment</th>
+            <th className="px-3 py-2 text-left">Event</th>
             <th className="px-3 py-2 text-left">Status</th>
-            <th className="px-3 py-2 text-left">Activated</th>
+            <th className="px-3 py-2 text-left">Published</th>
             <th className="px-3 py-2 text-left">Created</th>
-            <th className="px-3 py-2 text-left">Route</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`${row.targetLang}-${row.deploymentId}:${index}`}>
+            <tr
+              key={`${row.targetLang}-${row.status}-${row.createdAt ?? row.publishedAt ?? index}:${index}`}
+            >
               <td className="px-3 py-3 align-top font-semibold text-foreground">
                 {row.targetLang.toUpperCase()}
               </td>
-              <td className="px-3 py-3 align-top font-mono text-foreground">{row.deploymentId}</td>
+              <td className="px-3 py-3 align-top text-foreground">{row.title}</td>
               <td className="px-3 py-3 align-top">
                 <Badge variant="outline">{row.status}</Badge>
               </td>
               <td className="px-3 py-3 align-top text-muted-foreground">
-                {formatTimestamp(row.activatedAt, dateFormatter)}
+                {formatTimestamp(row.publishedAt, dateFormatter)}
               </td>
               <td className="px-3 py-3 align-top text-muted-foreground">
                 {formatTimestamp(row.createdAt, dateFormatter)}
-              </td>
-              <td className="px-3 py-3 align-top text-muted-foreground">
-                {row.routePrefix && row.routePrefix.length ? row.routePrefix : "-"}
               </td>
             </tr>
           ))}
@@ -66,21 +63,14 @@ export function DeploymentHistoryTable({ history, locale = "en" }: DeploymentHis
   );
 }
 
-function flattenHistoryRows(history: DeploymentHistoryByLocale[]): HistoryRow[] {
-  const rows: HistoryRow[] = [];
-  for (const localeHistory of history) {
-    for (const entry of localeHistory.entries) {
-      rows.push({
-        targetLang: localeHistory.targetLang,
-        deploymentId: entry.deploymentId,
-        status: entry.status,
-        activatedAt: entry.activatedAt ?? null,
-        createdAt: entry.createdAt ?? null,
-        routePrefix: entry.routePrefix ?? null,
-      });
-    }
-  }
-  return rows;
+function flattenHistoryRows(history: CustomerDeploymentHistoryResponse): HistoryRow[] {
+  return history.entries.map((entry) => ({
+    targetLang: history.targetLang,
+    title: entry.titleKey,
+    status: entry.customerStatus,
+    createdAt: entry.createdAt ?? null,
+    publishedAt: entry.publishedAt ?? null,
+  }));
 }
 
 function formatTimestamp(value: string | null | undefined, formatter: Intl.DateTimeFormat): string {

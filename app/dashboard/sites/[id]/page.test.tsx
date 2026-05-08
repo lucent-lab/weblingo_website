@@ -8,7 +8,6 @@ import type { SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks"
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   getSiteCustomerOverviewCached: vi.fn(),
-  getSiteDashboardCached: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -28,7 +27,6 @@ vi.mock("@internal/dashboard/auth", () => ({
 }));
 vi.mock("@internal/dashboard/data", () => ({
   getSiteCustomerOverviewCached: mocks.getSiteCustomerOverviewCached,
-  getSiteDashboardCached: mocks.getSiteDashboardCached,
 }));
 vi.mock("@internal/dashboard/error-state", () => ({
   resolveDashboardErrorView: vi.fn((error, fallback) => ({
@@ -186,7 +184,6 @@ describe("SitePage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.getSiteCustomerOverviewCached.mockResolvedValue(makeOverview());
 
@@ -203,7 +200,6 @@ describe("SitePage", () => {
       "/dashboard/sites/site-1/domains#domain-fr-example-com",
     );
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
-    expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
   });
 
   it("renders repeated blocker codes without duplicate React keys", async () => {
@@ -223,7 +219,6 @@ describe("SitePage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     const overview = makeOverview();
     overview.blockers = [

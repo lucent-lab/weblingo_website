@@ -394,53 +394,6 @@ const sitePagesSummarySchema = z
   })
   .strict();
 
-const siteRetrySummarySchema = z
-  .object({
-    activeRunCount: z.number().int().nonnegative(),
-    pagesCompleted: z.number().int().nonnegative(),
-    pagesPending: z.number().int().nonnegative(),
-    pagesInProgress: z.number().int().nonnegative(),
-    pagesFailed: z.number().int().nonnegative(),
-  })
-  .strict();
-
-const siteDlqSummarySchema = z
-  .object({
-    total: z.number().int().nonnegative(),
-    perWorker: z.record(z.string(), z.number().int().nonnegative()),
-    oldest: z.string().nullable().optional(),
-    newest: z.string().nullable().optional(),
-    truncated: z.boolean(),
-    complete: z.boolean(),
-    invalidEntries: z.number().int().nonnegative(),
-    unreadableEntries: z.number().int().nonnegative(),
-    monitorPath: z.string(),
-    replayPath: z.string(),
-  })
-  .strict();
-
-const siteHealthSummarySchema = z
-  .object({
-    readyPaths: z
-      .object({
-        webhooks: z.string(),
-        serve: z.string(),
-        ops: z.string(),
-      })
-      .strict(),
-    heartbeatKey: z.string(),
-    runbookPath: z.string(),
-  })
-  .strict();
-
-const siteOperationalSummarySchema = z
-  .object({
-    retry: siteRetrySummarySchema.nullable(),
-    dlq: siteDlqSummarySchema.nullable(),
-    health: siteHealthSummarySchema,
-  })
-  .strict();
-
 const crawlStatusSchema = z.object({
   enqueued: z.boolean(),
   error: z.string().optional(),
@@ -630,31 +583,6 @@ const deploymentSchema = z.object({
 });
 
 const listDeploymentsResponseSchema = z.object({ deployments: z.array(deploymentSchema) });
-
-const deploymentHistoryEntrySchema = z
-  .object({
-    deploymentId: z.string(),
-    status: z.enum(["publishing", "active", "failed", "superseded"]),
-    createdAt: z.string().nullable().optional(),
-    activatedAt: z.string().nullable().optional(),
-    routePrefix: z.string().nullable().optional(),
-    artifactManifest: artifactManifestSchema,
-  })
-  .strict();
-
-const deploymentHistoryByLocaleSchema = z
-  .object({
-    targetLang: z.string(),
-    entries: z.array(deploymentHistoryEntrySchema),
-  })
-  .strict();
-
-const listDeploymentHistoryResponseSchema = z
-  .object({
-    history: z.array(deploymentHistoryByLocaleSchema),
-    perLocaleLimit: z.number().int().positive(),
-  })
-  .strict();
 
 const dashboardProjectionViewSchema = z.enum([
   "overview",
@@ -1385,10 +1313,7 @@ const customerDeploymentHistoryResponseSchema = z
     generatedAt: z.string(),
   })
   .strict();
-const deploymentHistoryRouteResponseSchema = z.union([
-  listDeploymentHistoryResponseSchema,
-  customerDeploymentHistoryResponseSchema,
-]);
+const deploymentHistoryRouteResponseSchema = customerDeploymentHistoryResponseSchema;
 
 const glossaryEntrySchema = z.object({
   source: z.string(),
@@ -1565,20 +1490,7 @@ const listSitePagesResponseSchema = z
   })
   .strict();
 
-const siteDashboardResponseSchema = z
-  .object({
-    site: siteSchema,
-    deployments: z.array(deploymentSchema),
-    pagesSummary: sitePagesSummarySchema.optional(),
-    operationalSummary: siteOperationalSummarySchema.optional(),
-    pages: z.array(sitePageSummarySchema).optional(),
-    pagination: listSitePagesResponseSchema.shape.pagination.optional(),
-  })
-  .strict();
-const siteDashboardRouteResponseSchema = z.union([
-  siteDashboardResponseSchema,
-  siteDashboardProjectionResponseSchema,
-]);
+const siteDashboardRouteResponseSchema = siteDashboardProjectionResponseSchema;
 
 const sourceSelectionPreviewReasonSchema = z.enum([
   "included_by_default",
@@ -2347,9 +2259,6 @@ export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
 export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type DeploymentCompleteness = z.infer<typeof deploymentCompletenessSchema>;
-export type DeploymentHistoryEntry = z.infer<typeof deploymentHistoryEntrySchema>;
-export type DeploymentHistoryByLocale = z.infer<typeof deploymentHistoryByLocaleSchema>;
-export type DeploymentHistoryResponse = z.infer<typeof listDeploymentHistoryResponseSchema>;
 export type DashboardProjectionView = z.infer<typeof dashboardProjectionViewSchema>;
 export type CustomerErrorSummaryItem = z.infer<typeof customerErrorSummaryItemSchema>;
 export type CustomerErrorSummaryResponse = z.infer<typeof customerErrorSummaryResponseSchema>;
@@ -2365,7 +2274,6 @@ export type SitePageSummary = z.infer<typeof sitePageSummarySchema>;
 export type SitePagesSummary = z.infer<typeof sitePagesSummarySchema>;
 export type SitePagesPagination = z.infer<typeof listSitePagesResponseSchema.shape.pagination>;
 export type SitePagesResponse = z.infer<typeof listSitePagesResponseSchema>;
-export type SiteDashboardResponse = z.infer<typeof siteDashboardResponseSchema>;
 export type SiteCustomerOverviewResponse = z.infer<typeof siteCustomerOverviewResponseSchema>;
 export type SiteDashboardProjectionResponse = z.infer<typeof siteDashboardProjectionResponseSchema>;
 export type SiteDashboardRouteResponse = z.infer<typeof siteDashboardRouteResponseSchema>;
@@ -2456,11 +2364,9 @@ export const __webhooksZodContracts = {
   resumeTranslationRunResponseSchema,
   domainResponseSchema,
   listDeploymentsResponseSchema,
-  listDeploymentHistoryResponseSchema,
   customerDeploymentHistoryResponseSchema,
   deploymentHistoryRouteResponseSchema,
   listSitePagesResponseSchema,
-  siteDashboardResponseSchema,
   siteDashboardRouteResponseSchema,
   siteCustomerOverviewResponseSchema,
   siteLanguagesProjectionResponseSchema,
@@ -3292,33 +3198,7 @@ function createDashboardE2eMockDashboardPayload(siteId: string, searchParams: UR
       view as DashboardProjectionView,
     );
   }
-  const includePages = searchParams.get("includePages") === "true";
-  const limitRaw = Number(searchParams.get("limit") ?? "25");
-  const offsetRaw = Number(searchParams.get("offset") ?? "0");
-  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : 25;
-  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.floor(offsetRaw) : 0;
-  const allPages = createDashboardE2eMockPages(30);
-  const pages = allPages.slice(offset, offset + limit);
-  const payload: Record<string, unknown> = {
-    site: createDashboardE2eMockSite(siteId),
-    deployments: createDashboardE2eMockDeployments(siteId),
-    pagesSummary: {
-      lastCrawlStartedAt: new Date(Date.now() - 15 * 60_000).toISOString(),
-      lastCrawlFinishedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
-      pagesUpdated: 18,
-      pagesPending: 5,
-    },
-  };
-  if (includePages) {
-    payload.pages = pages;
-    payload.pagination = {
-      limit,
-      offset,
-      total: allPages.length,
-      hasMore: offset + pages.length < allPages.length,
-    };
-  }
-  return payload;
+  throw new Error("dashboard view is required in dashboard e2e mock mode");
 }
 
 function createDashboardE2eMockSourceSelectionPreview(
@@ -4768,40 +4648,6 @@ export async function fetchSite(auth: AuthInput, siteId: string): Promise<Site> 
   });
 }
 
-export async function fetchSiteDashboard(
-  auth: AuthInput,
-  siteId: string,
-  options?: {
-    includePages?: boolean;
-    includeOperationalSummary?: boolean;
-    limit?: number;
-    offset?: number;
-  },
-): Promise<SiteDashboardResponse> {
-  const qs = new URLSearchParams();
-  if (typeof options?.includePages === "boolean") {
-    qs.set("includePages", String(options.includePages));
-  }
-  if (typeof options?.includeOperationalSummary === "boolean") {
-    qs.set("includeOperationalSummary", String(options.includeOperationalSummary));
-  }
-  if (typeof options?.limit === "number") {
-    qs.set("limit", String(options.limit));
-  }
-  if (typeof options?.offset === "number") {
-    qs.set("offset", String(options.offset));
-  }
-  const path = qs.size
-    ? `/sites/${siteId}/dashboard?${qs.toString()}`
-    : `/sites/${siteId}/dashboard`;
-  return request({
-    path,
-    auth,
-    schema: siteDashboardResponseSchema,
-    timeoutProfile: "detail",
-  });
-}
-
 export async function fetchSiteDashboardProjection(
   auth: AuthInput,
   siteId: string,
@@ -5342,29 +5188,6 @@ export async function fetchDeployments(auth: AuthInput, siteId: string): Promise
   });
 
   return data.deployments;
-}
-
-export async function fetchDeploymentHistory(
-  auth: AuthInput,
-  siteId: string,
-  options?: { targetLang?: string; limit?: number },
-): Promise<DeploymentHistoryResponse> {
-  const searchParams = new URLSearchParams();
-  if (options?.targetLang) {
-    searchParams.set("targetLang", options.targetLang);
-  }
-  if (typeof options?.limit === "number") {
-    searchParams.set("limit", String(options.limit));
-  }
-  const path = searchParams.size
-    ? `/sites/${siteId}/deployments/history?${searchParams.toString()}`
-    : `/sites/${siteId}/deployments/history`;
-  return request({
-    path,
-    auth,
-    schema: listDeploymentHistoryResponseSchema,
-    timeoutProfile: "detail",
-  });
 }
 
 export async function fetchCustomerDeploymentHistory(

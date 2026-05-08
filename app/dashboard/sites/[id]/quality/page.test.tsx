@@ -73,7 +73,6 @@ function makeAuth(authToken: { token: string; subjectAccountId: string }) {
     actorAccountId: "acct-1",
     subjectAccountId: "acct-1",
     actingAsCustomer: false,
-    subjectFallbackToActor: false,
   };
 }
 

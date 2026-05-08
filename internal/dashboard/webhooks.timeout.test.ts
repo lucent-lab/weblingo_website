@@ -348,77 +348,6 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(6_000);
   });
 
-  it("requests consolidated site dashboard payload with query params", async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      expect(url).toContain("/sites/site-1/dashboard");
-      expect(url).toContain("includePages=true");
-      expect(url).toContain("includeOperationalSummary=false");
-      expect(url).toContain("limit=10");
-      expect(url).toContain("offset=20");
-
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
-
-      return new Response(
-        JSON.stringify({
-          site: {
-            id: "site-1",
-            accountId: "acct-1",
-            sourceUrl: "https://example.com",
-            status: "active",
-            servingMode: "strict",
-            maxLocales: null,
-            siteProfile: null,
-            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
-            locales: [],
-            domains: [],
-            latestCrawlRun: null,
-          },
-          deployments: [],
-          pages: [
-            {
-              id: "page-1",
-              sourcePath: "/",
-              lastSeenAt: null,
-              lastCrawledAt: null,
-              lastSnapshotAt: null,
-              nextCrawlAt: null,
-              lastVersionAt: null,
-            },
-          ],
-          pagination: {
-            limit: 10,
-            offset: 20,
-            total: 21,
-            hasMore: false,
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
-    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
-    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
-
-    vi.resetModules();
-    const { fetchSiteDashboard } = await import("./webhooks");
-    const payload = await fetchSiteDashboard("token", "site-1", {
-      includePages: true,
-      includeOperationalSummary: false,
-      limit: 10,
-      offset: 20,
-    });
-
-    expect(payload.site.id).toBe("site-1");
-    expect(payload.pages).toHaveLength(1);
-    expect(fetchSpy).toHaveBeenCalledOnce();
-    const timeoutValues = timeoutSpy.mock.calls
-      .map((call) => call[1])
-      .filter((value): value is number => typeof value === "number");
-    expect(timeoutValues).toContain(10_000);
-  });
-
   it("previews proposed source-selection rules without saving", async () => {
     const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
@@ -514,71 +443,6 @@ describe("webhooks request wrapper", () => {
 
     expect(preview.summary.knownPagesIncluded).toBe(1);
     expect(preview.affectedPages[0]?.matchedPattern).toBe("/blog/*");
-    expect(fetchSpy).toHaveBeenCalledOnce();
-  });
-
-  it("accepts site dashboard payloads with operational summary fields", async () => {
-    const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-
-      return new Response(
-        JSON.stringify({
-          site: {
-            id: "site-1",
-            accountId: "acct-1",
-            sourceUrl: "https://example.com",
-            status: "active",
-            servingMode: "strict",
-            maxLocales: null,
-            siteProfile: null,
-            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
-            locales: [],
-            domains: [],
-            latestCrawlRun: null,
-          },
-          deployments: [],
-          operationalSummary: {
-            retry: {
-              activeRunCount: 1,
-              pagesCompleted: 1,
-              pagesPending: 2,
-              pagesInProgress: 0,
-              pagesFailed: 0,
-            },
-            dlq: {
-              total: 1,
-              perWorker: { translate: 1 },
-              oldest: "2026-03-25T00:00:00.000Z",
-              newest: "2026-03-25T00:00:00.000Z",
-              truncated: false,
-              complete: true,
-              invalidEntries: 0,
-              unreadableEntries: 0,
-              monitorPath: "/api/sites/site-1/dlq",
-              replayPath: "/api/sites/site-1/dlq/replay",
-            },
-            health: {
-              readyPaths: {
-                webhooks: "/api/health/ready",
-                serve: "/health/ready",
-                ops: "/health/ready",
-              },
-              heartbeatKey: "heartbeat:v1:webhooks.scheduled",
-              runbookPath: "/docs/ops/V1_OPERATIONS.md#queue-backlog--pipeline-stalls",
-            },
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
-    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
-
-    vi.resetModules();
-    const { fetchSiteDashboard } = await import("./webhooks");
-    const payload = await fetchSiteDashboard("token", "site-1");
-
-    expect(payload.operationalSummary?.health.heartbeatKey).toBe("heartbeat:v1:webhooks.scheduled");
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
@@ -699,54 +563,6 @@ describe("webhooks request wrapper", () => {
     expect(run.status).toBe("completed");
     expect(deployments[0]?.completeness.status).toBe("complete");
     expect(fetchSpy).toHaveBeenCalledTimes(6);
-  });
-
-  it("requests deployment history with optional filters", async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      expect(url).toContain("/sites/site-1/deployments/history");
-      expect(url).toContain("targetLang=fr");
-      expect(url).toContain("limit=3");
-
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
-
-      return new Response(
-        JSON.stringify({
-          history: [
-            {
-              targetLang: "fr",
-              entries: [
-                {
-                  deploymentId: "dep-1",
-                  status: "active",
-                  activatedAt: "2026-02-17T00:00:00Z",
-                  createdAt: "2026-02-17T00:00:00Z",
-                  routePrefix: "/fr",
-                  artifactManifest: "manifest-1",
-                },
-              ],
-            },
-          ],
-          perLocaleLimit: 3,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
-    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
-
-    vi.resetModules();
-    const { fetchDeploymentHistory } = await import("./webhooks");
-    const payload = await fetchDeploymentHistory("token", "site-1", {
-      targetLang: "fr",
-      limit: 3,
-    });
-
-    expect(payload.perLocaleLimit).toBe(3);
-    expect(payload.history).toHaveLength(1);
-    expect(payload.history[0]?.entries[0]?.deploymentId).toBe("dep-1");
-    expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
   it("calls crawl-translate, digest, summary, and switcher endpoints with expected payloads", async () => {

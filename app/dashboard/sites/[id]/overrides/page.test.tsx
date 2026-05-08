@@ -92,7 +92,6 @@ describe("SiteOverridesPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSite.mockResolvedValue({
       id: "site-1",
@@ -136,7 +135,6 @@ describe("SiteOverridesPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSite.mockResolvedValue({
       id: "site-1",

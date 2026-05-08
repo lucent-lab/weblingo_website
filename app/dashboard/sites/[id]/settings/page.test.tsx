@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSiteDashboardProjection: vi.fn(),
-  getSiteDashboardCached: vi.fn(),
   getSiteShowcase: vi.fn(),
   listSupportedLanguagesCached: vi.fn(),
   listRuntimeRequestObservations: vi.fn(),
@@ -26,7 +25,6 @@ vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
 vi.mock("@internal/dashboard/data", () => ({
-  getSiteDashboardCached: mocks.getSiteDashboardCached,
   listSupportedLanguagesCached: mocks.listSupportedLanguagesCached,
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
@@ -101,10 +99,9 @@ describe("SettingsPage", () => {
       "site-1",
       "settings",
     );
-    expect(mocks.getSiteDashboardCached).not.toHaveBeenCalled();
     expect(mocks.getSiteShowcase).not.toHaveBeenCalled();
     expect(mocks.listRuntimeRequestObservations).not.toHaveBeenCalled();
-    expect(collectHrefs(tree)).not.toContain("/dashboard/sites/site-1/admin");
+    expect(collectHrefs(tree).some((href) => href.endsWith("/admin"))).toBe(false);
   });
 });
 
@@ -116,7 +113,6 @@ function makeAuth(authToken: { token: string; subjectAccountId: string }) {
     actorAccountId: "acct-1",
     subjectAccountId: "acct-1",
     actingAsCustomer: false,
-    subjectFallbackToActor: false,
   };
 }
 

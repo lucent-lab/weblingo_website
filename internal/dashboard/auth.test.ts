@@ -125,7 +125,7 @@ beforeEach(() => {
   cookiesStore.get.mockReset();
   cookiesStore.delete.mockReset();
 
-  cookiesStore.get.mockReturnValue({ value: "acct-stale" });
+  cookiesStore.get.mockReturnValue(undefined);
   redisMock.get.mockResolvedValue(null);
   redisMock.set.mockResolvedValue("OK");
   redisMock.del.mockResolvedValue(1);
@@ -164,15 +164,12 @@ describe("getActiveAgencyCustomers", () => {
 });
 
 describe("getDashboardAuth", () => {
-  it("clears stale workspace cookies and falls back to the actor workspace", async () => {
+  it("uses the actor workspace when no subject workspace is requested", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
     const fetchDashboardBootstrap = (await import("./webhooks"))
       .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
-    const exchangeWebhooksToken = (await import("./webhooks")).exchangeWebhooksToken as ReturnType<
-      typeof vi.fn
-    >;
 
     const actorBootstrap = makeActorBootstrap();
     const agencyCustomers: AgencyCustomersResponse = {
@@ -198,25 +195,15 @@ describe("getDashboardAuth", () => {
       },
     });
     fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
-    exchangeWebhooksToken.mockResolvedValue({
-      token: "actor-token",
-      expiresAt: "2026-01-01T00:00:00.000Z",
-      entitlements: { planType: "agency", planStatus: "active" },
-      actorAccountId: "acct-agency",
-      subjectAccountId: "acct-agency",
-    });
 
     vi.resetModules();
     const { getDashboardAuth } = await import("./auth");
     const auth = await getDashboardAuth();
-
-    expect(auth.subjectFallbackToActor).toBe(true);
     expect(auth.actingAsCustomer).toBe(false);
     expect(auth.subjectAccountId).toBe("acct-agency");
     expect(auth.account?.accountId).toBe("acct-agency");
     expect(cookiesStore.delete).not.toHaveBeenCalled();
     expect(fetchDashboardBootstrap).toHaveBeenCalledTimes(1);
-    expect(exchangeWebhooksToken).not.toHaveBeenCalled();
   });
 
   it("threads stripe billing runtime from dashboard metadata", async () => {
@@ -263,15 +250,12 @@ describe("getDashboardAuth", () => {
     });
   });
 
-  it("falls back to the actor when an allowed subject bootstrap fails", async () => {
+  it("fails fast when an allowed subject bootstrap fails", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
     const fetchDashboardBootstrap = (await import("./webhooks"))
       .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
-    const exchangeWebhooksToken = (await import("./webhooks")).exchangeWebhooksToken as ReturnType<
-      typeof vi.fn
-    >;
 
     const actorBootstrap = makeActorBootstrap();
     const agencyCustomers: AgencyCustomersResponse = {
@@ -299,29 +283,39 @@ describe("getDashboardAuth", () => {
     fetchDashboardBootstrap
       .mockResolvedValueOnce(actorBootstrap)
       .mockRejectedValueOnce(new Error("subject bootstrap unavailable"));
-    exchangeWebhooksToken.mockResolvedValue({
-      token: "actor-token",
-      expiresAt: "2026-01-01T00:00:00.000Z",
-      entitlements: { planType: "agency", planStatus: "active" },
-      actorAccountId: "acct-agency",
-      subjectAccountId: "acct-agency",
-    });
     cookiesStore.get.mockReturnValue({ value: "acct-customer" });
 
     vi.resetModules();
     const { getDashboardAuth } = await import("./auth");
-    const auth = await getDashboardAuth();
-
-    expect(auth.subjectFallbackToActor).toBe(true);
-    expect(auth.actingAsCustomer).toBe(false);
-    expect(auth.subjectAccountId).toBe("acct-agency");
-    expect(auth.account?.accountId).toBe("acct-agency");
+    await expect(getDashboardAuth()).rejects.toThrow("subject bootstrap unavailable");
     expect(cookiesStore.delete).not.toHaveBeenCalled();
     expect(
       fetchDashboardBootstrap.mock.calls.filter(
         ([, options]) => options?.subjectAccountId === "acct-customer",
       ),
     ).toHaveLength(1);
-    expect(exchangeWebhooksToken).not.toHaveBeenCalled();
+  });
+
+  it("fails fast when the requested subject is not available to the actor", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const fetchDashboardBootstrap = (await import("./webhooks"))
+      .fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
+      },
+    });
+    fetchDashboardBootstrap.mockResolvedValue(makeActorBootstrap());
+    cookiesStore.get.mockReturnValue({ value: "acct-not-allowed" });
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    await expect(getDashboardAuth()).rejects.toThrow(
+      "Requested dashboard workspace is not available for this account.",
+    );
   });
 });

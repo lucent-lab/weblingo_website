@@ -545,10 +545,6 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.listDeploymentsResponseSchema,
       },
       {
-        name: "ListDeploymentHistoryResponse",
-        schema: __webhooksZodContracts.listDeploymentHistoryResponseSchema,
-      },
-      {
         name: "ConsistencyCpmListResponse",
         schema: __webhooksZodContracts.consistencyCpmListResponseSchema,
       },
@@ -577,7 +573,6 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.languageSwitcherSnippetsResponseSchema,
       },
       { name: "ListSitePagesResponse", schema: __webhooksZodContracts.listSitePagesResponseSchema },
-      { name: "SiteDashboardResponse", schema: __webhooksZodContracts.siteDashboardResponseSchema },
       {
         name: "SiteDashboardRouteResponse",
         schema: __webhooksZodContracts.siteDashboardRouteResponseSchema,

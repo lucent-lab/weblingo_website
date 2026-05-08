@@ -52,7 +52,6 @@ function makeAuth(): DashboardAuth {
     actorAccountId: "acct-agency",
     subjectAccountId: "acct-customer",
     actingAsCustomer: true,
-    subjectFallbackToActor: false,
     actorPlanActive: true,
     subjectPlanActive: true,
     mutationsAllowed: true,
