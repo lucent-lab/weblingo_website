@@ -245,10 +245,27 @@
 
 .heroGlyphTrail {
   color: hsl(var(--primary) / 0.56);
+  font-size: var(--glyph-size);
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.92) rotate(var(--glyph-rotate));
-  animation: hero-glyph-trail var(--glyph-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  text-shadow: 0 0 1.2rem hsl(var(--primary) / 0.18);
+  transform: translate(0, 0) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(0.25);
+  animation-duration: 1500ms;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  backface-visibility: hidden;
   will-change: opacity, transform;
+}
+
+.heroGlyphTrailFallOne {
+  animation-name: hero-glyph-fall-one;
+}
+
+.heroGlyphTrailFallTwo {
+  animation-name: hero-glyph-fall-two;
+}
+
+.heroGlyphTrailFallThree {
+  animation-name: hero-glyph-fall-three;
 }
 
 @keyframes hero-glyph-float {
@@ -261,20 +278,54 @@
   }
 }
 
-@keyframes hero-glyph-trail {
+@keyframes hero-glyph-fall-one {
   0% {
+    transform: translate(0, 0) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(0.25);
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.92) rotate(var(--glyph-rotate));
   }
 
-  18% {
-    opacity: var(--glyph-alpha);
+  5% {
+    transform: translate(10px, -10px) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(1);
+    opacity: 1;
   }
 
   100% {
+    transform: translate(25px, 200px) rotateX(180deg) rotateY(270deg) rotateZ(90deg) scale(1);
     opacity: 0;
-    transform: translate(calc(-50% + var(--glyph-drift-x)), calc(-50% + var(--glyph-drift-y)))
-      scale(1.15) rotate(calc(var(--glyph-rotate) + var(--glyph-spin)));
+  }
+}
+
+@keyframes hero-glyph-fall-two {
+  0% {
+    transform: translate(0, 0) rotateX(-20deg) rotateY(10deg) scale(0.25);
+    opacity: 0;
+  }
+
+  10% {
+    transform: translate(-10px, -5px) rotateX(-20deg) rotateY(10deg) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-10px, 160px) rotateX(-90deg) rotateY(45deg) scale(0.25);
+    opacity: 0;
+  }
+}
+
+@keyframes hero-glyph-fall-three {
+  0% {
+    transform: translate(0, 0) rotateX(0deg) rotateY(45deg) scale(0.5);
+    opacity: 0;
+  }
+
+  15% {
+    transform: translate(7px, 5px) rotateX(0deg) rotateY(45deg) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(20px, 120px) rotateX(-180deg) rotateY(-90deg) scale(0.5);
+    opacity: 0;
   }
 }
 

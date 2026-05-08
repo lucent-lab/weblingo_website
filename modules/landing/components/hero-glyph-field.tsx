@@ -21,10 +21,10 @@ type AmbientGlyph = {
 };
 
 const TRAIL_GLYPHS = ["A", "é", "ñ", "文", "語", "あ", "カ", "한", "글", "λ", "Ж", "Д"] as const;
-const MAX_TRAIL_GLYPHS = 34;
-const MIN_CURSOR_DISTANCE_PX = 24;
-const MIN_TRAIL_DISTANCE_PX = 30;
-const TRAIL_THROTTLE_MS = 72;
+const TRAIL_ANIMATION_DURATION_MS = 1_500;
+const MAX_TRAIL_GLYPHS = 24;
+const MIN_TIME_BETWEEN_TRAILS_MS = 250;
+const MIN_DISTANCE_BETWEEN_TRAILS_PX = 75;
 const AMBIENT_GLYPHS: ReadonlyArray<AmbientGlyph> = [
   {
     glyph: "文",
@@ -168,6 +168,18 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getFallClassName(index: number) {
+  if (index % 3 === 1) {
+    return styles.heroGlyphTrailFallTwo;
+  }
+
+  if (index % 3 === 2) {
+    return styles.heroGlyphTrailFallThree;
+  }
+
+  return styles.heroGlyphTrailFallOne;
+}
+
 export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const trailIndexRef = useRef(0);
@@ -188,9 +200,9 @@ export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
     }
 
     const rect = { height: 1, left: 0, top: 0, width: 1 };
-    const recentTrails: Array<{ x: number; y: number }> = [];
-    let lastPointer: { x: number; y: number } | null = null;
-    let lastTrailTime = 0;
+    let lastTrailPosition = { x: 0, y: 0 };
+    let lastTrailTimestamp = window.performance.now();
+    let lastPointerPosition = { x: 0, y: 0 };
 
     const updateRect = () => {
       const bounds = heroSection.getBoundingClientRect();
@@ -220,71 +232,16 @@ export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
       trailCountRef.current = Math.max(0, trailCountRef.current - 1);
     };
 
-    const onPointerMove = (event: PointerEvent) => {
-      const now = window.performance.now();
-      if (now - lastTrailTime < TRAIL_THROTTLE_MS) {
-        return;
-      }
-
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
-        lastPointer = null;
-        return;
-      }
-
-      const previous = lastPointer;
-      lastPointer = { x, y };
-      if (!previous) {
-        return;
-      }
-
-      const velocityX = x - previous.x;
-      const velocityY = y - previous.y;
-      const speed = Math.hypot(velocityX, velocityY);
-      if (speed < 5) {
-        return;
-      }
-
+    const spawnGlyph = (position: { x: number; y: number }) => {
       const glyphIndex = trailIndexRef.current;
-      const movementLength = Math.max(1, speed);
-      const offsetDirectionX = -velocityY / movementLength;
-      const offsetDirectionY = velocityX / movementLength;
-      const offsetSign = glyphIndex % 2 === 0 ? 1 : -1;
-      const offsetDistance = MIN_CURSOR_DISTANCE_PX + (glyphIndex % 3) * 7;
-      const spawnX = clamp(x + offsetDirectionX * offsetSign * offsetDistance, 0, rect.width);
-      const spawnY = clamp(y + offsetDirectionY * offsetSign * offsetDistance, 0, rect.height);
-      const overlapsRecentTrail = recentTrails.some(
-        (trail) => Math.hypot(trail.x - spawnX, trail.y - spawnY) < MIN_TRAIL_DISTANCE_PX,
-      );
-      if (overlapsRecentTrail) {
-        return;
-      }
-
       trailIndexRef.current += 1;
-      recentTrails.push({ x: spawnX, y: spawnY });
-      if (recentTrails.length > 10) {
-        recentTrails.splice(0, recentTrails.length - 10);
-      }
 
       const trail = document.createElement("span");
-      trail.className = styles.heroGlyphTrail;
+      trail.className = cn(styles.heroGlyphTrail, getFallClassName(glyphIndex));
       trail.textContent = pickTrailGlyph(glyphIndex);
-      trail.style.left = `${spawnX}px`;
-      trail.style.top = `${spawnY}px`;
-      trail.style.setProperty("--glyph-alpha", speed > 35 ? "0.34" : "0.26");
-      trail.style.setProperty(
-        "--glyph-drift-x",
-        `${Math.max(-30, Math.min(30, velocityX * 0.55))}px`,
-      );
-      trail.style.setProperty(
-        "--glyph-drift-y",
-        `${Math.max(-30, Math.min(30, velocityY * 0.55))}px`,
-      );
-      trail.style.setProperty("--glyph-duration", `${speed > 35 ? 760 : 900}ms`);
-      trail.style.setProperty("--glyph-rotate", `${-8 + (glyphIndex % 5) * 4}deg`);
-      trail.style.setProperty("--glyph-size", `${18 + (glyphIndex % 4) * 3}px`);
-      trail.style.setProperty("--glyph-spin", `${speed > 35 ? 12 : 6}deg`);
+      trail.style.left = `${position.x}px`;
+      trail.style.top = `${position.y}px`;
+      trail.style.setProperty("--glyph-size", `${14 + (glyphIndex % 3) * 4}px`);
 
       root.append(trail);
       trailCountRef.current += 1;
@@ -292,8 +249,38 @@ export function HeroGlyphField({ className }: HeroGlyphFieldProps) {
 
       const cleanup = () => removeTrail(trail);
       trail.addEventListener("animationend", cleanup, { once: true });
-      window.setTimeout(cleanup, 1_200);
-      lastTrailTime = now;
+      window.setTimeout(cleanup, TRAIL_ANIMATION_DURATION_MS);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      const now = window.performance.now();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
+        lastPointerPosition = { x: 0, y: 0 };
+        return;
+      }
+
+      const pointerPosition = { x, y };
+      if (lastPointerPosition.x === 0 && lastPointerPosition.y === 0) {
+        lastPointerPosition = pointerPosition;
+      }
+
+      const hasMovedFarEnough =
+        Math.hypot(lastTrailPosition.x - x, lastTrailPosition.y - y) >=
+        MIN_DISTANCE_BETWEEN_TRAILS_PX;
+      const hasBeenLongEnough = now - lastTrailTimestamp > MIN_TIME_BETWEEN_TRAILS_MS;
+
+      if (hasMovedFarEnough || hasBeenLongEnough) {
+        spawnGlyph({
+          x: clamp(x, 0, rect.width),
+          y: clamp(y, 0, rect.height),
+        });
+        lastTrailPosition = pointerPosition;
+        lastTrailTimestamp = now;
+      }
+
+      lastPointerPosition = pointerPosition;
     };
 
     updateRect();
