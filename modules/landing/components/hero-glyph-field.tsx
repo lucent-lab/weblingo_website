@@ -168,31 +168,19 @@ out vec2 vUv;
 out float vGlyph;
 out float vAlpha;
 
-float distanceToRect(vec2 point, vec4 rect) {
-  vec2 outsideDistance = max(max(rect.xy - point, point - rect.zw), vec2(0.0));
-  return length(outsideDistance);
-}
-
-float quietZoneFade(vec2 point, vec4 rect, float fadeSize, float minAlpha) {
-  float distanceFromRect = distanceToRect(point, rect);
-  return max(minAlpha, smoothstep(0.0, fadeSize, distanceFromRect));
-}
-
 void main() {
   float t = uTime * aSeed.z + aSeed.w;
   vec2 pos = vec2(aSeed.x, fract(aSeed.y + t));
   pos.x += sin(t * 0.86 + aTrail * 4.0) * 0.004;
 
-  float pointerFade = 1.0;
+  float ringFade = 0.0;
   if (uPointer.x >= 0.0) {
     vec2 diff = pos - uPointer;
     diff.x *= uResolution.x / max(uResolution.y, 1.0);
     float distanceToPointer = length(diff);
-    float influence = (1.0 - smoothstep(0.035, 0.28, distanceToPointer)) * uPointerStrength;
-    float side = mix(-1.0, 1.0, step(0.0, diff.x));
-    pos.x += side * influence * 0.12;
-    pos.y += diff.y * influence * 0.035;
-    pointerFade = mix(1.0, 0.0, influence);
+    float innerFade = smoothstep(0.055, 0.095, distanceToPointer);
+    float outerFade = 1.0 - smoothstep(0.26, 0.42, distanceToPointer);
+    ringFade = innerFade * outerFade * uPointerStrength;
   }
 
   vec2 pixelPosition = pos * uResolution;
@@ -203,15 +191,10 @@ void main() {
     (1.0 - smoothstep(0.965, 1.0, pos.x)) *
     smoothstep(0.0, 0.035, pos.y) *
     (1.0 - smoothstep(0.965, 1.0, pos.y));
-  float quietFade = min(
-    quietZoneFade(pos, vec4(0.06, 0.12, 0.56, 0.59), 0.11, 0.28),
-    quietZoneFade(pos, vec4(0.59, 0.16, 0.94, 0.57), 0.1, 0.3)
-  );
-  quietFade = min(quietFade, quietZoneFade(pos, vec4(0.08, 0.59, 0.92, 0.78), 0.09, 0.28));
   float headGlow = 1.0 - smoothstep(0.0, 0.18, aTrail);
   float trailFade = mix(1.0, 0.22, aTrail);
   float pulse = 0.72 + 0.28 * sin(t * 1.7 + aSeed.w * 5.0);
-  vAlpha = edgeFade * quietFade * pointerFade * (0.16 + trailFade * 0.34 + headGlow * 0.3) * pulse;
+  vAlpha = edgeFade * ringFade * (0.18 + trailFade * 0.38 + headGlow * 0.32) * pulse;
   vGlyph = mod(aGlyph + floor(uTime * (1.2 + aSeed.z * 8.0) + aSeed.w * 17.0 + aTrail * 5.0), uGlyphCount);
   vUv = aCorner + 0.5;
 
