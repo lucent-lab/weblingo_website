@@ -159,6 +159,7 @@ async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; prici
         message={errorView.message}
         nextSteps={errorView.nextSteps}
         referenceCode={errorView.referenceCode}
+        technicalDetails={errorView.technicalDetails}
         actions={
           <>
             <DashboardRetryButton href="/dashboard" label="Retry dashboard" />

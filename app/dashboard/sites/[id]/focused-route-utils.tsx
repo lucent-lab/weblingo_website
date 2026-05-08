@@ -54,6 +54,7 @@ export function FocusedRouteErrorState({
       message={errorView.message}
       nextSteps={nextSteps ?? errorView.nextSteps}
       referenceCode={errorView.referenceCode}
+      technicalDetails={errorView.technicalDetails}
       actions={
         <>
           {retryHref ? <DashboardRetryButton href={retryHref} label={retryLabel} /> : null}

@@ -91,6 +91,7 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
           message={errorView.message}
           nextSteps={errorView.nextSteps}
           referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
             <>
               <DashboardRetryButton

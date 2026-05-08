@@ -155,6 +155,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           message={errorView.message}
           nextSteps={errorView.nextSteps}
           referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
             <>
               <DashboardRetryButton href={`/dashboard/sites/${id}/overrides`} label="Retry rules" />
@@ -443,6 +444,7 @@ async function ConsistencyGovernanceSection({
                 message={errorView.message}
                 nextSteps={errorView.nextSteps}
                 referenceCode={errorView.referenceCode}
+                technicalDetails={errorView.technicalDetails}
                 actions={
                   <>
                     <DashboardRetryButton

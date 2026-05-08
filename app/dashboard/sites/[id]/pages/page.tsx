@@ -142,6 +142,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           message={errorView.message}
           nextSteps={errorView.nextSteps}
           referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
             <>
               <DashboardRetryButton href={`/dashboard/sites/${id}/pages`} label="Retry pages" />

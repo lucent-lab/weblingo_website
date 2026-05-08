@@ -186,9 +186,9 @@ describe("DomainsPage", () => {
 
       render(tree);
       expect(screen.getByText("This section cannot be shown safely")).toBeTruthy();
-      expect(document.body.textContent).toContain(
-        "Support reference: dashboard_domain_setup_contract_mismatch",
-      );
+      expect(document.body.textContent).toContain("Error code");
+      expect(document.body.textContent).toContain("dashboard_domain_setup_contract_mismatch");
+      expect(screen.getByText("Show raw server details")).toBeTruthy();
       expect(document.body.textContent).not.toContain("missing.example.com");
       expect(document.body.textContent).not.toContain("Missing DNS setup instructions");
     } finally {

@@ -89,6 +89,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           message={errorView.message}
           nextSteps={errorView.nextSteps}
           referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
             <>
               <DashboardRetryButton

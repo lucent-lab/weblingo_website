@@ -38,6 +38,12 @@ describe("dashboard error state", () => {
     expect(view.message).toBe("The dashboard service is unavailable right now.");
     expect(view.nextSteps).toContain("Retry in a moment.");
     expect(view.referenceCode).toBe("webhooks_http_503");
+    expect(view.technicalDetails).toMatchObject({
+      status: 503,
+      code: "webhooks_http_503",
+      message: "service unavailable",
+      details: null,
+    });
   });
 
   it("turns schema mismatches into actionable contract recovery copy", () => {
@@ -64,8 +70,36 @@ describe("dashboard error state", () => {
     expect(view.message).toContain("This section is paused");
     expect(view.nextSteps).toContain("Retry this section once to rule out a stale response.");
     expect(view.referenceCode).toBe("response_schema_mismatch");
+    expect(view.technicalDetails).toMatchObject({
+      status: 200,
+      code: "response_schema_mismatch",
+      details: {
+        code: "response_schema_mismatch",
+      },
+    });
     expect(view.message).not.toContain("invalid_value");
     expect(view.message).not.toContain("customerError");
+  });
+
+  it("redacts sensitive keys from technical details", () => {
+    const view = resolveDashboardErrorView(
+      new WebhooksApiError("failed", 400, {
+        code: "bad_request",
+        token: "secret-token",
+        nested: { authorization: "Bearer secret" },
+      }),
+      {
+        title: "Fallback",
+        description: "Fallback description",
+      },
+    );
+
+    expect(view.technicalDetails).toMatchObject({
+      details: {
+        token: "[redacted]",
+        nested: { authorization: "[redacted]" },
+      },
+    });
   });
 
   it("treats dashboard contract mismatch codes as safe recovery states", () => {

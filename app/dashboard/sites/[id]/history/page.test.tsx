@@ -181,9 +181,12 @@ describe("HistoryPage", () => {
       expect(screen.getByText("Retry history")).toBeTruthy();
       expect(screen.getByText("Site overview")).toBeTruthy();
       expect(screen.getByText("Contact support")).toBeTruthy();
-      expect(document.body.textContent).toContain("Support reference: response_schema_mismatch");
-      expect(document.body.textContent).not.toContain("invalid_value");
-      expect(document.body.textContent).not.toContain("customerError");
+      expect(document.body.textContent).toContain("Error code");
+      expect(document.body.textContent).toContain("response_schema_mismatch");
+      expect(screen.getByText("Show raw server details")).toBeTruthy();
+      expect(document.body.textContent).toContain('"code": "response_schema_mismatch"');
+      expect(document.body.textContent).toContain("invalid_value");
+      expect(document.body.textContent).toContain("customerError");
     } finally {
       warnSpy.mockRestore();
     }

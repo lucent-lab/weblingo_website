@@ -16,6 +16,7 @@ export type DashboardErrorView = {
   message: string;
   nextSteps: string[];
   referenceCode: string | null;
+  technicalDetails: unknown | null;
 };
 
 type DashboardErrorViewFallback = {
@@ -31,6 +32,7 @@ export function resolveDashboardErrorView(
   const kind = classifyDashboardErrorKind(error);
   const message = resolveDashboardErrorMessage(error, fallback.message);
   const referenceCode = resolveDashboardErrorReferenceCode(error);
+  const technicalDetails = resolveDashboardErrorTechnicalDetails(error);
   if (kind === "contract_mismatch") {
     return {
       kind,
@@ -43,6 +45,7 @@ export function resolveDashboardErrorView(
         "Contact support if retry shows the same screen.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   if (kind === "account_missing") {
@@ -57,6 +60,7 @@ export function resolveDashboardErrorView(
         "Contact support if this account should already be enabled.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   if (kind === "timeout") {
@@ -71,6 +75,7 @@ export function resolveDashboardErrorView(
         "Open the site overview while this section reloads.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   if (kind === "backend_unavailable") {
@@ -86,6 +91,7 @@ export function resolveDashboardErrorView(
         "Contact support if this remains blocked.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   if (kind === "forbidden") {
@@ -100,6 +106,7 @@ export function resolveDashboardErrorView(
         "Contact the workspace owner if this access should be enabled.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   if (kind === "not_found") {
@@ -114,6 +121,7 @@ export function resolveDashboardErrorView(
         "Contact support if this link came from the dashboard.",
       ],
       referenceCode,
+      technicalDetails,
     };
   }
   return {
@@ -127,6 +135,7 @@ export function resolveDashboardErrorView(
       "Contact support if the same screen appears again.",
     ],
     referenceCode,
+    technicalDetails,
   };
 }
 
@@ -203,6 +212,19 @@ function resolveDashboardErrorReferenceCode(error: unknown): string | null {
   return null;
 }
 
+function resolveDashboardErrorTechnicalDetails(error: unknown): unknown | null {
+  if (error instanceof WebhooksApiError) {
+    const code = readDashboardErrorCode(error);
+    return sanitizeDashboardTechnicalDetails({
+      status: error.status,
+      code: code ?? `webhooks_http_${error.status}`,
+      message: error.message,
+      details: error.details ?? null,
+    });
+  }
+  return null;
+}
+
 function readDashboardErrorCode(error: WebhooksApiError): string | null {
   const details = error.details;
   if (
@@ -219,6 +241,48 @@ function readDashboardErrorCode(error: WebhooksApiError): string | null {
 
 function isDashboardContractMismatchCode(code: string | null): boolean {
   return code === "response_schema_mismatch" || code?.endsWith("_contract_mismatch") === true;
+}
+
+const TECHNICAL_DETAIL_REDACTED_KEYS = [
+  "authorization",
+  "cookie",
+  "credential",
+  "password",
+  "requestBody",
+  "requestHeaders",
+  "responseBody",
+  "secret",
+  "signature",
+  "token",
+  "webhookSecret",
+] as const;
+
+function sanitizeDashboardTechnicalDetails(value: unknown, depth = 0): unknown {
+  if (depth > 8) {
+    return "[truncated]";
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((item) => sanitizeDashboardTechnicalDetails(item, depth + 1));
+  }
+  if (value === null || value === undefined || typeof value !== "object") {
+    return value;
+  }
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (shouldRedactTechnicalDetailKey(key)) {
+      sanitized[key] = "[redacted]";
+      continue;
+    }
+    sanitized[key] = sanitizeDashboardTechnicalDetails(entry, depth + 1);
+  }
+  return sanitized;
+}
+
+function shouldRedactTechnicalDetailKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return TECHNICAL_DETAIL_REDACTED_KEYS.some((redactedKey) =>
+    normalized.includes(redactedKey.toLowerCase()),
+  );
 }
 
 function readErrorDigest(error: unknown): string | null {
