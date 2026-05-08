@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { ActionForm } from "@/components/dashboard/action-form";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { TargetLocaleSelect } from "@/components/dashboard/target-locale-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
+import { getSiteTargetLangsCached } from "@internal/dashboard/data";
 import {
   fetchCustomerDeploymentHistory,
   fetchCustomerTranslationRuns,
@@ -56,10 +58,18 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   const authToken = auth.webhooksAuth!;
+  const targetLangs = await getSiteTargetLangsCached(authToken, id);
+  if (targetLangs === null) {
+    notFound();
+  }
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const historyType = readHistoryKind(resolvedSearchParams?.historyType);
   const selectedTargetLang = normalizeTargetLang(resolvedSearchParams?.targetLang);
+  const activeTargetLang =
+    selectedTargetLang && targetLangs.includes(selectedTargetLang) ? selectedTargetLang : null;
+  const invalidTargetLang = selectedTargetLang !== null && activeTargetLang === null;
+  const invalidTargetLangLabel = selectedTargetLang ? selectedTargetLang.toUpperCase() : "";
   const runsPage = readPageNumber(resolvedSearchParams?.runsPage);
   const deploymentsPage = readPageNumber(resolvedSearchParams?.deploymentsPage);
   const canManageRuns =
@@ -69,30 +79,30 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   let deployments: CustomerDeploymentHistoryResponse | null = null;
   let error: unknown = null;
 
-  if (selectedTargetLang) {
+  if (activeTargetLang) {
     try {
       if (historyType === "deployments") {
         deployments = await fetchCustomerDeploymentHistory(authToken, id, {
-          targetLang: selectedTargetLang,
+          targetLang: activeTargetLang,
           limit: PAGE_SIZE,
           offset: (deploymentsPage - 1) * PAGE_SIZE,
         });
       } else {
         runs = await fetchCustomerTranslationRuns(authToken, id, {
-          targetLang: selectedTargetLang,
+          targetLang: activeTargetLang,
           limit: PAGE_SIZE,
           offset: (runsPage - 1) * PAGE_SIZE,
         });
       }
     } catch (err) {
       error = err;
-      logHistoryError(id, selectedTargetLang, historyType, auth, err);
+      logHistoryError(id, activeTargetLang, historyType, auth, err);
     }
   }
 
-  if (error && selectedTargetLang) {
+  if (error && activeTargetLang) {
     const retryHref = historyHref(id, {
-      targetLang: selectedTargetLang,
+      targetLang: activeTargetLang,
       historyType,
       runsPage: historyType === "runs" ? String(runsPage) : undefined,
       deploymentsPage: historyType === "deployments" ? String(deploymentsPage) : undefined,
@@ -135,25 +145,25 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
               <label className="text-xs font-medium text-muted-foreground" htmlFor="targetLang">
                 Target locale
               </label>
-              <Input
+              <TargetLocaleSelect
                 id="targetLang"
+                locales={targetLangs}
                 name="targetLang"
-                defaultValue={selectedTargetLang ?? ""}
-                placeholder="fr"
+                defaultValue={activeTargetLang}
               />
             </div>
-            <Button type="submit">
+            <Button disabled={targetLangs.length === 0} type="submit">
               <Search className="h-4 w-4" />
               Load history
             </Button>
           </form>
 
-          {selectedTargetLang ? (
+          {activeTargetLang ? (
             <nav aria-label="History stream" className="flex flex-wrap gap-2">
               <Button asChild size="sm" variant={historyType === "runs" ? "default" : "outline"}>
                 <Link
                   href={historyHref(id, {
-                    targetLang: selectedTargetLang,
+                    targetLang: activeTargetLang,
                     historyType: "runs",
                   })}
                 >
@@ -167,7 +177,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
               >
                 <Link
                   href={historyHref(id, {
-                    targetLang: selectedTargetLang,
+                    targetLang: activeTargetLang,
                     historyType: "deployments",
                   })}
                 >
@@ -179,7 +189,17 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
         </CardContent>
       </Card>
 
-      {!selectedTargetLang ? (
+      {invalidTargetLang ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Locale unavailable</CardTitle>
+            <CardDescription>
+              {invalidTargetLangLabel} is not configured for this site. Choose one of the configured
+              target locales before loading history.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : !activeTargetLang ? (
         <Card>
           <CardHeader>
             <CardTitle>Select a locale</CardTitle>
@@ -194,7 +214,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
           response={deployments}
           siteId={id}
           t={t}
-          targetLang={selectedTargetLang}
+          targetLang={activeTargetLang}
         />
       ) : runs ? (
         <TranslationRunsCard
@@ -203,7 +223,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
           response={runs}
           siteId={id}
           t={t}
-          targetLang={selectedTargetLang}
+          targetLang={activeTargetLang}
         />
       ) : null}
     </div>

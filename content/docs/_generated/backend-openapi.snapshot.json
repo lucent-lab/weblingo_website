@@ -18974,7 +18974,7 @@
     },
     "/sites/{siteId}/translation-runs": {
       "get": {
-        "description": "Lists customer-safe translation run summaries with offset pagination. Optional targetLang filters the list to one locale.",
+        "description": "Lists customer-safe translation run summaries with offset pagination. Optional targetLang filters the list to one configured site locale.",
         "operationId": "sites.translationRuns.list",
         "parameters": [
           {
@@ -18986,7 +18986,7 @@
             }
           },
           {
-            "description": "Optional locale filter for customer-safe translation run summaries.",
+            "description": "Optional configured site locale filter for customer-safe translation run summaries.",
             "in": "query",
             "name": "targetLang",
             "required": false,

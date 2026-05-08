@@ -156,6 +156,19 @@ export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
   }
 });
 
+export const getSiteSummaryCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
+  const sites = await listSitesCached(auth);
+  return sites.find((site) => site.id === siteId) ?? null;
+});
+
+export const getSiteTargetLangsCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
+  const site = await getSiteSummaryCached(auth, siteId);
+  if (!site) {
+    return null;
+  }
+  return normalizeTargetLangs(site.targetLangs);
+});
+
 export const listSupportedLanguagesCached = cache(async () => {
   if (shouldBypassDashboardCache()) {
     return listSupportedLanguages();
@@ -197,6 +210,12 @@ export const listSupportedLanguagesCached = cache(async () => {
     languagesInflight.delete(cacheKey);
   }
 });
+
+function normalizeTargetLangs(targetLangs: string[]): string[] {
+  return Array.from(new Set(targetLangs.map((lang) => lang.trim()).filter(Boolean))).sort(
+    (left, right) => left.localeCompare(right),
+  );
+}
 
 export const getSiteDashboardCached = cache(
   async (

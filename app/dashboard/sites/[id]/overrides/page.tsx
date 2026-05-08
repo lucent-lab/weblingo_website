@@ -297,7 +297,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       <div className="grid gap-4 md:grid-cols-2">
         <section id="manual-overrides" className="scroll-mt-24">
           {canOverrides ? (
-            <OverrideForm siteId={site.id} />
+            <OverrideForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard
               title="Manual overrides"
@@ -314,7 +314,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         </section>
         <section id="localized-slugs" className="scroll-mt-24">
           {canSlugs ? (
-            <SlugForm siteId={site.id} />
+            <SlugForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard
               title="Localized slugs"
@@ -347,7 +347,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   );
 }
 
-async function ConsistencyGovernanceSection({
+export async function ConsistencyGovernanceSection({
   authToken,
   canEdit,
   mutationsAllowed,

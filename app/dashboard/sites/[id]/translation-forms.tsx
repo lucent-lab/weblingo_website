@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { createOverrideAction, updateSlugAction, type ActionResponse } from "../../actions";
 
+import { TargetLocaleSelect } from "@/components/dashboard/target-locale-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,11 +14,12 @@ import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
-export function OverrideForm({ siteId }: { siteId: string }) {
+export function OverrideForm({ siteId, targetLangs }: { siteId: string; targetLangs: string[] }) {
   const [state, formAction, pending] = useActionState(createOverrideAction, initialState);
   const router = useRouter();
   const wasPending = useRef(false);
   const messageId = "override-status";
+  const hasTargetLangs = targetLangs.length > 0;
   const submitWithToast = useActionToast({
     formAction,
     state,
@@ -58,12 +60,12 @@ export function OverrideForm({ siteId }: { siteId: string }) {
           <div className="grid gap-3 md:grid-cols-[1fr_2fr]">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="targetLang">
-                Target language
+                Target locale
               </label>
-              <Input
+              <TargetLocaleSelect
                 id="targetLang"
+                locales={targetLangs}
                 name="targetLang"
-                placeholder="fr"
                 required
                 aria-describedby={state.message ? messageId : undefined}
               />
@@ -96,8 +98,13 @@ export function OverrideForm({ siteId }: { siteId: string }) {
               {state.message}
             </p>
           ) : null}
+          {!hasTargetLangs ? (
+            <p className="text-sm text-muted-foreground">
+              Add at least one target locale before saving manual overrides.
+            </p>
+          ) : null}
           <div className="flex justify-end">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !hasTargetLangs}>
               {pending ? "Saving..." : "Save override"}
             </Button>
           </div>
@@ -107,11 +114,12 @@ export function OverrideForm({ siteId }: { siteId: string }) {
   );
 }
 
-export function SlugForm({ siteId }: { siteId: string }) {
+export function SlugForm({ siteId, targetLangs }: { siteId: string; targetLangs: string[] }) {
   const [state, formAction, pending] = useActionState(updateSlugAction, initialState);
   const router = useRouter();
   const wasPending = useRef(false);
   const messageId = "slug-status";
+  const hasTargetLangs = targetLangs.length > 0;
   const submitWithToast = useActionToast({
     formAction,
     state,
@@ -152,13 +160,13 @@ export function SlugForm({ siteId }: { siteId: string }) {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="lang">
-                Language
+                Target locale
               </label>
-              <Input
+              <TargetLocaleSelect
                 aria-describedby={state.message ? messageId : undefined}
                 id="lang"
+                locales={targetLangs}
                 name="lang"
-                placeholder="fr"
                 required
               />
             </div>
@@ -180,8 +188,13 @@ export function SlugForm({ siteId }: { siteId: string }) {
               {state.message}
             </p>
           ) : null}
+          {!hasTargetLangs ? (
+            <p className="text-sm text-muted-foreground">
+              Add at least one target locale before saving localized slugs.
+            </p>
+          ) : null}
           <div className="flex justify-end">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !hasTargetLangs}>
               {pending ? "Saving..." : "Save slug"}
             </Button>
           </div>

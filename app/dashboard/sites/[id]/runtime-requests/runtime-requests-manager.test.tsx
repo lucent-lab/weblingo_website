@@ -137,16 +137,21 @@ function renderManager(
   options: {
     saveAction?: RuntimeRequestsManagerPropsSave;
     lifecycleAction?: RuntimeRequestsManagerPropsLifecycle;
+    loadObservationsAction?: RuntimeRequestsManagerPropsLoadObservations;
+    observations?: RuntimeRequestObservationGroup[];
+    observationsLoaded?: boolean;
   } = {},
 ) {
   const saveAction = options.saveAction ?? vi.fn(async () => ({ ok: true, message: "saved" }));
   const lifecycleAction =
     options.lifecycleAction ?? vi.fn(async () => ({ ok: true, message: "updated" }));
-  const loadObservationsAction = vi.fn(async () => ({
-    ok: true,
-    message: "loaded",
-    meta: { groups: [observation] },
-  }));
+  const loadObservationsAction =
+    options.loadObservationsAction ??
+    vi.fn(async () => ({
+      ok: true,
+      message: "loaded",
+      meta: { groups: [observation] },
+    }));
   render(
     <RuntimeRequestsManager
       siteId="site-1"
@@ -158,8 +163,8 @@ function renderManager(
         expectedVersion: "site-config:v1",
         stale: false,
       }}
-      observations={[observation]}
-      observationsLoaded
+      observations={options.observations ?? [observation]}
+      observationsLoaded={options.observationsLoaded ?? true}
       canEdit
       loadObservationsAction={loadObservationsAction}
       saveAction={saveAction}
@@ -175,6 +180,7 @@ type RuntimeRequestsManagerPropsSave = (
   formData: FormData,
 ) => Promise<ActionResponse>;
 type RuntimeRequestsManagerPropsLifecycle = RuntimeRequestsManagerPropsSave;
+type RuntimeRequestsManagerPropsLoadObservations = RuntimeRequestsManagerPropsSave;
 
 describe("RuntimeRequestsManager", () => {
   it("creates a draft rule from an observation without saving it", () => {
@@ -209,6 +215,33 @@ describe("RuntimeRequestsManager", () => {
     const call = lifecycleAction.mock.calls[0] as unknown as [ActionResponse | undefined, FormData];
     const formData = call[1];
     expect(formData.get("lifecycle")).toBe("dismissed");
+  });
+
+  it("loads observations on demand and renders returned groups", async () => {
+    const loadObservationsAction = vi.fn(async () => ({
+      ok: true,
+      message: "loaded",
+      meta: { groups: [observation] },
+    }));
+    renderManager({
+      loadObservationsAction,
+      observations: [],
+      observationsLoaded: false,
+    });
+
+    expect(screen.getByText("Load observations when needed.")).toBeTruthy();
+    expect(screen.queryByText("/api/cart")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Load observations" }));
+
+    await waitFor(() => expect(loadObservationsAction).toHaveBeenCalled());
+    const call = loadObservationsAction.mock.calls[0] as unknown as [
+      ActionResponse | undefined,
+      FormData,
+    ];
+    expect(call[1].get("siteId")).toBe("site-1");
+    expect(await screen.findByText("/api/cart")).toBeTruthy();
+    expect(screen.getByText("loaded")).toBeTruthy();
   });
 
   it("shows a friendly lifecycle failure when the action rejects", async () => {

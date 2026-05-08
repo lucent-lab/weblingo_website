@@ -244,6 +244,38 @@ describe("dashboard data caches", () => {
     );
   });
 
+  it("resolves target locales from the cached site summary contract", async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue("OK");
+
+    const { listSites } = await import("./webhooks");
+    const mockedListSites = vi.mocked(listSites);
+    const auth = makeAuth();
+    mockedListSites.mockResolvedValue([
+      {
+        id: "site-1",
+        accountId: "acct-1",
+        sourceUrl: "https://example.com",
+        status: "active",
+        servingMode: "strict",
+        maxLocales: null,
+        siteProfile: null,
+        sourceLang: "en",
+        targetLangs: ["ja", "fr", "fr", ""],
+        localeCount: 4,
+        serveEnabledLocaleCount: 2,
+        domainCount: 0,
+        verifiedDomainCount: 0,
+      },
+    ]);
+
+    const { getSiteTargetLangsCached } = await import("./data");
+    const targetLangs = await getSiteTargetLangsCached(auth, "site-1");
+
+    expect(targetLangs).toEqual(["fr", "ja"]);
+    expect(mockedListSites).toHaveBeenCalledWith(auth);
+  });
+
   it("keeps customer overview projection cache scoped by subject account", async () => {
     redisMock.get.mockResolvedValue(null);
     redisMock.set.mockResolvedValue("OK");

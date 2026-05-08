@@ -1,5 +1,5 @@
 import { isValidElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
@@ -77,6 +77,10 @@ function findElement(node: unknown, type: unknown): Record<string, unknown> | nu
 }
 
 describe("SourceSelectionPage", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("blocks editing when persisted source-selection rules include unsupported actions", async () => {
     mocks.requireDashboardAuth.mockResolvedValue({
       webhooksAuth: { token: "token", subjectAccountId: "acct-1" },
@@ -133,6 +137,77 @@ describe("SourceSelectionPage", () => {
     });
     expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(
       { token: "token", subjectAccountId: "acct-1" },
+      "site-1",
+      "source_selection",
+    );
+  });
+
+  it("renders the source-selection manager for supported editable rules", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth: authToken,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+      subjectFallbackToActor: false,
+    });
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "source_selection" },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "active",
+      },
+      access: {
+        mutationsAllowed: true,
+        features: {},
+        canEditSourceSelection: true,
+        canPreviewSourceSelection: true,
+      },
+      policy: {
+        rules: [
+          {
+            kind: "include",
+            pattern: "/blog/*",
+          },
+          {
+            kind: "exclude",
+            pattern: "/blog/drafts/*",
+          },
+        ],
+      },
+      inventorySummary: {
+        knownPageCount: 42,
+      },
+      preconditions: {
+        expectedRouteConfigUpdatedAt: "2026-05-07T00:00:00.000Z",
+        expectedSourceSelectionFingerprint: "fingerprint",
+      },
+    });
+
+    vi.resetModules();
+    const { default: SourceSelectionPage } = await import("./page");
+
+    const tree = await SourceSelectionPage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+
+    expect(findElement(tree, mocks.ErrorStateCard)).toBeNull();
+    expect(findElement(tree, mocks.SourceSelectionManager)).toMatchObject({
+      siteId: "site-1",
+      canEdit: true,
+      routeConfigUpdatedAt: "2026-05-07T00:00:00.000Z",
+      sourceSelectionFingerprint: "fingerprint",
+      initialRules: [
+        { action: "include", pattern: "/blog/*" },
+        { action: "exclude", pattern: "/blog/drafts/*" },
+      ],
+    });
+    expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(
+      authToken,
       "site-1",
       "source_selection",
     );

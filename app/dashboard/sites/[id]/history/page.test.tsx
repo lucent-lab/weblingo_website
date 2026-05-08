@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetchCustomerDeploymentHistory: vi.fn(),
   fetchCustomerTranslationRuns: vi.fn(),
   fetchDeploymentHistory: vi.fn(),
+  getSiteTargetLangsCached: vi.fn(),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -27,6 +28,9 @@ vi.mock("@/components/dashboard/action-form", () => ({
 }));
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
+}));
+vi.mock("@internal/dashboard/data", () => ({
+  getSiteTargetLangsCached: mocks.getSiteTargetLangsCached,
 }));
 vi.mock("@internal/dashboard/webhooks", () => ({
   fetchCustomerDeploymentHistory: mocks.fetchCustomerDeploymentHistory,
@@ -59,6 +63,7 @@ vi.mock("../site-header", () => ({
 describe("HistoryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getSiteTargetLangsCached.mockResolvedValue(["fr", "ja"]);
   });
 
   afterEach(() => {
@@ -148,6 +153,24 @@ describe("HistoryPage", () => {
     expect(collectText(tree)).not.toContain("active");
   });
 
+  it("rejects unknown target locales before loading a history stream", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+
+    vi.resetModules();
+    const { default: HistoryPage } = await import("./page");
+    const tree = await HistoryPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ targetLang: "it", historyType: "runs" }),
+    });
+
+    render(tree);
+    expect(screen.getByText("Locale unavailable")).toBeTruthy();
+    expect(document.body.textContent).toContain("IT is not configured for this site");
+    expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
+    expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
+  });
+
   it("renders a customer-safe error state when history schema validation fails", async () => {
     const authToken = { token: "token", subjectAccountId: "acct-1" };
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
@@ -171,7 +194,7 @@ describe("HistoryPage", () => {
       const { default: HistoryPage } = await import("./page");
       const tree = await HistoryPage({
         params: Promise.resolve({ id: "site-1" }),
-        searchParams: Promise.resolve({ targetLang: "it", historyType: "runs" }),
+        searchParams: Promise.resolve({ targetLang: "fr", historyType: "runs" }),
       });
 
       render(tree);
