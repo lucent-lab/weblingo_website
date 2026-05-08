@@ -412,6 +412,8 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}", method: "get" },
       { path: "/sites/{siteId}", method: "patch" },
       { path: "/sites/{siteId}/dashboard", method: "get" },
+      { path: "/sites/{siteId}/status", method: "get" },
+      { path: "/sites/{siteId}/errors/summary", method: "get" },
       { path: "/sites/{siteId}/source-selection/preview", method: "post" },
       { path: "/sites/{siteId}/source-selection/tree-preview", method: "post" },
       { path: "/sites/{siteId}/runtime-requests/observations", method: "get" },
@@ -425,6 +427,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/sites/{siteId}/translate", method: "post" },
       { path: "/sites/{siteId}/locales/{targetLang}/serve", method: "post" },
       { path: "/sites/{siteId}/locales/{targetLang}/translation-summary", method: "put" },
+      { path: "/sites/{siteId}/translation-runs", method: "get" },
       { path: "/sites/{siteId}/translation-runs/{runId}", method: "get" },
       { path: "/sites/{siteId}/translation-runs/{runId}/cancel", method: "post" },
       { path: "/sites/{siteId}/translation-runs/{runId}/resume", method: "post" },
@@ -542,10 +545,6 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.listDeploymentsResponseSchema,
       },
       {
-        name: "ListDeploymentHistoryResponse",
-        schema: __webhooksZodContracts.listDeploymentHistoryResponseSchema,
-      },
-      {
         name: "ConsistencyCpmListResponse",
         schema: __webhooksZodContracts.consistencyCpmListResponseSchema,
       },
@@ -574,7 +573,58 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         schema: __webhooksZodContracts.languageSwitcherSnippetsResponseSchema,
       },
       { name: "ListSitePagesResponse", schema: __webhooksZodContracts.listSitePagesResponseSchema },
-      { name: "SiteDashboardResponse", schema: __webhooksZodContracts.siteDashboardResponseSchema },
+      {
+        name: "SiteDashboardRouteResponse",
+        schema: __webhooksZodContracts.siteDashboardRouteResponseSchema,
+      },
+      {
+        name: "SiteCustomerOverviewResponse",
+        schema: __webhooksZodContracts.siteCustomerOverviewResponseSchema,
+      },
+      {
+        name: "SiteLanguagesProjectionResponse",
+        schema: __webhooksZodContracts.siteLanguagesProjectionResponseSchema,
+      },
+      {
+        name: "SiteDomainsProjectionResponse",
+        schema: __webhooksZodContracts.siteDomainsProjectionResponseSchema,
+      },
+      {
+        name: "SiteSettingsProjectionResponse",
+        schema: __webhooksZodContracts.siteSettingsProjectionResponseSchema,
+      },
+      {
+        name: "SiteDeveloperToolsProjectionResponse",
+        schema: __webhooksZodContracts.siteDeveloperToolsProjectionResponseSchema,
+      },
+      {
+        name: "SiteSourceSelectionProjectionResponse",
+        schema: __webhooksZodContracts.siteSourceSelectionProjectionResponseSchema,
+      },
+      {
+        name: "SiteQualityProjectionResponse",
+        schema: __webhooksZodContracts.siteQualityProjectionResponseSchema,
+      },
+      {
+        name: "SiteCompactStatusResponse",
+        schema: __webhooksZodContracts.siteCompactStatusResponseSchema,
+      },
+      {
+        name: "CustomerErrorSummaryResponse",
+        schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
+      },
+      {
+        name: "CustomerTranslationRunsResponse",
+        schema: __webhooksZodContracts.customerTranslationRunsResponseSchema,
+      },
+      {
+        name: "DeploymentHistoryRouteResponse",
+        schema: __webhooksZodContracts.deploymentHistoryRouteResponseSchema,
+      },
+      {
+        name: "CustomerDeploymentHistoryResponse",
+        schema: __webhooksZodContracts.customerDeploymentHistoryResponseSchema,
+      },
       {
         name: "SourceSelectionPreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionPreviewResponseSchema,
@@ -611,7 +661,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
     }
   });
 
-  it("fails when required backend source-selection response fields are missing from website schemas", async () => {
+  it("fails when required backend dashboard contract fields are missing from website schemas", async () => {
     const spec = readOpenApiSpecFromEnv();
     const definitionsIndex = buildOpenApiDefinitionsIndex(spec);
 
@@ -625,6 +675,26 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "SourceSelectionTreePreviewResponse",
         schema: __webhooksZodContracts.sourceSelectionTreePreviewResponseSchema,
+      },
+      {
+        name: "SiteCustomerOverviewResponse",
+        schema: __webhooksZodContracts.siteCustomerOverviewResponseSchema,
+      },
+      {
+        name: "SiteCompactStatusResponse",
+        schema: __webhooksZodContracts.siteCompactStatusResponseSchema,
+      },
+      {
+        name: "CustomerErrorSummaryResponse",
+        schema: __webhooksZodContracts.customerErrorSummaryResponseSchema,
+      },
+      {
+        name: "CustomerTranslationRunsResponse",
+        schema: __webhooksZodContracts.customerTranslationRunsResponseSchema,
+      },
+      {
+        name: "CustomerDeploymentHistoryResponse",
+        schema: __webhooksZodContracts.customerDeploymentHistoryResponseSchema,
       },
     ];
 
@@ -644,6 +714,150 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
         ).toBe(true);
       }
     }
+  });
+
+  it("accepts customer translation runs with complete customer-safe error summaries", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const parsed = __webhooksZodContracts.customerTranslationRunsResponseSchema.parse({
+      runs: [
+        {
+          id: "tr-failed",
+          targetLang: "fr",
+          rawStatus: "failed",
+          customerStatus: "failed",
+          progress: { completed: 2, total: 4, failed: 1 },
+          startedAt: null,
+          finishedAt: "2026-05-06T00:02:00.000Z",
+          createdAt: "2026-05-06T00:00:00.000Z",
+          updatedAt: "2026-05-06T00:01:00.000Z",
+          customerError: {
+            id: "translation_run_failed:tr-failed",
+            area: "translation",
+            severity: "danger",
+            code: "translation_run_failed",
+            titleKey: "dashboard.errors.translationRunFailed.title",
+            descriptionKey: "dashboard.errors.translationRunFailed.description",
+            lastSeenAt: "2026-05-06T00:02:00.000Z",
+          },
+        },
+      ],
+      pagination: { limit: 10, offset: 0, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    expect(parsed.runs[0]?.customerError?.area).toBe("translation");
+  });
+
+  it("accepts customer-safe error summaries on the other dashboard surfaces", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    __webhooksZodContracts.siteCompactStatusResponseSchema.parse({
+      siteId: "site-1",
+      siteStatus: "active",
+      latestCrawlRun: {
+        id: "crawl-1",
+        rawStatus: "failed",
+        customerStatus: "failed",
+        customerError: {
+          id: "crawl:crawl-1",
+          area: "crawl",
+          severity: "danger",
+          code: "crawl_failed",
+          titleKey: "dashboard.errors.crawlFailed.title",
+        },
+      },
+      activeTranslationRuns: [],
+      currentActivity: [],
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    __webhooksZodContracts.customerDeploymentHistoryResponseSchema.parse({
+      targetLang: "fr",
+      entries: [
+        {
+          rawStatus: "failed",
+          customerStatus: "failed",
+          titleKey: "dashboard.history.deployment.failed.title",
+          customerError: {
+            id: "deployment_failed:fr:2026-05-07T00:00:00.000Z",
+            area: "deployment",
+            severity: "danger",
+            code: "deployment_failed",
+            titleKey: "dashboard.errors.deploymentFailed.title",
+          },
+        },
+      ],
+      pagination: { limit: 10, offset: 0, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    __webhooksZodContracts.customerErrorSummaryResponseSchema.parse({
+      errors: [
+        {
+          id: "domain_not_verified:domain:example.com",
+          area: "domain",
+          severity: "warning",
+          code: "domain_not_verified",
+          titleKey: "dashboard.errors.domainNotVerified.title",
+        },
+      ],
+      pagination: { limit: 10, offset: 0, total: 1, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+  });
+
+  it("rejects dashboard customer payloads with unsupported site statuses", async () => {
+    vi.resetModules();
+    const { __webhooksZodContracts } = await import("./webhooks");
+
+    const overview = __webhooksZodContracts.siteCustomerOverviewResponseSchema.safeParse({
+      meta: {
+        view: "overview",
+        generatedAt: "2026-05-07T00:00:00.000Z",
+        schemaVersion: 1,
+      },
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "paused",
+      },
+      account: {
+        accountId: "acct-1",
+        planType: "starter",
+        planStatus: "active",
+        mutationsAllowed: true,
+      },
+      health: {
+        status: "healthy",
+        titleKey: "dashboard.health.healthy.title",
+      },
+      nextAction: {
+        kind: "none",
+        priority: 100,
+        severity: "none",
+        titleKey: "dashboard.nextAction.none.title",
+      },
+      blockers: [],
+      languages: [],
+      domains: [],
+      pagesSummary: {},
+      currentActivity: [],
+      errors: [],
+      quotas: [],
+    });
+    expect(overview.success).toBe(false);
+
+    const compact = __webhooksZodContracts.siteCompactStatusResponseSchema.safeParse({
+      siteId: "site-1",
+      siteStatus: "paused",
+      latestCrawlRun: null,
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+    expect(compact.success).toBe(false);
   });
 
   it("parses managed demo create responses that include showcase-aware site fields", async () => {

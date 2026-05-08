@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached } from "@internal/dashboard/data";
@@ -94,20 +95,7 @@ async function OverviewActions({
   auth: DashboardAuth;
   pricingPath: string;
 }) {
-  const data = await getOverviewData(auth).catch((error) => {
-    console.warn("[dashboard] overview actions failed:", error);
-    return null;
-  });
-
-  if (!data) {
-    return (
-      <div className="flex flex-wrap gap-3">
-        <Button disabled variant="outline">
-          Add a site
-        </Button>
-      </div>
-    );
-  }
+  const data = await getOverviewData(auth);
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -161,21 +149,28 @@ async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; prici
     const errorView = resolveDashboardErrorView(error, {
       title: "Could not load sites",
       description:
-        "We could not complete your request. You can retry or return to the dashboard home.",
-      message: "Unable to load sites from the webhooks worker.",
+        "We could not load your site list. Existing sites and translations are not changed.",
+      message: "Unable to load your dashboard sites.",
     });
     return (
       <ErrorStateCard
         title={errorView.title}
         description={errorView.description}
         message={errorView.message}
-      >
-        <p className="text-sm text-muted-foreground">
-          Check that{" "}
-          <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WEBHOOKS_API_BASE</code> is
-          reachable and that your Supabase session is valid.
-        </p>
-      </ErrorStateCard>
+        nextSteps={errorView.nextSteps}
+        referenceCode={errorView.referenceCode}
+        technicalDetails={errorView.technicalDetails}
+        actions={
+          <>
+            <DashboardRetryButton href="/dashboard" label="Retry dashboard" />
+            <Button asChild variant="outline">
+              <a href="mailto:contact@weblingo.app?subject=Dashboard%20sites%20unavailable">
+                Contact support
+              </a>
+            </Button>
+          </>
+        }
+      />
     );
   }
 

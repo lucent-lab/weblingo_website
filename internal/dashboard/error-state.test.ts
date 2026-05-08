@@ -35,5 +35,105 @@ describe("dashboard error state", () => {
 
     expect(view.kind).toBe("backend_unavailable");
     expect(view.title).toBe("Dashboard service unavailable");
+    expect(view.message).toBe("The dashboard service is unavailable right now.");
+    expect(view.nextSteps).toContain("Retry in a moment.");
+    expect(view.referenceCode).toBe("webhooks_http_503");
+    expect(view.technicalDetails).toMatchObject({
+      status: 503,
+      code: "webhooks_http_503",
+      message: "service unavailable",
+      details: null,
+    });
+  });
+
+  it("turns schema mismatches into actionable contract recovery copy", () => {
+    const view = resolveDashboardErrorView(
+      new WebhooksApiError("The WebLingo API returned an unexpected dashboard response.", 200, {
+        code: "response_schema_mismatch",
+        issues: [
+          {
+            code: "invalid_value",
+            path: ["runs", 5, "customerError", "area"],
+            message: "Invalid option",
+          },
+        ],
+      }),
+      {
+        title: "Unable to load history",
+        description: "Fallback description",
+        message: "Unable to load history.",
+      },
+    );
+
+    expect(view.kind).toBe("contract_mismatch");
+    expect(view.title).toBe("This section cannot be shown safely");
+    expect(view.message).toContain("This section is paused");
+    expect(view.nextSteps).toContain("Retry this section once to rule out a stale response.");
+    expect(view.referenceCode).toBe("response_schema_mismatch");
+    expect(view.technicalDetails).toMatchObject({
+      status: 200,
+      code: "response_schema_mismatch",
+      details: {
+        code: "response_schema_mismatch",
+      },
+    });
+    expect(view.message).not.toContain("invalid_value");
+    expect(view.message).not.toContain("customerError");
+  });
+
+  it("redacts sensitive keys from technical details", () => {
+    const view = resolveDashboardErrorView(
+      new WebhooksApiError("failed", 400, {
+        code: "bad_request",
+        token: "secret-token",
+        nested: { authorization: "Bearer secret" },
+      }),
+      {
+        title: "Fallback",
+        description: "Fallback description",
+      },
+    );
+
+    expect(view.technicalDetails).toMatchObject({
+      details: {
+        token: "[redacted]",
+        nested: { authorization: "[redacted]" },
+      },
+    });
+  });
+
+  it("treats dashboard contract mismatch codes as safe recovery states", () => {
+    const view = resolveDashboardErrorView(
+      new WebhooksApiError("The dashboard received incomplete domain setup data.", 200, {
+        code: "dashboard_domain_setup_contract_mismatch",
+      }),
+      {
+        title: "Unable to load domains",
+        description: "Fallback description",
+        message: "Unable to load domain setup.",
+      },
+    );
+
+    expect(view.kind).toBe("contract_mismatch");
+    expect(view.referenceCode).toBe("dashboard_domain_setup_contract_mismatch");
+    expect(view.message).toContain("This section is paused");
+    expect(view.message).not.toContain("incomplete domain setup data");
+  });
+
+  it("does not render raw schema or implementation errors to dashboard UI", () => {
+    const view = resolveDashboardErrorView(
+      new Error(
+        '[{"code":"invalid_value","path":["runs",5,"customerError","area"],"message":"Invalid option"}]',
+      ),
+      {
+        title: "Unable to load history",
+        description: "Fallback description",
+        message: "Unable to load history.",
+      },
+    );
+
+    expect(view.kind).toBe("unknown");
+    expect(view.message).toBe("Unable to load history.");
+    expect(view.message).not.toContain("invalid_value");
   });
 });

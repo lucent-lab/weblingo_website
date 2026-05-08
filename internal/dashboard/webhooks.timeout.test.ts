@@ -30,6 +30,145 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function makeCustomerSiteRef() {
+  return {
+    id: "site-1",
+    sourceUrl: "https://example.com",
+    sourceLang: "en",
+    status: "active",
+    profile: null,
+    servingMode: "strict",
+  };
+}
+
+function makeCustomerServingStatus() {
+  return {
+    value: "live",
+    rawStatus: "serving",
+    titleKey: "dashboard.serving.live.title",
+  };
+}
+
+function makeCustomerLanguage() {
+  return {
+    tag: "fr",
+    enabled: true,
+    serveEnabled: true,
+    servingStatus: makeCustomerServingStatus(),
+    domain: "fr.example.com",
+    domainStatus: "verified",
+    routePrefix: "/fr",
+    alias: "fr",
+  };
+}
+
+function makeCustomerError() {
+  return {
+    id: "domain_not_verified:domain:example.com",
+    area: "domain",
+    severity: "warning",
+    code: "domain_not_verified",
+    titleKey: "dashboard.errors.domainNotVerified.title",
+    lastSeenAt: "2026-05-07T00:00:00.000Z",
+  };
+}
+
+function makeTranslationRun() {
+  return {
+    id: "tr-1",
+    siteId: "site-1",
+    targetLang: "fr",
+    status: "completed",
+    pagesTotal: 1,
+    pagesCompleted: 1,
+    pagesFailed: 0,
+    startedAt: "2026-05-07T00:00:00.000Z",
+    finishedAt: "2026-05-07T00:01:00.000Z",
+    createdAt: "2026-05-07T00:00:00.000Z",
+    updatedAt: "2026-05-07T00:01:00.000Z",
+  };
+}
+
+function makeLanguagesProjectionResponse() {
+  return {
+    meta: {
+      view: "languages",
+      generatedAt: "2026-05-07T00:00:00.000Z",
+      schemaVersion: 1,
+    },
+    site: makeCustomerSiteRef(),
+    access: {
+      mutationsAllowed: true,
+      lockedReasonCode: null,
+      features: { edit: true },
+      canAddLanguage: true,
+      canRemoveLanguage: true,
+      canUpdateLanguageAliases: true,
+      canToggleServing: true,
+    },
+    sourceLanguage: { tag: "en", labelKey: "language.en", direction: "ltr" },
+    targetLanguages: [{ ...makeCustomerLanguage(), canRemove: true }],
+    localeQuota: { used: 1, limit: 5, remaining: 4 },
+  };
+}
+
+function makeCustomerOverviewResponse() {
+  return {
+    meta: {
+      view: "overview",
+      generatedAt: "2026-05-07T00:00:00.000Z",
+      schemaVersion: 1,
+    },
+    site: makeCustomerSiteRef(),
+    account: {
+      accountId: "acct-1",
+      planType: "pro",
+      planStatus: "active",
+      mutationsAllowed: true,
+    },
+    health: {
+      status: "healthy",
+      titleKey: "dashboard.health.healthy.title",
+      descriptionKey: "dashboard.health.healthy.description",
+      lastImportantChangeAt: null,
+    },
+    nextAction: {
+      kind: "none",
+      priority: 0,
+      severity: "none",
+      titleKey: "dashboard.nextAction.none.title",
+      descriptionKey: "dashboard.nextAction.none.description",
+      cta: null,
+    },
+    blockers: [],
+    languages: [makeCustomerLanguage()],
+    domains: [],
+    pagesSummary: {
+      totalKnownPages: 1,
+      includedPages: 1,
+      excludedPages: 0,
+      translatedPages: 1,
+      pendingPages: 0,
+      failedPages: 0,
+      nextEligibleCrawlAt: null,
+      eligiblePageCount: 1,
+      inventoryMayBeIncomplete: false,
+      rawLatestCrawlStatus: "completed",
+      customerCrawlStatus: "completed",
+    },
+    currentActivity: [],
+    errors: [],
+    quotas: [],
+  };
+}
+
 describe("webhooks request wrapper", () => {
   it("passes an AbortSignal to fetch (timeout guard)", async () => {
     const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -63,6 +202,95 @@ describe("webhooks request wrapper", () => {
 
     expect(site.id).toBe("site-1");
     expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
+  it("rejects schema mismatches with a safe public error", async () => {
+    const fetchSpy = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          runs: [
+            {
+              id: "run-1",
+              customerError: {
+                area: "raw_internal_area",
+              },
+            },
+          ],
+          pagination: { limit: 10, offset: 0, nextOffset: null },
+          generatedAt: "2026-05-07T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { fetchCustomerTranslationRuns, WebhooksApiError } = await import("./webhooks");
+
+      let caught: unknown;
+      try {
+        await fetchCustomerTranslationRuns("token", "site-1", {
+          targetLang: "fr",
+          limit: 10,
+          offset: 0,
+        });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(WebhooksApiError);
+      expect(caught).toMatchObject({
+        message: "The WebLingo API returned an unexpected dashboard response.",
+        status: 200,
+        details: {
+          code: "response_schema_mismatch",
+        },
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[webhooks] response schema mismatch",
+        expect.objectContaining({
+          path: "/sites/site-1/translation-runs?targetLang=fr&limit=10&offset=0",
+          issues: expect.any(Array),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("rejects dashboard projection responses with the wrong view", async () => {
+    const fetchSpy = vi.fn(async () => jsonResponse(makeCustomerOverviewResponse()));
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      vi.resetModules();
+      const { fetchSiteDashboardProjection, WebhooksApiError } = await import("./webhooks");
+
+      let caught: unknown;
+      try {
+        await fetchSiteDashboardProjection("token", "site-1", "domains");
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(WebhooksApiError);
+      expect(caught).toMatchObject({
+        status: 200,
+        details: { code: "response_schema_mismatch" },
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[webhooks] response schema mismatch",
+        expect.objectContaining({
+          path: "/sites/site-1/dashboard?view=domains",
+          issues: expect.any(Array),
+        }),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("applies endpoint timeout profiles for list/detail/auth requests", async () => {
@@ -151,77 +379,6 @@ describe("webhooks request wrapper", () => {
     expect(timeoutValues).toContain(7_500);
     expect(timeoutValues).toContain(10_000);
     expect(timeoutValues).toContain(6_000);
-  });
-
-  it("requests consolidated site dashboard payload with query params", async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      expect(url).toContain("/sites/site-1/dashboard");
-      expect(url).toContain("includePages=true");
-      expect(url).toContain("includeOperationalSummary=false");
-      expect(url).toContain("limit=10");
-      expect(url).toContain("offset=20");
-
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
-
-      return new Response(
-        JSON.stringify({
-          site: {
-            id: "site-1",
-            accountId: "acct-1",
-            sourceUrl: "https://example.com",
-            status: "active",
-            servingMode: "strict",
-            maxLocales: null,
-            siteProfile: null,
-            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
-            locales: [],
-            domains: [],
-            latestCrawlRun: null,
-          },
-          deployments: [],
-          pages: [
-            {
-              id: "page-1",
-              sourcePath: "/",
-              lastSeenAt: null,
-              lastCrawledAt: null,
-              lastSnapshotAt: null,
-              nextCrawlAt: null,
-              lastVersionAt: null,
-            },
-          ],
-          pagination: {
-            limit: 10,
-            offset: 20,
-            total: 21,
-            hasMore: false,
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
-    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
-    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
-
-    vi.resetModules();
-    const { fetchSiteDashboard } = await import("./webhooks");
-    const payload = await fetchSiteDashboard("token", "site-1", {
-      includePages: true,
-      includeOperationalSummary: false,
-      limit: 10,
-      offset: 20,
-    });
-
-    expect(payload.site.id).toBe("site-1");
-    expect(payload.pages).toHaveLength(1);
-    expect(fetchSpy).toHaveBeenCalledOnce();
-    const timeoutValues = timeoutSpy.mock.calls
-      .map((call) => call[1])
-      .filter((value): value is number => typeof value === "number");
-    expect(timeoutValues).toContain(10_000);
   });
 
   it("previews proposed source-selection rules without saving", async () => {
@@ -322,117 +479,123 @@ describe("webhooks request wrapper", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
-  it("accepts site dashboard payloads with operational summary fields", async () => {
-    const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-
-      return new Response(
-        JSON.stringify({
-          site: {
-            id: "site-1",
-            accountId: "acct-1",
-            sourceUrl: "https://example.com",
-            status: "active",
-            servingMode: "strict",
-            maxLocales: null,
-            siteProfile: null,
-            webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
-            locales: [],
-            domains: [],
-            latestCrawlRun: null,
-          },
-          deployments: [],
-          operationalSummary: {
-            retry: {
-              activeRunCount: 1,
-              pagesCompleted: 1,
-              pagesPending: 2,
-              pagesInProgress: 0,
-              pagesFailed: 0,
-            },
-            dlq: {
-              total: 1,
-              perWorker: { translate: 1 },
-              oldest: "2026-03-25T00:00:00.000Z",
-              newest: "2026-03-25T00:00:00.000Z",
-              truncated: false,
-              complete: true,
-              invalidEntries: 0,
-              unreadableEntries: 0,
-              monitorPath: "/api/sites/site-1/dlq",
-              replayPath: "/api/sites/site-1/dlq/replay",
-            },
-            health: {
-              readyPaths: {
-                webhooks: "/api/health/ready",
-                serve: "/health/ready",
-                ops: "/health/ready",
-              },
-              heartbeatKey: "heartbeat:v1:webhooks.scheduled",
-              runbookPath: "/docs/ops/V1_OPERATIONS.md#queue-backlog--pipeline-stalls",
-            },
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
-    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
-
-    vi.resetModules();
-    const { fetchSiteDashboard } = await import("./webhooks");
-    const payload = await fetchSiteDashboard("token", "site-1");
-
-    expect(payload.operationalSummary?.health.heartbeatKey).toBe("heartbeat:v1:webhooks.scheduled");
-    expect(fetchSpy).toHaveBeenCalledOnce();
-  });
-
-  it("requests deployment history with optional filters", async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      expect(url).toContain("/sites/site-1/deployments/history");
-      expect(url).toContain("targetLang=fr");
-      expect(url).toContain("limit=3");
-
-      const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe("Bearer token");
-      expect(typeof headers.get("x-dashboard-trace-id")).toBe("string");
-
-      return new Response(
-        JSON.stringify({
-          history: [
+  it("requests customer dashboard auxiliary endpoints with strict schemas", async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/dashboard?view=languages");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse(makeLanguagesProjectionResponse());
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/dashboard?view=overview");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse(makeCustomerOverviewResponse());
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/status");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse({
+          siteId: "site-1",
+          siteStatus: "active",
+          latestCrawlRun: null,
+          activeTranslationRuns: [
             {
+              id: "tr-1",
               targetLang: "fr",
-              entries: [
-                {
-                  deploymentId: "dep-1",
-                  status: "active",
-                  activatedAt: "2026-02-17T00:00:00Z",
-                  createdAt: "2026-02-17T00:00:00Z",
-                  routePrefix: "/fr",
-                  artifactManifest: "manifest-1",
-                },
-              ],
+              rawStatus: "in_progress",
+              customerStatus: "in_progress",
+              updatedAt: "2026-05-07T00:00:00.000Z",
+              progress: { completed: 1, total: 2, failed: 0 },
             },
           ],
-          perLocaleLimit: 3,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    });
+          currentActivity: [],
+          generatedAt: "2026-05-07T00:00:00.000Z",
+        });
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/errors/summary");
+        expect(url).toContain("limit=10");
+        expect(url).toContain("offset=0");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse({
+          errors: [makeCustomerError()],
+          pagination: { limit: 10, offset: 0, nextOffset: null },
+          generatedAt: "2026-05-07T00:00:00.000Z",
+        });
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/translation-runs/tr-1");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse({ run: makeTranslationRun() });
+      })
+      .mockImplementationOnce(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        expect(url).toContain("/sites/site-1/deployments");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("Authorization")).toBe("Bearer token");
+        return jsonResponse({
+          deployments: [
+            {
+              targetLang: "fr",
+              status: "active",
+              deploymentId: "dep-1",
+              activatedAt: "2026-05-07T00:00:00.000Z",
+              routePrefix: "/fr",
+              artifactManifest: null,
+              activeDeploymentId: "dep-1",
+              domain: "fr.example.com",
+              domainStatus: "verified",
+              serveEnabled: true,
+              servingStatus: "serving",
+              translationRun: null,
+              completeness: {
+                discoveredPages: 1,
+                translatedPages: 1,
+                pendingPages: 0,
+                percentage: 100,
+                status: "complete",
+              },
+            },
+          ],
+        });
+      });
     (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as typeof fetch;
 
     vi.resetModules();
-    const { fetchDeploymentHistory } = await import("./webhooks");
-    const payload = await fetchDeploymentHistory("token", "site-1", {
-      targetLang: "fr",
-      limit: 3,
-    });
+    const {
+      fetchCustomerErrorSummary,
+      fetchDeployments,
+      fetchSiteCompactStatus,
+      fetchSiteCustomerOverview,
+      fetchSiteDashboardProjection,
+      fetchTranslationRun,
+    } = await import("./webhooks");
 
-    expect(payload.perLocaleLimit).toBe(3);
-    expect(payload.history).toHaveLength(1);
-    expect(payload.history[0]?.entries[0]?.deploymentId).toBe("dep-1");
-    expect(fetchSpy).toHaveBeenCalledOnce();
+    const languages = await fetchSiteDashboardProjection("token", "site-1", "languages");
+    const overview = await fetchSiteCustomerOverview("token", "site-1");
+    const status = await fetchSiteCompactStatus("token", "site-1");
+    const errors = await fetchCustomerErrorSummary("token", "site-1", { limit: 10, offset: 0 });
+    const run = await fetchTranslationRun("token", "site-1", "tr-1");
+    const deployments = await fetchDeployments("token", "site-1");
+
+    expect(languages.meta.view).toBe("languages");
+    expect(overview.meta.view).toBe("overview");
+    expect(status.activeTranslationRuns?.[0]?.customerStatus).toBe("in_progress");
+    expect(errors.errors[0]?.area).toBe("domain");
+    expect(run.status).toBe("completed");
+    expect(deployments[0]?.completeness.status).toBe("complete");
+    expect(fetchSpy).toHaveBeenCalledTimes(6);
   });
 
   it("calls crawl-translate, digest, summary, and switcher endpoints with expected payloads", async () => {

@@ -60,12 +60,14 @@ const copy: SourceSelectionCopy = {
   previewLoading: "Previewing rules...",
   previewReady: "Preview is current.",
   previewBlocked: "Preview failed. Save is blocked.",
+  preview: "Preview source paths",
   pagesTitle: "Known source pages",
   pagesDescription: "Backend decisions.",
   pagesEmpty: "No known pages returned by preview.",
   filterLabel: "Search source paths",
   filterPlaceholder: "/blog",
   filterHelp: "Searches globally across known backend source paths.",
+  filterMinLength: "Enter at least {count} characters to search.",
   filterNoResults: "No backend source paths match the search.",
   clearFilter: "Clear filter",
   inventoryNote:
@@ -105,6 +107,7 @@ const copy: SourceSelectionCopy = {
   save: "Save source selection",
   saving: "Saving...",
   saveDisabled: "Save after preview.",
+  saveIncomplete: "The dashboard could not confirm the saved source selection.",
   saved: "Source selection saved.",
   reset: "Reset changes",
   reasonLabels: {
@@ -372,6 +375,11 @@ async function runPreviewTimer() {
   });
 }
 
+async function requestPreview() {
+  fireEvent.click(screen.getByRole("button", { name: "Preview source paths" }));
+  await runPreviewTimer();
+}
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -379,6 +387,18 @@ afterEach(() => {
 });
 
 describe("SourceSelectionManager", () => {
+  it("does not fetch a tree preview on first paint", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await runPreviewTimer();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText("No known pages returned by preview.")).toBeTruthy();
+  });
+
   it("previews proposed flat rules before saving and saves through the provided action", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -421,7 +441,7 @@ describe("SourceSelectionManager", () => {
       routeConfigUpdatedAt: "2026-05-04T00:00:00.000Z",
       sourceSelectionFingerprint: "backend-fingerprint-before-save",
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -499,7 +519,7 @@ describe("SourceSelectionManager", () => {
     }));
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -515,6 +535,43 @@ describe("SourceSelectionManager", () => {
     expect(JSON.parse(formData.get("sourceSelection") as string)).toEqual({
       rules: [{ action: "include", pattern: "/blog/*" }],
     });
+  });
+
+  it("does not fabricate saved source-selection state when save meta is incomplete", async () => {
+    vi.useFakeTimers();
+    globalThis.fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(init?.body as string) as {
+        sourceSelection: { rules: SourceSelectionRule[] };
+      };
+      return new Response(JSON.stringify(makePreview({ sourceSelection: body.sourceSelection })), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    const saveAction = vi.fn<SaveSourceSelectionAction>(async () => ({
+      ok: true,
+      message: "saved",
+      meta: {},
+    }));
+
+    renderManager({ saveAction });
+    await requestPreview();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
+    fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
+    await runPreviewTimer();
+    fireEvent.click(screen.getByRole("button", { name: /save source selection/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(saveAction).toHaveBeenCalledOnce();
+    expect(
+      screen.getByText("The dashboard could not confirm the saved source selection."),
+    ).toBeTruthy();
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
   });
 
   it("keeps a newly added empty include rule from becoming a saveable allowlist", async () => {
@@ -543,7 +600,7 @@ describe("SourceSelectionManager", () => {
     }));
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     expect(screen.getByPlaceholderText("/blog/*")).toBeTruthy();
@@ -573,7 +630,7 @@ describe("SourceSelectionManager", () => {
     const saveAction = vi.fn<SaveSourceSelectionAction>(() => save.promise);
 
     renderManager({ saveAction });
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/blog/*" } });
@@ -706,7 +763,7 @@ describe("SourceSelectionManager", () => {
         { action: "include", pattern: "/ja" },
       ],
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("/blog/post-1")).toBeTruthy();
     expect(screen.getAllByText("/blog/drafts/one").length).toBeGreaterThan(0);
@@ -801,7 +858,7 @@ describe("SourceSelectionManager", () => {
       .mockResolvedValueOnce(initialPreview()) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("Searches globally across known backend source paths.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search source paths"), {
@@ -820,6 +877,155 @@ describe("SourceSelectionManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
     await runPreviewTimer();
     expect(screen.getAllByText("/products/widget").length).toBeGreaterThan(0);
+  });
+
+  it("waits for a minimum search length before calling the backend search", async () => {
+    vi.useFakeTimers();
+    const initialPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/drafts/one",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const searchPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/drafts/two",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+          inventory: {
+            knownPagesTotal: 2,
+            resultNodesTotal: 2,
+            resultMode: "search",
+            summaryScope: "global_known_pages",
+            resultScope: "filtered_tree_nodes",
+            search: "dra",
+            maxPageSize: 200,
+            complete: true,
+          },
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(initialPreview)
+      .mockResolvedValueOnce(searchPreview);
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await requestPreview();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByLabelText("Search source paths"), {
+      target: { value: "dr" },
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Enter at least 3 characters to search.")).toBeTruthy();
+    expect(screen.queryByText("No backend source paths match the search.")).toBeNull();
+    expect(screen.queryByText("/blog/drafts/one")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Search source paths"), {
+      target: { value: "dra" },
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("search=dra"),
+      expect.any(Object),
+    );
+    expect(screen.getAllByText("/blog/drafts/two").length).toBeGreaterThan(0);
+  });
+
+  it("reuses session-cached tree previews when returning to the same folder", async () => {
+    vi.useFakeTimers();
+    const rootPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/post-1",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const blogPreview = new Response(
+      JSON.stringify(
+        makePreview({
+          affectedPages: [
+            {
+              sourcePath: "/blog/post-2",
+              selected: true,
+              reason: "included_by_default",
+              effectiveState: "included",
+              previousSelected: true,
+              previousReason: "included_by_default",
+              changed: false,
+            },
+          ],
+          inventory: {
+            knownPagesTotal: 1,
+            resultNodesTotal: 1,
+            resultMode: "children",
+            summaryScope: "global_known_pages",
+            resultScope: "filtered_tree_nodes",
+            parentPath: "/blog",
+            maxPageSize: 200,
+            complete: true,
+          },
+        }),
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    const fetchMock = vi.fn().mockResolvedValueOnce(rootPreview).mockResolvedValueOnce(blogPreview);
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    renderManager();
+    await requestPreview();
+    fireEvent.click(screen.getByRole("button", { name: "Open folder /blog" }));
+    await runPreviewTimer();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Parent folder" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await runPreviewTimer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("/blog/post-1").length).toBeGreaterThan(0);
   });
 
   it("exposes backend rows as a keyboard navigable treegrid", async () => {
@@ -857,7 +1063,7 @@ describe("SourceSelectionManager", () => {
     globalThis.fetch = fetchMock as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     const treeGrid = screen.getByRole("treegrid", { name: "Known source pages" });
     expect(treeGrid.getAttribute("aria-colcount")).toBe("4");
@@ -926,7 +1132,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("High-impact preview")).toBeTruthy();
     expect(
@@ -983,7 +1189,7 @@ describe("SourceSelectionManager", () => {
         { action: "exclude", pattern: "/old/*" },
       ],
     });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("2/200 rules used")).toBeTruthy();
     expect(screen.getByText(/known discovered source paths/i)).toBeTruthy();
@@ -1035,7 +1241,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getAllByText(copy.partialInventoryNote).length).toBeGreaterThan(0);
   });
@@ -1094,7 +1300,7 @@ describe("SourceSelectionManager", () => {
       ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
     expect(screen.getByText("/blog/post-1")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Add include rule" }));
@@ -1154,7 +1360,7 @@ describe("SourceSelectionManager", () => {
       ) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await runPreviewTimer();
@@ -1206,7 +1412,7 @@ describe("SourceSelectionManager", () => {
     ) as typeof fetch;
 
     renderManager({ initialRules: [{ action: "exclude", pattern: "/products/*" }] });
-    await runPreviewTimer();
+    await requestPreview();
 
     expect(screen.getByText("/about")).toBeTruthy();
     expect(screen.getByText("Included by default")).toBeTruthy();
@@ -1219,6 +1425,7 @@ describe("SourceSelectionManager", () => {
       "invalid pattern",
       "/blog*",
       validationError("sourceSelection.rules[0].pattern must use exact paths or /* wildcards"),
+      "Use an exact path or a /* wildcard pattern.",
     ],
     [
       "duplicate pattern",
@@ -1227,6 +1434,7 @@ describe("SourceSelectionManager", () => {
         "sourceSelection.rules[1].pattern collides with another source-selection rule",
         "sourceSelection.rules[1].pattern",
       ),
+      "This rule overlaps another source selection rule.",
     ],
     [
       "too many rules",
@@ -1235,10 +1443,11 @@ describe("SourceSelectionManager", () => {
         "sourceSelection.rules must contain at most 200 rules",
         "sourceSelection.rules",
       ),
+      "Source selection can include at most 200 rules.",
     ],
   ])(
     "shows %s validation and blocks save without discarding edits",
-    async (_name, pattern, body) => {
+    async (_name, pattern, body, safeMessage) => {
       vi.useFakeTimers();
       globalThis.fetch = vi.fn(
         async () =>
@@ -1258,7 +1467,9 @@ describe("SourceSelectionManager", () => {
       await runPreviewTimer();
 
       expect(screen.getByText("Rules need changes")).toBeTruthy();
-      expect(screen.getAllByText(body.details.validation.message).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(safeMessage).length).toBeGreaterThan(0);
+      expect(document.body.textContent).not.toContain(body.details.validation.message);
+      expect(document.body.textContent).not.toContain("sourceSelection.rules");
       expect(screen.getByDisplayValue(pattern)).toBeTruthy();
       expect(
         (screen.getByRole("button", { name: /save source selection/i }) as HTMLButtonElement)
@@ -1278,7 +1489,7 @@ describe("SourceSelectionManager", () => {
       .mockImplementationOnce(() => second.promise) as typeof fetch;
 
     renderManager();
-    await runPreviewTimer();
+    await requestPreview();
 
     fireEvent.click(screen.getByRole("button", { name: "Add exclude rule" }));
     fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "/products/*" } });

@@ -5,11 +5,20 @@ import { ArrowUpRight, ExternalLink } from "lucide-react";
 
 import { ManagedDemoCreateForm } from "./managed-demo-create-form";
 
+import { createSiteShowcaseAction, updateSiteShowcaseAction } from "@/app/dashboard/actions";
+import { ActionForm } from "@/components/dashboard/action-form";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSupportedLanguagesCached } from "@internal/dashboard/data";
+import {
+  resolveDashboardErrorView,
+  type DashboardErrorView,
+} from "@internal/dashboard/error-state";
 import { resolvePreferredLocale } from "@internal/i18n";
 import { listManagedDemos, type ManagedDemoSiteSummary } from "@internal/dashboard/webhooks";
 import { setWorkspaceAction } from "../../_lib/workspace-actions";
@@ -36,11 +45,22 @@ export default async function OpsShowcasesPage() {
   const items = managedDemoResult.status === "fulfilled" ? managedDemoResult.value.items : [];
   const supportedLanguages =
     supportedLanguagesResult.status === "fulfilled" ? supportedLanguagesResult.value : [];
-  const managedDemoError =
+  const managedDemoErrorView =
     managedDemoResult.status === "rejected"
-      ? managedDemoResult.reason instanceof Error
-        ? managedDemoResult.reason.message
-        : "Unable to load managed demos right now."
+      ? resolveDashboardErrorView(managedDemoResult.reason, {
+          title: "Demo inventory unavailable",
+          description:
+            "We could not load the managed-demo inventory. Existing demos were not changed.",
+          message: "Unable to load managed demos.",
+        })
+      : null;
+  const supportedLanguagesErrorView =
+    supportedLanguagesResult.status === "rejected"
+      ? resolveDashboardErrorView(supportedLanguagesResult.reason, {
+          title: "Language options unavailable",
+          description: "We could not load the language list needed to create a managed demo.",
+          message: "Unable to load supported languages.",
+        })
       : null;
   const activeShowcases = items.filter((item) => item.showcase.status === "active").length;
   const servingShowcases = items.filter(
@@ -73,10 +93,20 @@ export default async function OpsShowcasesPage() {
         </CardContent>
       </Card>
 
-      <ManagedDemoCreateForm
-        supportedLanguages={supportedLanguages}
-        displayLocale={displayLocale}
-      />
+      {supportedLanguagesErrorView ? (
+        <OpsInlineRecovery
+          view={supportedLanguagesErrorView}
+          retryLabel="Retry language options"
+          retryHref="/dashboard/ops/showcases"
+        />
+      ) : (
+        <ManagedDemoCreateForm
+          supportedLanguages={supportedLanguages}
+          displayLocale={displayLocale}
+        />
+      )}
+
+      <AttachShowcaseCard />
 
       <Card>
         <CardHeader>
@@ -87,11 +117,12 @@ export default async function OpsShowcasesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {managedDemoError ? (
-            <div className="rounded-lg border border-dashed border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100">
-              Demo inventory is temporarily unavailable. You can still create a managed demo above.
-              <div className="mt-2 text-xs opacity-80">{managedDemoError}</div>
-            </div>
+          {managedDemoErrorView ? (
+            <OpsInlineRecovery
+              view={managedDemoErrorView}
+              retryLabel="Retry inventory"
+              retryHref="/dashboard/ops/showcases"
+            />
           ) : null}
           {items.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
@@ -103,6 +134,96 @@ export default async function OpsShowcasesPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function AttachShowcaseCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Attach showcase to existing site</CardTitle>
+        <CardDescription>
+          Use this when a managed-demo site exists but does not yet have a public showcase
+          namespace.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ActionForm
+          action={createSiteShowcaseAction}
+          loading="Creating showcase..."
+          success="Showcase created."
+          error="Unable to create showcase."
+          refreshOnSuccess={true}
+          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] lg:items-end"
+        >
+          <Field label="Site ID" htmlFor="showcase-site-id">
+            <Input id="showcase-site-id" name="siteId" placeholder="site_..." required />
+          </Field>
+          <Field label="Website path" htmlFor="showcase-website-path">
+            <Input
+              id="showcase-website-path"
+              name="websitePath"
+              placeholder="example.com"
+              required
+            />
+          </Field>
+          <Field label="Default locale" htmlFor="showcase-default-lang">
+            <Input id="showcase-default-lang" name="defaultLang" placeholder="fr" />
+          </Field>
+          <Button type="submit">Create showcase</Button>
+        </ActionForm>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OpsInlineRecovery({
+  view,
+  retryLabel,
+  retryHref,
+}: {
+  view: DashboardErrorView;
+  retryLabel: string;
+  retryHref: string;
+}) {
+  return (
+    <div
+      role="alert"
+      className="space-y-3 rounded-lg border border-amber-300/70 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100"
+    >
+      <div>
+        <p className="font-medium">{view.title}</p>
+        <p className="mt-1">{view.description}</p>
+      </div>
+      <p>{view.message}</p>
+      <ol className="list-decimal space-y-1 pl-4">
+        {view.nextSteps.map((step, index) => (
+          <li key={`${index}:${step}`}>{step}</li>
+        ))}
+      </ol>
+      {view.referenceCode ? (
+        <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-amber-300/70 bg-background/60 px-3 py-2 text-xs">
+          <span className="font-semibold uppercase tracking-normal opacity-80">Error code</span>
+          <span className="break-all font-mono">{view.referenceCode}</span>
+        </div>
+      ) : null}
+      {view.technicalDetails ? (
+        <details className="rounded-md border border-amber-300/70 bg-background/60 p-3">
+          <summary className="cursor-pointer text-xs font-medium">Show raw server details</summary>
+          <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-md bg-background p-3 text-xs leading-relaxed opacity-80">
+            {JSON.stringify(view.technicalDetails, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <DashboardRetryButton href={retryHref} label={retryLabel} />
+        <Button asChild variant="outline">
+          <a href="mailto:contact@weblingo.app?subject=Managed%20demo%20dashboard%20error">
+            Contact support
+          </a>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -165,9 +286,9 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
               Locale URLs
             </p>
             <div className="mt-2 grid gap-2">
-              {item.showcaseLocales.map((locale) => (
+              {item.showcaseLocales.map((locale, index) => (
                 <div
-                  key={locale.targetLang}
+                  key={`${locale.targetLang}:${index}`}
                   className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                 >
                   <Badge variant={locale.isDefault ? "secondary" : "outline"}>
@@ -186,15 +307,56 @@ function ManagedDemoRow({ item }: { item: ManagedDemoSiteSummary }) {
               ))}
             </div>
           </div>
+          <ActionForm
+            action={updateSiteShowcaseAction}
+            loading="Updating showcase..."
+            success="Showcase updated."
+            error="Unable to update showcase."
+            refreshOnSuccess={true}
+            className="rounded-xl border border-border/60 bg-muted/20 p-3"
+          >
+            <input name="siteId" type="hidden" value={item.siteId} />
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Default lang
+                <select
+                  name="defaultLang"
+                  defaultValue={item.showcase.defaultLang ?? ""}
+                  className="h-9 rounded-md border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal text-foreground"
+                >
+                  <option value="">No default</option>
+                  {item.showcaseLocales.map((locale) => (
+                    <option key={locale.targetLang} value={locale.targetLang}>
+                      {locale.targetLang.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Namespace status
+                <select
+                  name="status"
+                  defaultValue={item.showcase.status}
+                  className="h-9 rounded-md border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal text-foreground"
+                >
+                  <option value="active">active</option>
+                  <option value="disabled">disabled</option>
+                </select>
+              </label>
+              <Button type="submit" variant="outline" className="w-full">
+                Update showcase
+              </Button>
+            </div>
+          </ActionForm>
           <form action={setWorkspaceAction}>
             <input name="subjectAccountId" type="hidden" value={item.accountId} />
             <input
               name="redirectTo"
               type="hidden"
-              value={`/dashboard/sites/${item.siteId}/admin`}
+              value={`/dashboard/sites/${item.siteId}/settings`}
             />
             <Button type="submit" variant="outline" className="w-full">
-              Open site admin
+              Open site settings
               <ArrowUpRight className="ml-2 h-4 w-4" />
             </Button>
           </form>

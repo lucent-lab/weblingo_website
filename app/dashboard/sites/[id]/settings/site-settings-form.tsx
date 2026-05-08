@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 import { updateSiteSettingsAction, type ActionResponse } from "../../../actions";
 import { TargetLanguagePicker } from "../../target-language-picker";
@@ -39,7 +40,7 @@ const LanguageTagCombobox = dynamic(
 
 const initialState: ActionResponse = { ok: false, message: "" };
 
-type SiteAdminFormProps = {
+type SiteSettingsFormProps = {
   siteId: string;
   sourceUrl: string;
   sourceLang: string;
@@ -110,7 +111,7 @@ type SiteAdminFormProps = {
   initialSiteProfileNotes?: string;
 };
 
-export function SiteAdminForm({
+export function SiteSettingsForm({
   siteId,
   sourceUrl: initialSourceUrl,
   sourceLang,
@@ -133,7 +134,6 @@ export function SiteAdminForm({
   canEditTranslatableAttributes,
   canEditProfile,
   webhookUrl: initialWebhookUrl,
-  webhookSecret: initialWebhookSecret,
   webhookEvents: initialWebhookEvents,
   canEditWebhooks,
   clientRuntimeCopy,
@@ -144,8 +144,10 @@ export function SiteAdminForm({
   displayLocale,
   initialBrandVoice = "",
   initialSiteProfileNotes = "",
-}: SiteAdminFormProps) {
+}: SiteSettingsFormProps) {
   const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const [targets, setTargets] = useState<string[]>(() => initialTargets);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {
     const entries = Object.entries(aliases).filter(
@@ -182,7 +184,7 @@ export function SiteAdminForm({
     (initialTranslatableAttributes ?? []).join(", "),
   );
   const [webhookUrl, setWebhookUrl] = useState<string>(initialWebhookUrl ?? "");
-  const [webhookSecret, setWebhookSecret] = useState<string>(initialWebhookSecret ?? "");
+  const [webhookSecret, setWebhookSecret] = useState<string>("");
   const [webhookEvents, setWebhookEvents] = useState<KnownWebhookEventType[]>(
     () => initialWebhookEvents,
   );
@@ -264,6 +266,13 @@ export function SiteAdminForm({
     success: "Site settings saved.",
     error: "Unable to update site settings.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
   const hasEditableSection =
     canEditBasics ||
     canEditLocales ||

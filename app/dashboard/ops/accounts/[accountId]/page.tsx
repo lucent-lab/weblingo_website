@@ -54,7 +54,7 @@ export default async function OpsAccountDetailPage({ params }: AccountDetailPage
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Account-level policy lives here. Site-level routing, locale coverage, and runtime behavior
-          stay on each site’s admin page.
+          stay on each site’s focused settings and developer routes.
         </p>
       </div>
 

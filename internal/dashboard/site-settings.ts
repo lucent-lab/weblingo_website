@@ -328,8 +328,12 @@ export function buildSiteSettingsUpdatePayload(
       payload.webhookUrl = null;
     }
 
-    const webhookSecretRaw = formData.get("webhookSecret")?.toString().trim() ?? "";
-    payload.webhookSecret = webhookSecretRaw.length > 0 ? webhookSecretRaw : null;
+    if (formData.has("webhookSecret")) {
+      const webhookSecretRaw = formData.get("webhookSecret")?.toString().trim() ?? "";
+      if (webhookSecretRaw.length > 0) {
+        payload.webhookSecret = webhookSecretRaw;
+      }
+    }
 
     const webhookEvents = parseWebhookEvents(formData.get("webhookEvents")?.toString());
     if (typeof webhookEvents === "string") {

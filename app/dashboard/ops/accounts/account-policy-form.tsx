@@ -184,7 +184,8 @@ export function AccountPolicyForm({ account }: AccountPolicyFormProps) {
           <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
               Plan-derived defaults, account-level overrides, and site-level settings are separate
-              scopes. Use the site admin page for per-site policy, not global account state.
+              scopes. Use each site’s focused settings and developer routes for per-site policy, not
+              global account state.
             </p>
             <Button type="submit" disabled={pending}>
               {pending ? "Saving..." : "Save account policy"}

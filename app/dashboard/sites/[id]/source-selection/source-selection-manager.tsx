@@ -42,6 +42,8 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 350;
 const PREVIEW_PAGE_SIZE = 100;
+const PREVIEW_CACHE_LIMIT = 30;
+const SOURCE_SELECTION_MIN_SEARCH_LENGTH = 3;
 const SOURCE_SELECTION_RULE_LIMIT = 200;
 const SOURCE_SELECTION_RULE_LIMIT_WARNING_THRESHOLD = 180;
 
@@ -87,12 +89,14 @@ export type SourceSelectionCopy = {
   previewLoading: string;
   previewReady: string;
   previewBlocked: string;
+  preview: string;
   pagesTitle: string;
   pagesDescription: string;
   pagesEmpty: string;
   filterLabel: string;
   filterPlaceholder: string;
   filterHelp: string;
+  filterMinLength: string;
   filterNoResults: string;
   clearFilter: string;
   inventoryNote: string;
@@ -130,6 +134,7 @@ export type SourceSelectionCopy = {
   save: string;
   saving: string;
   saveDisabled: string;
+  saveIncomplete: string;
   saved: string;
   reset: string;
   reasonLabels: Record<SourceSelectionPreviewReason, string>;
@@ -172,6 +177,7 @@ export function SourceSelectionManager({
   const [preview, setPreview] = useState<SourceSelectionTreePreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [isPreviewLoading, setPreviewLoading] = useState(false);
+  const [previewRequestKey, setPreviewRequestKey] = useState(0);
   const [lastSuccessfulPreviewFingerprint, setLastSuccessfulPreviewFingerprint] = useState("");
   const [parentPath, setParentPath] = useState("/");
   const [pathSearch, setPathSearch] = useState("");
@@ -186,6 +192,7 @@ export function SourceSelectionManager({
   const [isSaving, setSaving] = useState(false);
   const requestIdRef = useRef(0);
   const draftFingerprintRef = useRef("");
+  const previewCacheRef = useRef(new Map<string, SourceSelectionTreePreviewResponse>());
 
   const draftConfig = useMemo(() => toSourceSelectionConfig(draftRules), [draftRules]);
   const persistedConfig = useMemo(() => toSourceSelectionConfig(persistedRules), [persistedRules]);
@@ -196,7 +203,6 @@ export function SourceSelectionManager({
   );
   const hasUnsavedChanges = draftFingerprint !== persistedFingerprint;
   const previewIsCurrent = lastSuccessfulPreviewFingerprint === draftFingerprint;
-  const currentPreview = previewIsCurrent && !previewError ? preview : null;
   const controlsCanEdit = canEdit && !isSaving;
   const canSave =
     canEdit &&
@@ -211,20 +217,54 @@ export function SourceSelectionManager({
     draftFingerprintRef.current = draftFingerprint;
   }, [draftFingerprint]);
 
+  const requestPreview = useCallback(() => {
+    setPreviewRequestKey((current) => current + 1);
+  }, []);
   const updateDraftRules = useCallback(
     (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => {
       setDraftRules((current) => updater(current));
       setCursorStack([]);
       setSaveResult(null);
+      requestPreview();
     },
-    [],
+    [requestPreview],
   );
   const currentCursor = cursorStack[cursorStack.length - 1] ?? null;
   const trimmedPathSearch = pathSearch.trim();
   const hasPathSearch = trimmedPathSearch.length > 0;
+  const pathSearchTooShort =
+    hasPathSearch && trimmedPathSearch.length < SOURCE_SELECTION_MIN_SEARCH_LENGTH;
+  const previewShell = previewIsCurrent && !previewError ? preview : null;
+  const currentPreview = previewShell && !pathSearchTooShort ? previewShell : null;
+  const previewCacheKey = useMemo(
+    () =>
+      JSON.stringify({
+        siteId,
+        draftFingerprint,
+        cursor: currentCursor,
+        search: hasPathSearch ? trimmedPathSearch : null,
+        parentPath: hasPathSearch ? null : parentPath,
+        limit: PREVIEW_PAGE_SIZE,
+      }),
+    [currentCursor, draftFingerprint, hasPathSearch, parentPath, siteId, trimmedPathSearch],
+  );
 
   useEffect(() => {
-    if (!canEdit) {
+    if (!canEdit || previewRequestKey === 0) {
+      return;
+    }
+    if (pathSearchTooShort) {
+      setPreviewLoading(false);
+      setPreviewError(null);
+      return;
+    }
+
+    const cachedPreview = previewCacheRef.current.get(previewCacheKey);
+    if (cachedPreview) {
+      setPreview(cachedPreview);
+      setPreviewError(null);
+      setLastSuccessfulPreviewFingerprint(draftFingerprint);
+      setPreviewLoading(false);
       return;
     }
 
@@ -265,11 +305,13 @@ export function SourceSelectionManager({
             return;
           }
           if (!response.ok) {
-            setPreviewError(extractPreviewError(body, response.status));
+            setPreviewError(extractPreviewError(body, copy.previewErrorTitle));
             setPreviewLoading(false);
             return;
           }
-          setPreview(body as SourceSelectionTreePreviewResponse);
+          const parsedPreview = body as SourceSelectionTreePreviewResponse;
+          rememberPreview(previewCacheRef.current, previewCacheKey, parsedPreview);
+          setPreview(parsedPreview);
           setPreviewError(null);
           setLastSuccessfulPreviewFingerprint(draftFingerprint);
           setPreviewLoading(false);
@@ -277,8 +319,9 @@ export function SourceSelectionManager({
           if (controller.signal.aborted || requestId !== requestIdRef.current) {
             return;
           }
+          console.error("[dashboard] source selection preview failed:", error);
           setPreviewError({
-            message: error instanceof Error ? error.message : copy.previewErrorTitle,
+            message: copy.previewErrorTitle,
             validation: [],
           });
           setPreviewLoading(false);
@@ -298,6 +341,9 @@ export function SourceSelectionManager({
     draftFingerprint,
     hasPathSearch,
     parentPath,
+    pathSearchTooShort,
+    previewCacheKey,
+    previewRequestKey,
     siteId,
     trimmedPathSearch,
   ]);
@@ -326,24 +372,32 @@ export function SourceSelectionManager({
         if (!result.ok) {
           return;
         }
-        const savedConfig = readSavedSourceSelection(result.meta) ?? saveConfig;
+        const savedConfig = readSavedSourceSelection(result.meta);
         const savedTokens = readSavedRouteTokens(result.meta);
+        if (
+          !savedConfig ||
+          !savedTokens.routeConfigUpdatedAt ||
+          !savedTokens.sourceSelectionFingerprint
+        ) {
+          setSaveResult({
+            ok: false,
+            message: copy.saveIncomplete,
+          });
+          return;
+        }
         const savedRules = normalizeRulesForForm(savedConfig.rules);
         setPersistedRules(savedRules);
-        setExpectedRouteConfigUpdatedAt(
-          savedTokens.routeConfigUpdatedAt ?? expectedRouteConfigUpdatedAt,
-        );
-        setExpectedSourceSelectionFingerprint(
-          savedTokens.sourceSelectionFingerprint ?? sourceSelectionFingerprint(savedConfig),
-        );
+        setExpectedRouteConfigUpdatedAt(savedTokens.routeConfigUpdatedAt);
+        setExpectedSourceSelectionFingerprint(savedTokens.sourceSelectionFingerprint);
         if (draftFingerprintRef.current === saveFingerprint) {
           setDraftRules(savedRules);
           setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
         }
       } catch (error) {
+        console.error("[dashboard] source selection save failed:", error);
         setSaveResult({
           ok: false,
-          message: error instanceof Error ? error.message : copy.previewErrorTitle,
+          message: copy.previewErrorTitle,
         });
       } finally {
         setSaving(false);
@@ -358,19 +412,28 @@ export function SourceSelectionManager({
   };
 
   const visibleTreeRows = currentPreview?.nodes ?? [];
-  const openFolder = useCallback((path: string) => {
-    setParentPath(path);
-    setPathSearch("");
-    setCursorStack([]);
-  }, []);
+  const openFolder = useCallback(
+    (path: string) => {
+      setParentPath(path);
+      setPathSearch("");
+      setCursorStack([]);
+      requestPreview();
+    },
+    [requestPreview],
+  );
   const openParentFolder = useCallback(() => {
     setParentPath(parentSourcePath(parentPath));
     setCursorStack([]);
-  }, [parentPath]);
-  const updatePathSearch = useCallback((value: string) => {
-    setPathSearch(value);
-    setCursorStack([]);
-  }, []);
+    requestPreview();
+  }, [parentPath, requestPreview]);
+  const updatePathSearch = useCallback(
+    (value: string) => {
+      setPathSearch(value);
+      setCursorStack([]);
+      requestPreview();
+    },
+    [requestPreview],
+  );
 
   const pagination = currentPreview?.pagination ?? null;
   const paginationStart =
@@ -432,6 +495,14 @@ export function SourceSelectionManager({
                 <Button
                   type="button"
                   variant="outline"
+                  onClick={requestPreview}
+                  disabled={isPreviewLoading || isSaving}
+                >
+                  {copy.preview}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={resetDraft}
                   disabled={!hasUnsavedChanges || isSaving}
                 >
@@ -484,7 +555,7 @@ export function SourceSelectionManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {currentPreview ? (
+              {previewShell ? (
                 <div className="rounded-md border border-border/60 bg-muted/10 p-3">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                     <Field
@@ -497,8 +568,17 @@ export function SourceSelectionManager({
                         id="source-selection-path-filter"
                         value={pathSearch}
                         placeholder={copy.filterPlaceholder}
+                        minLength={SOURCE_SELECTION_MIN_SEARCH_LENGTH}
                         onChange={(event) => updatePathSearch(event.target.value)}
                       />
+                      {pathSearchTooShort ? (
+                        <p className="text-xs text-muted-foreground" role="status">
+                          {copy.filterMinLength.replace(
+                            "{count}",
+                            String(SOURCE_SELECTION_MIN_SEARCH_LENGTH),
+                          )}
+                        </p>
+                      ) : null}
                     </Field>
                     <Button
                       type="button"
@@ -525,17 +605,21 @@ export function SourceSelectionManager({
                       </div>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {currentPreview.inventory.complete
-                      ? copy.inventoryNote
-                      : copy.partialInventoryNote}
-                  </p>
+                  {currentPreview ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {currentPreview.inventory.complete
+                        ? copy.inventoryNote
+                        : copy.partialInventoryNote}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {visibleTreeRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {hasPathSearch ? copy.filterNoResults : copy.pagesEmpty}
-                </p>
+                !pathSearchTooShort ? (
+                  <p className="text-sm text-muted-foreground">
+                    {hasPathSearch ? copy.filterNoResults : copy.pagesEmpty}
+                  </p>
+                ) : null
               ) : (
                 <SourceSelectionTree
                   canEdit={controlsCanEdit}
@@ -559,7 +643,10 @@ export function SourceSelectionManager({
                       size="sm"
                       variant="outline"
                       disabled={cursorStack.length === 0 || isPreviewLoading}
-                      onClick={() => setCursorStack((current) => current.slice(0, -1))}
+                      onClick={() => {
+                        setCursorStack((current) => current.slice(0, -1));
+                        requestPreview();
+                      }}
                     >
                       {copy.previousPage}
                     </Button>
@@ -568,11 +655,12 @@ export function SourceSelectionManager({
                       size="sm"
                       variant="outline"
                       disabled={!pagination.hasMore || isPreviewLoading}
-                      onClick={() =>
+                      onClick={() => {
                         setCursorStack((current) =>
                           pagination.nextCursor ? [...current, pagination.nextCursor] : current,
-                        )
-                      }
+                        );
+                        requestPreview();
+                      }}
                     >
                       {copy.nextPage}
                     </Button>
@@ -585,6 +673,24 @@ export function SourceSelectionManager({
       </Card>
     </div>
   );
+}
+
+function rememberPreview(
+  cache: Map<string, SourceSelectionTreePreviewResponse>,
+  key: string,
+  preview: SourceSelectionTreePreviewResponse,
+) {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+  cache.set(key, preview);
+  while (cache.size > PREVIEW_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      return;
+    }
+    cache.delete(oldestKey);
+  }
 }
 
 function RulesList({
@@ -805,10 +911,7 @@ function ValidationAlert({ copy, error }: { copy: SourceSelectionCopy; error: Pr
           {error.validation.length ? (
             <ul className="list-disc space-y-1 pl-5">
               {error.validation.map((item, index) => (
-                <li key={`${item.field ?? "field"}-${index}`}>
-                  {item.field ? <span className="font-mono">{item.field}: </span> : null}
-                  {item.message}
-                </li>
+                <li key={`${item.field ?? "field"}-${index}`}>{item.message}</li>
               ))}
             </ul>
           ) : null}
@@ -831,8 +934,8 @@ function WarningsAlert({
       <AlertTitle>{copy.warningsTitle}</AlertTitle>
       <AlertDescription>
         <ul className="space-y-2">
-          {preview.warnings.map((warning) => (
-            <li key={`${warning.code}-${warning.message}`}>
+          {preview.warnings.map((warning, index) => (
+            <li key={`${warning.code}:${warning.message}:${index}`}>
               <span className="font-medium">{warning.message}</span>
               {typeof warning.count === "number" ? (
                 <span className="ml-1 text-amber-800">({warning.count})</span>
@@ -906,13 +1009,21 @@ function PreviewSummary({
   preview: SourceSelectionTreePreviewResponse;
 }) {
   const items = [
-    [copy.knownIncluded, preview.summary.knownPagesIncluded],
-    [copy.knownExcluded, preview.summary.knownPagesExcluded],
-    [copy.includedByDefault, preview.summary.includedByDefault],
-    [copy.includedByRule, preview.summary.includedByRule],
-    [copy.excludedByRule, preview.summary.excludedByRule],
-    [copy.notIncludedByRule, preview.summary.notIncludedByRule],
-    [copy.rulesTotal, preview.summary.rulesTotal],
+    { key: "knownIncluded", label: copy.knownIncluded, value: preview.summary.knownPagesIncluded },
+    { key: "knownExcluded", label: copy.knownExcluded, value: preview.summary.knownPagesExcluded },
+    {
+      key: "includedByDefault",
+      label: copy.includedByDefault,
+      value: preview.summary.includedByDefault,
+    },
+    { key: "includedByRule", label: copy.includedByRule, value: preview.summary.includedByRule },
+    { key: "excludedByRule", label: copy.excludedByRule, value: preview.summary.excludedByRule },
+    {
+      key: "notIncludedByRule",
+      label: copy.notIncludedByRule,
+      value: preview.summary.notIncludedByRule,
+    },
+    { key: "rulesTotal", label: copy.rulesTotal, value: preview.summary.rulesTotal },
   ] as const;
 
   return (
@@ -924,10 +1035,10 @@ function PreviewSummary({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(([label, value]) => (
-          <div key={label} className="rounded-md border border-border/60 bg-muted/20 p-3">
-            <p className="text-xs uppercase text-muted-foreground">{label}</p>
-            <p className="font-mono text-2xl font-semibold text-foreground">{value}</p>
+        {items.map((item) => (
+          <div key={item.key} className="rounded-md border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs uppercase text-muted-foreground">{item.label}</p>
+            <p className="font-mono text-2xl font-semibold text-foreground">{item.value}</p>
           </div>
         ))}
       </CardContent>
@@ -1443,34 +1554,49 @@ function parentSourcePath(path: string): string {
   return `/${segments.slice(0, -1).join("/")}`;
 }
 
-function extractPreviewError(body: unknown, status: number): PreviewError {
+function extractPreviewError(body: unknown, fallbackMessage: string): PreviewError {
   const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const message =
-    typeof record.error === "string" && record.error.trim()
-      ? record.error
-      : `Preview failed with status ${status}.`;
   const details = record.details;
   const detailsRecord =
     details && typeof details === "object" ? (details as Record<string, unknown>) : {};
   const validation = detailsRecord.validation;
   const validationItems = Array.isArray(validation) ? validation : validation ? [validation] : [];
   return {
-    message,
+    message: fallbackMessage,
     validation: validationItems.flatMap((item) => {
       if (!item || typeof item !== "object") {
         return [];
       }
       const validationRecord = item as Record<string, unknown>;
-      const itemMessage =
-        typeof validationRecord.message === "string" ? validationRecord.message : message;
       return [
         {
           field: typeof validationRecord.field === "string" ? validationRecord.field : undefined,
-          message: itemMessage,
+          message: formatSourceSelectionValidationMessage(validationRecord, fallbackMessage),
         },
       ];
     }),
   };
+}
+
+function formatSourceSelectionValidationMessage(
+  validation: Record<string, unknown>,
+  fallbackMessage: string,
+): string {
+  const field = typeof validation.field === "string" ? validation.field : "";
+  const message = typeof validation.message === "string" ? validation.message : "";
+  if (/at most 200|too many/i.test(message)) {
+    return "Source selection can include at most 200 rules.";
+  }
+  if (/collides|duplicate/i.test(message)) {
+    return "This rule overlaps another source selection rule.";
+  }
+  if (/exact paths|wildcards|wildcard/i.test(message)) {
+    return "Use an exact path or a /* wildcard pattern.";
+  }
+  if (field.includes("pattern")) {
+    return "Review this source selection pattern and preview again.";
+  }
+  return fallbackMessage;
 }
 
 function readSavedRouteTokens(meta: Record<string, unknown> | undefined): {
@@ -1496,21 +1622,21 @@ function readSavedSourceSelection(
   if (!Array.isArray(rules)) {
     return null;
   }
-  return {
-    rules: rules.flatMap((rule) => {
-      if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
-        return [];
-      }
-      const record = rule as Record<string, unknown>;
-      if (
-        (record.action !== "include" && record.action !== "exclude") ||
-        typeof record.pattern !== "string"
-      ) {
-        return [];
-      }
-      return [{ action: record.action, pattern: record.pattern }];
-    }),
-  };
+  const parsedRules: SourceSelectionConfig["rules"] = [];
+  for (const rule of rules) {
+    if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+      return null;
+    }
+    const record = rule as Record<string, unknown>;
+    if (
+      (record.action !== "include" && record.action !== "exclude") ||
+      typeof record.pattern !== "string"
+    ) {
+      return null;
+    }
+    parsedRules.push({ action: record.action, pattern: record.pattern });
+  }
+  return { rules: parsedRules };
 }
 
 function rulesMatch(left: DraftSourceSelectionRule, right: DraftSourceSelectionRule): boolean {

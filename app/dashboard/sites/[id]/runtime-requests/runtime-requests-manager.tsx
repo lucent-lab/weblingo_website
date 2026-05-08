@@ -46,6 +46,17 @@ const CONFIRMATIONS: RuntimeRequestPolicyConfirmation[] = [
   "credential_forwarding",
   "high_risk_path",
 ];
+const POLICY_ACTIONS = new Set<RuntimeRequestPolicyAction>([
+  "observe",
+  "deny",
+  "neutralize",
+  "proxy",
+]);
+const POLICY_METHODS = new Set<RuntimeRequestPolicyMethod>(ALL_METHODS);
+const POLICY_CREDENTIALS = new Set(["omit", "same_origin", "include"]);
+const POLICY_CACHE_MODES = new Set(["no-store", "edge"]);
+const POLICY_REDIRECT_SCOPES = new Set(["same_origin", "same_registrable_domain"]);
+const POLICY_CONFIRMATIONS = new Set<RuntimeRequestPolicyConfirmation>(CONFIRMATIONS);
 const DEFAULT_POLICY: RuntimeRequestPolicyConfig = {
   schemaVersion: 1,
   mode: "standard",
@@ -66,7 +77,10 @@ export type RuntimeRequestsCopy = {
   propagationStale: string;
   observationsTitle: string;
   observationsDescription: string;
+  observationsDeferred: string;
   observationsEmpty: string;
+  loadObservations: string;
+  loadingObservations: string;
   method: string;
   path: string;
   likelyType: string;
@@ -95,6 +109,8 @@ export type RuntimeRequestsCopy = {
   previewRequired: string;
   save: string;
   saving: string;
+  saveIncomplete: string;
+  lifecycleUpdateError: string;
   reset: string;
   enabled: string;
   name: string;
@@ -148,7 +164,13 @@ type RuntimeRequestsManagerProps = {
   runtimeRequestPolicyVersion?: string | null;
   propagation?: RuntimeRequestPolicyPropagation | null;
   observations: RuntimeRequestObservationGroup[];
+  observationsLoaded?: boolean;
   canEdit: boolean;
+  canLoadObservations?: boolean;
+  loadObservationsAction: (
+    prevState: ActionResponse | undefined,
+    formData: FormData,
+  ) => Promise<ActionResponse>;
   saveAction: (
     prevState: ActionResponse | undefined,
     formData: FormData,
@@ -167,7 +189,10 @@ export function RuntimeRequestsManager({
   runtimeRequestPolicyVersion,
   propagation,
   observations,
+  observationsLoaded: initialObservationsLoaded = true,
   canEdit,
+  canLoadObservations = canEdit,
+  loadObservationsAction,
   saveAction,
   lifecycleAction,
   copy,
@@ -184,12 +209,15 @@ export function RuntimeRequestsManager({
   const [servedVersion, setServedVersion] = useState(runtimeRequestPolicyVersion ?? null);
   const [servedPropagation, setServedPropagation] = useState(propagation ?? null);
   const [groups, setGroups] = useState(observations);
+  const [observationsLoaded, setObservationsLoaded] = useState(initialObservationsLoaded);
+  const [isLoadingObservations, setLoadingObservations] = useState(false);
   const [preview, setPreview] = useState<RuntimeRequestPolicyPreviewResponse | null>(null);
   const [previewFingerprint, setPreviewFingerprint] = useState("");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewing, setPreviewing] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<ActionResponse | null>(null);
+  const [observationLoadResult, setObservationLoadResult] = useState<ActionResponse | null>(null);
   const [lifecycleResult, setLifecycleResult] = useState<ActionResponse | null>(null);
 
   const persistedFingerprint = runtimePolicyFingerprint(persistedPolicy);
@@ -217,6 +245,32 @@ export function RuntimeRequestsManager({
     !isPreviewing &&
     !previewError &&
     !previewBlocksSave;
+
+  const loadObservations = () => {
+    if (!canLoadObservations || isLoadingObservations) {
+      return;
+    }
+    setLoadingObservations(true);
+    setObservationLoadResult(null);
+    const formData = new FormData();
+    formData.set("siteId", siteId);
+    void loadObservationsAction(undefined, formData)
+      .then((result) => {
+        setObservationLoadResult(result);
+        if (result.ok) {
+          setGroups(readObservationGroups(result.meta));
+          setObservationsLoaded(true);
+        }
+      })
+      .catch((error) => {
+        console.error("[dashboard] runtime observations load failed:", error);
+        setObservationLoadResult({
+          ok: false,
+          message: copy.previewBlocked,
+        });
+      })
+      .finally(() => setLoadingObservations(false));
+  };
 
   const updateDraft = (
     updater: (policy: RuntimeRequestPolicyConfig) => RuntimeRequestPolicyConfig,
@@ -260,7 +314,8 @@ export function RuntimeRequestsManager({
         setPreview(body as RuntimeRequestPolicyPreviewResponse);
         setPreviewFingerprint(draftFingerprint);
       } catch (error) {
-        setPreviewError(error instanceof Error ? error.message : copy.previewBlocked);
+        console.error("[dashboard] runtime request policy preview failed:", error);
+        setPreviewError(copy.previewBlocked);
       } finally {
         setPreviewing(false);
       }
@@ -285,7 +340,14 @@ export function RuntimeRequestsManager({
         if (!result.ok) {
           return;
         }
-        const savedPolicy = readSavedRuntimePolicy(result.meta) ?? draftPolicy;
+        const savedPolicy = readSavedRuntimePolicy(result.meta);
+        if (!savedPolicy) {
+          setSaveResult({
+            ok: false,
+            message: copy.saveIncomplete,
+          });
+          return;
+        }
         setPersistedPolicy(savedPolicy);
         setDraftPolicy(savedPolicy);
         setExpectedFingerprint(readMetaString(result.meta, "runtimeRequestPolicyFingerprint"));
@@ -294,9 +356,10 @@ export function RuntimeRequestsManager({
         setPreview(null);
         setPreviewFingerprint("");
       } catch (error) {
+        console.error("[dashboard] runtime request policy save failed:", error);
         setSaveResult({
           ok: false,
-          message: error instanceof Error ? error.message : copy.previewBlocked,
+          message: copy.previewBlocked,
         });
       } finally {
         setSaving(false);
@@ -317,20 +380,28 @@ export function RuntimeRequestsManager({
     formData.set("method", group.method);
     formData.set("shapeSignature", group.shapeSignature);
     formData.set("lifecycle", lifecycle);
-    void lifecycleAction(undefined, formData).then((result) => {
-      setLifecycleResult(result);
-      if (result.ok) {
-        setGroups((current) =>
-          current.map((entry) =>
-            entry.groupingPathHash === group.groupingPathHash &&
-            entry.method === group.method &&
-            entry.shapeSignature === group.shapeSignature
-              ? { ...entry, lifecycle }
-              : entry,
-          ),
-        );
-      }
-    });
+    void lifecycleAction(undefined, formData)
+      .then((result) => {
+        setLifecycleResult(result);
+        if (result.ok) {
+          setGroups((current) =>
+            current.map((entry) =>
+              entry.groupingPathHash === group.groupingPathHash &&
+              entry.method === group.method &&
+              entry.shapeSignature === group.shapeSignature
+                ? { ...entry, lifecycle }
+                : entry,
+            ),
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("[dashboard] runtime request lifecycle update failed:", error);
+        setLifecycleResult({
+          ok: false,
+          message: copy.lifecycleUpdateError,
+        });
+      });
   };
 
   return (
@@ -366,14 +437,47 @@ export function RuntimeRequestsManager({
           <CardDescription>{copy.observationsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">{copy.redactionNote}</p>
-          <ObservationsTable
-            canEdit={canEdit}
-            copy={copy}
-            groups={groups}
-            onCreateRule={(group) => updateDraft((policy) => addRuleFromObservation(policy, group))}
-            onLifecycle={updateLifecycle}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <p className="text-xs text-muted-foreground">{copy.redactionNote}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canLoadObservations || isLoadingObservations}
+              onClick={loadObservations}
+            >
+              {isLoadingObservations ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="mr-2 h-4 w-4" />
+              )}
+              {isLoadingObservations ? copy.loadingObservations : copy.loadObservations}
+            </Button>
+          </div>
+          {!observationsLoaded ? (
+            <p className="text-sm text-muted-foreground">{copy.observationsDeferred}</p>
+          ) : null}
+          {observationLoadResult ? (
+            <p
+              role={observationLoadResult.ok ? "status" : "alert"}
+              className={cn(
+                "text-sm",
+                observationLoadResult.ok ? "text-emerald-700" : "text-destructive",
+              )}
+            >
+              {observationLoadResult.message}
+            </p>
+          ) : null}
+          {observationsLoaded ? (
+            <ObservationsTable
+              canEdit={canEdit}
+              copy={copy}
+              groups={groups}
+              onCreateRule={(group) =>
+                updateDraft((policy) => addRuleFromObservation(policy, group))
+              }
+              onLifecycle={updateLifecycle}
+            />
+          ) : null}
           {lifecycleResult ? (
             <p
               role={lifecycleResult.ok ? "status" : "alert"}
@@ -535,27 +639,27 @@ function ObservationsTable({
         <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
           <tr>
             {[
-              copy.method,
-              copy.path,
-              copy.likelyType,
-              copy.firstSeen,
-              copy.seenFromPage,
-              copy.currentAction,
-              copy.suggestedAction,
-              copy.risk,
-              copy.lifecycle,
-              "",
+              { key: "method", label: copy.method },
+              { key: "path", label: copy.path },
+              { key: "likelyType", label: copy.likelyType },
+              { key: "firstSeen", label: copy.firstSeen },
+              { key: "seenFromPage", label: copy.seenFromPage },
+              { key: "currentAction", label: copy.currentAction },
+              { key: "suggestedAction", label: copy.suggestedAction },
+              { key: "risk", label: copy.risk },
+              { key: "lifecycle", label: copy.lifecycle },
+              { key: "actions", label: "" },
             ].map((heading) => (
-              <th key={heading || "actions"} className="px-3 py-2 font-medium">
-                {heading}
+              <th key={heading.key} className="px-3 py-2 font-medium">
+                {heading.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
+          {groups.map((group, index) => (
             <tr
-              key={`${group.groupingPathHash}:${group.method}:${group.shapeSignature}`}
+              key={`${group.groupingPathHash}:${group.method}:${group.shapeSignature}:${index}`}
               className="border-t border-border/60"
             >
               <td className="px-3 py-2 font-mono text-xs">{group.method}</td>
@@ -906,13 +1010,11 @@ function PreviewStatus({
       </Alert>
     );
   }
-  const validationMessages = [
-    ...preview.validationErrors.map((error) => `${error.code}: ${error.message}`),
-    ...preview.collisions.map(
-      (collision) => `${collision.code}: ${collision.leftRuleId} / ${collision.rightRuleId}`,
-    ),
-    ...preview.highRiskConfirmations.map((entry) => `${entry.code}: ${entry.ruleId}`),
-  ];
+  const validationMessages = uniqueRuntimePreviewMessages([
+    ...preview.validationErrors.map(formatRuntimePreviewValidationError),
+    ...preview.collisions.map(formatRuntimePreviewCollision),
+    ...preview.highRiskConfirmations.map(formatRuntimePreviewConfirmation),
+  ]);
   return (
     <div className="space-y-3">
       {validationMessages.length ? (
@@ -927,7 +1029,7 @@ function PreviewStatus({
       {preview.warnings.length ? (
         <ValidationAlert
           title={copy.warningsTitle}
-          messages={preview.warnings.map((warning) => `${warning.code}: ${warning.message}`)}
+          messages={uniqueRuntimePreviewMessages(preview.warnings.map(formatRuntimePreviewWarning))}
         />
       ) : null}
       {preview.matchedObservationGroups.length ? (
@@ -950,13 +1052,52 @@ function ValidationAlert({ title, messages }: { title: string; messages: string[
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <ul className="list-disc space-y-1 pl-4">
-          {messages.map((message) => (
-            <li key={message}>{message}</li>
+          {messages.map((message, index) => (
+            <li key={`${message}:${index}`}>{message}</li>
           ))}
         </ul>
       </AlertDescription>
     </Alert>
   );
+}
+
+type RuntimePreviewValidationError =
+  RuntimeRequestPolicyPreviewResponse["validationErrors"][number];
+type RuntimePreviewWarning = RuntimeRequestPolicyPreviewResponse["warnings"][number];
+type RuntimePreviewConfirmation =
+  RuntimeRequestPolicyPreviewResponse["highRiskConfirmations"][number];
+
+function uniqueRuntimePreviewMessages(messages: string[]): string[] {
+  return Array.from(new Set(messages.filter((message) => message.trim().length > 0)));
+}
+
+function formatRuntimePreviewValidationError(error: RuntimePreviewValidationError): string {
+  return formatRuntimePreviewCode(error.code);
+}
+
+function formatRuntimePreviewWarning(warning: RuntimePreviewWarning): string {
+  return formatRuntimePreviewCode(warning.code);
+}
+
+function formatRuntimePreviewCollision(): string {
+  return "Two runtime request policy rules overlap. Adjust one rule and preview again.";
+}
+
+function formatRuntimePreviewConfirmation(confirmation: RuntimePreviewConfirmation): string {
+  return formatRuntimePreviewCode(confirmation.code);
+}
+
+function formatRuntimePreviewCode(code: string): string {
+  if (code === "confirmation_required_non_get_proxy") {
+    return "Proxying non-GET requests needs an explicit confirmation before the policy can be saved.";
+  }
+  if (code === "confirmation_required_credential_forwarding") {
+    return "Forwarding credentials needs an explicit confirmation before the policy can be saved.";
+  }
+  if (code === "confirmation_required_high_risk_path") {
+    return "High-risk request paths need an explicit confirmation before the policy can be saved.";
+  }
+  return "Review the runtime request policy and preview again before saving.";
 }
 
 function RiskBadge({ risk }: { risk: RuntimeRequestObservationGroup["risk"] }) {
@@ -1180,22 +1321,139 @@ function formatDate(value: string | undefined): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function extractPreviewMessage(value: unknown, copy: RuntimeRequestsCopy): string {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const record = value as Record<string, unknown>;
-    if (typeof record.error === "string") {
-      return record.error;
-    }
-  }
+function extractPreviewMessage(_value: unknown, copy: RuntimeRequestsCopy): string {
   return copy.previewErrorFallback;
 }
 
 function readSavedRuntimePolicy(meta: Record<string, unknown> | undefined) {
   const value = meta?.runtimeRequestPolicy;
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRuntimePolicyConfig(value)) {
     return null;
   }
-  return normalizeRuntimePolicy(value as RuntimeRequestPolicyConfig);
+  return value;
+}
+
+function isRuntimePolicyConfig(value: unknown): value is RuntimeRequestPolicyConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    record.schemaVersion === 1 &&
+    record.mode === "standard" &&
+    typeof record.enabled === "boolean" &&
+    Array.isArray(record.rules) &&
+    record.rules.every(isRuntimePolicyRule)
+  );
+}
+
+function isRuntimePolicyRule(value: unknown): value is RuntimeRequestPolicyRule {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.name === "string" &&
+    typeof record.enabled === "boolean" &&
+    typeof record.pattern === "string" &&
+    isEnumArray(record.methods, POLICY_METHODS, false) &&
+    typeof record.action === "string" &&
+    POLICY_ACTIONS.has(record.action as RuntimeRequestPolicyAction) &&
+    typeof record.credentials === "string" &&
+    POLICY_CREDENTIALS.has(record.credentials) &&
+    typeof record.cache === "string" &&
+    POLICY_CACHE_MODES.has(record.cache) &&
+    typeof record.maxBodyBytes === "number" &&
+    Number.isInteger(record.maxBodyBytes) &&
+    record.maxBodyBytes >= 0 &&
+    typeof record.maxResponseBytes === "number" &&
+    Number.isInteger(record.maxResponseBytes) &&
+    record.maxResponseBytes >= 0 &&
+    typeof record.timeoutMs === "number" &&
+    Number.isInteger(record.timeoutMs) &&
+    record.timeoutMs > 0 &&
+    typeof record.redirectScope === "string" &&
+    POLICY_REDIRECT_SCOPES.has(record.redirectScope) &&
+    isHeaderPolicy(record.requestHeaders) &&
+    isHeaderPolicy(record.responseHeaders) &&
+    isStringArray(record.requestContentTypes) &&
+    isStringArray(record.responseContentTypes) &&
+    isRuntimePolicyNeutralization(record.neutralization) &&
+    isEnumArray(record.confirmations, POLICY_CONFIRMATIONS, true)
+  );
+}
+
+function isEnumArray<T extends string>(
+  value: unknown,
+  allowed: Set<T>,
+  allowEmpty: boolean,
+): value is T[] {
+  return (
+    Array.isArray(value) &&
+    (allowEmpty || value.length > 0) &&
+    value.every((entry): entry is T => typeof entry === "string" && allowed.has(entry as T))
+  );
+}
+
+function isHeaderPolicy(value: unknown): value is { allow: string[] } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  return isStringArray((value as Record<string, unknown>).allow);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isRuntimePolicyNeutralization(
+  value: unknown,
+): value is RuntimeRequestPolicyRule["neutralization"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  if (record.shape === "no_content") {
+    return record.status === 204 && record.contentType === null && record.body === null;
+  }
+  if (record.shape === "empty_text") {
+    return (
+      record.status === 200 &&
+      record.contentType === "text/plain; charset=utf-8" &&
+      record.body === ""
+    );
+  }
+  return (
+    record.shape === "empty_json" &&
+    record.status === 200 &&
+    record.contentType === "application/json" &&
+    record.body === "{}"
+  );
+}
+
+function readObservationGroups(meta: Record<string, unknown> | undefined) {
+  const value = meta?.groups;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRuntimeRequestObservationGroup);
+}
+
+function isRuntimeRequestObservationGroup(value: unknown): value is RuntimeRequestObservationGroup {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.groupingPathHash === "string" &&
+    typeof record.method === "string" &&
+    typeof record.shapeSignature === "string" &&
+    typeof record.path === "string" &&
+    typeof record.firstSeenAt === "string" &&
+    typeof record.lastSeenAt === "string" &&
+    typeof record.lifecycle === "string"
+  );
 }
 
 function readMetaString(meta: Record<string, unknown> | undefined, key: string): string | null {

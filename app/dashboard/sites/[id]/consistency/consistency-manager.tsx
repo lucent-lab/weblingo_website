@@ -75,6 +75,7 @@ export function ConsistencyManager({
                           success="Canonical phrase saved."
                           error="Unable to save canonical phrase."
                           className="grid gap-2"
+                          refreshOnSuccess={true}
                         >
                           <input name="siteId" type="hidden" value={siteId} />
                           <input name="sourceLang" type="hidden" value={sourceLang} />
@@ -156,6 +157,7 @@ export function ConsistencyManager({
                     success="Block updated."
                     error="Unable to update block."
                     className="grid gap-3"
+                    refreshOnSuccess={true}
                   >
                     <input name="siteId" type="hidden" value={siteId} />
                     <input name="blockId" type="hidden" value={block.id} />
@@ -231,9 +233,9 @@ export function ConsistencyManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {overrideWarnings.map((warning) => (
+                  {overrideWarnings.map((warning, index) => (
                     <tr
-                      key={`${warning.segmentId}:${warning.contextHashScope}`}
+                      key={`${warning.segmentId}:${warning.contextHashScope}:${index}`}
                       className="border-t"
                     >
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">

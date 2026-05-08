@@ -105,6 +105,14 @@ describe("dashboard capability actions", () => {
     withWebhooksAuth.mockImplementation(async (callback: (auth: { token: string }) => unknown) =>
       callback({ token: "webhooks-token" }),
     );
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      actorWebhooksAuth: { token: "actor-token", subjectAccountId: "acct-admin" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
     hasActorInternalOps.mockReturnValue(true);
     validateSourceUrl.mockReturnValue(null);
     parseLocaleAliases.mockImplementation((raw: string) => (raw ? JSON.parse(raw) : undefined));
@@ -245,6 +253,148 @@ describe("dashboard capability actions", () => {
     expect(updateSite).not.toHaveBeenCalled();
   });
 
+  it("does not send empty site settings updates to the backend", async () => {
+    deriveSiteSettingsAccess.mockReturnValue({
+      billingBlocked: false,
+      canEditBasics: true,
+      canEditLocales: true,
+      canEditServingMode: true,
+      canEditCrawlCaptureMode: true,
+      canEditClientRuntime: true,
+      canEditSpaRefresh: true,
+      canEditTranslatableAttributes: true,
+      canEditProfile: true,
+      canEditWebhooks: true,
+    });
+    buildSiteSettingsUpdatePayload.mockReturnValue({ ok: true, payload: {} });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+
+    const result = await updateSiteSettingsAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Choose at least one setting to update.",
+      meta: undefined,
+    });
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks focused dashboard mutations when the workspace mutation lock is active", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { updateSiteStatusAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("status", "inactive");
+
+    const result = await updateSiteStatusAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Your plan is not active. Update billing to pause localization.",
+      meta: undefined,
+    });
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("blocks notification preference mutations when the workspace mutation lock is active", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { setTranslationSummaryPreferenceAction, upsertDigestSubscriptionAction } =
+      await import("./actions");
+    const digestFormData = new FormData();
+    digestFormData.set("siteId", "site-1");
+    digestFormData.set("email", "alerts@example.com");
+    digestFormData.set("frequency", "weekly");
+    const summaryFormData = new FormData();
+    summaryFormData.set("siteId", "site-1");
+    summaryFormData.set("targetLang", "fr");
+    summaryFormData.set("frequency", "daily");
+
+    await expect(upsertDigestSubscriptionAction(undefined, digestFormData)).resolves.toEqual({
+      ok: false,
+      message: "Your plan is not active. Update billing to update digest notifications.",
+      meta: undefined,
+    });
+    await expect(
+      setTranslationSummaryPreferenceAction(undefined, summaryFormData),
+    ).resolves.toEqual({
+      ok: false,
+      message:
+        "Your plan is not active. Update billing to update translation summary notifications.",
+      meta: undefined,
+    });
+    expect(upsertDigestSubscription).not.toHaveBeenCalled();
+    expect(setTranslationSummaryPreference).not.toHaveBeenCalled();
+  });
+
+  it("blocks domain mutations when domain verification is not enabled", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      account: { accountId: "acct-1", planType: "starter", featureFlags: {} },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(
+        (check: { allFeatures?: string[] }) =>
+          check.allFeatures?.every((feature) => feature !== "domain_verify") ?? true,
+      ),
+    });
+
+    const { verifyDomainAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("domain", "fr.example.com");
+
+    const result = await verifyDomainAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Domain verification is not enabled for this account.",
+      meta: undefined,
+    });
+    expect(verifyDomain).not.toHaveBeenCalled();
+  });
+
+  it("does not return raw provider details from domain action failures", async () => {
+    verifyDomain.mockRejectedValue(
+      new MockWebhooksApiError("raw provider failure secret-token", 500, {
+        errors: [{ code: "raw_code", message: "raw dns provider body" }],
+      }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      const { verifyDomainAction } = await import("./actions");
+      const formData = new FormData();
+      formData.set("siteId", "site-1");
+      formData.set("domain", "fr.example.com");
+
+      const result = await verifyDomainAction(undefined, formData);
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toBe("The dashboard service is unavailable right now.");
+      expect(result.message).not.toContain("secret-token");
+      expect(result.message).not.toContain("raw dns provider body");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("saves source-selection rules through the site PATCH payload", async () => {
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
@@ -312,6 +462,34 @@ describe("dashboard capability actions", () => {
     expect(result.meta).toMatchObject({
       routeConfigUpdatedAt: "2026-05-04T00:01:00.000Z",
       sourceSelectionFingerprint: "fingerprint-after-save",
+    });
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
+  });
+
+  it("does not report source-selection success when the PATCH response omits confirmation metadata", async () => {
+    updateSite.mockResolvedValue({
+      routeConfig: {
+        sourceSelection: { rules: [{ action: "include", pattern: "/blog/*" }] },
+      },
+    });
+
+    const { updateSourceSelectionAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "sourceSelection",
+      JSON.stringify({
+        rules: [{ action: "include", pattern: "/blog/*" }],
+      }),
+    );
+
+    const result = await updateSourceSelectionAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Source selection was saved, but the confirmation payload was incomplete.",
+      meta: { code: "source_selection_incomplete_response" },
     });
     expect(invalidateSiteDashboardCache).toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/source-selection");
@@ -467,6 +645,124 @@ describe("dashboard capability actions", () => {
         webhookEvents: ["translation.completed", "translation.summary"],
       }),
     );
+  });
+
+  it("reports create-site glossary persistence failures instead of returning success", async () => {
+    createSite.mockResolvedValue({
+      id: "site-created",
+      crawlStatus: { enqueued: false },
+    });
+    updateGlossary.mockRejectedValue(new Error("glossary write failed"));
+    requireDashboardAuth.mockResolvedValue({
+      account: {
+        accountId: "acct-1",
+        planType: "pro",
+        featureFlags: { maxLocales: null },
+      },
+      webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const { createSiteAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.example.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.example.com");
+    formData.set("servingMode", "strict");
+    formData.set(
+      "glossaryEntries",
+      JSON.stringify([{ source: "Hello", target: "Bonjour", targetLang: "fr" }]),
+    );
+
+    const result = await createSiteAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Site was created, but glossary entries could not be saved.",
+      meta: { siteId: "site-created", partialSiteCreated: true },
+    });
+    expect(updateGlossary).toHaveBeenCalled();
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(invalidateSitesCache).toHaveBeenCalled();
+  });
+
+  it("rejects incomplete runtime request policy rule payloads", async () => {
+    const { updateRuntimeRequestPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "runtimeRequestPolicy",
+      JSON.stringify({
+        schemaVersion: 1,
+        mode: "standard",
+        enabled: true,
+        rules: [
+          {
+            id: "rule-1",
+            name: "Rule 1",
+            enabled: true,
+            pattern: "/api/*",
+            methods: ["GET"],
+            action: "proxy",
+            cache: "no-store",
+            maxBodyBytes: 0,
+            maxResponseBytes: 1048576,
+            timeoutMs: 5000,
+            redirectScope: "same_origin",
+            requestHeaders: { allow: [] },
+            responseHeaders: { allow: [] },
+            requestContentTypes: [],
+            responseContentTypes: [],
+            neutralization: {
+              shape: "empty_json",
+              status: 200,
+              contentType: "application/json",
+              body: "{}",
+            },
+            confirmations: [],
+          },
+        ],
+      }),
+    );
+
+    const result = await updateRuntimeRequestPolicyAction(undefined, formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/credentials is invalid/i);
+    expect(updateSite).not.toHaveBeenCalled();
+  });
+
+  it("does not report runtime policy success when the PATCH response omits confirmation metadata", async () => {
+    updateSite.mockResolvedValue({
+      routeConfig: {
+        runtimeRequestPolicy: { schemaVersion: 1, mode: "standard", enabled: true, rules: [] },
+      },
+    });
+    const { updateRuntimeRequestPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set(
+      "runtimeRequestPolicy",
+      JSON.stringify({
+        schemaVersion: 1,
+        mode: "standard",
+        enabled: true,
+        rules: [],
+      }),
+    );
+
+    const result = await updateRuntimeRequestPolicyAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Runtime request policy was saved, but the confirmation payload was incomplete.",
+      meta: { code: "runtime_request_policy_incomplete_response" },
+    });
+    expect(invalidateSiteDashboardCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/runtime-requests");
   });
 
   it("updates locale summary preferences and invalidates site dashboard cache", async () => {

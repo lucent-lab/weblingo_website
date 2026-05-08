@@ -64,18 +64,19 @@ export async function claimAccount(
     if (response.ok || response.status === 409) {
       // 200 = created/linked, 409 = already exists; both can proceed to dashboard.
       shouldRedirectToDashboard = true;
+    } else if (response.status === 401 || response.status === 403) {
+      errorMessage = "Your session cannot claim dashboard access.";
+    } else if (response.status >= 500) {
+      errorMessage = "The dashboard service is unavailable right now.";
     } else {
-      const payload = await response.json().catch(() => ({}));
-      errorMessage =
-        (payload?.error as string) ??
-        (payload?.message as string) ??
-        `Request failed with status ${response.status}`;
+      errorMessage = "Unable to claim dashboard access.";
     }
   } catch (error) {
     if (error instanceof FetchTimeoutError) {
       errorMessage = "The request timed out. Please retry.";
     } else {
-      errorMessage = error instanceof Error ? error.message : "Unable to claim account";
+      console.error("[dashboard] claimAccount failed:", error);
+      errorMessage = "Unable to claim dashboard access.";
     }
   }
 
@@ -89,5 +90,5 @@ export async function claimAccount(
     });
   }
 
-  return failed(errorMessage ?? "Unable to claim account");
+  return failed(errorMessage ?? "Unable to claim dashboard access.");
 }

@@ -58,10 +58,14 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
   const subItems = [
     { href: baseHref, label: "Workspace" },
     { href: `${baseHref}/pages`, label: "Pages & crawl" },
+    { href: `${baseHref}/domains`, label: "Domains" },
     { href: `${baseHref}/source-selection`, label: "Source selection" },
+    { href: `${baseHref}/quality`, label: "Quality" },
+    { href: `${baseHref}/developer-tools`, label: "Developer tools" },
     { href: `${baseHref}/runtime-requests`, label: "Runtime requests" },
+    { href: `${baseHref}/history`, label: "History" },
     { href: `${baseHref}/overrides`, label: "Translation rules" },
-    { href: `${baseHref}/admin`, label: "Settings" },
+    { href: `${baseHref}/settings`, label: "Settings" },
   ];
 
   return (

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { GlossaryEditor } from "../glossary-editor";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { PageSectionNav } from "../page-section-nav";
@@ -28,6 +29,7 @@ import {
   formatConsistencyLocaleScopeLabel,
   selectConsistencyLocaleScope,
 } from "../consistency/locale-scope";
+import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
 import {
   fetchConsistencyBlocks,
   fetchConsistencyCpm,
@@ -61,17 +63,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
-  const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
+  const canEdit = siteHeaderAccess.canEdit;
   const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
   const canSlugs = auth.has({ allFeatures: ["edit", "slug_edit"] }) && mutationsAllowed;
-  const deactivateLabel = t("dashboard.site.status.deactivate");
-  const reactivateLabel = t("dashboard.site.status.reactivate");
-  const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
-  const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
-  const activateHelp = t("dashboard.site.status.activateHelp");
+  const headerLabels = buildSiteHeaderLabels(t);
   const lockCtaLabel = mutationsAllowed ? "Upgrade plan" : "Update billing";
   const lockBadgeLabel = mutationsAllowed ? "Locked" : "Billing issue";
   const pageNavTitle = t("dashboard.site.overrides.pageNav.title");
@@ -144,7 +141,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
         description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+          "We could not load translation rules for this site. No glossary or override changes were saved.",
         message: "Unable to load translation rules.",
       });
       return (
@@ -152,10 +149,24 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton href={`/dashboard/sites/${id}/overrides`} label="Retry rules" />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Dashboard home</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20translation%20rules%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );
@@ -175,13 +186,13 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       <SiteHeader
         site={site}
         canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        deactivateLabel={deactivateLabel}
-        reactivateLabel={reactivateLabel}
-        deactivateConfirm={deactivateConfirm}
-        activateHelpLabel={activateHelpLabel}
-        activateHelp={activateHelp}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        deactivateLabel={headerLabels.deactivateLabel}
+        reactivateLabel={headerLabels.reactivateLabel}
+        deactivateConfirm={headerLabels.deactivateConfirm}
+        activateHelpLabel={headerLabels.activateHelpLabel}
+        activateHelp={headerLabels.activateHelp}
       />
 
       <Card>
@@ -220,7 +231,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                 Add at least one target locale before using consistency governance.
               </p>
             ) : (
-              localeScopes.map((scope) => {
+              localeScopes.map((scope, index) => {
                 const active =
                   selectedLocaleScope !== null &&
                   scope.targetLang === selectedLocaleScope.targetLang &&
@@ -235,7 +246,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                     ? `/dashboard/sites/${site.id}/overrides`
                     : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
                 return (
-                  <Link key={`${scope.sourceLang}:${scope.targetLang}`} href={href}>
+                  <Link key={`${scope.sourceLang}:${scope.targetLang}:${index}`} href={href}>
                     <Badge variant={active ? "default" : "secondary"}>
                       {formatConsistencyLocaleScopeLabel(scope)}
                     </Badge>
@@ -282,7 +293,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       <div className="grid gap-4 md:grid-cols-2">
         <section id="manual-overrides" className="scroll-mt-24">
           {canOverrides ? (
-            <OverrideForm siteId={site.id} />
+            <OverrideForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard
               title="Manual overrides"
@@ -299,7 +310,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         </section>
         <section id="localized-slugs" className="scroll-mt-24">
           {canSlugs ? (
-            <SlugForm siteId={site.id} />
+            <SlugForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard
               title="Localized slugs"
@@ -332,7 +343,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   );
 }
 
-async function ConsistencyGovernanceSection({
+export async function ConsistencyGovernanceSection({
   authToken,
   canEdit,
   mutationsAllowed,
@@ -418,7 +429,7 @@ async function ConsistencyGovernanceSection({
             const errorView = resolveDashboardErrorView(dataLoadError, {
               title: "Unable to load consistency data",
               description:
-                "We could not complete your request. You can retry or return to the dashboard.",
+                "We could not load consistency data for this locale pair. No consistency changes were saved.",
               message: "Unable to load consistency data.",
             });
 
@@ -427,10 +438,24 @@ async function ConsistencyGovernanceSection({
                 title={errorView.title}
                 description={errorView.description}
                 message={errorView.message}
+                nextSteps={errorView.nextSteps}
+                referenceCode={errorView.referenceCode}
+                technicalDetails={errorView.technicalDetails}
                 actions={
-                  <Button asChild variant="outline">
-                    <Link href="/dashboard">Back to dashboard</Link>
-                  </Button>
+                  <>
+                    <DashboardRetryButton
+                      href={`/dashboard/sites/${siteId}/overrides`}
+                      label="Retry consistency"
+                    />
+                    <Button asChild variant="outline">
+                      <Link href={`/dashboard/sites/${siteId}`}>Site overview</Link>
+                    </Button>
+                    <Button asChild variant="ghost">
+                      <a href="mailto:contact@weblingo.app?subject=Dashboard%20consistency%20data%20unavailable">
+                        Contact support
+                      </a>
+                    </Button>
+                  </>
                 }
               />
             );

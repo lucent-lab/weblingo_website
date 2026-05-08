@@ -7,17 +7,18 @@ import { redis } from "@/internal/core/redis";
 import type { WebhooksAuthContext } from "./auth";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import {
-  fetchSiteDashboard,
+  fetchSiteDashboardProjection,
+  fetchSiteCustomerOverview,
   listSites,
   listSupportedLanguages,
-  type SiteDashboardResponse,
+  type SiteCustomerOverviewResponse,
   type SiteSummary,
   type SupportedLanguage,
 } from "./webhooks";
 
 const SITES_CACHE_NAMESPACE = "dashboard:sites";
-const SITE_DASHBOARD_CACHE_NAMESPACE = "dashboard:site-dashboard";
 const SITE_DASHBOARD_CACHE_INDEX_NAMESPACE = "dashboard:site-dashboard:index";
+const SITE_DASHBOARD_PROJECTION_CACHE_NAMESPACE = "dashboard:site-dashboard-projection";
 const LANGUAGES_CACHE_KEY = "dashboard:supported-languages";
 const SITES_CACHE_TTL_SECONDS = 600;
 const SITE_DASHBOARD_CACHE_TTL_SECONDS = 30;
@@ -25,7 +26,7 @@ const SITE_DASHBOARD_CACHE_INDEX_TTL_SECONDS = 300;
 const LANGUAGES_CACHE_TTL_SECONDS = 21600;
 
 const sitesInflight = new Map<string, Promise<SiteSummary[]>>();
-const siteDashboardInflight = new Map<string, Promise<SiteDashboardResponse>>();
+const siteCustomerOverviewInflight = new Map<string, Promise<SiteCustomerOverviewResponse>>();
 const languagesInflight = new Map<string, Promise<SupportedLanguage[]>>();
 
 function shouldBypassDashboardCache(): boolean {
@@ -55,54 +56,14 @@ function getLanguagesCacheKey(): string {
   return `${LANGUAGES_CACHE_KEY}:${getCacheEnvPrefix()}`;
 }
 
-type SiteDashboardCacheOptions = {
-  includePages?: boolean;
-  includeOperationalSummary?: boolean;
-  limit?: number;
-  offset?: number;
-};
-
-type NormalizedSiteDashboardOptions = {
-  includePages: boolean;
-  includeOperationalSummary: boolean;
-  limit: number;
-  offset: number;
-};
-
-function normalizeSiteDashboardOptions(
-  options?: SiteDashboardCacheOptions,
-): NormalizedSiteDashboardOptions {
-  const includePages = options?.includePages === true;
-  const includeOperationalSummary = options?.includeOperationalSummary !== false;
-  if (!includePages) {
-    return { includePages: false, includeOperationalSummary, limit: 25, offset: 0 };
-  }
-  return {
-    includePages,
-    includeOperationalSummary,
-    limit: typeof options.limit === "number" ? options.limit : 25,
-    offset: typeof options.offset === "number" ? options.offset : 0,
-  };
-}
-
-function getSiteDashboardCacheKey(
-  subjectAccountId: string,
-  siteId: string,
-  options?: SiteDashboardCacheOptions,
-): string {
-  const normalized = normalizeSiteDashboardOptions(options);
-  const suffixParts = [
-    normalized.includePages ? `pages:${normalized.limit}:${normalized.offset}` : "pages:none",
-    normalized.includeOperationalSummary ? "ops:yes" : "ops:no",
-  ];
-  const suffix = suffixParts.join(":");
-  const digest = hashToken(`${subjectAccountId}:${siteId}:${suffix}`);
-  return `${SITE_DASHBOARD_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
-}
-
 function getSiteDashboardCacheIndexKey(subjectAccountId: string, siteId: string): string {
   const digest = hashToken(`${subjectAccountId}:${siteId}`);
   return `${SITE_DASHBOARD_CACHE_INDEX_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
+}
+
+function getSiteCustomerOverviewCacheKey(subjectAccountId: string, siteId: string): string {
+  const digest = hashToken(`${subjectAccountId}:${siteId}:view:overview`);
+  return `${SITE_DASHBOARD_PROJECTION_CACHE_NAMESPACE}:${getCacheEnvPrefix()}:${digest}`;
 }
 
 export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
@@ -147,6 +108,16 @@ export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
   }
 });
 
+export const getSiteSummaryCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
+  const sites = await listSitesCached(auth);
+  return sites.find((site) => site.id === siteId) ?? null;
+});
+
+export const getSiteTargetLangsCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
+  const projection = await fetchSiteDashboardProjection(auth, siteId, "languages");
+  return normalizeTargetLangs(projection.targetLanguages.map((language) => language.tag));
+});
+
 export const listSupportedLanguagesCached = cache(async () => {
   if (shouldBypassDashboardCache()) {
     return listSupportedLanguages();
@@ -189,55 +160,55 @@ export const listSupportedLanguagesCached = cache(async () => {
   }
 });
 
-export const getSiteDashboardCached = cache(
-  async (
-    auth: WebhooksAuthContext,
-    siteId: string,
-    options?: SiteDashboardCacheOptions,
-  ): Promise<SiteDashboardResponse> => {
-    const normalized = normalizeSiteDashboardOptions(options);
+function normalizeTargetLangs(targetLangs: string[]): string[] {
+  return Array.from(new Set(targetLangs.map((lang) => lang.trim()).filter(Boolean))).sort(
+    (left, right) => left.localeCompare(right),
+  );
+}
 
+export const getSiteCustomerOverviewCached = cache(
+  async (auth: WebhooksAuthContext, siteId: string): Promise<SiteCustomerOverviewResponse> => {
     if (shouldBypassDashboardCache()) {
-      return fetchSiteDashboard(auth, siteId, normalized);
+      return fetchSiteCustomerOverview(auth, siteId);
     }
 
-    const cacheKey = getSiteDashboardCacheKey(auth.subjectAccountId, siteId, normalized);
+    const cacheKey = getSiteCustomerOverviewCacheKey(auth.subjectAccountId, siteId);
     const indexKey = getSiteDashboardCacheIndexKey(auth.subjectAccountId, siteId);
 
     try {
-      const cached = await redis.get<SiteDashboardResponse>(cacheKey);
+      const cached = await redis.get<SiteCustomerOverviewResponse>(cacheKey);
       if (cached) {
-        console.info("[dashboard] site dashboard cache hit");
+        console.info("[dashboard] site customer overview cache hit");
         return cached;
       }
     } catch (error) {
-      console.warn("[dashboard] site dashboard cache read failed:", error);
+      console.warn("[dashboard] site customer overview cache read failed:", error);
     }
 
-    console.info("[dashboard] site dashboard cache miss");
+    console.info("[dashboard] site customer overview cache miss");
 
-    const inflight = siteDashboardInflight.get(cacheKey);
+    const inflight = siteCustomerOverviewInflight.get(cacheKey);
     if (inflight) {
       return inflight;
     }
 
     const promise = (async () => {
-      const payload = await fetchSiteDashboard(auth, siteId, normalized);
+      const payload = await fetchSiteCustomerOverview(auth, siteId);
       try {
         await redis.set(cacheKey, payload, { ex: SITE_DASHBOARD_CACHE_TTL_SECONDS });
         await redis.sadd(indexKey, cacheKey);
         await redis.expire(indexKey, SITE_DASHBOARD_CACHE_INDEX_TTL_SECONDS);
       } catch (error) {
-        console.warn("[dashboard] site dashboard cache write/index failed:", error);
+        console.warn("[dashboard] site customer overview cache write/index failed:", error);
       }
       return payload;
     })();
 
-    siteDashboardInflight.set(cacheKey, promise);
+    siteCustomerOverviewInflight.set(cacheKey, promise);
     try {
       return await promise;
     } finally {
-      siteDashboardInflight.delete(cacheKey);
+      siteCustomerOverviewInflight.delete(cacheKey);
     }
   },
 );
@@ -265,12 +236,7 @@ export async function invalidateSiteDashboardCache(
 
   const indexKey = getSiteDashboardCacheIndexKey(auth.subjectAccountId, siteId);
   const keys = new Set<string>([
-    getSiteDashboardCacheKey(auth.subjectAccountId, siteId),
-    getSiteDashboardCacheKey(auth.subjectAccountId, siteId, {
-      includePages: true,
-      limit: 25,
-      offset: 0,
-    }),
+    getSiteCustomerOverviewCacheKey(auth.subjectAccountId, siteId),
     indexKey,
   ]);
   try {

@@ -36,4 +36,10 @@ describe("WebhookSettingsFields", () => {
     const hiddenInput = container.querySelector<HTMLInputElement>('input[name="webhookEvents"]');
     expect(hiddenInput?.value).toBe('["translation.completed","translation.failed"]');
   });
+
+  it("does not submit an empty signing secret field", () => {
+    const { container } = render(<WebhookSettingsFields {...baseProps} webhookSecret="" canEdit />);
+    expect(container.querySelector<HTMLInputElement>("#webhookSecret")?.value).toBe("");
+    expect(container.querySelector('input[name="webhookSecret"]')).toBeNull();
+  });
 });

@@ -29,21 +29,35 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `sites.list`
 5. Load consolidated site dashboard payload (detail + deployments, optional pages):
    - `operationId`: `sites.dashboard.get`
-6. Preview source-selection rule changes before saving:
+6. Poll compact customer-safe site status while crawl or translation work is active:
+   - `operationId`: `sites.status.get`
+7. Review customer-safe site errors with required offset pagination:
+   - `operationId`: `sites.errors.summary.get`
+8. Preview source-selection rule changes before saving:
    - `operationId`: `sites.sourceSelection.preview`
-7. Preview source-selection tree projections for dashboard editing:
+9. Preview source-selection tree projections for dashboard editing:
    - `operationId`: `sites.sourceSelection.treePreview`
-8. Review observed runtime requests before adding interactive-feature rules:
-   - `operationId`: `sites.runtimeRequests.observations.list`
-9. Update observation lifecycle after triage:
-   - `operationId`: `sites.runtimeRequests.observations.lifecycle`
-10. Preview runtime request policy drafts before saving:
-   - `operationId`: `sites.runtimeRequestPolicy.preview`
-11. Update site configuration:
-   - `operationId`: `sites.update`
-12. List discovered pages for a site:
-   - `operationId`: `sites.pages.list`
-13. Generate language switcher snippets for custom frontend integration:
+10. Review observed runtime requests before adding interactive-feature rules:
+
+- `operationId`: `sites.runtimeRequests.observations.list`
+
+11. Update observation lifecycle after triage:
+
+- `operationId`: `sites.runtimeRequests.observations.lifecycle`
+
+12. Preview runtime request policy drafts before saving:
+
+- `operationId`: `sites.runtimeRequestPolicy.preview`
+
+13. Update site configuration:
+
+- `operationId`: `sites.update`
+
+14. List discovered pages for a site:
+
+- `operationId`: `sites.pages.list`
+
+15. Generate language switcher snippets for custom frontend integration:
     - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Admin Managed Demos
@@ -84,6 +98,8 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + deployments endpoints when you need separate caching or independent refresh cadence.
    - Deployment endpoint choice: use `sites.deployments.list` when you need the current active deployments for a site. Use `sites.deployments.history.list` when you need past deployment attempts and historical records.
    - `operationId`: `sites.dashboard.get`
+   - `operationId`: `sites.status.get`
+   - `operationId`: `sites.errors.summary.get`
    - `operationId`: `sites.get`
    - `operationId`: `sites.deployments.list`
    - `operationId`: `sites.deployments.history.list`
@@ -118,9 +134,11 @@ Local/dev TXT verification flow:
    - `operationId`: `sites.crawl_translate.trigger`
 4. Translate without recrawl (translation run):
    - `operationId`: `sites.translate`
-5. Observe run status:
+5. List run history for dashboard/customer history:
+   - `operationId`: `sites.translationRuns.list`
+6. Observe run status:
    - `operationId`: `sites.translationRuns.get`
-6. Operational controls:
+7. Operational controls:
    - `operationId`: `sites.translationRuns.cancel`
    - `operationId`: `sites.translationRuns.resume`
 

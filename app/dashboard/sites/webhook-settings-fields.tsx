@@ -93,7 +93,7 @@ export function WebhookSettingsFields({
       <Field label={secretLabel} htmlFor="webhookSecret" description={secretHelp}>
         <Input
           id="webhookSecret"
-          name="webhookSecret"
+          name={webhookSecret.trim() ? "webhookSecret" : undefined}
           type="password"
           value={webhookSecret}
           onChange={(event) => onWebhookSecretChange(event.target.value)}

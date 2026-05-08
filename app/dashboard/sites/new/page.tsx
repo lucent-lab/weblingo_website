@@ -21,12 +21,8 @@ export default async function NewSitePage() {
   const maxSites = auth.account?.featureFlags.maxSites ?? null;
   let activeSites = 0;
   if (auth.webhooksAuth) {
-    try {
-      const sites = await listSitesCached(auth.webhooksAuth);
-      activeSites = sites.filter((site) => site.status === "active").length;
-    } catch (error) {
-      console.warn("[dashboard] listSites failed while checking slots:", error);
-    }
+    const sites = await listSitesCached(auth.webhooksAuth);
+    activeSites = sites.filter((site) => site.status === "active").length;
   }
   const hasAvailableSlot = maxSites === null || activeSites < maxSites;
   const atSiteLimit = maxSites !== null && activeSites >= maxSites;

@@ -166,7 +166,7 @@ export default async function OpsPreviewDetailPage({ params }: OpsPreviewDetailP
           />
           <InfoRow
             label={t("dashboard.ops.previewDetail.fields.errorMessage", "Error message")}
-            value={preview.error ?? "—"}
+            value={formatPreviewErrorSummary(preview)}
           />
           <InfoRow
             label={t("dashboard.ops.previewDetail.fields.latestReview", "Latest review")}
@@ -256,4 +256,18 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="font-semibold text-foreground">{label}:</span> {value}
     </div>
   );
+}
+
+function formatPreviewErrorSummary(preview: {
+  error?: string | null;
+  errorCode?: string | null;
+  errorStage?: string | null;
+}): string {
+  if (!preview.error) {
+    return "—";
+  }
+  if (preview.errorCode || preview.errorStage) {
+    return "Preview failed. Review the error code and stage above; raw worker details are hidden.";
+  }
+  return "Preview failed. Raw worker details are hidden from the dashboard.";
 }

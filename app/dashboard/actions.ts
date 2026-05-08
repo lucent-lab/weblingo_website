@@ -14,6 +14,7 @@ import {
   updateSiteShowcase,
   fetchSwitcherSnippets,
   getSiteShowcase,
+  listRuntimeRequestObservations,
   listTranslationSummaries,
   provisionDomain,
   refreshDomain,
@@ -57,6 +58,7 @@ import {
   parseWebhookEvents,
   validateSourceUrl,
 } from "@internal/dashboard/site-settings";
+import type { WebLingoFeature } from "@internal/dashboard/entitlements";
 
 import { withWebhooksAuth } from "./_lib/webhooks-token";
 
@@ -64,6 +66,18 @@ export type ActionResponse = {
   ok: boolean;
   message: string;
   meta?: Record<string, unknown>;
+};
+
+type DashboardMutationAuth = DashboardAuth & {
+  account: NonNullable<DashboardAuth["account"]>;
+  webhooksAuth: WebhooksAuthContext;
+};
+
+type DashboardMutationGate = {
+  actionLabel: string;
+  permissionError: string;
+  feature?: WebLingoFeature;
+  allFeatures?: readonly WebLingoFeature[];
 };
 
 const failed = (message: string, meta?: Record<string, unknown>): ActionResponse => ({
@@ -116,16 +130,22 @@ function isRuntimeRequestLifecycle(value: string): value is RuntimeRequestLifecy
 }
 
 function toFriendlyDashboardActionError(error: unknown, fallback: string): string {
-  const isDev = process.env.NODE_ENV !== "production";
-  if (error instanceof Error) {
-    const message = error.message.trim();
-    if (!message) {
-      return fallback;
+  if (error instanceof WebhooksApiError) {
+    if (error.status === 0) {
+      return "Unable to reach the dashboard service. Try again in a moment.";
     }
-    if (!isDev && message.includes("NEXT_PUBLIC_WEBHOOKS_API_BASE")) {
-      return fallback;
+    if (error.status === 401 || error.status === 403) {
+      return "Your session cannot perform this dashboard action.";
     }
-    return isDev ? message : fallback;
+    if (error.status === 404) {
+      return "The requested dashboard data could not be found.";
+    }
+    if (error.status === 504) {
+      return "The dashboard action timed out. Try again in a moment.";
+    }
+    if (error.status >= 500) {
+      return "The dashboard service is unavailable right now.";
+    }
   }
   return fallback;
 }
@@ -144,66 +164,7 @@ function toFriendlyDashboardActionErrorWithDetails(
   error: unknown,
   fallback: string,
 ): { message: string; details?: string | null } {
-  const message = toFriendlyDashboardActionError(error, fallback);
-  const details = extractSafeErrorDetails(error);
-  return { message, details };
-}
-
-function extractSafeErrorDetails(error: unknown): string | null {
-  if (!(error instanceof WebhooksApiError)) {
-    return null;
-  }
-  return formatCloudflareErrorDetails(error.details);
-}
-
-function formatCloudflareErrorDetails(details: unknown): string | null {
-  if (!details || typeof details !== "object") {
-    return null;
-  }
-  const payload = details as Record<string, unknown>;
-  const parts = [
-    ...extractErrorMessages(payload.errors),
-    ...extractErrorMessages(payload.messages),
-  ];
-  const normalized = Array.from(new Set(parts.map((entry) => entry.trim()))).filter(Boolean);
-  if (!normalized.length) {
-    return null;
-  }
-  return normalized.map((entry) => truncateText(entry, 200)).join("\n");
-}
-
-function extractErrorMessages(value: unknown): string[] {
-  if (!value) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => extractErrorMessages(entry));
-  }
-  if (typeof value === "string") {
-    return [value];
-  }
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const code = typeof record.code === "string" ? record.code.trim() : "";
-    const message = typeof record.message === "string" ? record.message.trim() : "";
-    if (code && message) {
-      return [`${code}: ${message}`];
-    }
-    if (message) {
-      return [message];
-    }
-    if (code) {
-      return [code];
-    }
-  }
-  return [];
-}
-
-function truncateText(value: string, limit: number) {
-  if (value.length <= limit) {
-    return value;
-  }
-  return `${value.slice(0, Math.max(0, limit - 3))}...`;
+  return { message: toFriendlyDashboardActionError(error, fallback), details: null };
 }
 
 function isNextRedirectError(error: unknown): boolean {
@@ -234,6 +195,25 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
   return `Your plan is ${status}. Update billing to ${actionLabel}.`;
 }
 
+async function requireDashboardMutationAuth(
+  gate: DashboardMutationGate,
+): Promise<{ ok: true; auth: DashboardMutationAuth } | { ok: false; response: ActionResponse }> {
+  const auth = await requireDashboardAuth();
+  if (!auth.account || !auth.webhooksAuth) {
+    return { ok: false, response: failed("Unable to resolve account entitlements.") };
+  }
+  if (!auth.mutationsAllowed) {
+    return { ok: false, response: failed(formatBillingBlockMessage(auth, gate.actionLabel)) };
+  }
+  if (gate.feature && !auth.has({ feature: gate.feature })) {
+    return { ok: false, response: failed(gate.permissionError) };
+  }
+  if (gate.allFeatures?.length && !auth.has({ allFeatures: gate.allFeatures })) {
+    return { ok: false, response: failed(gate.permissionError) };
+  }
+  return { ok: true, auth: auth as DashboardMutationAuth };
+}
+
 async function invalidateDashboardCaches(
   auth: WebhooksAuthContext,
   siteId: string,
@@ -251,18 +231,23 @@ async function runSiteMutation<T>(options: {
   revalidatePaths: string[];
   logLabel: string;
   fallbackError: string;
+  gate: DashboardMutationGate;
   mutate: (auth: WebhooksAuthContext) => Promise<T>;
   onSuccess: (result: T) => ActionResponse;
   formatError?: (error: unknown, fallback: string) => string;
 }): Promise<ActionResponse> {
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await options.mutate(auth);
-      await invalidateDashboardCaches(auth, options.siteId, {
+    const mutationAuth = await requireDashboardMutationAuth(options.gate);
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await options.mutate(auth.webhooksAuth);
+      await invalidateDashboardCaches(auth.webhooksAuth, options.siteId, {
         invalidateSitesList: options.invalidateSitesList,
       });
       return response;
-    });
+    })(mutationAuth.auth);
     for (const path of options.revalidatePaths) {
       revalidatePath(path);
     }
@@ -432,11 +417,14 @@ function parseRuntimeRequestPolicyConfig(
     }
     rules.push(rule);
   }
+  if (typeof record.enabled !== "boolean") {
+    return "Runtime request policy enabled flag is required.";
+  }
 
   return {
     schemaVersion: 1,
     mode: "standard",
-    enabled: record.enabled !== false,
+    enabled: record.enabled,
     rules,
   };
 }
@@ -472,37 +460,125 @@ function parseRuntimeRequestPolicyRule(
   const methods = parseRuntimePolicyStringSet(
     record.methods,
     runtimeRequestPolicyMethods,
-    action === "proxy" ? ["GET", "HEAD"] : ["GET", "HEAD", "POST", "OPTIONS"],
+    `runtime request rule ${index + 1} methods`,
+    { allowEmpty: false },
   );
+  if (typeof methods === "string") {
+    return methods;
+  }
   const confirmations = parseRuntimePolicyStringSet(
     record.confirmations,
     runtimeRequestPolicyConfirmations,
-    [],
+    `runtime request rule ${index + 1} confirmations`,
+    { allowEmpty: true },
   );
+  if (typeof confirmations === "string") {
+    return confirmations;
+  }
   const neutralization = parseRuntimePolicyNeutralization(record.neutralization);
+  if (typeof neutralization === "string") {
+    return `Runtime request rule ${index + 1} ${neutralization}`;
+  }
+  const enabled = readRuntimePolicyBoolean(record.enabled, `runtime request rule ${index + 1}`);
+  if (typeof enabled === "string") {
+    return enabled;
+  }
+  const credentials = readRuntimePolicyEnum(
+    record.credentials,
+    runtimeRequestPolicyCredentials,
+    `runtime request rule ${index + 1} credentials`,
+  );
+  if (!credentials.ok) {
+    return credentials.error;
+  }
+  const cache = readRuntimePolicyEnum(
+    record.cache,
+    runtimeRequestPolicyCacheModes,
+    `runtime request rule ${index + 1} cache`,
+  );
+  if (!cache.ok) {
+    return cache.error;
+  }
+  const redirectScope = readRuntimePolicyEnum(
+    record.redirectScope,
+    runtimeRequestPolicyRedirectScopes,
+    `runtime request rule ${index + 1} redirect scope`,
+  );
+  if (!redirectScope.ok) {
+    return redirectScope.error;
+  }
+  const maxBodyBytes = readRuntimePolicyInteger(
+    record.maxBodyBytes,
+    `runtime request rule ${index + 1} max body bytes`,
+    0,
+    1_048_576,
+  );
+  if (typeof maxBodyBytes === "string") {
+    return maxBodyBytes;
+  }
+  const maxResponseBytes = readRuntimePolicyInteger(
+    record.maxResponseBytes,
+    `runtime request rule ${index + 1} max response bytes`,
+    0,
+    10_485_760,
+  );
+  if (typeof maxResponseBytes === "string") {
+    return maxResponseBytes;
+  }
+  const timeoutMs = readRuntimePolicyInteger(
+    record.timeoutMs,
+    `runtime request rule ${index + 1} timeout ms`,
+    1,
+    30_000,
+  );
+  if (typeof timeoutMs === "string") {
+    return timeoutMs;
+  }
+  const requestHeaders = parseRuntimePolicyHeaderPolicy(
+    record.requestHeaders,
+    `runtime request rule ${index + 1} request headers`,
+  );
+  if (typeof requestHeaders === "string") {
+    return requestHeaders;
+  }
+  const responseHeaders = parseRuntimePolicyHeaderPolicy(
+    record.responseHeaders,
+    `runtime request rule ${index + 1} response headers`,
+  );
+  if (typeof responseHeaders === "string") {
+    return responseHeaders;
+  }
+  const requestContentTypes = parseRuntimePolicyStringArray(
+    record.requestContentTypes,
+    `runtime request rule ${index + 1} request content types`,
+  );
+  if (typeof requestContentTypes === "string") {
+    return requestContentTypes;
+  }
+  const responseContentTypes = parseRuntimePolicyStringArray(
+    record.responseContentTypes,
+    `runtime request rule ${index + 1} response content types`,
+  );
+  if (typeof responseContentTypes === "string") {
+    return responseContentTypes;
+  }
   return {
     id: id.value,
     name: name.value,
-    enabled: record.enabled !== false,
+    enabled,
     pattern: pattern.value,
     methods: methods as RuntimeRequestPolicyRule["methods"],
     action: action as RuntimeRequestPolicyRule["action"],
-    credentials: runtimeRequestPolicyCredentials.has(String(record.credentials))
-      ? (record.credentials as RuntimeRequestPolicyRule["credentials"])
-      : "omit",
-    cache: runtimeRequestPolicyCacheModes.has(String(record.cache))
-      ? (record.cache as RuntimeRequestPolicyRule["cache"])
-      : "no-store",
-    maxBodyBytes: readRuntimePolicyInteger(record.maxBodyBytes, 0, 1_048_576),
-    maxResponseBytes: readRuntimePolicyInteger(record.maxResponseBytes, 1_048_576, 10_485_760),
-    timeoutMs: readRuntimePolicyInteger(record.timeoutMs, 5_000, 30_000),
-    redirectScope: runtimeRequestPolicyRedirectScopes.has(String(record.redirectScope))
-      ? (record.redirectScope as RuntimeRequestPolicyRule["redirectScope"])
-      : "same_origin",
-    requestHeaders: { allow: parseRuntimePolicyStringArray(record.requestHeaders, "allow") },
-    responseHeaders: { allow: parseRuntimePolicyStringArray(record.responseHeaders, "allow") },
-    requestContentTypes: parseRuntimePolicyStringArray(record.requestContentTypes),
-    responseContentTypes: parseRuntimePolicyStringArray(record.responseContentTypes),
+    credentials: credentials.value as RuntimeRequestPolicyRule["credentials"],
+    cache: cache.value as RuntimeRequestPolicyRule["cache"],
+    maxBodyBytes,
+    maxResponseBytes,
+    timeoutMs,
+    redirectScope: redirectScope.value as RuntimeRequestPolicyRule["redirectScope"],
+    requestHeaders,
+    responseHeaders,
+    requestContentTypes,
+    responseContentTypes,
     neutralization,
     confirmations: confirmations as RuntimeRequestPolicyRule["confirmations"],
   };
@@ -522,63 +598,119 @@ function readRuntimePolicyString(
 function parseRuntimePolicyStringSet(
   value: unknown,
   allowed: Set<string>,
-  defaults: string[],
-): string[] {
-  const raw = Array.isArray(value) ? value : defaults;
+  label: string,
+  options: { allowEmpty: boolean },
+): string[] | string {
+  if (!Array.isArray(value)) {
+    return `${label} must be an array.`;
+  }
   const out = new Set<string>();
-  for (const entry of raw) {
-    if (typeof entry === "string") {
-      const normalized = entry.trim();
-      if (allowed.has(normalized)) {
-        out.add(normalized);
-      }
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      return `${label} must contain only strings.`;
     }
+    const normalized = entry.trim();
+    if (!allowed.has(normalized)) {
+      return `${label} contains an unsupported value: ${normalized || "(empty)"}.`;
+    }
+    out.add(normalized);
   }
-  return out.size ? Array.from(out) : defaults;
+  if (!options.allowEmpty && out.size === 0) {
+    return `${label} must include at least one value.`;
+  }
+  return Array.from(out);
 }
 
-function parseRuntimePolicyStringArray(value: unknown, nestedKey?: string): string[] {
-  const source =
-    nestedKey && value && typeof value === "object"
-      ? (value as Record<string, unknown>)[nestedKey]
-      : value;
-  if (!Array.isArray(source)) {
-    return [];
+function parseRuntimePolicyStringArray(value: unknown, label: string): string[] | string {
+  if (!Array.isArray(value)) {
+    return `${label} must be an array.`;
   }
-  return Array.from(
-    new Set(
-      source
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => entry.trim().toLowerCase())
-        .filter(Boolean)
-        .slice(0, 20),
-    ),
-  );
+  if (value.length > 20) {
+    return `${label} supports up to 20 values.`;
+  }
+  const out = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string" || !entry.trim()) {
+      return `${label} must contain only non-empty strings.`;
+    }
+    out.add(entry.trim().toLowerCase());
+  }
+  return Array.from(out);
 }
 
-function readRuntimePolicyInteger(value: unknown, fallback: number, max: number): number {
+function parseRuntimePolicyHeaderPolicy(value: unknown, label: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return `${label} must be an object.`;
+  }
+  const allow = parseRuntimePolicyStringArray((value as Record<string, unknown>).allow, label);
+  if (typeof allow === "string") {
+    return allow;
+  }
+  return { allow };
+}
+
+function readRuntimePolicyBoolean(value: unknown, label: string): boolean | string {
+  if (typeof value !== "boolean") {
+    return `${label} enabled flag is required.`;
+  }
+  return value;
+}
+
+function readRuntimePolicyEnum(
+  value: unknown,
+  allowed: Set<string>,
+  label: string,
+): { ok: true; value: string } | { ok: false; error: string } {
+  if (typeof value !== "string" || !allowed.has(value)) {
+    return { ok: false, error: `${label} is invalid.` };
+  }
+  return { ok: true, value };
+}
+
+function readRuntimePolicyInteger(
+  value: unknown,
+  label: string,
+  min: number,
+  max: number,
+): number | string {
   if (typeof value !== "number" || !Number.isInteger(value)) {
-    return fallback;
+    return `${label} must be an integer.`;
   }
-  return Math.max(0, Math.min(value, max));
+  if (value < min || value > max) {
+    return `${label} must be between ${min} and ${max}.`;
+  }
+  return value;
 }
 
 function parseRuntimePolicyNeutralization(
   value: unknown,
-): RuntimeRequestPolicyRule["neutralization"] {
-  const record =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
-  const shape =
-    record.shape === "empty_text" || record.shape === "no_content" || record.shape === "empty_json"
-      ? record.shape
-      : "empty_json";
+): RuntimeRequestPolicyRule["neutralization"] | string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "neutralization must be an object.";
+  }
+  const record = value as Record<string, unknown>;
+  const shape = record.shape;
+  if (shape !== "empty_text" && shape !== "no_content" && shape !== "empty_json") {
+    return "neutralization shape is invalid.";
+  }
   if (shape === "no_content") {
+    if (record.status !== 204 || record.contentType !== null || record.body !== null) {
+      return "neutralization no_content payload is invalid.";
+    }
     return { shape, status: 204, contentType: null, body: null };
   }
   if (shape === "empty_text") {
+    if (
+      record.status !== 200 ||
+      record.contentType !== "text/plain; charset=utf-8" ||
+      record.body !== ""
+    ) {
+      return "neutralization empty_text payload is invalid.";
+    }
     return { shape, status: 200, contentType: "text/plain; charset=utf-8", body: "" };
+  }
+  if (record.status !== 200 || record.contentType !== "application/json" || record.body !== "{}") {
+    return "neutralization empty_json payload is invalid.";
   }
   return { shape, status: 200, contentType: "application/json", body: "{}" };
 }
@@ -700,7 +832,6 @@ export async function createSiteAction(
       webhookEvents,
     });
 
-    let toast: string | null = null;
     if (
       normalizedGlossary.length > 0 &&
       auth.has({ allFeatures: ["edit", "glossary"] }) &&
@@ -710,7 +841,15 @@ export async function createSiteAction(
         await updateGlossary(auth.webhooksAuth, site.id, normalizedGlossary, false);
       } catch (error) {
         console.error("[dashboard] createSiteAction glossary update failed:", error);
-        toast = "Site created, but glossary entries could not be saved.";
+        await invalidateDashboardCaches(auth.webhooksAuth, site.id, {
+          invalidateSitesList: true,
+        });
+        revalidatePath("/dashboard");
+        revalidatePath(`/dashboard/sites/${site.id}`);
+        return failed("Site was created, but glossary entries could not be saved.", {
+          siteId: site.id,
+          partialSiteCreated: true,
+        });
       }
     }
 
@@ -720,10 +859,9 @@ export async function createSiteAction(
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/sites/${site.id}`);
 
-    return succeeded(toast ?? "Site created. Verify domains and activate to start crawling.", {
+    return succeeded("Site created. Verify domains and activate to start crawling.", {
       siteId: site.id,
       crawlStatus: site.crawlStatus,
-      toast: toast ?? undefined,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -845,7 +983,7 @@ export async function createSiteShowcaseAction(
     const result = await createSiteShowcase(auth, siteId, { websitePath, defaultLang });
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
     revalidatePath("/dashboard/ops/showcases");
     return succeeded("Showcase created.", {
       showcaseUrl: result.showcase.url,
@@ -894,7 +1032,7 @@ export async function updateSiteShowcaseAction(
     });
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
     revalidatePath("/dashboard/ops/showcases");
     return succeeded("Showcase updated.", {
       showcaseUrl: result.showcase.url,
@@ -934,6 +1072,9 @@ export async function updateSiteSettingsAction(
     if (!update.ok) {
       return failed(update.error);
     }
+    if (Object.keys(update.payload).length === 0) {
+      return failed("Choose at least one setting to update.");
+    }
 
     await updateSite(auth.webhooksAuth, siteId, update.payload);
 
@@ -942,7 +1083,7 @@ export async function updateSiteSettingsAction(
     });
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/settings`);
 
     return succeeded("Site settings saved.");
   } catch (error) {
@@ -1019,6 +1160,21 @@ export async function updateSourceSelectionAction(
       ...(expectedRouteConfigUpdatedAt ? { expectedRouteConfigUpdatedAt } : {}),
       ...(expectedSourceSelectionFingerprint ? { expectedSourceSelectionFingerprint } : {}),
     });
+    const savedRouteConfig = updated.routeConfig;
+    if (
+      !savedRouteConfig?.sourceSelection ||
+      typeof savedRouteConfig.updatedAt !== "string" ||
+      typeof savedRouteConfig.sourceSelectionFingerprint !== "string"
+    ) {
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+        invalidateSitesList: false,
+      });
+      revalidatePath(`/dashboard/sites/${siteId}`);
+      revalidatePath(`/dashboard/sites/${siteId}/source-selection`);
+      return failed("Source selection was saved, but the confirmation payload was incomplete.", {
+        code: "source_selection_incomplete_response",
+      });
+    }
     await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
       invalidateSitesList: false,
     });
@@ -1027,9 +1183,9 @@ export async function updateSourceSelectionAction(
     revalidatePath(`/dashboard/sites/${siteId}/source-selection`);
 
     return succeeded("Source selection saved.", {
-      sourceSelection: updated.routeConfig?.sourceSelection ?? sourceSelection,
-      routeConfigUpdatedAt: updated.routeConfig?.updatedAt ?? null,
-      sourceSelectionFingerprint: updated.routeConfig?.sourceSelectionFingerprint ?? null,
+      sourceSelection: savedRouteConfig.sourceSelection,
+      routeConfigUpdatedAt: savedRouteConfig.updatedAt,
+      sourceSelectionFingerprint: savedRouteConfig.sourceSelectionFingerprint,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1078,6 +1234,22 @@ export async function updateRuntimeRequestPolicyAction(
         ? { expectedRuntimeRequestPolicyFingerprint }
         : {}),
     });
+    const savedRouteConfig = updated.routeConfig;
+    if (
+      !savedRouteConfig?.runtimeRequestPolicy ||
+      typeof savedRouteConfig.runtimeRequestPolicyFingerprint !== "string" ||
+      typeof savedRouteConfig.runtimeRequestPolicyVersion !== "string"
+    ) {
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
+        invalidateSitesList: false,
+      });
+      revalidatePath(`/dashboard/sites/${siteId}`);
+      revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
+      return failed(
+        "Runtime request policy was saved, but the confirmation payload was incomplete.",
+        { code: "runtime_request_policy_incomplete_response" },
+      );
+    }
     await invalidateDashboardCaches(auth.webhooksAuth, siteId, {
       invalidateSitesList: false,
     });
@@ -1085,10 +1257,10 @@ export async function updateRuntimeRequestPolicyAction(
     revalidatePath(`/dashboard/sites/${siteId}/runtime-requests`);
 
     return succeeded("Runtime request policy saved.", {
-      runtimeRequestPolicy: updated.routeConfig?.runtimeRequestPolicy ?? runtimeRequestPolicy,
-      runtimeRequestPolicyFingerprint: updated.routeConfig?.runtimeRequestPolicyFingerprint ?? null,
-      runtimeRequestPolicyVersion: updated.routeConfig?.runtimeRequestPolicyVersion ?? null,
-      runtimeRequestPolicyPropagation: updated.routeConfig?.runtimeRequestPolicyPropagation ?? null,
+      runtimeRequestPolicy: savedRouteConfig.runtimeRequestPolicy,
+      runtimeRequestPolicyFingerprint: savedRouteConfig.runtimeRequestPolicyFingerprint,
+      runtimeRequestPolicyVersion: savedRouteConfig.runtimeRequestPolicyVersion,
+      runtimeRequestPolicyPropagation: savedRouteConfig.runtimeRequestPolicyPropagation ?? null,
     });
   } catch (error) {
     if (isNextRedirectError(error)) {
@@ -1097,6 +1269,38 @@ export async function updateRuntimeRequestPolicyAction(
     console.error("[dashboard] updateRuntimeRequestPolicyAction failed:", error);
     return failed(
       toFriendlyDashboardActionError(error, "Unable to update runtime request policy right now."),
+    );
+  }
+}
+
+export async function listRuntimeRequestObservationsAction(
+  _prevState: ActionResponse | undefined,
+  formData: FormData,
+): Promise<ActionResponse> {
+  const siteId = formData.get("siteId")?.toString().trim();
+  if (!siteId) {
+    return failed("Site ID is required.");
+  }
+
+  try {
+    const auth = await requireDashboardAuth();
+    if (!auth.webhooksAuth) {
+      return failed("Unable to authenticate dashboard request.");
+    }
+
+    const response = await listRuntimeRequestObservations(auth.webhooksAuth, siteId, {
+      limit: 50,
+      lifecycle: "all",
+      sort: "last_seen_desc",
+    });
+    return succeeded("Runtime request observations loaded.", { groups: response.groups });
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error("[dashboard] listRuntimeRequestObservationsAction failed:", error);
+    return failed(
+      toFriendlyDashboardActionError(error, "Unable to load runtime request observations."),
     );
   }
 }
@@ -1162,9 +1366,14 @@ export async function triggerCrawlAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerCrawlAction",
     fallbackError: "Unable to enqueue a crawl right now.",
+    gate: {
+      actionLabel: "start crawls",
+      permissionError: "Crawl triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => triggerCrawl(auth, siteId, force ? { force } : undefined),
     onSuccess: (status) => {
       if (status.enqueued) {
@@ -1194,7 +1403,7 @@ export async function triggerManagedDemoForceCrawlAction(
     await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/history`);
     if (result.crawlStatus.enqueued) {
       return succeeded(
         result.targetLangs.length > 0
@@ -1243,6 +1452,11 @@ export async function triggerCrawlTranslateAction(
     revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerCrawlTranslateAction",
     fallbackError: "Unable to queue crawl + translate right now.",
+    gate: {
+      actionLabel: "queue crawl and translation",
+      permissionError: "Crawl and translation triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) =>
       triggerCrawlTranslate(auth, siteId, {
         targetLangs,
@@ -1280,11 +1494,16 @@ export async function translateAndServeAction(
     siteId,
     invalidateSitesList: shouldActivate,
     revalidatePaths: shouldActivate
-      ? [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`, "/dashboard"]
-      : [`/dashboard/sites/${siteId}`],
+      ? [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/domains`, "/dashboard"]
+      : [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/domains`],
     logLabel: "translateAndServeAction",
     fallbackError: "Unable to start translation and serving right now.",
     formatError: toTranslateAndServeError,
+    gate: {
+      actionLabel: "start translation and serving",
+      permissionError: "Translation and serving is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger", "serve"],
+    },
     mutate: async (auth) => {
       if (shouldActivate) {
         await updateSite(auth, siteId, { status: "active" });
@@ -1325,12 +1544,19 @@ export async function upsertDigestSubscriptionAction(
   }
 
   try {
-    const subscription = await withWebhooksAuth(async (auth) =>
-      upsertDigestSubscription(auth, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update digest notifications",
+      permissionError: "Digest notification settings are not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const subscription = await (async (auth) =>
+      upsertDigestSubscription(auth.webhooksAuth, {
         email,
         frequency: frequencyRaw as DigestFrequency,
-      }),
-    );
+      }))(mutationAuth.auth);
     revalidatePath("/dashboard");
     if (siteId) {
       revalidatePath(`/dashboard/sites/${siteId}`);
@@ -1371,16 +1597,24 @@ export async function setTranslationSummaryPreferenceAction(
   }
 
   try {
-    const preference = await withWebhooksAuth(async (auth) => {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update translation summary notifications",
+      permissionError: "Translation summary settings are not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const preference = await (async (auth) => {
       const response = await setTranslationSummaryPreference(
-        auth,
+        auth.webhooksAuth,
         siteId,
         targetLang,
         frequencyRaw as TranslationSummaryFrequency,
       );
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
       return response;
-    });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     return succeeded(`Summary notifications for ${targetLang} set to ${preference.frequency}.`, {
       preference,
@@ -1478,9 +1712,14 @@ export async function cancelTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "cancelTranslationRunAction",
     fallbackError: "Unable to cancel the translation run.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => cancelTranslationRun(auth, siteId, runId),
     onSuccess: () => succeeded("Translation run cancelled."),
   });
@@ -1522,9 +1761,14 @@ export async function resumeTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "resumeTranslationRunAction",
     fallbackError: "Unable to resume the translation run.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
     onSuccess: (result) => succeeded(buildResumeToast("resume", result)),
   });
@@ -1544,9 +1788,14 @@ export async function retryFailedTranslationRunAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/admin`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/history`],
     logLabel: "retryFailedTranslationRunAction",
     fallbackError: "Unable to retry failed pages right now.",
+    gate: {
+      actionLabel: "manage translation runs",
+      permissionError: "Translation run management is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => resumeTranslationRun(auth, siteId, runId),
     onSuccess: (result) => succeeded(buildResumeToast("retry", result)),
   });
@@ -1566,9 +1815,14 @@ export async function triggerPageCrawlAction(
   return runSiteMutation({
     siteId,
     invalidateSitesList: false,
-    revalidatePaths: [`/dashboard/sites/${siteId}`],
+    revalidatePaths: [`/dashboard/sites/${siteId}`, `/dashboard/sites/${siteId}/pages`],
     logLabel: "triggerPageCrawlAction",
     fallbackError: "Unable to enqueue a page crawl right now.",
+    gate: {
+      actionLabel: "start page crawls",
+      permissionError: "Page crawl triggering is not enabled for this account.",
+      allFeatures: ["edit", "crawl_trigger"],
+    },
     mutate: (auth) => triggerPageCrawl(auth, siteId, pageId),
     onSuccess: (status) => {
       if (status.enqueued) {
@@ -1596,13 +1850,21 @@ export async function verifyDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await verifyDomain(auth, siteId, domain, overrideToken);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "verify domains",
+      permissionError: "Domain verification is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await verifyDomain(auth.webhooksAuth, siteId, domain, overrideToken);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -1641,13 +1903,21 @@ export async function provisionDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await provisionDomain(auth, siteId, domain);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "provision domains",
+      permissionError: "Domain provisioning is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await provisionDomain(auth.webhooksAuth, siteId, domain);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -1686,13 +1956,21 @@ export async function refreshDomainAction(
   }
 
   try {
-    const { domain: updated } = await withWebhooksAuth(async (auth) => {
-      const result = await refreshDomain(auth, siteId, domain);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return result;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "refresh domain status",
+      permissionError: "Domain status refresh is not enabled for this account.",
+      allFeatures: ["edit", "domain_verify"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const { domain: updated } = await (async (auth) => {
+      const result = await refreshDomain(auth.webhooksAuth, siteId, domain);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return result;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     const verifiedToast =
       siteStatus === "inactive"
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
@@ -1744,21 +2022,28 @@ export async function updateGlossaryAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await updateGlossary(auth, siteId, entries, retranslate);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage glossary entries",
+      permissionError: "Glossary editing is not enabled for this account.",
+      allFeatures: ["edit", "glossary"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await updateGlossary(auth.webhooksAuth, siteId, entries, retranslate);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+      return response;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Glossary saved.", { crawlStatus: result.crawlStatus });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to save glossary.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to save glossary."));
   }
 }
 
@@ -1782,8 +2067,16 @@ export async function upsertConsistencyCpmEntryAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await upsertConsistencyCpm(auth, siteId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage consistency governance",
+      permissionError: "Consistency governance editing is not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await upsertConsistencyCpm(auth.webhooksAuth, siteId, {
         targetLang,
         sourceLang: sourceLangRaw || undefined,
         entries: [
@@ -1795,8 +2088,8 @@ export async function upsertConsistencyCpmEntryAction(
           },
         ],
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-    });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Canonical phrase updated.");
   } catch (error) {
@@ -1833,14 +2126,22 @@ export async function updateConsistencyBlockAction(
     .filter(Boolean);
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await updateConsistencyBlock(auth, siteId, blockId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage consistency governance",
+      permissionError: "Consistency governance editing is not enabled for this account.",
+      feature: "edit",
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await updateConsistencyBlock(auth.webhooksAuth, siteId, blockId, {
         status: status as "proposed" | "approved" | "frozen",
         mode: mode as "strict" | "prefer",
         members: members.length ? members : undefined,
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-    });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     return succeeded("Consistency block updated.");
   } catch (error) {
@@ -1867,26 +2168,33 @@ export async function createOverrideAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await createOverride(auth, siteId, {
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage manual overrides",
+      permissionError: "Manual overrides are not enabled for this account.",
+      allFeatures: ["edit", "overrides"],
+    });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await createOverride(auth.webhooksAuth, siteId, {
         segmentId,
         targetLang,
         text,
         contextHashScope,
       });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
       return response;
-    });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Override saved.", { override: result });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to save override.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to save override."));
   }
 }
 
@@ -1904,21 +2212,28 @@ export async function updateSlugAction(
   }
 
   try {
-    const result = await withWebhooksAuth(async (auth) => {
-      const response = await updateSlug(auth, siteId, { pageId, lang, path });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: false });
-      return response;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "manage localized slugs",
+      permissionError: "Localized slug editing is not enabled for this account.",
+      allFeatures: ["edit", "slug_edit"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const result = await (async (auth) => {
+      const response = await updateSlug(auth.webhooksAuth, siteId, { pageId, lang, path });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
+      return response;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
+    revalidatePath(`/dashboard/sites/${siteId}/overrides`);
+    revalidatePath(`/dashboard/sites/${siteId}/quality`);
     return succeeded("Slug saved and crawl enqueued.", { status: result.crawlStatus });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
     }
-    if (error instanceof Error) {
-      return failed(error.message);
-    }
-    return failed("Unable to update slug.");
+    return failed(toFriendlyDashboardActionError(error, "Unable to update slug."));
   }
 }
 
@@ -1938,11 +2253,19 @@ export async function updateSiteStatusAction(
   }
 
   try {
-    const updated = await withWebhooksAuth(async (auth) => {
-      const updatedSite = await updateSite(auth, siteId, { status });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
-      return updatedSite;
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: status === "active" ? "enable localization" : "pause localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    const updated = await (async (auth) => {
+      const updatedSite = await updateSite(auth.webhooksAuth, siteId, { status });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+      return updatedSite;
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded(
@@ -1976,12 +2299,20 @@ export async function setLocaleServingAction(
   const enabled = enabledRaw === "true";
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await setLocaleServing(auth, siteId, targetLang, enabled);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "update serving settings",
+      permissionError: "Serving controls are not enabled for this account.",
+      allFeatures: ["edit", "serve"],
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await setLocaleServing(auth.webhooksAuth, siteId, targetLang, enabled);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
-    revalidatePath(`/dashboard/sites/${siteId}/admin`);
+    revalidatePath(`/dashboard/sites/${siteId}/domains`);
     revalidatePath(`/dashboard/sites/${siteId}/pages`);
     return succeeded(enabled ? "Serving enabled." : "Serving disabled.");
   } catch (error) {
@@ -2006,10 +2337,18 @@ export async function deactivateSiteAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await deactivateSite(auth, siteId);
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "pause localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await deactivateSite(auth.webhooksAuth, siteId);
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded("Localization paused. You can re-enable it anytime from this page.");
@@ -2035,10 +2374,18 @@ export async function activateSiteAction(
   }
 
   try {
-    await withWebhooksAuth(async (auth) => {
-      await updateSite(auth, siteId, { status: "active" });
-      await invalidateDashboardCaches(auth, siteId, { invalidateSitesList: true });
+    const mutationAuth = await requireDashboardMutationAuth({
+      actionLabel: "enable localization",
+      permissionError: "Site status changes are not enabled for this account.",
+      feature: "edit",
     });
+    if (!mutationAuth.ok) {
+      return mutationAuth.response;
+    }
+    await (async (auth) => {
+      await updateSite(auth.webhooksAuth, siteId, { status: "active" });
+      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: true });
+    })(mutationAuth.auth);
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath("/dashboard");
     return succeeded("Localization enabled.");

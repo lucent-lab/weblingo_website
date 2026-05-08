@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 import { createAgencyCustomerAction, type ActionResponse } from "./actions";
 
@@ -13,6 +14,8 @@ const initialState: ActionResponse = { ok: false, message: "" };
 
 export function CustomerInviteForm() {
   const [state, formAction, pending] = useActionState(createAgencyCustomerAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const submitWithToast = useActionToast({
     formAction,
     state,
@@ -21,6 +24,13 @@ export function CustomerInviteForm() {
     success: "Invite sent.",
     error: "Unable to send invite.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
 
   return (
     <Card>

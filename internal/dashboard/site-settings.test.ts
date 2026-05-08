@@ -215,6 +215,21 @@ describe("buildSiteSettingsUpdatePayload", () => {
     }
   });
 
+  it("preserves the existing webhook secret when no new secret field is submitted", () => {
+    const formData = new FormData();
+    formData.set("webhookUrl", "https://hooks.example.com/weblingo");
+    formData.set("webhookEvents", JSON.stringify(["translation.completed"]));
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditWebhooks: true }));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toEqual({
+        webhookUrl: "https://hooks.example.com/weblingo",
+        webhookEvents: ["translation.completed"],
+      });
+      expect(result.payload).not.toHaveProperty("webhookSecret");
+    }
+  });
+
   it("rejects unrecognized webhook events when parsing updates", () => {
     const formData = new FormData();
     formData.set("webhookUrl", "https://hooks.example.com/weblingo");

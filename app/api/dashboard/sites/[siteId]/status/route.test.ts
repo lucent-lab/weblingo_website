@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DashboardAuth } from "@internal/dashboard/auth";
-import type { Site } from "@internal/dashboard/webhooks";
+import type { SiteCompactStatusResponse } from "@internal/dashboard/webhooks";
 
 import { GET } from "./route";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { fetchSite } from "@internal/dashboard/webhooks";
+import { fetchSiteCompactStatus } from "@internal/dashboard/webhooks";
 
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: vi.fn(),
@@ -22,13 +22,13 @@ vi.mock("@internal/dashboard/webhooks", () => {
     }
   }
   return {
-    fetchSite: vi.fn(),
+    fetchSiteCompactStatus: vi.fn(),
     WebhooksApiError,
   };
 });
 
 const mockedRequireDashboardAuth = vi.mocked(requireDashboardAuth);
-const mockedFetchSite = vi.mocked(fetchSite);
+const mockedFetchSiteCompactStatus = vi.mocked(fetchSiteCompactStatus);
 
 const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   user: null,
@@ -47,7 +47,6 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   actorAccountId: null,
   subjectAccountId,
   actingAsCustomer: false,
-  subjectFallbackToActor: false,
   actorPlanActive: true,
   subjectPlanActive: true,
   mutationsAllowed: true,
@@ -56,18 +55,13 @@ const makeAuth = (subjectAccountId: string): DashboardAuth => ({
   has: () => true,
 });
 
-const makeSite = (accountId: string): Site => ({
-  id: "site-1",
-  accountId,
-  sourceUrl: "https://example.com",
-  status: "active",
-  servingMode: "strict",
-  maxLocales: null,
-  siteProfile: null,
-  webhookEvents: ["translation.completed", "translation.failed", "translation.summary"],
-  locales: [],
-  domains: [],
+const makeStatus = (): SiteCompactStatusResponse => ({
+  siteId: "site-1",
+  siteStatus: "active",
   latestCrawlRun: null,
+  activeTranslationRuns: [],
+  currentActivity: [],
+  generatedAt: "2026-05-07T00:00:00.000Z",
 });
 
 afterEach(() => {
@@ -75,22 +69,9 @@ afterEach(() => {
 });
 
 describe("GET /api/dashboard/sites/[siteId]/status", () => {
-  it("returns 403 when site account does not match", async () => {
+  it("returns compact status without fetching full site details", async () => {
     mockedRequireDashboardAuth.mockResolvedValue(makeAuth("acct-owner"));
-    mockedFetchSite.mockResolvedValue(makeSite("acct-other"));
-
-    const response = await GET(new Request("http://localhost"), {
-      params: Promise.resolve({ siteId: "site-1" }),
-    });
-
-    expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body.error).toMatch(/forbidden/i);
-  });
-
-  it("returns site when account matches", async () => {
-    mockedRequireDashboardAuth.mockResolvedValue(makeAuth("acct-owner"));
-    mockedFetchSite.mockResolvedValue(makeSite("acct-owner"));
+    mockedFetchSiteCompactStatus.mockResolvedValue(makeStatus());
 
     const response = await GET(new Request("http://localhost"), {
       params: Promise.resolve({ siteId: "site-1" }),
@@ -98,7 +79,30 @@ describe("GET /api/dashboard/sites/[siteId]/status", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.site.accountId).toBe("acct-owner");
+    expect(body).toMatchObject({
+      siteId: "site-1",
+      siteStatus: "active",
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+    expect(body).not.toHaveProperty("site");
     expect(body).not.toHaveProperty("deployments");
+    expect(mockedFetchSiteCompactStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "token", subjectAccountId: "acct-owner" }),
+      "site-1",
+    );
+  });
+
+  it("returns 404 when backend status endpoint cannot find the site", async () => {
+    mockedRequireDashboardAuth.mockResolvedValue(makeAuth("acct-owner"));
+    const { WebhooksApiError } = await import("@internal/dashboard/webhooks");
+    mockedFetchSiteCompactStatus.mockRejectedValue(new WebhooksApiError("Site not found", 404));
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ siteId: "site-1" }),
+    });
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.error).toMatch(/not found/i);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { updateGlossaryAction, type ActionResponse } from "../../actions";
 import { GlossaryTable } from "../glossary-table";
@@ -22,6 +23,8 @@ export function GlossaryEditor({
 }) {
   const [entries, setEntries] = useState<GlossaryEntry[]>(() => initialEntries);
   const [state, formAction, pending] = useActionState(updateGlossaryAction, initialState);
+  const router = useRouter();
+  const wasPending = useRef(false);
   const hiddenRef = useRef<HTMLInputElement | null>(null);
 
   const submitWithToast = useActionToast({
@@ -32,6 +35,13 @@ export function GlossaryEditor({
     success: "Glossary saved.",
     error: "Unable to save glossary.",
   });
+
+  useEffect(() => {
+    if (wasPending.current && !pending && state.ok) {
+      router.refresh();
+    }
+    wasPending.current = pending;
+  }, [pending, router, state.ok]);
 
   return (
     <div className="space-y-4">

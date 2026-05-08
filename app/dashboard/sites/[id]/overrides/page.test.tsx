@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
+import { cleanup, render, screen } from "@testing-library/react";
+import { Children, isValidElement, type ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
@@ -25,7 +28,9 @@ vi.mock("@/components/dashboard/error-state-card", () => ({
   ErrorStateCard: () => null,
 }));
 vi.mock("../glossary-editor", () => ({
-  GlossaryEditor: () => null,
+  GlossaryEditor: function MockGlossaryEditor({ targetLangs }: { targetLangs: string[] }) {
+    return <div>glossary-editor:{targetLangs.join(",")}</div>;
+  },
 }));
 vi.mock("../locked-feature-card", () => ({
   LockedFeatureCard: () => null,
@@ -34,11 +39,15 @@ vi.mock("../site-header", () => ({
   SiteHeader: () => null,
 }));
 vi.mock("../translation-forms", () => ({
-  OverrideForm: () => null,
-  SlugForm: () => null,
+  OverrideForm: function MockOverrideForm({ targetLangs }: { targetLangs: string[] }) {
+    return <div>override-form:{targetLangs.join(",")}</div>;
+  },
+  SlugForm: function MockSlugForm({ targetLangs }: { targetLangs: string[] }) {
+    return <div>slug-form:{targetLangs.join(",")}</div>;
+  },
 }));
 vi.mock("../consistency/consistency-manager", () => ({
-  ConsistencyManager: () => null,
+  ConsistencyManager: () => <div>consistency-manager</div>,
 }));
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
@@ -62,6 +71,11 @@ vi.mock("@internal/i18n", () => ({
 }));
 
 describe("SiteOverridesPage", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
   it("skips consistency fetches when the account cannot edit", async () => {
     mocks.requireDashboardAuth.mockResolvedValue({
       webhooksAuth: { token: "token", subjectAccountId: "acct-1" },
@@ -78,7 +92,6 @@ describe("SiteOverridesPage", () => {
       actorAccountId: "acct-1",
       subjectAccountId: "acct-1",
       actingAsCustomer: false,
-      subjectFallbackToActor: false,
     });
     mocks.fetchSite.mockResolvedValue({
       id: "site-1",
@@ -99,4 +112,130 @@ describe("SiteOverridesPage", () => {
     expect(mocks.fetchConsistencyBlocks).not.toHaveBeenCalled();
     expect(mocks.fetchConsistencyOverrideHygiene).not.toHaveBeenCalled();
   });
+
+  it("renders editable translation rules and loads consistency data for the selected locale", async () => {
+    const authToken = {
+      token: "token",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      subjectAccountId: "acct-1",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth: authToken,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: {
+        accountId: "acct-1",
+        featureFlags: {},
+        planType: "pro",
+        planStatus: "active",
+      },
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSite.mockResolvedValue({
+      id: "site-1",
+      status: "active",
+      sourceUrl: "https://example.com",
+      locales: [
+        { sourceLang: "en", targetLang: "fr" },
+        { sourceLang: "en", targetLang: "ja" },
+      ],
+    });
+    mocks.fetchGlossary.mockResolvedValue([
+      {
+        id: "glossary-1",
+        sourceText: "Cart",
+        targetText: "Panier",
+        targetLang: "fr",
+        updatedAt: "2026-05-07T00:00:00.000Z",
+      },
+    ]);
+    mocks.fetchConsistencyCpm.mockResolvedValue({
+      entries: [],
+      pagination: { limit: 100, offset: 0, total: 0, nextOffset: null },
+    });
+    mocks.fetchConsistencyBlocks.mockResolvedValue({
+      blocks: [],
+      pagination: { limit: 100, offset: 0, total: 0, nextOffset: null },
+    });
+    mocks.fetchConsistencyOverrideHygiene.mockResolvedValue({
+      warnings: [],
+      pagination: { limit: 100, offset: 0, total: 0, nextOffset: null },
+    });
+
+    vi.resetModules();
+    const { ConsistencyGovernanceSection, default: SiteOverridesPage } = await import("./page");
+
+    const tree = await SiteOverridesPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ sourceLang: "en", targetLang: "fr" }),
+    });
+
+    expect(findElementPropsByComponentName(tree, "MockGlossaryEditor")?.targetLangs).toEqual([
+      "fr",
+      "ja",
+    ]);
+    expect(findElementPropsByComponentName(tree, "MockOverrideForm")?.targetLangs).toEqual([
+      "fr",
+      "ja",
+    ]);
+    expect(findElementPropsByComponentName(tree, "MockSlugForm")?.targetLangs).toEqual([
+      "fr",
+      "ja",
+    ]);
+
+    const consistencyTree = await ConsistencyGovernanceSection({
+      authToken,
+      canEdit: true,
+      mutationsAllowed: true,
+      pricingPath: "/en/pricing",
+      selectedLocaleScope: { sourceLang: "en", targetLang: "fr" },
+      siteId: "site-1",
+    });
+    render(consistencyTree);
+
+    expect(screen.getByText("consistency-manager")).toBeTruthy();
+    expect(mocks.fetchGlossary).toHaveBeenCalledWith(authToken, "site-1");
+    expect(mocks.fetchConsistencyCpm).toHaveBeenCalledWith(authToken, "site-1", {
+      targetLang: "fr",
+      sourceLang: "en",
+      limit: 100,
+      offset: 0,
+    });
+    expect(mocks.fetchConsistencyBlocks).toHaveBeenCalledWith(authToken, "site-1");
+    expect(mocks.fetchConsistencyOverrideHygiene).toHaveBeenCalledWith(authToken, "site-1", {
+      targetLang: "fr",
+      sourceLang: "en",
+      limit: 100,
+      offset: 0,
+    });
+  });
 });
+
+function findElementPropsByComponentName(
+  node: ReactNode,
+  componentName: string,
+): (Record<string, unknown> & { children?: ReactNode }) | null {
+  if (!isValidElement(node)) {
+    return null;
+  }
+
+  const typeName = typeof node.type === "function" ? node.type.name : null;
+  if (typeName === componentName) {
+    return node.props as Record<string, unknown> & { children?: ReactNode };
+  }
+
+  const props = node.props as { children?: ReactNode };
+  for (const child of Children.toArray(props.children)) {
+    const found = findElementPropsByComponentName(child, componentName);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}

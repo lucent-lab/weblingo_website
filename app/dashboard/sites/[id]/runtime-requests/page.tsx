@@ -3,22 +3,23 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
-  fetchSite,
-  listRuntimeRequestObservations,
+  fetchSiteDashboardProjection,
   WebhooksApiError,
-  type RuntimeRequestObservationGroup,
-  type Site,
+  type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
 import {
+  listRuntimeRequestObservationsAction,
   updateRuntimeRequestObservationLifecycleAction,
   updateRuntimeRequestPolicyAction,
 } from "../../../actions";
+import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { RuntimeRequestsManager, type RuntimeRequestsCopy } from "./runtime-requests-manager";
@@ -32,6 +33,11 @@ type RuntimeRequestsPageProps = {
   params: Promise<{ id: string }>;
 };
 
+type SiteDeveloperToolsProjection = Extract<
+  SiteDashboardProjectionResponse,
+  { meta: { view: "developer_tools" } }
+>;
+
 export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
@@ -40,22 +46,16 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
-  const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
+  const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
+  const canEdit = siteHeaderAccess.canEdit;
+  const headerLabels = buildSiteHeaderLabels(t);
 
-  let site: Site | null = null;
-  let observations: RuntimeRequestObservationGroup[] = [];
+  let projection: SiteDeveloperToolsProjection | null = null;
   let error: unknown = null;
 
   try {
-    site = await fetchSite(authToken, id);
-    const observationResponse = await listRuntimeRequestObservations(authToken, id, {
-      limit: 50,
-      lifecycle: "all",
-      sort: "last_seen_desc",
-    });
-    observations = observationResponse.groups;
+    const projectionPayload = await fetchSiteDashboardProjection(authToken, id, "developer_tools");
+    projection = isDeveloperToolsProjection(projectionPayload) ? projectionPayload : null;
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
@@ -76,12 +76,11 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
     }
   }
 
-  if (!site) {
+  if (!projection) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load runtime requests",
-        description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+        description: "We could not load runtime request observations for this site.",
         message: "Unable to load runtime requests.",
       });
       return (
@@ -89,10 +88,27 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton
+                href={`/dashboard/sites/${id}/runtime-requests`}
+                label="Retry requests"
+              />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}/developer-tools`}>Developer tools</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20runtime%20requests%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );
@@ -100,31 +116,38 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
     notFound();
   }
 
+  const canViewRuntimeRequests =
+    projection.runtimeRequests.available && projection.access.canViewRuntimeRequests;
+  const canEditRuntimeRequests = canViewRuntimeRequests && canEdit;
+
   return (
     <div className="space-y-8">
       <SiteHeader
-        site={site}
+        site={projection.site}
         canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        deactivateLabel={t("dashboard.site.status.deactivate")}
-        reactivateLabel={t("dashboard.site.status.reactivate")}
-        deactivateConfirm={t("dashboard.site.status.deactivateConfirm")}
-        activateHelpLabel={t("dashboard.site.status.activateHelpLabel")}
-        activateHelp={t("dashboard.site.status.activateHelp")}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        deactivateLabel={headerLabels.deactivateLabel}
+        reactivateLabel={headerLabels.reactivateLabel}
+        deactivateConfirm={headerLabels.deactivateConfirm}
+        activateHelpLabel={headerLabels.activateHelpLabel}
+        activateHelp={headerLabels.activateHelp}
       />
 
-      {canEdit ? (
+      {canViewRuntimeRequests ? (
         <RuntimeRequestsManager
-          siteId={site.id}
-          initialPolicy={site.routeConfig?.runtimeRequestPolicy}
+          siteId={projection.site.id}
+          initialPolicy={projection.runtimeRequests.policy}
           runtimeRequestPolicyFingerprint={
-            site.routeConfig?.runtimeRequestPolicyFingerprint ?? null
+            projection.runtimeRequests.policySummary?.fingerprint ?? null
           }
-          runtimeRequestPolicyVersion={site.routeConfig?.runtimeRequestPolicyVersion ?? null}
-          propagation={site.routeConfig?.runtimeRequestPolicyPropagation ?? null}
-          observations={observations}
-          canEdit={canEdit}
+          runtimeRequestPolicyVersion={projection.runtimeRequests.policySummary?.version ?? null}
+          propagation={projection.runtimeRequests.propagation ?? null}
+          observations={[]}
+          observationsLoaded={false}
+          canEdit={canEditRuntimeRequests}
+          canLoadObservations={canViewRuntimeRequests}
+          loadObservationsAction={listRuntimeRequestObservationsAction}
           saveAction={updateRuntimeRequestPolicyAction}
           lifecycleAction={updateRuntimeRequestObservationLifecycleAction}
           copy={buildRuntimeRequestsCopy(t)}
@@ -160,6 +183,12 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
   );
 }
 
+function isDeveloperToolsProjection(
+  payload: SiteDashboardProjectionResponse,
+): payload is SiteDeveloperToolsProjection {
+  return payload.meta.view === "developer_tools";
+}
+
 function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
   return {
     title: t("dashboard.runtimeRequests.title", "Runtime requests"),
@@ -180,9 +209,18 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
       "dashboard.runtimeRequests.observations.description",
       "Grouped same-origin runtime requests seen by the serve worker.",
     ),
+    observationsDeferred: t(
+      "dashboard.runtimeRequests.observations.deferred",
+      "Load observed request groups when you need to review them.",
+    ),
     observationsEmpty: t(
       "dashboard.runtimeRequests.observations.empty",
       "No dynamic request groups have been observed.",
+    ),
+    loadObservations: t("dashboard.runtimeRequests.observations.load", "Load observations"),
+    loadingObservations: t(
+      "dashboard.runtimeRequests.observations.loading",
+      "Loading observations",
     ),
     method: t("dashboard.runtimeRequests.table.method", "Method"),
     path: t("dashboard.runtimeRequests.table.path", "Path"),
@@ -239,6 +277,14 @@ function buildRuntimeRequestsCopy(t: Translator): RuntimeRequestsCopy {
     ),
     save: t("dashboard.runtimeRequests.save", "Save policy"),
     saving: t("dashboard.runtimeRequests.saving", "Saving"),
+    saveIncomplete: t(
+      "dashboard.runtimeRequests.saveIncomplete",
+      "The dashboard could not confirm the saved policy. Review the current policy before trying again.",
+    ),
+    lifecycleUpdateError: t(
+      "dashboard.runtimeRequests.lifecycleUpdateError",
+      "Unable to update the request status. Try again or refresh this page.",
+    ),
     reset: t("dashboard.runtimeRequests.reset", "Reset draft"),
     enabled: t("dashboard.runtimeRequests.rule.enabled", "Enabled"),
     name: t("dashboard.runtimeRequests.rule.name", "Name"),

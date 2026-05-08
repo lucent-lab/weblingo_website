@@ -25,7 +25,10 @@ const copy: RuntimeRequestsCopy = {
   propagationStale: "Route cache stale",
   observationsTitle: "Observed requests",
   observationsDescription: "Grouped requests.",
+  observationsDeferred: "Load observations when needed.",
   observationsEmpty: "No observations.",
+  loadObservations: "Load observations",
+  loadingObservations: "Loading observations",
   method: "Method",
   path: "Path",
   likelyType: "Likely type",
@@ -54,6 +57,8 @@ const copy: RuntimeRequestsCopy = {
   previewRequired: "Validate before saving.",
   save: "Save policy",
   saving: "Saving",
+  saveIncomplete: "The dashboard could not confirm the saved policy.",
+  lifecycleUpdateError: "Unable to update the request status.",
   reset: "Reset draft",
   enabled: "Enabled",
   name: "Name",
@@ -128,9 +133,25 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderManager(options: { saveAction?: RuntimeRequestsManagerPropsSave } = {}) {
+function renderManager(
+  options: {
+    saveAction?: RuntimeRequestsManagerPropsSave;
+    lifecycleAction?: RuntimeRequestsManagerPropsLifecycle;
+    loadObservationsAction?: RuntimeRequestsManagerPropsLoadObservations;
+    observations?: RuntimeRequestObservationGroup[];
+    observationsLoaded?: boolean;
+  } = {},
+) {
   const saveAction = options.saveAction ?? vi.fn(async () => ({ ok: true, message: "saved" }));
-  const lifecycleAction = vi.fn(async () => ({ ok: true, message: "updated" }));
+  const lifecycleAction =
+    options.lifecycleAction ?? vi.fn(async () => ({ ok: true, message: "updated" }));
+  const loadObservationsAction =
+    options.loadObservationsAction ??
+    vi.fn(async () => ({
+      ok: true,
+      message: "loaded",
+      meta: { groups: [observation] },
+    }));
   render(
     <RuntimeRequestsManager
       siteId="site-1"
@@ -142,20 +163,24 @@ function renderManager(options: { saveAction?: RuntimeRequestsManagerPropsSave }
         expectedVersion: "site-config:v1",
         stale: false,
       }}
-      observations={[observation]}
+      observations={options.observations ?? [observation]}
+      observationsLoaded={options.observationsLoaded ?? true}
       canEdit
+      loadObservationsAction={loadObservationsAction}
       saveAction={saveAction}
       lifecycleAction={lifecycleAction}
       copy={copy}
     />,
   );
-  return { saveAction, lifecycleAction };
+  return { saveAction, lifecycleAction, loadObservationsAction };
 }
 
 type RuntimeRequestsManagerPropsSave = (
   prev: ActionResponse | undefined,
   formData: FormData,
 ) => Promise<ActionResponse>;
+type RuntimeRequestsManagerPropsLifecycle = RuntimeRequestsManagerPropsSave;
+type RuntimeRequestsManagerPropsLoadObservations = RuntimeRequestsManagerPropsSave;
 
 describe("RuntimeRequestsManager", () => {
   it("creates a draft rule from an observation without saving it", () => {
@@ -181,7 +206,8 @@ describe("RuntimeRequestsManager", () => {
   });
 
   it("supports dismissing observed request groups", async () => {
-    const { lifecycleAction } = renderManager();
+    const lifecycleAction = vi.fn(async () => ({ ok: true, message: "updated" }));
+    renderManager({ lifecycleAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Dismissed" }));
 
@@ -189,6 +215,47 @@ describe("RuntimeRequestsManager", () => {
     const call = lifecycleAction.mock.calls[0] as unknown as [ActionResponse | undefined, FormData];
     const formData = call[1];
     expect(formData.get("lifecycle")).toBe("dismissed");
+  });
+
+  it("loads observations on demand and renders returned groups", async () => {
+    const loadObservationsAction = vi.fn(async () => ({
+      ok: true,
+      message: "loaded",
+      meta: { groups: [observation] },
+    }));
+    renderManager({
+      loadObservationsAction,
+      observations: [],
+      observationsLoaded: false,
+    });
+
+    expect(screen.getByText("Load observations when needed.")).toBeTruthy();
+    expect(screen.queryByText("/api/cart")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Load observations" }));
+
+    await waitFor(() => expect(loadObservationsAction).toHaveBeenCalled());
+    const call = loadObservationsAction.mock.calls[0] as unknown as [
+      ActionResponse | undefined,
+      FormData,
+    ];
+    expect(call[1].get("siteId")).toBe("site-1");
+    expect(await screen.findByText("/api/cart")).toBeTruthy();
+    expect(screen.getByText("loaded")).toBeTruthy();
+  });
+
+  it("shows a friendly lifecycle failure when the action rejects", async () => {
+    const lifecycleAction = vi.fn(async () => {
+      throw new Error("raw lifecycle backend detail");
+    });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    renderManager({ lifecycleAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismissed" }));
+
+    expect(await screen.findByText("Unable to update the request status.")).toBeTruthy();
+    expect(screen.queryByText("raw lifecycle backend detail")).toBeNull();
+    consoleSpy.mockRestore();
   });
 
   it("blocks save on server validation errors and preserves the draft", async () => {
@@ -226,11 +293,52 @@ describe("RuntimeRequestsManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create rule" }));
     fireEvent.click(screen.getByRole("button", { name: "Validate draft" }));
 
-    expect(await screen.findAllByText(/confirmation_required_high_risk_path/)).toHaveLength(2);
+    expect(
+      await screen.findByText(
+        "High-risk request paths need an explicit confirmation before the policy can be saved.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/confirmation_required_high_risk_path/)).toBeNull();
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Save policy" }).disabled).toBe(
       true,
     );
     expect(screen.getByDisplayValue("/api/cart")).toBeTruthy();
     expect(saveAction).not.toHaveBeenCalled();
+  });
+
+  it("does not fabricate saved runtime policy state when save meta is incomplete", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            runtimeRequestPolicy: emptyPolicy,
+            validationErrors: [],
+            warnings: [],
+            collisions: [],
+            highRiskConfirmations: [],
+            sampleResults: [],
+            matchedObservationGroups: [],
+            propagation: {
+              currentRouteConfigUpdatedAt: "2026-05-04T00:00:00.000Z",
+              currentRuntimeRequestPolicyVersion: "site-config:v1",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    );
+    (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+    const saveAction = vi.fn(async () => ({ ok: true, message: "saved", meta: {} }));
+    renderManager({ saveAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create rule" }));
+    fireEvent.click(screen.getByRole("button", { name: "Validate draft" }));
+    expect(await screen.findAllByText("Server validation passed")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled());
+    expect(
+      await screen.findByText("The dashboard could not confirm the saved policy."),
+    ).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
   });
 });

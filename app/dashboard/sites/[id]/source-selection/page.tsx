@@ -3,16 +3,28 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import { fetchSite, WebhooksApiError, type Site } from "@internal/dashboard/webhooks";
+import {
+  fetchSiteDashboardProjection,
+  WebhooksApiError,
+  type SiteDashboardProjectionResponse,
+  type SourceSelectionRule,
+} from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
 import { updateSourceSelectionAction } from "../../../actions";
+import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { SourceSelectionManager, type SourceSelectionCopy } from "./source-selection-manager";
+
+type SiteSourceSelectionProjection = Extract<
+  SiteDashboardProjectionResponse,
+  { meta: { view: "source_selection" } }
+>;
 
 export const metadata = {
   title: "Source selection",
@@ -31,24 +43,20 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const canEdit = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const canPauseTranslations = auth.has({ feature: "edit" });
-  const canResumeTranslations = auth.has({ feature: "edit" }) && mutationsAllowed;
-  const deactivateLabel = t("dashboard.site.status.deactivate");
-  const reactivateLabel = t("dashboard.site.status.reactivate");
-  const deactivateConfirm = t("dashboard.site.status.deactivateConfirm");
-  const activateHelpLabel = t("dashboard.site.status.activateHelpLabel");
-  const activateHelp = t("dashboard.site.status.activateHelp");
+  const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
+  const canEdit = siteHeaderAccess.canEdit;
+  const headerLabels = buildSiteHeaderLabels(t);
 
-  let site: Site | null = null;
+  let projection: SiteSourceSelectionProjection | null = null;
   let error: unknown = null;
 
   try {
-    site = await fetchSite(authToken, id);
+    const payload = await fetchSiteDashboardProjection(authToken, id, "source_selection");
+    projection = isSourceSelectionProjection(payload) ? payload : null;
   } catch (err) {
     error = err;
     if (err instanceof WebhooksApiError) {
-      console.warn("[dashboard] fetchSite failed", {
+      console.warn("[dashboard] fetch source selection projection failed", {
         siteId: id,
         status: err.status,
         message: err.message,
@@ -58,19 +66,18 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         actingAsCustomer: auth.actingAsCustomer,
       });
     } else {
-      console.warn("[dashboard] fetchSite failed (unknown error)", {
+      console.warn("[dashboard] fetch source selection projection failed (unknown error)", {
         siteId: id,
         message: error,
       });
     }
   }
 
-  if (!site) {
+  if (!projection) {
     if (error) {
       const errorView = resolveDashboardErrorView(error, {
         title: "Unable to load site",
-        description:
-          "We could not complete your request. You can retry or return to the dashboard.",
+        description: "We could not load source selection rules. No rule changes were saved.",
         message: "Unable to load source selection.",
       });
       return (
@@ -78,10 +85,27 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
           title={errorView.title}
           description={errorView.description}
           message={errorView.message}
+          nextSteps={errorView.nextSteps}
+          referenceCode={errorView.referenceCode}
+          technicalDetails={errorView.technicalDetails}
           actions={
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
-            </Button>
+            <>
+              <DashboardRetryButton
+                href={`/dashboard/sites/${id}/source-selection`}
+                label="Retry source selection"
+              />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Dashboard home</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a href="mailto:contact@weblingo.app?subject=Dashboard%20source%20selection%20unavailable">
+                  Contact support
+                </a>
+              </Button>
+            </>
           }
         />
       );
@@ -89,23 +113,24 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
     notFound();
   }
 
-  const initialSourceSelectionRules = site.routeConfig?.sourceSelection?.rules ?? [];
-  const hasUnsupportedSourceSelectionRules = initialSourceSelectionRules.some(
-    (rule) => rule.action !== "include" && rule.action !== "exclude",
-  );
+  const initialSourceSelectionRules = projection.policy.rules
+    .map(toEditableSourceSelectionRule)
+    .filter((rule): rule is SourceSelectionRule => rule !== null);
+  const hasUnsupportedSourceSelectionRules =
+    projection.policy.rules.length !== initialSourceSelectionRules.length;
 
   return (
     <div className="space-y-8">
       <SiteHeader
-        site={site}
+        site={projection.site}
         canEdit={canEdit}
-        canPauseTranslations={canPauseTranslations}
-        canResumeTranslations={canResumeTranslations}
-        deactivateLabel={deactivateLabel}
-        reactivateLabel={reactivateLabel}
-        deactivateConfirm={deactivateConfirm}
-        activateHelpLabel={activateHelpLabel}
-        activateHelp={activateHelp}
+        canPauseTranslations={siteHeaderAccess.canPauseTranslations}
+        canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        deactivateLabel={headerLabels.deactivateLabel}
+        reactivateLabel={headerLabels.reactivateLabel}
+        deactivateConfirm={headerLabels.deactivateConfirm}
+        activateHelpLabel={headerLabels.activateHelpLabel}
+        activateHelp={headerLabels.activateHelp}
       />
 
       {canEdit && hasUnsupportedSourceSelectionRules ? (
@@ -125,10 +150,12 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         />
       ) : canEdit ? (
         <SourceSelectionManager
-          siteId={site.id}
+          siteId={projection.site.id}
           initialRules={initialSourceSelectionRules}
-          routeConfigUpdatedAt={site.routeConfig?.updatedAt ?? null}
-          sourceSelectionFingerprint={site.routeConfig?.sourceSelectionFingerprint ?? null}
+          routeConfigUpdatedAt={projection.preconditions.expectedRouteConfigUpdatedAt ?? null}
+          sourceSelectionFingerprint={
+            projection.preconditions.expectedSourceSelectionFingerprint ?? null
+          }
           canEdit={canEdit}
           saveAction={updateSourceSelectionAction}
           copy={buildSourceSelectionCopy(t)}
@@ -162,6 +189,12 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
       )}
     </div>
   );
+}
+
+function isSourceSelectionProjection(
+  payload: SiteDashboardProjectionResponse,
+): payload is SiteSourceSelectionProjection {
+  return payload.meta.view === "source_selection";
 }
 
 function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
@@ -237,6 +270,7 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
       "dashboard.sourceSelection.preview.blocked",
       "Preview failed. Save is blocked.",
     ),
+    preview: t("dashboard.sourceSelection.preview.action", "Preview source paths"),
     pagesTitle: t("dashboard.sourceSelection.pages.title", "Known source pages"),
     pagesDescription: t(
       "dashboard.sourceSelection.pages.description",
@@ -248,6 +282,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
     filterHelp: t(
       "dashboard.sourceSelection.filter.help",
       "Searches globally across known backend source paths.",
+    ),
+    filterMinLength: t(
+      "dashboard.sourceSelection.filter.minLength",
+      "Enter at least {count} characters to search.",
     ),
     filterNoResults: t(
       "dashboard.sourceSelection.filter.noResults",
@@ -316,6 +354,10 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
       "dashboard.sourceSelection.saveDisabled",
       "Save after the current proposed rules preview successfully.",
     ),
+    saveIncomplete: t(
+      "dashboard.sourceSelection.saveIncomplete",
+      "The dashboard could not confirm the saved source selection. Review the current rules before trying again.",
+    ),
     saved: t("dashboard.sourceSelection.saved", "Source selection saved."),
     reset: t("dashboard.sourceSelection.reset", "Reset changes"),
     reasonLabels: {
@@ -334,5 +376,17 @@ function buildSourceSelectionCopy(t: Translator): SourceSelectionCopy {
         "Excluded because include rules create an allowlist",
       ),
     },
+  };
+}
+
+function toEditableSourceSelectionRule(
+  rule: SiteSourceSelectionProjection["policy"]["rules"][number],
+): SourceSelectionRule | null {
+  if (rule.kind !== "include" && rule.kind !== "exclude") {
+    return null;
+  }
+  return {
+    action: rule.kind,
+    pattern: rule.pattern,
   };
 }
