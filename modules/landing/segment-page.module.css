@@ -253,12 +253,65 @@
   z-index: 2;
 }
 
+.magicCard > .translationGlyphRain {
+  z-index: 3;
+}
+
 .magicCardField:hover .magicCard::before {
   opacity: 1;
 }
 
 .magicCardField:hover .magicCard::after {
   opacity: 0.82;
+}
+
+.magicCardField:hover .translationSpotlightCard::before,
+.magicCardField:hover .translationSpotlightCard::after {
+  opacity: 0;
+}
+
+.translationGlyphRain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  border-radius: inherit;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  mask-image: radial-gradient(13rem circle at var(--magic-x) var(--magic-y), #000, transparent 68%);
+  -webkit-mask-image: radial-gradient(
+    13rem circle at var(--magic-x) var(--magic-y),
+    #000,
+    transparent 68%
+  );
+}
+
+.translationGlyphRainColumn {
+  position: absolute;
+  inset-block-start: -55%;
+  inset-inline-start: var(--glyph-column-left);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  color: hsl(var(--primary) / 0.5);
+  mix-blend-mode: multiply;
+  white-space: pre-line;
+  animation: translation-glyph-rain var(--glyph-column-duration) linear var(--glyph-column-delay)
+    infinite;
+}
+
+.translationGlyphRainColumn span {
+  display: block;
+}
+
+.magicCardField:hover .translationSpotlightCard .translationGlyphRain {
+  opacity: 0.68;
 }
 
 .heroTitleRotator {
@@ -397,6 +450,16 @@
   }
 }
 
+@keyframes translation-glyph-rain {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(50%);
+  }
+}
+
 @keyframes segment-rotator-in {
   from {
     opacity: 0;
@@ -491,6 +554,8 @@
 
   .heroGlyphAmbient,
   .heroGlyphTrail,
+  .translationGlyphRain,
+  .translationGlyphRainColumn,
   .magicCard::before,
   .magicCard::after {
     animation: none !important;

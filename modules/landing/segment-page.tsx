@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 
 import { AnalyticsPageView } from "@/components/analytics-page-view";
@@ -14,7 +15,6 @@ import {
 } from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
-import { HeroGlyphField } from "./components/hero-glyph-field";
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
 import { HowStepsTimeline } from "./components/how-steps-timeline";
 import { InViewCountUp } from "./components/in-view-count-up";
@@ -24,6 +24,44 @@ import { landingContent, type LandingSegment } from "@modules/landing/content";
 import styles from "./segment-page.module.css";
 
 type TryFormFieldLayout = "legacy" | "funnel";
+
+const TRANSLATION_GLYPH_RAIN_COLUMNS = [
+  "文語あ한글enfr",
+  "fr語de文esあ",
+  "あ文글語hies",
+  "한zh文ar語ja",
+  "en文fr語deあ",
+  "zh語ar文koあ",
+  "文en語frあde",
+  "fr語de文es한",
+  "あja文en글ko",
+  "語frhi文dees",
+  "pt文ko글jaあ",
+  "ar語zh文en한",
+] as const;
+
+function TranslationGlyphRain() {
+  return (
+    <span aria-hidden="true" className={styles.translationGlyphRain}>
+      {TRANSLATION_GLYPH_RAIN_COLUMNS.map((glyphs, index) => (
+        <span
+          key={`${glyphs}-${index}`}
+          className={styles.translationGlyphRainColumn}
+          style={
+            {
+              "--glyph-column-delay": `${-index * 0.43}s`,
+              "--glyph-column-duration": `${7.2 + (index % 4) * 0.9}s`,
+              "--glyph-column-left": `${5 + index * 8}%`,
+            } as CSSProperties
+          }
+        >
+          <span>{glyphs.split("").join("\n")}</span>
+          <span>{glyphs.split("").join("\n")}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export async function LandingSegmentPage({
   locale,
@@ -66,7 +104,6 @@ export async function LandingSegmentPage({
         className="section-reveal relative isolate overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
       >
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
-        <HeroGlyphField />
         <div className="relative z-10 mx-auto max-w-6xl">
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
@@ -93,9 +130,12 @@ export async function LandingSegmentPage({
                 className={cn(
                   "surface-lift relative rounded-xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]",
                   styles.magicCard,
+                  styles.translationSpotlightCard,
                 )}
                 data-magic-card=""
+                data-translation-spotlight=""
               >
+                <TranslationGlyphRain />
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     <ScrambledText
@@ -133,12 +173,15 @@ export async function LandingSegmentPage({
                     "surface-lift rounded-xl border border-border bg-card/80 px-6 py-5 shadow-sm",
                     styles.statCard,
                     styles.magicCard,
+                    styles.translationSpotlightCard,
                   )}
                   data-magic-card=""
+                  data-translation-spotlight=""
                   style={{
                     animationDelay: `${index * 110}ms`,
                   }}
                 >
+                  <TranslationGlyphRain />
                   <p className="text-3xl font-semibold text-foreground">
                     {shouldCountUp ? (
                       <InViewCountUp
@@ -213,9 +256,12 @@ export async function LandingSegmentPage({
                   className={cn(
                     "surface-lift flex gap-4 rounded-xl border border-border bg-card p-5",
                     styles.magicCard,
+                    styles.translationSpotlightCard,
                   )}
                   data-magic-card=""
+                  data-translation-spotlight=""
                 >
+                  <TranslationGlyphRain />
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <item.icon className="h-5 w-5" />
                   </div>
@@ -245,9 +291,12 @@ export async function LandingSegmentPage({
                 className={cn(
                   "surface-lift rounded-xl border border-border bg-card p-6 text-left",
                   styles.magicCard,
+                  styles.translationSpotlightCard,
                 )}
                 data-magic-card=""
+                data-translation-spotlight=""
               >
+                <TranslationGlyphRain />
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <item.icon className="h-5 w-5" />
                 </div>
