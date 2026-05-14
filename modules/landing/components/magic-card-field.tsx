@@ -27,18 +27,66 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
     }
 
     const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-magic-card]"));
+    const cardRects = new Map<HTMLElement, DOMRect>();
+    let rectsAreStale = true;
+    let animationFrame: number | null = null;
 
-    const onPointerMove = (event: PointerEvent) => {
+    const readCardRects = () => {
+      cardRects.clear();
       for (const card of cards) {
-        const rect = card.getBoundingClientRect();
-        card.style.setProperty("--magic-x", `${event.clientX - rect.left}px`);
-        card.style.setProperty("--magic-y", `${event.clientY - rect.top}px`);
+        cardRects.set(card, card.getBoundingClientRect());
+      }
+      rectsAreStale = false;
+    };
+
+    const markRectsStale = () => {
+      rectsAreStale = true;
+    };
+
+    const updateCards = (clientX: number, clientY: number) => {
+      if (rectsAreStale) {
+        readCardRects();
+      }
+
+      for (const card of cards) {
+        const rect = cardRects.get(card);
+        if (!rect) {
+          continue;
+        }
+
+        card.style.setProperty("--magic-x", `${clientX - rect.left}px`);
+        card.style.setProperty("--magic-y", `${clientY - rect.top}px`);
       }
     };
 
-    root.addEventListener("pointermove", onPointerMove, { passive: true });
+    const onPointerMove = (event: PointerEvent) => {
+      const { clientX, clientY } = event;
 
-    return () => root.removeEventListener("pointermove", onPointerMove);
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null;
+        updateCards(clientX, clientY);
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(markRectsStale);
+    resizeObserver.observe(root);
+    root.addEventListener("pointermove", onPointerMove, { passive: true });
+    root.addEventListener("pointerenter", markRectsStale, { passive: true });
+    window.addEventListener("scroll", markRectsStale, { passive: true });
+
+    return () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      resizeObserver.disconnect();
+      root.removeEventListener("pointermove", onPointerMove);
+      root.removeEventListener("pointerenter", markRectsStale);
+      window.removeEventListener("scroll", markRectsStale);
+    };
   }, []);
 
   return (

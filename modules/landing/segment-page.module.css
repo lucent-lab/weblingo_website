@@ -266,137 +266,6 @@
   color: hsl(var(--foreground));
 }
 
-.heroGlyphField {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  color: hsl(var(--primary) / 0.58);
-  opacity: 0.9;
-  mix-blend-mode: multiply;
-  overflow: hidden;
-  user-select: none;
-}
-
-.heroGlyphAmbient,
-.heroGlyphTrail {
-  position: absolute;
-  display: inline-block;
-  font-family:
-    "Hiragino Sans",
-    "Hiragino Kaku Gothic ProN",
-    "Yu Gothic",
-    "Apple SD Gothic Neo",
-    "Noto Sans CJK JP",
-    "Noto Sans",
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  font-size: var(--glyph-size);
-  font-weight: 600;
-  line-height: 1;
-  text-rendering: geometricprecision;
-}
-
-.heroGlyphAmbient {
-  left: var(--glyph-x);
-  top: var(--glyph-y);
-  color: hsl(var(--primary) / 0.68);
-  opacity: var(--glyph-opacity);
-  transform: translate(-50%, -50%) rotate(var(--glyph-rotate));
-  animation: hero-glyph-float var(--glyph-duration) ease-in-out var(--glyph-delay) infinite
-    alternate;
-}
-
-.heroGlyphTrail {
-  color: hsl(var(--primary) / 0.56);
-  font-size: var(--glyph-size);
-  opacity: 0;
-  text-shadow: 0 0 1.2rem hsl(var(--primary) / 0.18);
-  transform: translate(0, 0) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(0.25);
-  animation-duration: 1500ms;
-  animation-fill-mode: forwards;
-  pointer-events: none;
-  backface-visibility: hidden;
-  will-change: opacity, transform;
-}
-
-.heroGlyphTrailFallOne {
-  animation-name: hero-glyph-fall-one;
-}
-
-.heroGlyphTrailFallTwo {
-  animation-name: hero-glyph-fall-two;
-}
-
-.heroGlyphTrailFallThree {
-  animation-name: hero-glyph-fall-three;
-}
-
-@keyframes hero-glyph-float {
-  from {
-    transform: translate(-50%, -50%) translateY(-4px) rotate(var(--glyph-rotate));
-  }
-
-  to {
-    transform: translate(-50%, -50%) translateY(5px) rotate(var(--glyph-rotate));
-  }
-}
-
-@keyframes hero-glyph-fall-one {
-  0% {
-    transform: translate(0, 0) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(0.25);
-    opacity: 0;
-  }
-
-  5% {
-    transform: translate(10px, -10px) rotateX(45deg) rotateY(30deg) rotateZ(0deg) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate(25px, 200px) rotateX(180deg) rotateY(270deg) rotateZ(90deg) scale(1);
-    opacity: 0;
-  }
-}
-
-@keyframes hero-glyph-fall-two {
-  0% {
-    transform: translate(0, 0) rotateX(-20deg) rotateY(10deg) scale(0.25);
-    opacity: 0;
-  }
-
-  10% {
-    transform: translate(-10px, -5px) rotateX(-20deg) rotateY(10deg) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate(-10px, 160px) rotateX(-90deg) rotateY(45deg) scale(0.25);
-    opacity: 0;
-  }
-}
-
-@keyframes hero-glyph-fall-three {
-  0% {
-    transform: translate(0, 0) rotateX(0deg) rotateY(45deg) scale(0.5);
-    opacity: 0;
-  }
-
-  15% {
-    transform: translate(7px, 5px) rotateX(0deg) rotateY(45deg) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate(20px, 120px) rotateX(-180deg) rotateY(-90deg) scale(0.5);
-    opacity: 0;
-  }
-}
-
 @keyframes segment-rotator-in {
   from {
     opacity: 0;
@@ -438,10 +307,6 @@
 }
 
 @media (max-width: 640px) {
-  .heroGlyphField {
-    opacity: 0.52;
-  }
-
   .heroRotator {
     display: inline;
   }
@@ -485,12 +350,6 @@
     transform: none;
   }
 
-  .heroGlyphField {
-    opacity: 0.38;
-  }
-
-  .heroGlyphAmbient,
-  .heroGlyphTrail,
   .magicCard::before,
   .magicCard::after {
     animation: none !important;
