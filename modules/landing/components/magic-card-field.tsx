@@ -30,6 +30,7 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
     const cardRects = new Map<HTMLElement, DOMRect>();
     let rectsAreStale = true;
     let animationFrame: number | null = null;
+    let lastPointer: { clientX: number; clientY: number } | null = null;
 
     const readCardRects = () => {
       cardRects.clear();
@@ -41,6 +42,13 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
 
     const markRectsStale = () => {
       rectsAreStale = true;
+    };
+
+    const refreshStaleRects = () => {
+      markRectsStale();
+      if (lastPointer) {
+        updateCards(lastPointer.clientX, lastPointer.clientY);
+      }
     };
 
     const updateCards = (clientX: number, clientY: number) => {
@@ -61,6 +69,7 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
 
     const onPointerMove = (event: PointerEvent) => {
       const { clientX, clientY } = event;
+      lastPointer = { clientX, clientY };
 
       if (animationFrame !== null) {
         window.cancelAnimationFrame(animationFrame);
@@ -73,15 +82,15 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
     };
 
     const onPointerEnter = (event: PointerEvent) => {
-      markRectsStale();
+      lastPointer = { clientX: event.clientX, clientY: event.clientY };
       updateCards(event.clientX, event.clientY);
     };
 
-    const resizeObserver = new ResizeObserver(markRectsStale);
+    const resizeObserver = new ResizeObserver(refreshStaleRects);
     resizeObserver.observe(root);
     root.addEventListener("pointermove", onPointerMove, { passive: true });
     root.addEventListener("pointerenter", onPointerEnter, { passive: true });
-    window.addEventListener("scroll", markRectsStale, { passive: true });
+    window.addEventListener("scroll", refreshStaleRects, { passive: true });
 
     return () => {
       if (animationFrame !== null) {
@@ -90,7 +99,7 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
       resizeObserver.disconnect();
       root.removeEventListener("pointermove", onPointerMove);
       root.removeEventListener("pointerenter", onPointerEnter);
-      window.removeEventListener("scroll", markRectsStale);
+      window.removeEventListener("scroll", refreshStaleRects);
     };
   }, []);
 

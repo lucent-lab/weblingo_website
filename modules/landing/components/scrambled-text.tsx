@@ -31,6 +31,17 @@ function scrambleText(text: string, iteration: number) {
   }).join("");
 }
 
+function getInitialScrambleText(text: string) {
+  return Array.from(text, (letter, index) => {
+    if (letter.trim().length === 0) {
+      return letter;
+    }
+
+    const glyphIndex = (letter.charCodeAt(0) + index * 7) % SCRAMBLE_GLYPHS.length;
+    return SCRAMBLE_GLYPHS[glyphIndex] ?? letter;
+  }).join("");
+}
+
 export function ScrambledText({
   text,
   className,
@@ -42,7 +53,12 @@ export function ScrambledText({
   const iterationRef = useRef(0);
   const lastScrambledTextRef = useRef(text);
   const [displayState, setDisplayState] = useState<DisplayState>({ source: text, value: text });
-  const displayText = displayState.source === text || playOnTextChange ? displayState.value : text;
+  const displayText =
+    displayState.source === text
+      ? displayState.value
+      : playOnTextChange && !prefersReducedMotion
+        ? getInitialScrambleText(text)
+        : text;
 
   const stopScramble = useCallback(() => {
     if (frameRef.current !== null) {
@@ -60,7 +76,7 @@ export function ScrambledText({
       return;
     }
 
-    setDisplayState({ source: text, value: scrambleText(text, 0) });
+    setDisplayState({ source: text, value: getInitialScrambleText(text) });
 
     frameRef.current = window.setInterval(() => {
       const iteration = iterationRef.current;

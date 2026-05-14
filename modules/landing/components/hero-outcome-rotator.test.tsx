@@ -47,7 +47,12 @@ describe("HeroOutcomeRotator", () => {
     act(() => {
       vi.advanceTimersByTime(3_000);
     });
-    expect(screen.getByText("Turn international traffic into bookings")).toBeTruthy();
+    const visibleWord = () =>
+      screen
+        .getByTestId("hero-outcome-rotator")
+        .querySelector('[aria-hidden="true"] span[aria-hidden="true"]')?.textContent;
+
+    expect(visibleWord()).not.toBe("bookings");
 
     act(() => {
       vi.advanceTimersByTime(560);
@@ -57,7 +62,7 @@ describe("HeroOutcomeRotator", () => {
     act(() => {
       vi.advanceTimersByTime(2_440);
     });
-    expect(screen.getByText("Turn international traffic into signups")).toBeTruthy();
+    expect(visibleWord()).not.toBe("signups");
 
     act(() => {
       vi.advanceTimersByTime(560);
