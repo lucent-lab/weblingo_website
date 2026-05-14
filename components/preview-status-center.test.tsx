@@ -176,4 +176,31 @@ describe("PreviewStatusCenter", () => {
       expect(screen.getByText("Capacity hint")).toBeTruthy();
     });
   });
+
+  it("renders a capacity hint for active jobs waiting on provider capacity", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "44444444-4444-4444-4444-444444444444",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://provider-capacity.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "provider-capacity-token",
+      sourceUrl: "https://provider-capacity.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: false,
+      },
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Capacity hint")).toBeTruthy();
+    });
+  });
 });

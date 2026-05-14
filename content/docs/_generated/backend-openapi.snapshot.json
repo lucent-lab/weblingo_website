@@ -5347,6 +5347,7 @@
         "enum": [
           "pending",
           "in_progress",
+          "waiting_provider_capacity",
           "succeeded",
           "failed"
         ],
@@ -5361,6 +5362,12 @@
               "null"
             ]
           },
+          "retryEligibleAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "stage": {
             "$ref": "#/components/schemas/PipelineStage"
           },
@@ -5368,6 +5375,12 @@
             "$ref": "#/components/schemas/PipelineStageStatus"
           },
           "targetLang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "terminalReason": {
             "type": [
               "string",
               "null"
@@ -5563,6 +5576,7 @@
         "enum": [
           "pending",
           "processing",
+          "waiting_provider_capacity",
           "ready",
           "failed"
         ],
@@ -5692,7 +5706,10 @@
                     "type": "boolean"
                   },
                   "reason": {
-                    "const": "browser_capacity_exhausted",
+                    "enum": [
+                      "browser_capacity_exhausted",
+                      "provider_capacity_wait"
+                    ],
                     "type": "string"
                   },
                   "retryAfterSeconds": {
