@@ -66,6 +66,35 @@ Interaction assertions are valid when the interaction itself is the externally m
 - Prefer route or store tests over full-browser tests when the same contract can be proved without browser-only setup.
 - Reserve Playwright for browser-only behavior such as navigation, SSE wiring, checkout handoff, or rendering differences that unit and route tests cannot prove.
 
+## Preview UX Browser Regression
+
+The preview UX Playwright layer is a local/premerge guard, not a CI gate. It exists for browser-only regressions that unit tests cannot prove: preview handoff, translated preview flicker, hydration/runtime errors, route-data failures, and rotating or client-owned text that must keep changing after translation.
+
+- `corepack pnpm test:e2e:preview-ui` runs a mocked website try-form flow. It does not call the backend preview service or spend translation quota.
+- `corepack pnpm test:e2e:preview-live` is skipped unless `WEBLINGO_LIVE_PREVIEW_QA=1` and `PREVIEW_UX_CASES_JSON` are provided. Use it for existing preview/showcase URLs or explicitly generated live previews.
+- `corepack pnpm premerge:preview-ux` runs the mocked flow by default and only runs live translated-preview probes when the same live env vars are set.
+- Do not add these commands to `check`, `check:ci`, or default CI jobs without an explicit quota plan.
+
+Example live case:
+
+```sh
+WEBLINGO_LIVE_PREVIEW_QA=1 \
+PREVIEW_UX_CASES_JSON='[
+  {
+    "name": "WebLingo Japanese hero rotator",
+    "url": "https://preview.weblingo.app/_preview/<preview-id>",
+    "requiredText": ["海外"],
+    "forbiddenText": ["Turn international traffic into", "bookings", "signups", "revenue"],
+    "rotator": {
+      "selector": "[data-testid=\"hero-outcome-rotator\"]",
+      "minDistinctStates": 4,
+      "forbiddenText": ["bookings", "signups", "revenue"]
+    }
+  }
+]' \
+corepack pnpm test:e2e:preview-live
+```
+
 ## Test Design Rules
 
 - Start from the scenario and expected outcome, not the function list.

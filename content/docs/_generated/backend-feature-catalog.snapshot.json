@@ -2691,6 +2691,11 @@
             "name": "recovery_outcome",
             "optional": true,
             "type": "string"
+          },
+          {
+            "name": "scheduler_job_id",
+            "optional": true,
+            "type": "string"
           }
         ],
         "interfaceName": "PreviewQueuePayload",
@@ -2778,6 +2783,11 @@
             "type": "Array<{\n    sourcePath: string;\n    targetPath?: string;\n    pageVersionId: PageVersionId;\n    currentKey: R2Key<\"rendered-current\">;\n    prevKey: R2Key<\"rendered-prev\">;\n  }>"
           },
           {
+            "name": "manifest_publish_mode",
+            "optional": true,
+            "type": "string"
+          },
+          {
             "name": "timestamp",
             "optional": true,
             "type": "number"
@@ -2856,6 +2866,11 @@
             "name": "translation_run_id",
             "optional": true,
             "type": "TranslationRunId"
+          },
+          {
+            "name": "scheduler_job_id",
+            "optional": true,
+            "type": "string"
           }
         ],
         "interfaceName": "TranslateQueuePayload",
