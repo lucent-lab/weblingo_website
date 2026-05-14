@@ -28,6 +28,13 @@
   color: inherit;
 }
 
+.scrambledText {
+  display: inline-block;
+  font: inherit;
+  color: inherit;
+  font-variant-ligatures: none;
+}
+
 .heroRotatorWordIncoming {
   animation: segment-rotator-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -193,6 +200,66 @@
   transform: translateY(0) scale(0.98);
 }
 
+.magicCardField {
+  --magic-x: 50%;
+  --magic-y: 50%;
+}
+
+.magicCard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.magicCard::before,
+.magicCard::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.magicCard::before {
+  z-index: 0;
+  background: radial-gradient(
+    24rem circle at var(--magic-x) var(--magic-y),
+    hsl(var(--primary) / 0.16),
+    transparent 42%
+  );
+}
+
+.magicCard::after {
+  z-index: 1;
+  padding: 1px;
+  background: radial-gradient(
+    18rem circle at var(--magic-x) var(--magic-y),
+    hsl(var(--primary) / 0.52),
+    hsl(var(--primary) / 0.14) 38%,
+    transparent 64%
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.magicCard > * {
+  position: relative;
+  z-index: 2;
+}
+
+.magicCardField:hover .magicCard::before {
+  opacity: 1;
+}
+
+.magicCardField:hover .magicCard::after {
+  opacity: 0.82;
+}
+
 .heroTitleRotator {
   max-inline-size: 100%;
   color: hsl(var(--foreground));
@@ -280,5 +347,11 @@
   .timelineCard {
     opacity: 1;
     transform: none;
+  }
+
+  .magicCard::before,
+  .magicCard::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

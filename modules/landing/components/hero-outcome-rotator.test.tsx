@@ -47,12 +47,48 @@ describe("HeroOutcomeRotator", () => {
     act(() => {
       vi.advanceTimersByTime(3_000);
     });
+    const visibleWord = () =>
+      screen
+        .getByTestId("hero-outcome-rotator")
+        .querySelector('[aria-hidden="true"] span[aria-hidden="true"]')?.textContent;
+
+    expect(visibleWord()).not.toBe("bookings");
+
+    act(() => {
+      vi.advanceTimersByTime(560);
+    });
     expect(screen.getByText("bookings")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(2_440);
+    });
+    expect(visibleWord()).not.toBe("signups");
+
+    act(() => {
+      vi.advanceTimersByTime(560);
+    });
+    expect(screen.getByText("signups")).toBeTruthy();
+  });
+
+  it("resolves scrambled outcome text after the incoming transition ends", () => {
+    stubMatchMedia(false);
+
+    render(
+      <HeroOutcomeRotator
+        outcomes={["conversions", "bookings", "signups", "revenue"]}
+        prefix="Turn international traffic into"
+      />,
+    );
 
     act(() => {
       vi.advanceTimersByTime(3_000);
     });
-    expect(screen.getByText("signups")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(560);
+    });
+
+    expect(screen.getByText("bookings")).toBeTruthy();
   });
 
   it("stays on the first outcome when reduced motion is enabled", () => {

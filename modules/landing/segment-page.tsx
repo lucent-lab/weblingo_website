@@ -17,6 +17,8 @@ import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
 import { HowStepsTimeline } from "./components/how-steps-timeline";
 import { InViewCountUp } from "./components/in-view-count-up";
+import { MagicCardField } from "./components/magic-card-field";
+import { ScrambledText } from "./components/scrambled-text";
 import { landingContent, type LandingSegment } from "@modules/landing/content";
 import styles from "./segment-page.module.css";
 
@@ -60,10 +62,10 @@ export async function LandingSegmentPage({
       />
       <section
         id="try"
-        className="section-reveal relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
+        className="section-reveal relative isolate overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"
       >
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative z-10 mx-auto max-w-6xl">
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="text-center lg:text-left">
               <h1 className="mb-6 text-4xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
@@ -88,7 +90,10 @@ export async function LandingSegmentPage({
               <div className="surface-lift relative rounded-xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    {t("try.header.tagline")}
+                    <ScrambledText
+                      className={styles.scrambledText}
+                      text={t("try.header.tagline")}
+                    />
                   </span>
                 </div>
                 <TryPanelHeader messages={messages} />
@@ -105,7 +110,7 @@ export async function LandingSegmentPage({
               </div>
             </div>
           </div>
-          <div className="mt-12 grid gap-6 text-center sm:grid-cols-3">
+          <MagicCardField className="mt-12 grid gap-6 text-center sm:grid-cols-3">
             {content.stats.map((stat, index) => {
               const rawStatValue = t(stat.valueKey);
               const parsedStatValue = Number.parseInt(rawStatValue.replace(/[^0-9]/g, ""), 10);
@@ -119,7 +124,9 @@ export async function LandingSegmentPage({
                   className={cn(
                     "surface-lift rounded-xl border border-border bg-card/80 px-6 py-5 shadow-sm",
                     styles.statCard,
+                    styles.magicCard,
                   )}
+                  data-magic-card=""
                   style={{
                     animationDelay: `${index * 110}ms`,
                   }}
@@ -140,7 +147,7 @@ export async function LandingSegmentPage({
                 </div>
               );
             })}
-          </div>
+          </MagicCardField>
         </div>
       </section>
 
@@ -191,11 +198,15 @@ export async function LandingSegmentPage({
                 </div>
               </div>
             </div>
-            <div className="grid gap-6">
+            <MagicCardField className="grid gap-6">
               {content.pain.items.map((item) => (
                 <div
                   key={item.titleKey}
-                  className="surface-lift flex gap-4 rounded-xl border border-border bg-card p-5"
+                  className={cn(
+                    "surface-lift flex gap-4 rounded-xl border border-border bg-card p-5",
+                    styles.magicCard,
+                  )}
+                  data-magic-card=""
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <item.icon className="h-5 w-5" />
@@ -206,7 +217,7 @@ export async function LandingSegmentPage({
                   </div>
                 </div>
               ))}
-            </div>
+            </MagicCardField>
           </div>
         </div>
       </section>
@@ -219,11 +230,15 @@ export async function LandingSegmentPage({
           <p className="mx-auto mb-12 max-w-3xl text-muted-foreground">
             {t(content.useCases.subtitleKey)}
           </p>
-          <div className="grid gap-6 md:grid-cols-3">
+          <MagicCardField className="grid gap-6 md:grid-cols-3">
             {content.useCases.items.map((item) => (
               <div
                 key={item.titleKey}
-                className="surface-lift rounded-xl border border-border bg-card p-6 text-left"
+                className={cn(
+                  "surface-lift rounded-xl border border-border bg-card p-6 text-left",
+                  styles.magicCard,
+                )}
+                data-magic-card=""
               >
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <item.icon className="h-5 w-5" />
@@ -232,7 +247,7 @@ export async function LandingSegmentPage({
                 <p className="mt-2 text-sm text-muted-foreground">{t(item.bodyKey)}</p>
               </div>
             ))}
-          </div>
+          </MagicCardField>
         </div>
       </section>
 
@@ -256,7 +271,7 @@ export async function LandingSegmentPage({
           <h2 className="mb-10 text-center text-3xl font-bold text-foreground sm:text-4xl">
             {t("landing.faq.title")}
           </h2>
-          <div className="grid gap-6 md:grid-cols-2">
+          <MagicCardField className="grid gap-6 md:grid-cols-2">
             {[
               {
                 questionKey: "landing.faq.items.1.q",
@@ -285,13 +300,17 @@ export async function LandingSegmentPage({
             ].map((item) => (
               <div
                 key={item.questionKey}
-                className="surface-lift rounded-xl border border-border bg-card p-6"
+                className={cn(
+                  "surface-lift rounded-xl border border-border bg-card p-6",
+                  styles.magicCard,
+                )}
+                data-magic-card=""
               >
                 <h3 className="text-lg font-semibold text-foreground">{t(item.questionKey)}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{t(item.answerKey)}</p>
               </div>
             ))}
-          </div>
+          </MagicCardField>
         </div>
       </section>
 

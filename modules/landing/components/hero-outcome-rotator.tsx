@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { ScrambledText } from "./scrambled-text";
 import { usePrefersReducedMotion } from "./use-prefers-reduced-motion";
 import styles from "../segment-page.module.css";
 
@@ -109,7 +110,12 @@ export function HeroOutcomeRotator({
             hasAnimatedTransition ? styles.heroRotatorWordIncoming : undefined,
           )}
         >
-          {activeOutcome}
+          <ScrambledText
+            className={styles.scrambledText}
+            decorative
+            playOnTextChange
+            text={activeOutcome}
+          />
         </span>
       </span>
     </span>
