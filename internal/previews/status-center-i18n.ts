@@ -1,4 +1,5 @@
 import type { PreviewErrorCode, PreviewStage } from "./preview-sse";
+import { isPreviewCapacityRetryHintReason } from "./preview-job-machine";
 import type { PreviewStatusCenterJob } from "./status-center-store";
 
 export const PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
@@ -116,7 +117,7 @@ export function resolvePreviewStatusCenterCapacityHint(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string | null {
-  if (job.retryHint?.reason !== "browser_capacity_exhausted") {
+  if (!isPreviewCapacityRetryHintReason(job.retryHint?.reason)) {
     return null;
   }
   return t("try.center.capacityHint");

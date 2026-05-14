@@ -190,5 +190,16 @@ describe("preview-job-machine", () => {
       retryAfterSeconds: 60,
       emailRecommended: true,
     });
+    expect(
+      parsePreviewRetryHint({
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: false,
+      }),
+    ).toEqual({
+      reason: "provider_capacity_wait",
+      retryAfterSeconds: 30,
+      emailRecommended: false,
+    });
   });
 });

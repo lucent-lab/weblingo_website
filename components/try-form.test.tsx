@@ -1409,6 +1409,41 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("shows the capacity-specific processing hint when provider capacity is constrained", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "provider-capacity-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://provider-capacity.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "provider-capacity-token",
+      sourceUrl: "https://provider-capacity.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: false,
+      },
+    });
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Capacity email hint")).toBeTruthy();
+    });
+  });
+
   it("falls back to status polling when EventSource is unavailable", async () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

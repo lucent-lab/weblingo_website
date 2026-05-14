@@ -34,6 +34,7 @@ import {
   resolvePreviewStatusDecision,
 } from "@internal/previews/preview-status-decision";
 import {
+  isPreviewCapacityRetryHintReason,
   parsePreviewRetryHint,
   type PreviewRetryHint,
 } from "@internal/previews/preview-job-machine";
@@ -376,7 +377,7 @@ export function TryForm({
       ? trackedJob.retryHint
       : null;
   const processingHintMessage = useMemo(() => {
-    if (activeRetryHint?.reason !== "browser_capacity_exhausted") {
+    if (!isPreviewCapacityRetryHintReason(activeRetryHint?.reason)) {
       return t("try.status.processingHint");
     }
     return showEmailField ? t("try.status.capacityEmailHint") : t("try.status.capacityHint");

@@ -2,8 +2,10 @@ import type { PreviewErrorCode, PreviewStage } from "./preview-sse";
 
 export type PreviewJobPhase = "pending" | "processing" | "ready" | "failed" | "expired";
 
+export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_capacity_wait";
+
 export type PreviewRetryHint = {
-  reason: "browser_capacity_exhausted";
+  reason: PreviewRetryHintReason;
   retryAfterSeconds: number | null;
   emailRecommended: boolean;
 };
@@ -122,7 +124,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
-  if (!isRecord(value) || value.reason !== "browser_capacity_exhausted") {
+  if (!isRecord(value) || !isPreviewCapacityRetryHintReason(value.reason)) {
     return null;
   }
   const retryAfterSeconds =
@@ -133,10 +135,14 @@ export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
       ? value.retryAfterSeconds
       : null;
   return {
-    reason: "browser_capacity_exhausted",
+    reason: value.reason,
     retryAfterSeconds,
     emailRecommended: value.emailRecommended === true,
   };
+}
+
+export function isPreviewCapacityRetryHintReason(value: unknown): value is PreviewRetryHintReason {
+  return value === "browser_capacity_exhausted" || value === "provider_capacity_wait";
 }
 
 function resolveStringWithFallback(patchValue: string | undefined, currentValue: string): string {

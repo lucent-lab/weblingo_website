@@ -91,11 +91,42 @@ function previewApiRequestPath(request: Request): string {
   return `${request.method()} ${url.pathname}`;
 }
 
-test("try form submits a mocked preview and exposes the ready handoff", async ({ page }) => {
+test("try form submits a mocked preview and exposes the ready handoff", async ({
+  page,
+  baseURL,
+}) => {
   const apiRequests: string[] = [];
   const createPayloads: PreviewRequestPayload[] = [];
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  const routeDataFailures: string[] = [];
+  const appOrigin = new URL(baseURL ?? "http://127.0.0.1:3000").origin;
 
   await installMockEventSource(page);
+  page.on("console", (message) => {
+    if (message.type() !== "error") {
+      return;
+    }
+    const text = message.text();
+    if (!text.includes("favicon.ico")) {
+      consoleErrors.push(text);
+    }
+  });
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+  });
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.origin === appOrigin && url.searchParams.has("_rsc") && response.status() >= 400) {
+      routeDataFailures.push(`${response.status()} ${response.url()}`);
+    }
+  });
+  page.on("requestfailed", (request) => {
+    const url = new URL(request.url());
+    if (url.origin === appOrigin && url.searchParams.has("_rsc")) {
+      routeDataFailures.push(`${request.failure()?.errorText ?? "failed"} ${request.url()}`);
+    }
+  });
   await page.route("**/api/previews", async (route) => {
     apiRequests.push(previewApiRequestPath(route.request()));
     createPayloads.push((route.request().postDataJSON() ?? {}) as PreviewRequestPayload);
@@ -153,6 +184,9 @@ test("try form submits a mocked preview and exposes the ready handoff", async ({
   expect(
     await page.evaluate(() => window.__weblingoPreviewEventSources?.[0]?.closed ?? false),
   ).toBe(true);
+  expect(routeDataFailures, "same-origin route-data requests should not fail").toEqual([]);
+  expect(pageErrors, "page runtime errors").toEqual([]);
+  expect(consoleErrors, "console errors").toEqual([]);
 });
 
 declare global {
