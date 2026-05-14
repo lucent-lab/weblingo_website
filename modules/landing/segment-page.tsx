@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 
 import { AnalyticsPageView } from "@/components/analytics-page-view";
@@ -24,44 +23,6 @@ import { landingContent, type LandingSegment } from "@modules/landing/content";
 import styles from "./segment-page.module.css";
 
 type TryFormFieldLayout = "legacy" | "funnel";
-
-const TRANSLATION_GLYPH_RAIN_COLUMNS = [
-  "文語あ한글enfr",
-  "fr語de文esあ",
-  "あ文글語hies",
-  "한zh文ar語ja",
-  "en文fr語deあ",
-  "zh語ar文koあ",
-  "文en語frあde",
-  "fr語de文es한",
-  "あja文en글ko",
-  "語frhi文dees",
-  "pt文ko글jaあ",
-  "ar語zh文en한",
-] as const;
-
-function TranslationGlyphRain() {
-  return (
-    <span aria-hidden="true" className={styles.translationGlyphRain}>
-      {TRANSLATION_GLYPH_RAIN_COLUMNS.map((glyphs, index) => (
-        <span
-          key={`${glyphs}-${index}`}
-          className={styles.translationGlyphRainColumn}
-          style={
-            {
-              "--glyph-column-delay": `${-index * 0.43}s`,
-              "--glyph-column-duration": `${7.2 + (index % 4) * 0.9}s`,
-              "--glyph-column-left": `${5 + index * 8}%`,
-            } as CSSProperties
-          }
-        >
-          <span>{glyphs.split("").join("\n")}</span>
-          <span>{glyphs.split("").join("\n")}</span>
-        </span>
-      ))}
-    </span>
-  );
-}
 
 export async function LandingSegmentPage({
   locale,
@@ -124,18 +85,9 @@ export async function LandingSegmentPage({
               <p className="text-sm text-muted-foreground">{t("landing.hero.guardrail")}</p>
               <p className="mt-2 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
             </div>
-            <MagicCardField className="relative lg:justify-self-end">
+            <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
-              <div
-                className={cn(
-                  "surface-lift relative rounded-xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]",
-                  styles.magicCard,
-                  styles.translationSpotlightCard,
-                )}
-                data-magic-card=""
-                data-translation-spotlight=""
-              >
-                <TranslationGlyphRain />
+              <div className="surface-lift relative rounded-xl border border-border bg-card/90 p-7 shadow-xl backdrop-blur sm:p-8 lg:max-w-[30rem]">
                 <div className="mb-4 flex items-center">
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                     <ScrambledText
@@ -156,7 +108,7 @@ export async function LandingSegmentPage({
                   primaryButtonClassName={styles.buttonMicro}
                 />
               </div>
-            </MagicCardField>
+            </div>
           </div>
           <MagicCardField className="mt-12 grid gap-6 text-center sm:grid-cols-3">
             {content.stats.map((stat, index) => {
@@ -173,15 +125,12 @@ export async function LandingSegmentPage({
                     "surface-lift rounded-xl border border-border bg-card/80 px-6 py-5 shadow-sm",
                     styles.statCard,
                     styles.magicCard,
-                    styles.translationSpotlightCard,
                   )}
                   data-magic-card=""
-                  data-translation-spotlight=""
                   style={{
                     animationDelay: `${index * 110}ms`,
                   }}
                 >
-                  <TranslationGlyphRain />
                   <p className="text-3xl font-semibold text-foreground">
                     {shouldCountUp ? (
                       <InViewCountUp
@@ -256,12 +205,9 @@ export async function LandingSegmentPage({
                   className={cn(
                     "surface-lift flex gap-4 rounded-xl border border-border bg-card p-5",
                     styles.magicCard,
-                    styles.translationSpotlightCard,
                   )}
                   data-magic-card=""
-                  data-translation-spotlight=""
                 >
-                  <TranslationGlyphRain />
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <item.icon className="h-5 w-5" />
                   </div>
@@ -291,12 +237,9 @@ export async function LandingSegmentPage({
                 className={cn(
                   "surface-lift rounded-xl border border-border bg-card p-6 text-left",
                   styles.magicCard,
-                  styles.translationSpotlightCard,
                 )}
                 data-magic-card=""
-                data-translation-spotlight=""
               >
-                <TranslationGlyphRain />
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <item.icon className="h-5 w-5" />
                 </div>
