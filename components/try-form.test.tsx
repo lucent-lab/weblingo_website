@@ -59,12 +59,15 @@ const supportedLanguages = [
 ] satisfies SupportedLanguage[];
 
 const messages = {
-  "try.form.button": "Generate preview",
+  "try.form.button": "Generate a private preview",
   "try.form.placeholder": "https://example.com",
   "try.form.urlLabel": "URL",
   "try.form.requestSummaryTitle": "Submitted request",
   "try.form.languageTitle": "Languages",
+  "try.form.emailLabel": "Email",
   "try.form.emailPlaceholder": "you@example.com",
+  "try.form.emailRequired": "Enter an email.",
+  "try.form.emailInvalid": "Enter a valid email.",
   "try.form.invalidUrl": "Invalid URL",
   "try.form.sourceLabel": "Source language",
   "try.form.targetLabel": "Target language",
@@ -89,7 +92,7 @@ const messages = {
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
   "try.pending.emailPrompt": "Get notified when your preview is ready",
-  "try.pending.emailSubmit": "Notify me",
+  "try.pending.emailSubmit": "Email me",
   "try.pending.emailSubmitting": "Saving...",
   "try.pending.emailSaved": "We'll email you when it's ready.",
   "try.pending.emailError": "Could not save email. Try again.",
@@ -274,7 +277,7 @@ describe("TryForm preview status", () => {
 
     const urlInput = screen.getByPlaceholderText("https://example.com");
     fireEvent.change(urlInput, { target: { value: "https://example.com/docs?secret=1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(captureAnalyticsEvent).toHaveBeenCalledWith(
@@ -328,6 +331,58 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("renders visible funnel labels and sends the email with the preview request", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        previewId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        statusToken: "email-token",
+        status: "processing",
+        stage: "translating",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+        fieldLayout="funnel"
+      />,
+    );
+
+    expect(screen.getByLabelText("URL")).toBeTruthy();
+    expect(screen.getByLabelText("Source language")).toBeTruthy();
+    expect(screen.getByLabelText("Target language")).toBeTruthy();
+    expect(screen.getByLabelText("Email")).toBeTruthy();
+    const generateButton = screen.getByRole("button", {
+      name: "Generate a private preview",
+    }) as HTMLButtonElement;
+    expect(generateButton.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("URL"), {
+      target: { value: "https://launch.example.com/public-page" },
+    });
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "owner@example.com" },
+    });
+    expect(generateButton.disabled).toBe(false);
+
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      const [, requestInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(String(requestInit.body))).toMatchObject({
+        sourceUrl: "https://launch.example.com/public-page",
+        sourceLang: "en",
+        targetLang: "fr",
+        locale: "en",
+        email: "owner@example.com",
+      });
+    });
+  });
+
   it("captures preview terminal failures from the create response", async () => {
     vi.stubGlobal(
       "fetch",
@@ -347,7 +402,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://broken.example.com/" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(captureAnalyticsEvent).toHaveBeenCalledWith(
@@ -385,7 +440,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(captureAnalyticsEvent).toHaveBeenCalledWith(
@@ -416,7 +471,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(
@@ -450,7 +505,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     const openButton = await screen.findByRole("link", { name: "Open overlay preview" });
     openButton.addEventListener("click", (event) => event.preventDefault(), { once: true });
@@ -491,7 +546,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
@@ -632,7 +687,7 @@ describe("TryForm preview status", () => {
   it("shows editable controls in idle mode", () => {
     renderTryForm();
     expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
     expect(screen.getAllByTestId("mock-language-combobox")).toHaveLength(2);
   });
 
@@ -647,7 +702,7 @@ describe("TryForm preview status", () => {
       />,
     );
 
-    const generateButton = screen.getByRole("button", { name: "Generate preview" });
+    const generateButton = screen.getByRole("button", { name: "Generate a private preview" });
     expect(generateButton.className.includes("landing-button-micro")).toBe(true);
   });
 
@@ -694,7 +749,7 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByText("Checking preview status...")).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
-      expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Generate a private preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
       expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
@@ -711,7 +766,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
       expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
     });
   });
@@ -827,7 +882,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
       expect(screen.queryByText("old.example.com • English -> French")).toBeNull();
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -878,7 +933,7 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByText("Ready")).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
       expect(screen.getByRole("link", { name: "Open overlay preview" }).getAttribute("href")).toBe(
         "https://preview.example.com/p/ready",
       );
@@ -900,7 +955,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("Unknown error")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate preview" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
     });
   });
 
@@ -935,7 +990,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://new.example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(screen.getByText("Creating preview...")).toBeTruthy();
@@ -1061,7 +1116,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -1118,7 +1173,7 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
-      expect(screen.queryByRole("button", { name: "Generate preview" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Generate a private preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
@@ -1214,7 +1269,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(screen.getByText("Creating preview...")).toBeTruthy();
@@ -1359,7 +1414,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "owner@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Notify me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1469,7 +1524,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1501,7 +1556,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -1532,7 +1587,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(MockEventSource.instances).toHaveLength(1);
@@ -1568,7 +1623,7 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(MockEventSource.instances).toHaveLength(1);

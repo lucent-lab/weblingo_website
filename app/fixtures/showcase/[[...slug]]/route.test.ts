@@ -231,7 +231,7 @@ describe("showcase fixture pages", () => {
     expect(response.status).toBe(400);
     expectNoStoreFixtureCache(response);
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
-    expect(body).toBe("A valid work email is required.");
+    expect(body).toBe("A valid email is required.");
     expect(body).not.toContain(payload);
   });
 
@@ -254,7 +254,7 @@ describe("showcase fixture pages", () => {
     expect(response.headers.get("content-security-policy")).toBe(
       "default-src 'none'; base-uri 'none';",
     );
-    expect(body).toBe("A valid work email is required.");
+    expect(body).toBe("A valid email is required.");
     expect(body).not.toContain(payload);
   });
 

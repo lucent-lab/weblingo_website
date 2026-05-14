@@ -115,6 +115,7 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
                   supportedLanguages={supportedLanguages}
                   showEmailField
                   showInlineStatusText={false}
+                  fieldLayout="funnel"
                 />
               </div>
             </div>
@@ -253,9 +254,9 @@ export async function getClassicHomeMetadata({
   const metadata = await createLocalizedMetadata(Promise.resolve({ locale }), {
     titleKey: "home.hero.title",
     descriptionKey: "home.hero.description",
-    titleFallback: "Automatic Website Translation & Hosting",
+    titleFallback: "Static-site localization for public growth pages",
     descriptionFallback:
-      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO-ready with localized metadata and hreflang. Launch in minutes — no code required.",
+      "Generate a private preview of one public page and evaluate localized copy, SEO metadata, and page structure before you publish.",
   });
 
   if (!noIndex) {

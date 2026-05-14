@@ -19,6 +19,7 @@ type LandingContent = {
     subtitleKey: string;
     rotatorPrefixKey: string;
     rotatorOutcomeKeys: [string, string, string, string];
+    rotatorSuffixKey: string;
   };
   stats: StatItem[];
   pain: {
@@ -133,6 +134,10 @@ const sharedHow = {
       titleKey: "landing.expansion.how.items.3.title",
       bodyKey: "landing.expansion.how.items.3.body",
     },
+    {
+      titleKey: "landing.expansion.how.items.4.title",
+      bodyKey: "landing.expansion.how.items.4.body",
+    },
   ],
 } satisfies LandingContent["how"];
 
@@ -156,6 +161,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
         "landing.expansion.hero.rotator.outcome.3",
         "landing.expansion.hero.rotator.outcome.4",
       ],
+      rotatorSuffixKey: "landing.expansion.hero.rotator.suffix",
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -165,9 +171,9 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
     metadata: {
       titleKey: "landing.expansion.title",
       descriptionKey: "landing.expansion.subtitle",
-      titleFallback: "Turn international traffic into conversions and revenue",
+      titleFallback: "Localize public pages without rebuilding your site.",
       descriptionFallback:
-        "WebLingo helps you localize and host your site so global visitors convert. Launch a private preview in minutes.",
+        "WebLingo turns public pages into crawlable localized versions you can review before rollout.",
     },
   },
   saas: {
@@ -182,6 +188,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
         "landing.expansion.hero.rotator.outcome.3",
         "landing.expansion.hero.rotator.outcome.4",
       ],
+      rotatorSuffixKey: "landing.expansion.hero.rotator.suffix",
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -191,9 +198,9 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
     metadata: {
       titleKey: "landing.saas.title",
       descriptionKey: "landing.saas.subtitle",
-      titleFallback: "Stop paying for traffic you can’t convert",
+      titleFallback: "Localize public SaaS growth pages without rebuilding your site.",
       descriptionFallback:
-        "WebLingo publishes SEO-ready localized pages that stay in sync with every release.",
+        "WebLingo helps SaaS teams preview crawlable localized public landing pages, docs, pricing, and policies before production rollout.",
     },
   },
   tourism: {
@@ -208,6 +215,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
         "landing.expansion.hero.rotator.outcome.3",
         "landing.expansion.hero.rotator.outcome.4",
       ],
+      rotatorSuffixKey: "landing.expansion.hero.rotator.suffix",
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -217,9 +225,9 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
     metadata: {
       titleKey: "landing.tourism.title",
       descriptionKey: "landing.tourism.subtitle",
-      titleFallback: "Turn international searches into direct bookings",
+      titleFallback: "Localize public tourism pages without touching booking flows.",
       descriptionFallback:
-        "WebLingo localizes your pages so guests trust, book, and stay in sync with every update.",
+        "WebLingo helps tourism teams preview localized public destination, policy, and SEO pages while excluding booking and checkout flows.",
     },
   },
   agency: {
@@ -234,6 +242,7 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
         "landing.expansion.hero.rotator.outcome.3",
         "landing.expansion.hero.rotator.outcome.4",
       ],
+      rotatorSuffixKey: "landing.expansion.hero.rotator.suffix",
     },
     stats: sharedStats,
     pain: sharedPain,
@@ -243,9 +252,9 @@ export const landingContent: Record<LandingSegment, LandingContent> = {
     metadata: {
       titleKey: "landing.agency.title",
       descriptionKey: "landing.agency.subtitle",
-      titleFallback: "Localization without the maintenance burden",
+      titleFallback: "Preview client public pages without agency billing promises",
       descriptionFallback:
-        "Deliver localized pages for clients without rebuilding or maintaining every language.",
+        "Evaluate localized public-page previews for clients without promising centralized billing, rebilling, or shared workspaces.",
     },
   },
 };

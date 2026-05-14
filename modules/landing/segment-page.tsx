@@ -70,11 +70,14 @@ export async function LandingSegmentPage({
             <div className="text-center lg:text-left">
               <h1 className="mb-6 text-4xl font-bold leading-tight text-balance text-foreground sm:text-6xl lg:text-7xl">
                 {shouldRotateHeroTitle ? (
-                  <HeroOutcomeRotator
-                    className={styles.heroTitleRotator}
-                    outcomes={heroOutcomes}
-                    prefix={t(content.hero.rotatorPrefixKey)}
-                  />
+                  <>
+                    <HeroOutcomeRotator
+                      className={styles.heroTitleRotator}
+                      outcomes={heroOutcomes}
+                      prefix={t(content.hero.rotatorPrefixKey)}
+                    />
+                    <span className="block">{t(content.hero.rotatorSuffixKey)}</span>
+                  </>
                 ) : (
                   t(content.hero.titleKey)
                 )}
@@ -82,8 +85,7 @@ export async function LandingSegmentPage({
               <p className="mb-5 text-balance text-xl text-muted-foreground leading-relaxed lg:max-w-2xl">
                 {t(content.hero.subtitleKey)}
               </p>
-              <p className="text-sm text-muted-foreground">{t("landing.hero.guardrail")}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{t("home.hero.trust")}</p>
+              <p className="text-sm font-medium text-foreground">{t("landing.hero.guardrail")}</p>
             </div>
             <div className="relative lg:justify-self-end">
               <div className="pointer-events-none absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
@@ -110,7 +112,7 @@ export async function LandingSegmentPage({
               </div>
             </div>
           </div>
-          <MagicCardField className="mt-12 grid gap-6 text-center sm:grid-cols-3">
+          <MagicCardField className="mt-12 grid gap-4 text-center sm:grid-cols-3">
             {content.stats.map((stat, index) => {
               const rawStatValue = t(stat.valueKey);
               const parsedStatValue = Number.parseInt(rawStatValue.replace(/[^0-9]/g, ""), 10);
@@ -171,11 +173,7 @@ export async function LandingSegmentPage({
                   <div className={styles.socialProofStatGrid}>
                     <article className={styles.socialProofChip}>
                       <span className={styles.socialProofChipValue}>
-                        <InViewCountUp
-                          ariaLabel={t("landing.cost.callout.stat.1.value")}
-                          suffix="%"
-                          target={76}
-                        />
+                        {t("landing.cost.callout.stat.1.value")}
                       </span>
                       <span className={styles.socialProofChipLabel}>
                         {t("landing.cost.callout.stat.1.label")}
@@ -183,11 +181,7 @@ export async function LandingSegmentPage({
                     </article>
                     <article className={styles.socialProofChip}>
                       <span className={styles.socialProofChipValue}>
-                        <InViewCountUp
-                          ariaLabel={t("landing.cost.callout.stat.2.value")}
-                          suffix="%"
-                          target={40}
-                        />
+                        {t("landing.cost.callout.stat.2.value")}
                       </span>
                       <span className={styles.socialProofChipLabel}>
                         {t("landing.cost.callout.stat.2.label")}
@@ -351,12 +345,11 @@ export async function LandingSegmentPage({
                   pagePath: resolvedPagePath,
                   pageType: "landing",
                   segment,
-                  targetHref: "mailto:contact@weblingo.app",
+                  targetHref: `/${locale}/contact`,
                   variant: segment === "expansion" ? "expansion" : undefined,
                 })}
                 event={ANALYTICS_EVENTS.marketingCtaClicked}
-                external
-                href="mailto:contact@weblingo.app"
+                href={`/${locale}/contact`}
               >
                 {t(content.cta.secondaryKey)}
               </AnalyticsTrackedLink>

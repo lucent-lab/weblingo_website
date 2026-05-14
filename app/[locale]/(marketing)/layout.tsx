@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 
-import { LaunchBanner } from "@components/launch-banner";
 import { PreviewStatusCenter } from "@components/preview-status-center";
 import { SiteFooter } from "@components/site-footer";
 import { SiteHeader } from "@components/site-header";
@@ -25,19 +24,6 @@ export default async function MarketingLayout({
   const statusCenterMessages = Object.fromEntries(
     PREVIEW_STATUS_CENTER_MESSAGE_KEYS.map((key) => [key, messages[key] ?? key]),
   );
-  const bannerCopy = {
-    badge: t("banner.badge"),
-    title: t("banner.title"),
-    subtitle: t("banner.subtitle"),
-    emailPlaceholder: t("banner.emailPlaceholder"),
-    sitePlaceholder: t("banner.sitePlaceholder"),
-    buttonIdle: t("banner.button.idle"),
-    buttonLoading: t("banner.button.loading"),
-    buttonSuccess: t("banner.button.success"),
-    successMessage: t("banner.message.success"),
-    defaultMessage: t("banner.message.default"),
-    dismissLabel: t("banner.dismiss"),
-  };
 
   return (
     <>
@@ -46,7 +32,6 @@ export default async function MarketingLayout({
         <main className="flex-1">{children}</main>
         <SiteFooter locale={locale} t={t} />
       </div>
-      <LaunchBanner copy={bannerCopy} />
       <PreviewStatusCenter messages={statusCenterMessages} />
     </>
   );

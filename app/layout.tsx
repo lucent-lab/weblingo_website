@@ -12,23 +12,23 @@ const appUrl = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
 export const metadata: Metadata = {
   metadataBase: appUrl ? new URL(appUrl) : undefined,
   title: {
-    default: "WebLingo — Automatic Website Translation & Hosting",
+    default: "WebLingo — Static-Site Localization for Public Growth Pages",
     template: "%s · WebLingo",
   },
   description:
-    "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+    "Generate a private preview of one public page and evaluate localized copy, SEO metadata, and page structure before production rollout.",
   openGraph: {
     siteName: "WebLingo",
     type: "website",
-    title: "WebLingo — Automatic Website Translation & Hosting",
+    title: "WebLingo — Static-Site Localization for Public Growth Pages",
     description:
-      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+      "Generate a private preview of one public page and evaluate localized copy, SEO metadata, and page structure before production rollout.",
   },
   twitter: {
     card: "summary",
-    title: "WebLingo — Automatic Website Translation & Hosting",
+    title: "WebLingo — Static-Site Localization for Public Growth Pages",
     description:
-      "Translate and host your website automatically on 330+ Cloudflare locations. Keep content in sync and SEO‑ready with localized metadata and hreflang. Launch in minutes — no code required.",
+      "Generate a private preview of one public page and evaluate localized copy, SEO metadata, and page structure before production rollout.",
   },
   icons: {
     icon: "/favicon.svg",

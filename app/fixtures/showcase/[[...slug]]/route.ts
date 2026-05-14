@@ -59,7 +59,7 @@ const PAGES: Record<string, FixturePage> = {
       </article>
       <form action="/fixtures/showcase/marketing/contact?source=form" method="post" data-check="lead-form">
         <label>
-          Work email
+          Email
           <input name="email" type="email" value="buyer@example.com" required />
         </label>
         <button type="submit">Request localized preview</button>
@@ -121,7 +121,7 @@ const PAGES: Record<string, FixturePage> = {
         <p>This page submits a browser-generated multipart body to the showcase fixture handler.</p>
         <form action="/fixtures/showcase/marketing/contact-multipart?source=multipart" method="post" enctype="multipart/form-data" data-check="multipart-lead-form">
           <label>
-            Work email
+            Email
             <input name="email" type="email" value="buyer@example.com" required />
           </label>
           <label>
@@ -428,7 +428,7 @@ export async function POST(
 
   const email = formData.get("email");
   if (typeof email !== "string" || email.trim().length === 0 || !email.includes("@")) {
-    return formError("A valid work email is required.", contactPageId);
+    return formError("A valid email is required.", contactPageId);
   }
 
   return new Response(null, {
