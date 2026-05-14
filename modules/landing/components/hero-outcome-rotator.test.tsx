@@ -47,10 +47,20 @@ describe("HeroOutcomeRotator", () => {
     act(() => {
       vi.advanceTimersByTime(3_000);
     });
+    expect(screen.getByText("Turn international traffic into bookings")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(560);
+    });
     expect(screen.getByText("bookings")).toBeTruthy();
 
     act(() => {
-      vi.advanceTimersByTime(3_000);
+      vi.advanceTimersByTime(2_440);
+    });
+    expect(screen.getByText("Turn international traffic into signups")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(560);
     });
     expect(screen.getByText("signups")).toBeTruthy();
   });

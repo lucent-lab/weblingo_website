@@ -30,7 +30,6 @@
 
 .scrambledText {
   display: inline-block;
-  min-inline-size: 100%;
   font: inherit;
   color: inherit;
   font-variant-ligatures: none;

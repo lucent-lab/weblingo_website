@@ -72,10 +72,15 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
       });
     };
 
+    const onPointerEnter = (event: PointerEvent) => {
+      markRectsStale();
+      updateCards(event.clientX, event.clientY);
+    };
+
     const resizeObserver = new ResizeObserver(markRectsStale);
     resizeObserver.observe(root);
     root.addEventListener("pointermove", onPointerMove, { passive: true });
-    root.addEventListener("pointerenter", markRectsStale, { passive: true });
+    root.addEventListener("pointerenter", onPointerEnter, { passive: true });
     window.addEventListener("scroll", markRectsStale, { passive: true });
 
     return () => {
@@ -84,7 +89,7 @@ export function MagicCardField({ children, className }: MagicCardFieldProps) {
       }
       resizeObserver.disconnect();
       root.removeEventListener("pointermove", onPointerMove);
-      root.removeEventListener("pointerenter", markRectsStale);
+      root.removeEventListener("pointerenter", onPointerEnter);
       window.removeEventListener("scroll", markRectsStale);
     };
   }, []);
