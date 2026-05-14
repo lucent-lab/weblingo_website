@@ -84,14 +84,14 @@
       "ajv": "6.14.0",
       "qs": "6.14.2",
       "flatted": "3.4.2",
+      "fast-uri": "3.1.2",
+      "fast-xml-builder": "1.1.7",
       "fast-xml-parser": "5.5.10",
       "protobufjs": "7.5.6",
       "picomatch@2.3.1": "2.3.2",
       "picomatch@4.0.3": "4.0.4",
       "happy-dom": "20.8.9",
-      "vite": "7.3.2",
-      "fast-uri": "3.1.2",
-      "fast-xml-builder": "1.1.7"
+      "vite": "7.3.2"
     }
   }
 }
