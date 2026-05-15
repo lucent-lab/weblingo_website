@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { hasActorInternalOps, requireDashboardAuth } from "@internal/dashboard/auth";
+import { readDashboardErrorCode } from "@internal/dashboard/error-state";
 import {
   updateAdminAccount,
+  WebhooksApiError,
   type ManagedAccountFeatureFlagOverrides,
   type ManagedAccountPlan,
 } from "@internal/dashboard/webhooks";
@@ -51,6 +53,14 @@ function parseNullableInteger(value: string, field: string): number | null | str
   return Number.parseInt(value.trim(), 10);
 }
 
+function parseNullableCustomerMaxSites(value: string): number | null | string {
+  const parsed = parseNullableInteger(value, "Max sites");
+  if (typeof parsed === "string" || parsed === null) {
+    return parsed;
+  }
+  return parsed === 1 ? parsed : "Max sites must be 1 or blank for customer accounts.";
+}
+
 function parseFeatureFlags(rawValue: string): ManagedAccountFeatureFlagOverrides | null | string {
   const trimmed = rawValue.trim();
   if (!trimmed) {
@@ -65,6 +75,16 @@ function parseFeatureFlags(rawValue: string): ManagedAccountFeatureFlagOverrides
   } catch {
     return "Feature flag overrides must be valid JSON.";
   }
+}
+
+function toAdminAccountPolicyError(error: unknown): string {
+  if (
+    error instanceof WebhooksApiError &&
+    readDashboardErrorCode(error) === "single_site_account_limit"
+  ) {
+    return "Customer accounts support exactly one website. Leave Max sites blank or set it to 1.";
+  }
+  return "Unable to update the account policy.";
 }
 
 function getInternalAdminAuth() {
@@ -102,7 +122,7 @@ export async function updateAdminAccountPolicyAction(
     return failed("Plan status must be active, past_due, or cancelled.");
   }
 
-  const maxSites = parseNullableInteger(formData.get("maxSites")?.toString() ?? "", "Max sites");
+  const maxSites = parseNullableCustomerMaxSites(formData.get("maxSites")?.toString() ?? "");
   if (typeof maxSites === "string") {
     return failed(maxSites);
   }
@@ -147,6 +167,6 @@ export async function updateAdminAccountPolicyAction(
     return succeeded("Account policy updated.");
   } catch (error) {
     console.error("[dashboard] updateAdminAccountPolicyAction failed:", error);
-    return failed("Unable to update the account policy.");
+    return failed(toAdminAccountPolicyError(error));
   }
 }

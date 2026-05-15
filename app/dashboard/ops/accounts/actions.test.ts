@@ -12,6 +12,16 @@ vi.mock("@internal/dashboard/auth", () => ({
 
 const updateAdminAccount = vi.fn();
 vi.mock("@internal/dashboard/webhooks", () => ({
+  WebhooksApiError: class WebhooksApiError extends Error {
+    status: number;
+    details?: unknown;
+
+    constructor(message: string, status: number, details?: unknown) {
+      super(message);
+      this.status = status;
+      this.details = details;
+    }
+  },
   updateAdminAccount,
 }));
 
@@ -32,7 +42,7 @@ describe("ops account actions", () => {
     formData.set("planType", "starter");
     formData.set("planStatus", "active");
     formData.set("managedDemo", "true");
-    formData.set("maxSites", "5");
+    formData.set("maxSites", "1");
     formData.set("freeQuota", "");
     formData.set("starterQuota", "2000");
     formData.set("proQuota", "");
@@ -54,7 +64,7 @@ describe("ops account actions", () => {
         planType: "starter",
         planStatus: "active",
         managedDemo: true,
-        maxSites: 5,
+        maxSites: 1,
         freeQuota: null,
         starterQuota: 2000,
         proQuota: null,
@@ -85,6 +95,48 @@ describe("ops account actions", () => {
 
     expect(result.ok).toBe(false);
     expect(updateAdminAccount).not.toHaveBeenCalled();
+  });
+
+  it("rejects customer maxSites values below one before calling the backend", async () => {
+    const { updateAdminAccountPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("accountId", "acct-customer");
+    formData.set("planType", "starter");
+    formData.set("planStatus", "active");
+    formData.set("maxSites", "0");
+
+    const result = await updateAdminAccountPolicyAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Max sites must be 1 or blank for customer accounts.",
+      meta: undefined,
+    });
+    expect(updateAdminAccount).not.toHaveBeenCalled();
+  });
+
+  it("shows the single-site account limit when the backend rejects stale policy input", async () => {
+    const { WebhooksApiError } = await import("@internal/dashboard/webhooks");
+    updateAdminAccount.mockRejectedValueOnce(
+      new WebhooksApiError("Customer accounts support one active website", 400, {
+        code: "single_site_account_limit",
+      }),
+    );
+    const { updateAdminAccountPolicyAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("accountId", "acct-customer");
+    formData.set("planType", "starter");
+    formData.set("planStatus", "active");
+    formData.set("maxSites", "1");
+
+    const result = await updateAdminAccountPolicyAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "Customer accounts support exactly one website. Leave Max sites blank or set it to 1.",
+      meta: undefined,
+    });
   });
 
   it("rejects invalid feature-flag JSON", async () => {
