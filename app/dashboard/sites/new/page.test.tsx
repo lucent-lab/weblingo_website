@@ -97,6 +97,20 @@ describe("NewSitePage", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-current");
   });
 
+  it("shows a review state instead of choosing from duplicate active websites", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesCached.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+    const tree = await NewSitePage();
+
+    render(tree);
+    expect(screen.getByText("Website workspace needs review")).toBeTruthy();
+    expect(screen.getByText(/more than one active website record/)).toBeTruthy();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   it("keeps agency add-site onboarding available", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ actorPlan: "agency", maxSites: null }));
     mocks.listSitesCached.mockResolvedValue([makeSite("site-client")]);

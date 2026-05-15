@@ -28,12 +28,35 @@ export default async function NewSitePage() {
     sites = await listSitesCached(auth.webhooksAuth);
   }
   const activeSites = sites.filter((site) => site.status === "active");
-  if (isNormalCustomer && activeSites.length > 0) {
+  if (isNormalCustomer && activeSites.length === 1) {
     redirect(`/dashboard/sites/${activeSites[0]!.id}`);
   }
   const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
   const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;
   const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
+  if (isNormalCustomer && activeSites.length > 1) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Website workspace needs review</CardTitle>
+          <CardDescription>
+            This account has more than one active website record. Open the dashboard or contact
+            support so we can reconcile the account before another website is created.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button asChild variant="secondary">
+            <Link href="/dashboard">Back to dashboard</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">
+              Contact support
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   if (!canCreateSite) {
     const title = billingBlocked
       ? "Billing action required"
