@@ -33,7 +33,7 @@ test("home page exposes the try form", async ({ page }) => {
   await page.goto("/en");
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.getByTestId("hero-outcome-rotator")).toBeVisible();
-  await expect(page.locator("h1")).toContainText("without rebuilding your site.");
+  await expect(page.locator("h1")).toContainText("block your next market.");
   await expect(
     page.getByText(
       "WebLingo turns public pages into crawlable localized versions you can review before rollout.",
@@ -80,7 +80,7 @@ test("expansion landing page renders core sections", async ({ page }) => {
   await page.goto("/en/landing/expansion");
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.getByTestId("hero-outcome-rotator")).toBeVisible();
-  await expect(page.locator("h1")).toContainText("without rebuilding your site.");
+  await expect(page.locator("h1")).toContainText("block your next market.");
   await expect(
     page.getByText(
       "WebLingo turns public pages into crawlable localized versions you can review before rollout.",
