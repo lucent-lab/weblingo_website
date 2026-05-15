@@ -97,22 +97,55 @@ describe("ops account actions", () => {
     expect(updateAdminAccount).not.toHaveBeenCalled();
   });
 
-  it("rejects customer maxSites values below one before calling the backend", async () => {
+  it.each(["0", "2"])(
+    "clears unsupported customer maxSites value %s before calling the backend",
+    async (staleMaxSites) => {
+      const { updateAdminAccountPolicyAction } = await import("./actions");
+      const formData = new FormData();
+      formData.set("accountId", "acct-customer");
+      formData.set("planType", "starter");
+      formData.set("planStatus", "active");
+      formData.set("maxSites", staleMaxSites);
+
+      const result = await updateAdminAccountPolicyAction(undefined, formData);
+
+      expect(result).toMatchObject({ ok: true, message: "Account policy updated." });
+      expect(updateAdminAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "actor-token" }),
+        "acct-customer",
+        expect.objectContaining({
+          maxSites: null,
+        }),
+      );
+    },
+  );
+
+  it("removes stale customer maxSites feature-flag overrides before calling the backend", async () => {
     const { updateAdminAccountPolicyAction } = await import("./actions");
     const formData = new FormData();
     formData.set("accountId", "acct-customer");
     formData.set("planType", "starter");
     formData.set("planStatus", "active");
-    formData.set("maxSites", "0");
+    formData.set(
+      "featureFlags",
+      JSON.stringify({
+        maxSites: 0,
+        glossaryEnabled: true,
+      }),
+    );
 
     const result = await updateAdminAccountPolicyAction(undefined, formData);
 
-    expect(result).toEqual({
-      ok: false,
-      message: "Max sites must be 1 or blank for customer accounts.",
-      meta: undefined,
-    });
-    expect(updateAdminAccount).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true, message: "Account policy updated." });
+    expect(updateAdminAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "actor-token" }),
+      "acct-customer",
+      expect.objectContaining({
+        featureFlags: {
+          glossaryEnabled: true,
+        },
+      }),
+    );
   });
 
   it("shows the single-site account limit when the backend rejects stale policy input", async () => {

@@ -58,7 +58,7 @@ function parseNullableCustomerMaxSites(value: string): number | null | string {
   if (typeof parsed === "string" || parsed === null) {
     return parsed;
   }
-  return parsed === 1 ? parsed : "Max sites must be 1 or blank for customer accounts.";
+  return parsed === 1 ? parsed : null;
 }
 
 function parseFeatureFlags(rawValue: string): ManagedAccountFeatureFlagOverrides | null | string {
@@ -75,6 +75,20 @@ function parseFeatureFlags(rawValue: string): ManagedAccountFeatureFlagOverrides
   } catch {
     return "Feature flag overrides must be valid JSON.";
   }
+}
+
+function normalizeCustomerFeatureFlags(
+  featureFlags: ManagedAccountFeatureFlagOverrides | null,
+): ManagedAccountFeatureFlagOverrides | null {
+  if (!featureFlags) {
+    return null;
+  }
+  const normalized = { ...featureFlags } as ManagedAccountFeatureFlagOverrides & {
+    max_sites?: unknown;
+  };
+  delete normalized.maxSites;
+  delete normalized.max_sites;
+  return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
 function toAdminAccountPolicyError(error: unknown): string {
@@ -146,6 +160,7 @@ export async function updateAdminAccountPolicyAction(
   if (typeof featureFlags === "string") {
     return failed(featureFlags);
   }
+  const normalizedFeatureFlags = normalizeCustomerFeatureFlags(featureFlags);
 
   try {
     const auth = await getInternalAdminAuth();
@@ -157,7 +172,7 @@ export async function updateAdminAccountPolicyAction(
       freeQuota,
       starterQuota,
       proQuota,
-      featureFlags,
+      featureFlags: normalizedFeatureFlags,
     });
     revalidatePath("/dashboard/ops");
     revalidatePath("/dashboard/ops/accounts");

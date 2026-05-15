@@ -23,11 +23,23 @@ function formatNullableInteger(value: number | null | undefined): string {
   return typeof value === "number" ? String(value) : "";
 }
 
+function formatCustomerMaxSitesOverride(value: number | null | undefined): string {
+  return value === 1 ? "1" : "";
+}
+
+function formatCustomerFeatureFlagOverrides(
+  featureFlags: ManagedAccountPolicy["featureFlags"],
+): string {
+  const customerFeatureFlags = { ...(featureFlags ?? {}) };
+  delete customerFeatureFlags.maxSites;
+  return JSON.stringify(customerFeatureFlags, null, 2);
+}
+
 export function AccountPolicyForm({ account }: AccountPolicyFormProps) {
   const [state, formAction, pending] = useActionState(updateAdminAccountPolicyAction, initialState);
   const router = useRouter();
   const featureFlagsJson = useMemo(
-    () => JSON.stringify(account.featureFlags ?? {}, null, 2),
+    () => formatCustomerFeatureFlagOverrides(account.featureFlags),
     [account.featureFlags],
   );
 
@@ -119,7 +131,7 @@ export function AccountPolicyForm({ account }: AccountPolicyFormProps) {
                 name="maxSites"
                 type="number"
                 min="0"
-                defaultValue={formatNullableInteger(account.quotas.maxSites)}
+                defaultValue={formatCustomerMaxSitesOverride(account.quotas.maxSites)}
                 disabled={pending}
               />
             </Field>
