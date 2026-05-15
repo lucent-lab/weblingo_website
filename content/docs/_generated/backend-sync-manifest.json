@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-15T14:30:23+09:00",
+  "generatedAt": "2026-05-15T14:39:41+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
       "bytes": 85270,
@@ -32,7 +32,7 @@
       "sha256": "df04d4e1bbb8073ade57fa624a737f2ab57e7d99e25f545be81f70628807ed4d"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-05-15T14:30:23+09:00",
+  "sourceRepoCommitTimestamp": "2026-05-15T14:39:41+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo",
-  "sourceRepoSha": "199db651dade140ecfd6abfcabaaf2bf53f85fa5"
+  "sourceRepoSha": "1eb2c3edef7cd355410a3dee8c7a4d4490535f69"
 }
