@@ -58,6 +58,21 @@ describe("NewSitePage", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  it("uses the single-website contract when normal customer bootstrap has stale maxSites", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ maxSites: 0 }));
+    mocks.listSitesFresh.mockResolvedValue([]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+    const tree = await NewSitePage();
+
+    render(tree);
+    expect(screen.getByText("Create your website workspace")).toBeTruthy();
+    expect(screen.getByText("Onboarding form")).toBeTruthy();
+    expect(screen.queryByText("Website creation is locked")).toBeNull();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   it("redirects a normal customer away from create-another-site when a website exists", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-1")]);

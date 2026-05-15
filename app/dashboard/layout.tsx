@@ -35,6 +35,7 @@ import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runt
 import { listSitesCached, listSitesFresh } from "@internal/dashboard/data";
 import {
   getDashboardSitesLabel,
+  resolveDashboardMaxSitesLimit,
   resolveDashboardWorkspaceAudience,
 } from "@internal/dashboard/workspace";
 import { resolvePreferredLocale } from "@internal/i18n";
@@ -368,26 +369,29 @@ async function SitesUsageSummaryAsync({
     );
   }
 
-  try {
-    if (!auth.webhooksAuth) {
-      return <SitesUsageFallback label={sitesLabel} />;
-    }
-    const sites = await listSites(auth.webhooksAuth);
-    const activeSiteCount = sites.filter((site) => site.status === "active").length;
-    const maxSites = auth.account?.featureFlags.maxSites ?? null;
+  if (!auth.webhooksAuth) {
+    return <SitesUsageFallback label={sitesLabel} />;
+  }
 
-    return (
-      <span className="flex items-center gap-1">
-        <span className="text-muted-foreground">{sitesLabel}</span>
-        <span className="text-foreground">
-          {activeSiteCount} / {maxSites === null ? "Unlimited" : maxSites}
-        </span>
-      </span>
-    );
+  let sites: SiteSummary[];
+  try {
+    sites = await listSites(auth.webhooksAuth);
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
     return <SitesUsageFallback label={sitesLabel} />;
   }
+
+  const activeSiteCount = sites.filter((site) => site.status === "active").length;
+  const maxSites = resolveDashboardMaxSitesLimit(auth);
+
+  return (
+    <span className="flex items-center gap-1">
+      <span className="text-muted-foreground">{sitesLabel}</span>
+      <span className="text-foreground">
+        {activeSiteCount} / {maxSites === null ? "Unlimited" : maxSites}
+      </span>
+    </span>
+  );
 }
 
 // Fallback for sites usage while loading

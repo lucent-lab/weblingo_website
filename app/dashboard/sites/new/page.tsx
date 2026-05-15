@@ -7,7 +7,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { isCustomerDashboardWorkspace } from "@internal/dashboard/workspace";
+import {
+  isCustomerDashboardWorkspace,
+  resolveDashboardMaxSitesLimit,
+} from "@internal/dashboard/workspace";
 import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
@@ -21,8 +24,8 @@ export default async function NewSitePage() {
   const billingBlocked = !auth.mutationsAllowed;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
-  const maxSites = auth.account?.featureFlags.maxSites ?? null;
   const isNormalCustomer = isCustomerDashboardWorkspace(auth);
+  const maxSites = resolveDashboardMaxSitesLimit(auth);
   let sites: SiteSummary[] = [];
   if (auth.webhooksAuth) {
     sites = await listSitesFresh(auth.webhooksAuth);

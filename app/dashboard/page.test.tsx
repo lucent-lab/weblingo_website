@@ -69,6 +69,21 @@ describe("DashboardPage", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  it("uses the single-website contract when a normal customer bootstrap has stale maxSites", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ maxSites: 0 }));
+    mocks.listSitesFresh.mockResolvedValue([]);
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+    const tree = await DashboardPage();
+
+    render(tree);
+    expect(screen.getByText("Create your website workspace")).toBeTruthy();
+    expect(screen.getAllByText("Create website").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Website creation is locked")).toBeNull();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   it("routes a normal customer with one website directly to the workspace", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-1")]);

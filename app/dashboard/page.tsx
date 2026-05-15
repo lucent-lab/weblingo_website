@@ -13,7 +13,10 @@ import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/au
 import { listSitesFresh } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
-import { isCustomerDashboardWorkspace } from "@internal/dashboard/workspace";
+import {
+  isCustomerDashboardWorkspace,
+  resolveDashboardMaxSitesLimit,
+} from "@internal/dashboard/workspace";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
@@ -22,7 +25,7 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
   }
   const sites = await listSitesFresh(auth.webhooksAuth);
   const billingBlocked = !auth.mutationsAllowed;
-  const maxSites = auth.account?.featureFlags.maxSites ?? null;
+  const maxSites = resolveDashboardMaxSitesLimit(auth);
   const activeSites = sites.filter((site) => site.status === "active");
   const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
   const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;

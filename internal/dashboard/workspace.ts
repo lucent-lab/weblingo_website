@@ -10,6 +10,14 @@ type DashboardWorkspaceActor = {
   } | null;
 };
 
+type DashboardWorkspaceSiteLimit = DashboardWorkspaceActor & {
+  account?: {
+    featureFlags?: {
+      maxSites?: number | null;
+    } | null;
+  } | null;
+};
+
 export function resolveDashboardWorkspaceAudience(
   auth: DashboardWorkspaceActor,
 ): DashboardWorkspaceAudience {
@@ -22,6 +30,13 @@ export function isCustomerDashboardWorkspace(auth: DashboardWorkspaceActor): boo
 
 export function getDashboardSitesLabel(audience: DashboardWorkspaceAudience): string {
   return audience === "agency" ? "Sites" : "Website";
+}
+
+export function resolveDashboardMaxSitesLimit(auth: DashboardWorkspaceSiteLimit): number | null {
+  if (isCustomerDashboardWorkspace(auth)) {
+    return 1;
+  }
+  return auth.account?.featureFlags?.maxSites ?? null;
 }
 
 export async function readSubjectAccountId(): Promise<string | null> {
