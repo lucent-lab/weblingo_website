@@ -81,6 +81,35 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
+  it("shows onboarding when a normal customer only has inactive website records", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesCached.mockResolvedValue([makeSite("site-old", "inactive")]);
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+    const tree = await DashboardPage();
+
+    render(tree);
+    expect(screen.getByText("Create your website workspace")).toBeTruthy();
+    expect(screen.queryByText("Site portfolio")).toBeNull();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("routes a normal customer to the active website when inactive records exist", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesCached.mockResolvedValue([
+      makeSite("site-old", "inactive"),
+      makeSite("site-current"),
+    ]);
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+
+    await expect(DashboardPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard/sites/site-current");
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-current");
+    expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
   it("does not render a normal-customer portfolio even if stale data contains multiple sites", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesCached.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
@@ -139,12 +168,12 @@ function makeAuth(
   };
 }
 
-function makeSite(id: string) {
+function makeSite(id: string, status: "active" | "inactive" = "active") {
   return {
     id,
     accountId: "acct-1",
     sourceUrl: `https://${id}.example.com`,
-    status: "active",
+    status,
     servingMode: "strict",
     maxLocales: null,
     siteProfile: null,

@@ -23,12 +23,13 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
   const sites = await listSitesCached(auth.webhooksAuth);
   const billingBlocked = !auth.mutationsAllowed;
   const maxSites = auth.account?.featureFlags.maxSites ?? null;
-  const activeSites = sites.filter((site) => site.status === "active").length;
-  const hasAvailableSlot = maxSites === null || activeSites < maxSites;
-  const atSiteLimit = maxSites !== null && activeSites >= maxSites;
+  const activeSites = sites.filter((site) => site.status === "active");
+  const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
+  const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;
   const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   return {
     sites,
+    activeSites,
     billingBlocked,
     maxSites,
     atSiteLimit,
@@ -54,8 +55,8 @@ export default async function DashboardPage() {
     overviewError = error;
   }
 
-  if (normalCustomerDashboard && overviewData?.sites.length === 1) {
-    redirect(`/dashboard/sites/${overviewData.sites[0]!.id}`);
+  if (normalCustomerDashboard && overviewData?.activeSites.length === 1) {
+    redirect(`/dashboard/sites/${overviewData.activeSites[0]!.id}`);
   }
 
   return (
@@ -132,7 +133,7 @@ function OverviewActions({
   }
 
   if (normalCustomerDashboard) {
-    if (data.sites.length === 0 && data.canCreateSite) {
+    if (data.activeSites.length === 0 && data.canCreateSite) {
       return (
         <Button asChild>
           <Link href="/dashboard/sites/new">Create website</Link>
@@ -151,10 +152,10 @@ function OverviewActions({
         </div>
       );
     }
-    if (data.sites.length > 0) {
+    if (data.activeSites.length > 0) {
       return (
         <Button asChild variant="secondary">
-          <Link href={`/dashboard/sites/${data.sites[0]!.id}`}>Open website</Link>
+          <Link href={`/dashboard/sites/${data.activeSites[0]!.id}`}>Open website</Link>
         </Button>
       );
     }
@@ -218,8 +219,9 @@ function OverviewSites({
   normalCustomerDashboard: boolean;
 }) {
   const { sites, canCreateSite, billingBlocked } = data;
+  const currentSites = normalCustomerDashboard ? data.activeSites : sites;
 
-  if (sites.length === 0) {
+  if (currentSites.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -268,7 +270,7 @@ function OverviewSites({
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button asChild>
-            <Link href={`/dashboard/sites/${sites[0]!.id}`}>Open website</Link>
+            <Link href={`/dashboard/sites/${currentSites[0]!.id}`}>Open website</Link>
           </Button>
           <Button asChild variant="outline">
             <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">

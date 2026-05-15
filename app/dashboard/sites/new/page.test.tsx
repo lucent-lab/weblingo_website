@@ -69,6 +69,34 @@ describe("NewSitePage", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-1");
   });
 
+  it("renders normal-customer onboarding when only inactive website records exist", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesCached.mockResolvedValue([makeSite("site-old", "inactive")]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+    const tree = await NewSitePage();
+
+    render(tree);
+    expect(screen.getByText("Create your website workspace")).toBeTruthy();
+    expect(screen.getByText("Onboarding form")).toBeTruthy();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("redirects a normal customer to the active website when inactive records exist", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesCached.mockResolvedValue([
+      makeSite("site-old", "inactive"),
+      makeSite("site-current"),
+    ]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+
+    await expect(NewSitePage()).rejects.toThrow("NEXT_REDIRECT:/dashboard/sites/site-current");
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-current");
+  });
+
   it("keeps agency add-site onboarding available", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ actorPlan: "agency", maxSites: null }));
     mocks.listSitesCached.mockResolvedValue([makeSite("site-client")]);
@@ -103,12 +131,12 @@ function makeAuth(options: { actorPlan?: string; maxSites?: number | null } = {}
   };
 }
 
-function makeSite(id: string) {
+function makeSite(id: string, status: "active" | "inactive" = "active") {
   return {
     id,
     accountId: "acct-1",
     sourceUrl: `https://${id}.example.com`,
-    status: "active",
+    status,
     servingMode: "strict",
     maxLocales: null,
     siteProfile: null,

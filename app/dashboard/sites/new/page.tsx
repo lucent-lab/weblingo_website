@@ -27,12 +27,12 @@ export default async function NewSitePage() {
   if (auth.webhooksAuth) {
     sites = await listSitesCached(auth.webhooksAuth);
   }
-  if (isNormalCustomer && sites.length > 0) {
-    redirect(`/dashboard/sites/${sites[0]!.id}`);
+  const activeSites = sites.filter((site) => site.status === "active");
+  if (isNormalCustomer && activeSites.length > 0) {
+    redirect(`/dashboard/sites/${activeSites[0]!.id}`);
   }
-  const activeSites = sites.filter((site) => site.status === "active").length;
-  const hasAvailableSlot = maxSites === null || activeSites < maxSites;
-  const atSiteLimit = maxSites !== null && activeSites >= maxSites;
+  const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
+  const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;
   const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
   if (!canCreateSite) {
     const title = billingBlocked
