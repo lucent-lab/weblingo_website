@@ -154,7 +154,7 @@ contracts graduate from implementation contract to stable dashboard behavior.
 
 - Internal-admin-only managed account discovery, detail, and policy editing.
 - `GET /api/admin/accounts` is a bounded inventory/search surface (`accountId`, `planType`, `managedDemo`, `limit`, `offset`).
-- `PATCH` supports managed account plan assignment (`free | starter | pro` only), managed-demo state, quota overrides, and raw account-level feature-flag overrides.
+- `PATCH` supports managed account plan assignment (`free | starter | pro` only), managed-demo state, quota overrides, and raw account-level feature-flag overrides except for customer `maxSites`/`max_sites`, which cannot reopen multi-site behavior.
 - `GET /api/admin/accounts`
   - Query: `accountId?: string`, `planType?: "free" | "starter" | "pro"`, `managedDemo?: boolean`, `limit?: int` (default `20`, max `50`), `offset?: int` (default `0`).
   - Response: `{ items, pagination }`, where each item includes `accountId`, `planType`, `planStatus`, `managedDemo`, `accountEmail`, `activeSiteCount`, `quotas`, `featureFlags`, and linked `agencyLinks`.
@@ -163,8 +163,9 @@ contracts graduate from implementation contract to stable dashboard behavior.
   - Errors: `404` when the managed account is missing or is an `agency` subject; `403` when internal-admin auth is missing.
 - `PATCH /api/admin/accounts/:accountId`
   - Payload: any subset of `{ planType, planStatus, managedDemo, maxSites, freeQuota, starterQuota, proQuota, featureFlags }`.
+  - Customer `free`, `starter`, and `pro` accounts remain single-website accounts: `maxSites` must be `1` or unset, `featureFlags.maxSites`/`feature_flags.max_sites` is removed from customer policy, and assigning a customer plan fails with `single_site_account_limit` when the account already has multiple active/current sites. Unrelated admin policy cleanup can still neutralize stale account overrides.
   - Response: `{ account }` with the refreshed managed-account policy object.
-  - Errors: `400` validation failures, `403` auth failures, `404` missing managed account, `409` account/link sync conflicts.
+  - Errors: `400` validation failures, `403` auth failures, `404` missing managed account, `409` account/link sync conflicts or `single_site_account_limit` policy conflicts.
 - Website mapping:
   - `/dashboard/ops/accounts` lists managed accounts with deterministic pagination.
   - `/dashboard/ops/accounts/:accountId` is the account policy editor.
@@ -196,7 +197,7 @@ contracts graduate from implementation contract to stable dashboard behavior.
   - Optional: `crawlCaptureMode`, `clientRuntimeEnabled`, `translatableAttributes`, `spaRefresh`, `webhookUrl`, `webhookSecret`, `webhookEvents`.
   - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
 - Behavior: validates `sourceUrl` (HTTP 200), reads robots/sitemaps to seed initial pages, creates site + locales + route config, inserts domain records with verification tokens, and sets the site to `inactive` until activation.
-- Customer `free`, `starter`, and `pro` accounts support one active/current website. The website app should resolve a normal customer directly to the existing workspace when one site exists, show onboarding only when no site exists, and route source URL changes or rebrands through `PATCH /api/sites/:id` settings instead of creating another site. Agency portfolio switching remains out of scope for this rule.
+- Customer `free`, `starter`, and `pro` accounts support one active/current website. The website app should resolve a customer subject directly to the existing workspace when one site exists, show onboarding only when no site exists, and route source URL changes or rebrands through `PATCH /api/sites/:id` settings instead of creating another site. Agency-owned accounts retain portfolio semantics; agency actors managing a customer subject follow the customer single-website rule.
 - Error `403`: a second customer website create returns `single_site_account_limit`.
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
@@ -415,52 +416,52 @@ Legend:
 
 ### User-facing API capabilities
 
-| Capability (operationId)               | Stability | Status | Scope     | Website surface / notes                                       |
-| -------------------------------------- | --------- | ------ | --------- | ------------------------------------------------------------- |
-| `accounts.claim`                       | GA        | live   | dashboard | `No account` recovery flow claims account ownership.          |
-| `accounts.me`                          | GA        | live   | dashboard | Dashboard entitlements/flags bootstrap and plan gating.       |
-| `agency.customers.list`                | GA        | live   | dashboard | Agency customer list and workspace switching.                 |
-| `agency.customers.create`              | GA        | live   | dashboard | Agency invite/create customer workflow.                       |
-| `agency.customers.update`              | GA        | live   | dashboard | Agency customer plan changes within the paid-plan envelope.   |
-| `admin.accounts.list`                  | Beta      | live   | dashboard | Internal admin managed-account inventory and filters.         |
-| `admin.accounts.get`                   | Beta      | live   | dashboard | Internal admin managed-account detail page.                   |
-| `admin.accounts.update`                | Beta      | live   | dashboard | Internal admin account policy + raw flag override editing.    |
-| `admin.managedDemos.list`              | Beta      | live   | dashboard | Internal admin managed demo inventory page.                   |
-| `admin.managedDemos.create`            | Beta      | live   | dashboard | Internal admin managed demo bootstrap flow.                   |
-| `auth.token.mint`                      | GA        | live   | dashboard | Supabase-to-webhooks JWT bridge used for all dashboard calls. |
-| `dashboard.bootstrap`                  | GA        | live   | dashboard | One-call auth + entitlements + account context bootstrap.     |
-| `digests.subscription.upsert`          | Beta      | live   | dashboard | Site details “Automation and notifications” card.             |
-| `meta.languages.list`                  | GA        | live   | dashboard | Onboarding/admin language pickers.                            |
-| `previews.create`                      | Beta      | live   | dashboard | Try-now preview form and dashboard preview flows.             |
-| `previews.status`                      | Beta      | live   | dashboard | Preview polling/SSE status tracking.                          |
-| `sites.list`                           | GA        | live   | dashboard | Sites index/list surfaces.                                    |
-| `sites.create`                         | GA        | live   | dashboard | Onboarding create site action.                                |
-| `sites.get`                            | GA        | live   | dashboard | Site detail loading and admin context.                        |
-| `sites.dashboard.get`                  | GA        | live   | dashboard | Consolidated site dashboard payload for detail pages.         |
-| `sites.showcase.get`                   | Beta      | live   | dashboard | Site-admin showcase card read path.                           |
-| `sites.showcase.create`                | Beta      | live   | dashboard | Site-admin showcase bootstrap for managed demo sites.         |
-| `sites.showcase.update`                | Beta      | live   | dashboard | Site-admin showcase default-lang / status updates.            |
-| `sites.update`                         | GA        | live   | dashboard | Site settings updates (status/locales/config/profile).        |
-| `sites.crawl.trigger`                  | GA        | live   | dashboard | Crawl trigger controls on site/admin pages.                   |
-| `sites.crawl_translate.trigger`        | GA        | live   | dashboard | Site details “Crawl + translate selection” control.           |
-| `sites.translate`                      | Beta      | live   | dashboard | Translate-without-recrawl and “Translate & serve”.            |
-| `sites.translationRuns.get`            | Beta      | live   | dashboard | Active run polling/status display.                            |
-| `sites.translationRuns.cancel`         | Beta      | live   | dashboard | Cancel run controls.                                          |
-| `sites.translationRuns.resume`         | Beta      | live   | dashboard | Resume/retry run controls.                                    |
-| `sites.pages.list`                     | GA        | live   | dashboard | Site pages table and crawl scheduling context.                |
-| `sites.pages.crawl`                    | GA        | live   | dashboard | Per-page crawl trigger actions.                               |
-| `sites.deployments.list`               | GA        | live   | dashboard | Deployment/serving status tables.                             |
-| `sites.domains.verify`                 | GA        | live   | dashboard | Domain verify checks (TXT/token).                             |
-| `sites.domains.provision`              | GA        | live   | dashboard | Domain provisioning button in activation flow.                |
-| `sites.domains.refresh`                | GA        | live   | dashboard | DNS/certificate refresh checks.                               |
-| `sites.locales.serve`                  | GA        | live   | dashboard | Per-locale serve toggles and status actions.                  |
-| `sites.locales.translationSummary.put` | Beta      | live   | dashboard | Site details locale summary preference form.                  |
-| `sites.translationSummaries.list`      | Beta      | live   | dashboard | Site details summary history fetch control.                   |
-| `sites.switcherSnippets.get`           | GA        | live   | dashboard | Site details switcher snippet fetch tool.                     |
-| `sites.glossary.get`                   | GA        | live   | dashboard | Glossary editor read path.                                    |
-| `sites.glossary.put`                   | GA        | live   | dashboard | Glossary save/retranslate flow.                               |
-| `sites.overrides.create`               | GA        | live   | dashboard | Manual override form.                                         |
-| `sites.slugs.set`                      | GA        | live   | dashboard | Localized slug form.                                          |
+| Capability (operationId)               | Stability | Status | Scope     | Website surface / notes                                                                                                                      |
+| -------------------------------------- | --------- | ------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accounts.claim`                       | GA        | live   | dashboard | `No account` recovery flow claims account ownership.                                                                                         |
+| `accounts.me`                          | GA        | live   | dashboard | Dashboard entitlements/flags bootstrap and plan gating.                                                                                      |
+| `agency.customers.list`                | GA        | live   | dashboard | Agency customer list and workspace switching.                                                                                                |
+| `agency.customers.create`              | GA        | live   | dashboard | Agency invite/create customer workflow.                                                                                                      |
+| `agency.customers.update`              | GA        | live   | dashboard | Agency customer plan changes within the paid-plan envelope.                                                                                  |
+| `admin.accounts.list`                  | Beta      | live   | dashboard | Internal admin managed-account inventory and filters.                                                                                        |
+| `admin.accounts.get`                   | Beta      | live   | dashboard | Internal admin managed-account detail page.                                                                                                  |
+| `admin.accounts.update`                | Beta      | live   | dashboard | Internal admin account policy + raw flag override editing.                                                                                   |
+| `admin.managedDemos.list`              | Beta      | live   | dashboard | Internal admin managed demo inventory page.                                                                                                  |
+| `admin.managedDemos.create`            | Beta      | live   | dashboard | Internal admin managed demo bootstrap flow.                                                                                                  |
+| `auth.token.mint`                      | GA        | live   | dashboard | Supabase-to-webhooks JWT bridge used for all dashboard calls.                                                                                |
+| `dashboard.bootstrap`                  | GA        | live   | dashboard | One-call auth + entitlements + account context bootstrap.                                                                                    |
+| `digests.subscription.upsert`          | Beta      | live   | dashboard | Site details “Automation and notifications” card.                                                                                            |
+| `meta.languages.list`                  | GA        | live   | dashboard | Onboarding/admin language pickers.                                                                                                           |
+| `previews.create`                      | Beta      | live   | dashboard | Try-now preview form and dashboard preview flows.                                                                                            |
+| `previews.status`                      | Beta      | live   | dashboard | Preview polling/SSE status tracking.                                                                                                         |
+| `sites.list`                           | GA        | live   | dashboard | Site discovery surfaces; normal customers resolve zero or one current website, while agency/admin contexts can retain portfolio-style lists. |
+| `sites.create`                         | GA        | live   | dashboard | Onboarding create site action when no normal-customer site exists or when agency/admin policy allows another site.                           |
+| `sites.get`                            | GA        | live   | dashboard | Site detail loading and admin context.                                                                                                       |
+| `sites.dashboard.get`                  | GA        | live   | dashboard | Consolidated site dashboard payload for detail pages.                                                                                        |
+| `sites.showcase.get`                   | Beta      | live   | dashboard | Site-admin showcase card read path.                                                                                                          |
+| `sites.showcase.create`                | Beta      | live   | dashboard | Site-admin showcase bootstrap for managed demo sites.                                                                                        |
+| `sites.showcase.update`                | Beta      | live   | dashboard | Site-admin showcase default-lang / status updates.                                                                                           |
+| `sites.update`                         | GA        | live   | dashboard | Site settings updates (status/locales/config/profile).                                                                                       |
+| `sites.crawl.trigger`                  | GA        | live   | dashboard | Crawl trigger controls on site/admin pages.                                                                                                  |
+| `sites.crawl_translate.trigger`        | GA        | live   | dashboard | Site details “Crawl + translate selection” control.                                                                                          |
+| `sites.translate`                      | Beta      | live   | dashboard | Translate-without-recrawl and “Translate & serve”.                                                                                           |
+| `sites.translationRuns.get`            | Beta      | live   | dashboard | Active run polling/status display.                                                                                                           |
+| `sites.translationRuns.cancel`         | Beta      | live   | dashboard | Cancel run controls.                                                                                                                         |
+| `sites.translationRuns.resume`         | Beta      | live   | dashboard | Resume/retry run controls.                                                                                                                   |
+| `sites.pages.list`                     | GA        | live   | dashboard | Site pages table and crawl scheduling context.                                                                                               |
+| `sites.pages.crawl`                    | GA        | live   | dashboard | Per-page crawl trigger actions.                                                                                                              |
+| `sites.deployments.list`               | GA        | live   | dashboard | Deployment/serving status tables.                                                                                                            |
+| `sites.domains.verify`                 | GA        | live   | dashboard | Domain verify checks (TXT/token).                                                                                                            |
+| `sites.domains.provision`              | GA        | live   | dashboard | Domain provisioning button in activation flow.                                                                                               |
+| `sites.domains.refresh`                | GA        | live   | dashboard | DNS/certificate refresh checks.                                                                                                              |
+| `sites.locales.serve`                  | GA        | live   | dashboard | Per-locale serve toggles and status actions.                                                                                                 |
+| `sites.locales.translationSummary.put` | Beta      | live   | dashboard | Site details locale summary preference form.                                                                                                 |
+| `sites.translationSummaries.list`      | Beta      | live   | dashboard | Site details summary history fetch control.                                                                                                  |
+| `sites.switcherSnippets.get`           | GA        | live   | dashboard | Site details switcher snippet fetch tool.                                                                                                    |
+| `sites.glossary.get`                   | GA        | live   | dashboard | Glossary editor read path.                                                                                                                   |
+| `sites.glossary.put`                   | GA        | live   | dashboard | Glossary save/retranslate flow.                                                                                                              |
+| `sites.overrides.create`               | GA        | live   | dashboard | Manual override form.                                                                                                                        |
+| `sites.slugs.set`                      | GA        | live   | dashboard | Localized slug form.                                                                                                                         |
 
 ### User-facing serve/runtime capabilities
 
@@ -471,31 +472,31 @@ Legend:
 
 ### User-facing feature-flag capabilities
 
-| Capability                      | Stability | Status | Scope     | Website surface / notes                                     |
-| ------------------------------- | --------- | ------ | --------- | ----------------------------------------------------------- |
-| `agencyActionsEnabled`          | GA        | live   | dashboard | Controls agency pages/actions visibility.                   |
-| `clientRuntimeToggleEnabled`    | GA        | live   | dashboard | Gates client-runtime setting in admin form.                 |
-| `crawlCaptureModeEnabled`       | GA        | live   | dashboard | Gates crawl capture mode controls.                          |
-| `crawlTriggerEnabled`           | GA        | live   | dashboard | Gates crawl/crawl-translate actions.                        |
-| `domainVerifyEnabled`           | GA        | live   | dashboard | Gates domain verify/provision/refresh controls.             |
-| `editEnabled`                   | GA        | live   | dashboard | Root mutation capability gate.                              |
-| `featurePreview`                | GA        | live   | dashboard | Drives feature-preview UI toggles where applicable.         |
-| `glossaryEnabled`               | GA        | live   | dashboard | Gates glossary editor and save actions.                     |
-| `localeUpdateEnabled`           | GA        | live   | dashboard | Gates locale update actions and summary preference updates. |
-| `maxDailyPageRecrawls`          | GA        | live   | dashboard | Displayed quota limits in admin/site pages.                 |
-| `maxDailyRecrawls`              | GA        | live   | dashboard | Displayed site crawl daily quota.                           |
-| `maxGlossarySources`            | GA        | live   | dashboard | Glossary plan messaging and limits.                         |
-| `maxLocales`                    | GA        | live   | dashboard | Per-site locale cap enforcement and UI constraints.         |
-| `maxSites`                      | GA        | live   | dashboard | Site-slot limit messaging.                                  |
-| `overridesEnabled`              | GA        | live   | dashboard | Gates manual override tooling.                              |
-| `pipelineAllowed`               | GA        | live   | dashboard | Gates pipeline operations where applicable.                 |
-| `publishEnabled`                | GA        | live   | dashboard | Gates publish-related controls.                             |
-| `renderEnabled`                 | GA        | live   | dashboard | Gates render-related controls.                              |
-| `serveAllowed`                  | GA        | live   | dashboard | Gates serve toggles/activation actions.                     |
-| `siteCreateEnabled`             | GA        | live   | dashboard | Gates site onboarding create action.                        |
-| `slugEditEnabled`               | GA        | live   | dashboard | Gates localized slug editing.                               |
-| `tmWriteEnabled`                | GA        | live   | dashboard | Plan-level TM write behavior messaging.                     |
-| `translatableAttributesEnabled` | GA        | live   | dashboard | Gates translatable-attributes admin controls.               |
+| Capability                      | Stability | Status | Scope     | Website surface / notes                                                                       |
+| ------------------------------- | --------- | ------ | --------- | --------------------------------------------------------------------------------------------- |
+| `agencyActionsEnabled`          | GA        | live   | dashboard | Controls agency pages/actions visibility.                                                     |
+| `clientRuntimeToggleEnabled`    | GA        | live   | dashboard | Gates client-runtime setting in admin form.                                                   |
+| `crawlCaptureModeEnabled`       | GA        | live   | dashboard | Gates crawl capture mode controls.                                                            |
+| `crawlTriggerEnabled`           | GA        | live   | dashboard | Gates crawl/crawl-translate actions.                                                          |
+| `domainVerifyEnabled`           | GA        | live   | dashboard | Gates domain verify/provision/refresh controls.                                               |
+| `editEnabled`                   | GA        | live   | dashboard | Root mutation capability gate.                                                                |
+| `featurePreview`                | GA        | live   | dashboard | Drives feature-preview UI toggles where applicable.                                           |
+| `glossaryEnabled`               | GA        | live   | dashboard | Gates glossary editor and save actions.                                                       |
+| `localeUpdateEnabled`           | GA        | live   | dashboard | Gates locale update actions and summary preference updates.                                   |
+| `maxDailyPageRecrawls`          | GA        | live   | dashboard | Displayed quota limits in admin/site pages.                                                   |
+| `maxDailyRecrawls`              | GA        | live   | dashboard | Displayed site crawl daily quota.                                                             |
+| `maxGlossarySources`            | GA        | live   | dashboard | Glossary plan messaging and limits.                                                           |
+| `maxLocales`                    | GA        | live   | dashboard | Per-site locale cap enforcement and UI constraints.                                           |
+| `maxSites`                      | GA        | live   | dashboard | Agency/admin site-slot limit messaging; normal customer plans resolve to one current website. |
+| `overridesEnabled`              | GA        | live   | dashboard | Gates manual override tooling.                                                                |
+| `pipelineAllowed`               | GA        | live   | dashboard | Gates pipeline operations where applicable.                                                   |
+| `publishEnabled`                | GA        | live   | dashboard | Gates publish-related controls.                                                               |
+| `renderEnabled`                 | GA        | live   | dashboard | Gates render-related controls.                                                                |
+| `serveAllowed`                  | GA        | live   | dashboard | Gates serve toggles/activation actions.                                                       |
+| `siteCreateEnabled`             | GA        | live   | dashboard | Gates site onboarding create action.                                                          |
+| `slugEditEnabled`               | GA        | live   | dashboard | Gates localized slug editing.                                                                 |
+| `tmWriteEnabled`                | GA        | live   | dashboard | Plan-level TM write behavior messaging.                                                       |
+| `translatableAttributesEnabled` | GA        | live   | dashboard | Gates translatable-attributes admin controls.                                                 |
 
 ### Non-API operational requirements
 
@@ -510,7 +511,7 @@ Legend:
 
 - **Dashboard shell**: Sidebar/nav, status badges, recent activity.
 - **Onboarding wizard**: Source URL, source/target languages, subdomain pattern, site profile (brand voice), domain verification instructions.
-- **Sites & locales**: List/create/update/deactivate sites; add/remove target languages; view route config and domains; trigger crawl; toggle serving per locale.
+- **Sites & locales**: Resolve the current normal-customer website directly, or list/create sites only for agency/admin contexts where portfolio semantics still apply; update/deactivate sites, add/remove target languages, view route config and domains, trigger crawl, and toggle serving per locale.
 - **Domains**: Show verification tokens/status and `dnsInstructions`; check/verify/provision/refresh flows.
 - **Translations control**: Glossary CRUD, manual overrides, localized slug editor, translate-without-recrawl, run controls.
 - **Automation and notifications**: Crawl+translate selection, digest subscription, locale summary preferences, summary history fetch, switcher snippet retrieval.

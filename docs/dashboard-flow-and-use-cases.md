@@ -9,7 +9,7 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 
 ## Personas
 
-- Normal customer: owns a single account and manages only their own sites.
+- Normal customer: owns a single account and manages one current website.
 - Agency admin: manages their own agency account plus multiple customer accounts.
 - Agency-managed customer: a standard customer account that is managed by an agency (same UI as normal customer, but accessed via agency context).
 - Internal admin operator: an agency admin with `internal_ops` access who provisions and maintains pre-sales showcase demos.
@@ -18,15 +18,18 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 
 1. Sign in (Supabase Auth) and exchange for a webhooks JWT.
 2. Load `/accounts/me` to resolve plan status, feature flags, and quotas.
-3. Overview shows active sites, domain status, and usage vs limits.
-4. Create site via onboarding:
+3. Dashboard resolves the customer's website state:
+   - No site: show onboarding.
+   - One active/current site: route directly to the website workspace.
+   - Multiple active sites: show a review state instead of auto-selecting a site.
+4. Create the first website via onboarding:
    - Source URL + source language.
    - Target languages (respect locale cap).
    - Subdomain pattern.
    - Site profile (brand voice).
 5. Verify domains (DNS instructions, then verify/provision/refresh).
 6. Trigger crawl to refresh translations or translate without recrawl when snapshots are fresh.
-7. Manage translations per site:
+7. Manage translations for the current website:
    - Glossary, overrides, and slugs (if enabled by plan).
 8. Monitor deployments per locale and translation run status.
 9. Enable or disable serving per locale (serve toggle per target language).
@@ -41,7 +44,7 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 4. Create customer (invite flow) and pick plan.
 5. Update existing managed customers between Starter and Pro without leaving the customer list.
 6. Switch context into a customer workspace.
-7. Manage customer sites using the same UI as a normal customer.
+7. Manage each customer subject using the same single-website UI as a normal customer.
 8. Switch back to agency workspace for global metrics.
 
 ## Core flows (internal admin operator)
@@ -63,9 +66,9 @@ Purpose: describe the user journeys and UX expectations for the customer dashboa
 The current dashboard is implemented in `app/dashboard` and uses the webhooks worker API.
 
 - Auth + entitlements: `internal/dashboard/auth.ts` exchanges Supabase tokens for a webhooks JWT and fetches `/accounts/me`.
-- Navigation: Overview, Sites, Developer tools; agencies also see Agency overview + Customers, and internal admins also see Ops + Accounts + Showcases (`app/dashboard/layout.tsx`).
-- Overview: summary cards for active sites, unverified domains, and configured locales (`app/dashboard/page.tsx`).
-- Sites list: list + summary per site; plan + usage badges live in the shared header (`app/dashboard/sites/page.tsx`).
+- Navigation: Overview, Developer tools, and the current website workspace for normal customers; agencies also see Agency overview + Customers, and internal admins also see Ops + Accounts + Showcases (`app/dashboard/layout.tsx`).
+- Overview: normal customers are routed to onboarding when no site exists, to the active website workspace when one current site exists, or to a review state when duplicate active sites require reconciliation (`app/dashboard/page.tsx`).
+- Sites list: reserved for agency-owned portfolio/admin contexts; normal customer `/dashboard/sites` resolves back through the single-website dashboard flow (`app/dashboard/sites/page.tsx`).
 - Site detail: domains, deployments, trigger crawl, glossary, overrides, slugs (`app/dashboard/sites/[id]/page.tsx`).
 - Detail data path: site detail/admin/pages routes consume consolidated `GET /api/sites/{siteId}/dashboard` payloads to avoid duplicate site + deployments fetches.
 - Feature gating: locked sections show disabled cards with upgrade CTAs instead of disappearing.
@@ -76,7 +79,7 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 - Auth refresh policy: dashboard exchanges Supabase tokens for webhooks JWTs server-side on each request, refreshes pre-expiry (5-minute buffer), and retries once on 401.
 - Billing policy: mutations require both actor and subject plans to be active; billing banners warn the billing owner (agency when acting as agency, customer when in own workspace) without showing agency billing warnings to customer workspaces.
 - Polling policy: `/api/dashboard/sites/{siteId}/status` returns only `{ site }` so crawl-status polling does not overfetch deployments.
-- Cache policy: sites list uses long-lived account-scoped cache; site dashboard payload uses short-TTL per-site cache with indexed invalidation for paginated variants.
+- Cache policy: normal customer routing/sidebar/counts use fresh site state so stale portfolio data cannot reopen create-another-site UX; agency portfolio lists and site dashboard payloads keep their scoped cache policies.
 - Prefetch policy: disable implicit route prefetch on high-cardinality site links; keep prefetch only for low-cardinality/static navigation.
 
 ## Recommended UX (future)
@@ -90,8 +93,8 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
 
 ### Normal customers
 
-- Overview: show usage vs maxSites, plan status, and a clear CTA to add a site.
-- Sites list: include per-site locale count and a badge if the site is at its locale cap.
+- Overview: show plan status and resolve directly into zero-site onboarding, one-site workspace, or duplicate-active review.
+- Website workspace: show locale count and a badge if the website is at its locale cap.
 - Site detail: show glossary/overrides/slug sections even when locked, but disabled with a CTA ("Upgrade to Pro to unlock manual overrides").
 - Onboarding: surface maxLocales as a plan limit and show a CTA when the user hits it.
 
@@ -108,17 +111,17 @@ The current dashboard is implemented in `app/dashboard` and uses the webhooks wo
   - Create customer (invite) flow.
   - Per-customer detail page (plan, status, sites list).
 - Sites list:
-  - For agencies, show "My agency sites" in agency context.
-  - For customers, show the same list as normal customers.
+  - For agencies, show "My agency sites" only in the agency-owned workspace.
+  - For managed customer workspaces, follow the customer single-website flow.
 - Optional future page: "All managed sites" across customers (would need a backend aggregate endpoint).
 
 ### IA map (navigation + routes)
 
 Normal customers:
 
-- `/dashboard` — Overview (usage badge, recent status).
-- `/dashboard/sites` — Sites list.
-- `/dashboard/sites/new` — Onboarding (only if `site_create` enabled).
+- `/dashboard` — Resolves to onboarding, the current website workspace, or duplicate-active review.
+- `/dashboard/sites` — Compatibility route that re-enters the single-website dashboard flow.
+- `/dashboard/sites/new` — First-website onboarding only when no customer site exists and `site_create` is enabled.
 - `/dashboard/sites/:id` — Site detail (domains, deployments, glossary, overrides, slugs).
 - `/dashboard/developer-tools` — Tokens/config.
 - `/dashboard/no-account` — Plan selection + account claim.
