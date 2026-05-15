@@ -120,6 +120,8 @@ describe("DashboardPage", () => {
 
     render(tree);
     expect(screen.getByText("Website workspace needs review")).toBeTruthy();
+    expect(screen.getByText(/more than one active website record/)).toBeTruthy();
+    expect(screen.queryByText("Open website")).toBeNull();
     expect(screen.queryByText("Site portfolio")).toBeNull();
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });

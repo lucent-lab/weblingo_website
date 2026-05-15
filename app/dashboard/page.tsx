@@ -152,7 +152,7 @@ function OverviewActions({
         </div>
       );
     }
-    if (data.activeSites.length > 0) {
+    if (data.activeSites.length === 1) {
       return (
         <Button asChild variant="secondary">
           <Link href={`/dashboard/sites/${data.activeSites[0]!.id}`}>Open website</Link>
@@ -264,14 +264,11 @@ function OverviewSites({
         <CardHeader>
           <CardTitle>Website workspace needs review</CardTitle>
           <CardDescription>
-            This account has more than one website record. Open the current workspace or contact
-            support so we can reconcile the account.
+            This account has more than one active website record. Contact support so we can
+            reconcile the account before routing to a workspace.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href={`/dashboard/sites/${currentSites[0]!.id}`}>Open website</Link>
-          </Button>
           <Button asChild variant="outline">
             <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">
               Contact support
