@@ -44,7 +44,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.12.0
 
@@ -135,7 +135,7 @@ jobs:
           token: ${{ secrets.CROSS_REPO_CHECKOUT_TOKEN }}
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.12.0
 
