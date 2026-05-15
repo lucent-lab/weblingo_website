@@ -2099,8 +2099,8 @@
       "defaultsByPlan": {
         "agency": null,
         "free": 1,
-        "pro": null,
-        "starter": null
+        "pro": 1,
+        "starter": 1
       },
       "family": "flags",
       "flagKeys": [

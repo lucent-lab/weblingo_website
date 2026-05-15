@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Suspense, cache } from "react";
+import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import { listSitesCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
-import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
   if (!auth.webhooksAuth) {
@@ -35,12 +35,31 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
   };
 });
 
+type OverviewData = Awaited<ReturnType<typeof getOverviewData>>;
+
+function isNormalCustomerDashboard(auth: DashboardAuth): boolean {
+  return auth.actorAccount?.planType !== "agency";
+}
+
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const onboardingState = resolveDashboardOnboardingState(auth, t);
   const pricingPath = `/${locale}/pricing`;
+  const normalCustomerDashboard = isNormalCustomerDashboard(auth);
+  let overviewData: OverviewData | null = null;
+  let overviewError: unknown = null;
+
+  try {
+    overviewData = await getOverviewData(auth);
+  } catch (error) {
+    overviewError = error;
+  }
+
+  if (normalCustomerDashboard && overviewData?.sites.length === 1) {
+    redirect(`/dashboard/sites/${overviewData.sites[0]!.id}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +67,9 @@ export default async function DashboardPage() {
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold">Dashboard</h2>
           <p className="text-sm text-muted-foreground">
-            Welcome back. Set up a new site or check deployment health.
+            {normalCustomerDashboard
+              ? "Manage your WebLingo website workspace."
+              : "Welcome back. Set up a new site or check deployment health."}
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">Supabase auth</Badge>
@@ -56,9 +77,11 @@ export default async function DashboardPage() {
             <Badge variant="outline">Human-friendly UX</Badge>
           </div>
         </div>
-        <Suspense fallback={<OverviewActionsSkeleton />}>
-          <OverviewActions auth={auth} pricingPath={pricingPath} />
-        </Suspense>
+        <OverviewActions
+          data={overviewData}
+          pricingPath={pricingPath}
+          normalCustomerDashboard={normalCustomerDashboard}
+        />
       </div>
 
       {onboardingState.stage === "claimed_free_account" ? (
@@ -72,7 +95,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/dashboard/sites/new">Start onboarding</Link>
+              <Link href="/dashboard/sites/new">Create website</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href={pricingPath}>Review pricing</Link>
@@ -81,21 +104,74 @@ export default async function DashboardPage() {
         </Card>
       ) : null}
 
-      <Suspense fallback={<OverviewSitesSkeleton />}>
-        <OverviewSites auth={auth} pricingPath={pricingPath} />
-      </Suspense>
+      {overviewData ? (
+        <OverviewSites
+          data={overviewData}
+          pricingPath={pricingPath}
+          normalCustomerDashboard={normalCustomerDashboard}
+        />
+      ) : (
+        <OverviewSitesError error={overviewError} />
+      )}
     </div>
   );
 }
 
-async function OverviewActions({
-  auth,
+function OverviewActions({
+  data,
   pricingPath,
+  normalCustomerDashboard,
 }: {
-  auth: DashboardAuth;
+  data: OverviewData | null;
   pricingPath: string;
+  normalCustomerDashboard: boolean;
 }) {
-  const data = await getOverviewData(auth);
+  if (!data) {
+    return (
+      <Button disabled variant="outline">
+        {normalCustomerDashboard ? "Create website" : "Add a site"}
+      </Button>
+    );
+  }
+
+  if (normalCustomerDashboard) {
+    if (data.sites.length === 0 && data.canCreateSite) {
+      return (
+        <Button asChild>
+          <Link href="/dashboard/sites/new">Create website</Link>
+        </Button>
+      );
+    }
+    if (data.billingBlocked) {
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button disabled variant="outline">
+            Create website
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={pricingPath}>Update billing</Link>
+          </Button>
+        </div>
+      );
+    }
+    if (data.sites.length > 0) {
+      return (
+        <Button asChild variant="secondary">
+          <Link href={`/dashboard/sites/${data.sites[0]!.id}`}>Open website</Link>
+        </Button>
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button disabled variant="outline">
+          Create website
+        </Button>
+        <Button asChild variant="secondary">
+          <Link href={pricingPath}>Review plan</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -135,58 +211,36 @@ async function OverviewActions({
   );
 }
 
-async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; pricingPath: string }) {
-  let sites: SiteSummary[] = [];
-  let canCreateSite = false;
-  let billingBlocked = false;
-
-  try {
-    const data = await getOverviewData(auth);
-    sites = data.sites;
-    canCreateSite = data.canCreateSite;
-    billingBlocked = data.billingBlocked;
-  } catch (error) {
-    const errorView = resolveDashboardErrorView(error, {
-      title: "Could not load sites",
-      description:
-        "We could not load your site list. Existing sites and translations are not changed.",
-      message: "Unable to load your dashboard sites.",
-    });
-    return (
-      <ErrorStateCard
-        title={errorView.title}
-        description={errorView.description}
-        message={errorView.message}
-        nextSteps={errorView.nextSteps}
-        referenceCode={errorView.referenceCode}
-        technicalDetails={errorView.technicalDetails}
-        actions={
-          <>
-            <DashboardRetryButton href="/dashboard" label="Retry dashboard" />
-            <Button asChild variant="outline">
-              <a href="mailto:contact@weblingo.app?subject=Dashboard%20sites%20unavailable">
-                Contact support
-              </a>
-            </Button>
-          </>
-        }
-      />
-    );
-  }
+function OverviewSites({
+  data,
+  pricingPath,
+  normalCustomerDashboard,
+}: {
+  data: OverviewData;
+  pricingPath: string;
+  normalCustomerDashboard: boolean;
+}) {
+  const { sites, canCreateSite, billingBlocked } = data;
 
   if (sites.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Get set up in minutes</CardTitle>
+          <CardTitle>
+            {normalCustomerDashboard ? "Create your website workspace" : "Get set up in minutes"}
+          </CardTitle>
           <CardDescription>
-            Connect your source site, choose target languages, and verify your domains.
+            {normalCustomerDashboard
+              ? "One WebLingo account and subscription are tied to one website. Use settings later if the source URL changes."
+              : "Connect your source site, choose target languages, and verify your domains."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           {canCreateSite ? (
             <Button asChild>
-              <Link href="/dashboard/sites/new">Start onboarding</Link>
+              <Link href="/dashboard/sites/new">
+                {normalCustomerDashboard ? "Create website" : "Start onboarding"}
+              </Link>
             </Button>
           ) : billingBlocked ? (
             <Button asChild variant="secondary">
@@ -205,27 +259,58 @@ async function OverviewSites({ auth, pricingPath }: { auth: DashboardAuth; prici
     );
   }
 
+  if (normalCustomerDashboard) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Website workspace needs review</CardTitle>
+          <CardDescription>
+            This account has more than one website record. Open the current workspace or contact
+            support so we can reconcile the account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link href={`/dashboard/sites/${sites[0]!.id}`}>Open website</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">
+              Contact support
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return <SitesList sites={sites} />;
 }
 
-function OverviewActionsSkeleton() {
+function OverviewSitesError({ error }: { error: unknown }) {
+  const errorView = resolveDashboardErrorView(error, {
+    title: "Could not load sites",
+    description:
+      "We could not load your site list. Existing sites and translations are not changed.",
+    message: "Unable to load your dashboard sites.",
+  });
   return (
-    <div className="flex flex-wrap gap-3">
-      <Button disabled variant="outline">
-        Add a site
-      </Button>
-      <Button disabled variant="outline">
-        Dashboard
-      </Button>
-    </div>
-  );
-}
-
-function OverviewSitesSkeleton() {
-  return (
-    <div className="grid gap-4">
-      <div className="h-28 animate-pulse rounded-lg border border-border/60 bg-muted/40" />
-      <div className="h-28 animate-pulse rounded-lg border border-border/60 bg-muted/40" />
-    </div>
+    <ErrorStateCard
+      title={errorView.title}
+      description={errorView.description}
+      message={errorView.message}
+      nextSteps={errorView.nextSteps}
+      referenceCode={errorView.referenceCode}
+      technicalDetails={errorView.technicalDetails}
+      actions={
+        <>
+          <DashboardRetryButton href="/dashboard" label="Retry dashboard" />
+          <Button asChild variant="outline">
+            <a href="mailto:contact@weblingo.app?subject=Dashboard%20sites%20unavailable">
+              Contact support
+            </a>
+          </Button>
+        </>
+      }
+    />
   );
 }

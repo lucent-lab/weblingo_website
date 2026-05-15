@@ -183,7 +183,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>Sites</SidebarGroupLabel>
+            <SidebarGroupLabel>{isAgency ? "Sites" : "Website"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <Suspense fallback={<SitesNavSkeleton />}>
                 <SitesNavAsync auth={auth} />
@@ -230,7 +230,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                       </span>
                     </>
                   ) : null}
-                  <Suspense fallback={<SitesUsageFallback />}>
+                  <Suspense
+                    fallback={<SitesUsageFallback label={isAgency ? "Sites" : "Website"} />}
+                  >
                     <SitesUsageSummaryAsync auth={auth} isAgency={isAgency} />
                   </Suspense>
                 </nav>
@@ -341,7 +343,7 @@ async function SitesUsageSummaryAsync({
 
   try {
     if (!auth.webhooksAuth) {
-      return <SitesUsageFallback />;
+      return <SitesUsageFallback label={isAgency ? "Sites" : "Website"} />;
     }
     const sites = await listSitesCached(auth.webhooksAuth);
     const activeSiteCount = sites.filter((site) => site.status === "active").length;
@@ -349,7 +351,7 @@ async function SitesUsageSummaryAsync({
 
     return (
       <span className="flex items-center gap-1">
-        <span className="text-muted-foreground">Sites</span>
+        <span className="text-muted-foreground">{isAgency ? "Sites" : "Website"}</span>
         <span className="text-foreground">
           {activeSiteCount} / {maxSites === null ? "Unlimited" : maxSites}
         </span>
@@ -357,15 +359,15 @@ async function SitesUsageSummaryAsync({
     );
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
-    return <SitesUsageFallback />;
+    return <SitesUsageFallback label={isAgency ? "Sites" : "Website"} />;
   }
 }
 
 // Fallback for sites usage while loading
-function SitesUsageFallback() {
+function SitesUsageFallback({ label = "Sites" }: { label?: string }) {
   return (
     <span className="flex items-center gap-1">
-      <span className="text-muted-foreground">Sites</span>
+      <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground">—</span>
     </span>
   );

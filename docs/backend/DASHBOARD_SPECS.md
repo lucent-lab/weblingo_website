@@ -60,6 +60,7 @@ contracts graduate from implementation contract to stable dashboard behavior.
   - Feature-flag rejections: 403 with stable codes for frontend UX:
     - Demo read-only: `{ error: "Demo account is read-only", details: { code: "demo_read_only" } }`
     - Site creation disabled: `{ error: "Site creation is disabled for this account", details: { code: "site_create_disabled" } }`
+    - Single-website customer limit: `{ error: "This account already has an active website", details: { code: "single_site_account_limit" } }`
     - Crawl trigger disabled: `{ error: "Crawl triggers are disabled for this account", details: { code: "crawl_trigger_disabled" } }`
     - Slug edits disabled: `{ error: "Slug edits are disabled for this account", details: { code: "slug_edit_disabled" } }`
 - **Site**:
@@ -195,11 +196,14 @@ contracts graduate from implementation contract to stable dashboard behavior.
   - Optional: `crawlCaptureMode`, `clientRuntimeEnabled`, `translatableAttributes`, `spaRefresh`, `webhookUrl`, `webhookSecret`, `webhookEvents`.
   - `maxLocales` is a positive integer per site or `null` (no cap). `targetLangs` cannot exceed `maxLocales` when provided.
 - Behavior: validates `sourceUrl` (HTTP 200), reads robots/sitemaps to seed initial pages, creates site + locales + route config, inserts domain records with verification tokens, and sets the site to `inactive` until activation.
+- Customer `free`, `starter`, and `pro` accounts support one active/current website. The website app should resolve a normal customer directly to the existing workspace when one site exists, show onboarding only when no site exists, and route source URL changes or rebrands through `PATCH /api/sites/:id` settings instead of creating another site. Agency portfolio switching remains out of scope for this rule.
+- Error `403`: a second customer website create returns `single_site_account_limit`.
 - Response `201`: `{ ...site, crawlStatus }` (typically `{ enqueued: false }` until activation).
 
 `GET /api/sites` → `{ sites: SiteSummary[] }` scoped to account.
 
 - **Breaking change:** list responses are summary-only and exclude detail fields such as `locales`, `domains`, `routeConfig`, `webhookSecret`, and `verificationToken`. For full details, call `GET /api/sites/:id` or `GET /api/sites/:id/dashboard`.
+- Compatibility note: normal customer accounts should return zero or one current site; agency actors can still receive portfolio-style lists.
 
 `GET /api/sites/:id` → `Site`.
 
@@ -232,7 +236,7 @@ contracts graduate from implementation contract to stable dashboard behavior.
 - Behavior: updates site fields; upserts locales (removes absent target langs), rebuilds route config/domains from the pattern (new domains get fresh verification tokens; removed hosts are deleted), updates siteProfile (set to `null` to clear).
   - Enforces `targetLangs.length <= maxLocales` when `maxLocales` is set.
   - **Warning:** changing `sourceUrl` is destructive. It wipes pages/translations/deployments, resets status to `inactive`, seeds pages from robots/sitemaps, and requires reactivation before crawling. UI should require explicit confirmation.
-  - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl.
+  - Activating a site (`status: "active"`) requires at least one verified domain and triggers a crawl. Reactivating a second customer website for `free`, `starter`, or `pro` returns `single_site_account_limit`.
   - Source-selection saves use the same endpoint with `sourceSelection` plus `expectedRouteConfigUpdatedAt` and/or `expectedSourceSelectionFingerprint`; guarded writes are source-selection-only and stale writes return `409`.
   - Runtime request policy saves use the same endpoint with `runtimeRequestPolicy` plus `expectedRuntimeRequestPolicyFingerprint`; stale writes return `409` and route-cache propagation exposes the saved policy version/stale state.
 - Response `200`: updated `Site`.

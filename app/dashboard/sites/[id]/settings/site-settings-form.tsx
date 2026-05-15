@@ -438,7 +438,7 @@ export function SiteSettingsForm({
             {requiresResetConfirm ? (
               <Field
                 label="Confirm URL reset"
-                description="Changing the source URL clears pages, translations, and deployments. We'll re-scan sitemaps after verification."
+                description="Use this flow when the website source URL changes or the brand moves domains. Changing it clears pages, translations, and deployments, then re-scans sitemaps after verification."
                 error={resetConfirmationError ? "Confirm the reset to continue." : undefined}
               >
                 <label className="flex items-start gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">

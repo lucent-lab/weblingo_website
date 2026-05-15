@@ -4,9 +4,11 @@ import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { resolvePreferredLocale } from "@internal/i18n";
+import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata = {
   title: "New site",
@@ -19,11 +21,16 @@ export default async function NewSitePage() {
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const maxSites = auth.account?.featureFlags.maxSites ?? null;
-  let activeSites = 0;
+  const isAgencyActor = auth.actorAccount?.planType === "agency";
+  const isNormalCustomer = !isAgencyActor;
+  let sites: SiteSummary[] = [];
   if (auth.webhooksAuth) {
-    const sites = await listSitesCached(auth.webhooksAuth);
-    activeSites = sites.filter((site) => site.status === "active").length;
+    sites = await listSitesCached(auth.webhooksAuth);
   }
+  if (isNormalCustomer && sites.length > 0) {
+    redirect(`/dashboard/sites/${sites[0]!.id}`);
+  }
+  const activeSites = sites.filter((site) => site.status === "active").length;
   const hasAvailableSlot = maxSites === null || activeSites < maxSites;
   const atSiteLimit = maxSites !== null && activeSites >= maxSites;
   const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
@@ -32,12 +39,20 @@ export default async function NewSitePage() {
       ? "Billing action required"
       : atSiteLimit
         ? "Site limit reached"
-        : "Site creation is locked";
+        : isNormalCustomer
+          ? "Website creation is locked"
+          : "Site creation is locked";
     const description = billingBlocked
-      ? "Update billing to resume onboarding new sites."
+      ? isNormalCustomer
+        ? "Update billing to create your website workspace."
+        : "Update billing to resume onboarding new sites."
       : atSiteLimit
-        ? `Your plan allows ${maxSites} active site(s). Upgrade to add more.`
-        : "Upgrade your plan to onboard new sites and start translating.";
+        ? isNormalCustomer
+          ? "This account already has a website. Open the existing workspace and use settings to change the source URL."
+          : `Your plan allows ${maxSites} active site(s). Upgrade to add more.`
+        : isNormalCustomer
+          ? "Review your plan before creating a website workspace."
+          : "Upgrade your plan to onboard new sites and start translating.";
     return (
       <Card>
         <CardHeader>
@@ -62,9 +77,13 @@ export default async function NewSitePage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-balance text-2xl font-semibold">Add a new site</h2>
+        <h2 className="text-balance text-2xl font-semibold">
+          {isNormalCustomer ? "Create your website workspace" : "Add a new site"}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Set up your source URL, languages, and routing pattern.
+          {isNormalCustomer
+            ? "One account and subscription are tied to one website. You can update the source URL later from settings."
+            : "Set up your source URL, languages, and routing pattern."}
         </p>
       </div>
       <OnboardingForm

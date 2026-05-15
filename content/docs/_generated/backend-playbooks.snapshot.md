@@ -94,6 +94,9 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `dashboard.bootstrap`
 3. Create site and locale/domain onboarding records:
    - `operationId`: `sites.create`
+   - Customer `free`, `starter`, and `pro` accounts support one active/current website. A second
+     create or reactivation returns `single_site_account_limit`; update the existing site for
+     source URL changes or rebrands. Agency portfolio semantics are unchanged.
 4. Inspect site and deployments:
    - Recommendation: use `sites.dashboard.get` for dashboard/detail screens to minimize round trips; use `sites.get` + deployments endpoints when you need separate caching or independent refresh cadence.
    - Deployment endpoint choice: use `sites.deployments.list` when you need the current active deployments for a site. Use `sites.deployments.history.list` when you need past deployment attempts and historical records.

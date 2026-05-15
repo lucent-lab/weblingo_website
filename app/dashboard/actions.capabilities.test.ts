@@ -689,6 +689,31 @@ describe("dashboard capability actions", () => {
     expect(invalidateSitesCache).toHaveBeenCalled();
   });
 
+  it("returns user-facing copy for stale single-website create actions", async () => {
+    createSite.mockRejectedValue(
+      new MockWebhooksApiError("This account already has an active website", 403, {
+        code: "single_site_account_limit",
+      }),
+    );
+
+    const { createSiteAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.example.com");
+    formData.set("sourceLang", "en");
+    formData.append("targetLangs", "fr");
+    formData.set("subdomainPattern", "https://{lang}.example.com");
+    formData.set("servingMode", "strict");
+
+    const result = await createSiteAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/already has a website/i),
+    });
+    expect(result.message).toMatch(/Settings/i);
+    expect(result.message).toMatch(/source URL/i);
+  });
+
   it("rejects incomplete runtime request policy rule payloads", async () => {
     const { updateRuntimeRequestPolicyAction } = await import("./actions");
     const formData = new FormData();

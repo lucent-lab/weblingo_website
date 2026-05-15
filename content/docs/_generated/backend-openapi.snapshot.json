@@ -13798,6 +13798,22 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "single_site_account_limit"
+                  },
+                  "error": "This account already has an active website"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Customer account already has an active website."
+          },
           "429": {
             "content": {
               "application/json": {
