@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
-  listSitesCached: vi.fn(),
+  listSitesFresh: vi.fn(),
   listSupportedLanguagesCached: vi.fn(async () => []),
   redirect: vi.fn((href: string) => {
     const error = new Error(`NEXT_REDIRECT:${href}`);
@@ -23,7 +23,7 @@ vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
 }));
 vi.mock("@internal/dashboard/data", () => ({
-  listSitesCached: mocks.listSitesCached,
+  listSitesFresh: mocks.listSitesFresh,
   listSupportedLanguagesCached: mocks.listSupportedLanguagesCached,
 }));
 vi.mock("@internal/i18n", () => ({
@@ -45,7 +45,7 @@ describe("NewSitePage", () => {
 
   it("renders normal-customer onboarding when no website exists", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
-    mocks.listSitesCached.mockResolvedValue([]);
+    mocks.listSitesFresh.mockResolvedValue([]);
 
     vi.resetModules();
     const { default: NewSitePage } = await import("./page");
@@ -60,7 +60,7 @@ describe("NewSitePage", () => {
 
   it("redirects a normal customer away from create-another-site when a website exists", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
-    mocks.listSitesCached.mockResolvedValue([makeSite("site-1")]);
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-1")]);
 
     vi.resetModules();
     const { default: NewSitePage } = await import("./page");
@@ -71,7 +71,7 @@ describe("NewSitePage", () => {
 
   it("renders normal-customer onboarding when only inactive website records exist", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
-    mocks.listSitesCached.mockResolvedValue([makeSite("site-old", "inactive")]);
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-old", "inactive")]);
 
     vi.resetModules();
     const { default: NewSitePage } = await import("./page");
@@ -85,7 +85,7 @@ describe("NewSitePage", () => {
 
   it("redirects a normal customer to the active website when inactive records exist", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
-    mocks.listSitesCached.mockResolvedValue([
+    mocks.listSitesFresh.mockResolvedValue([
       makeSite("site-old", "inactive"),
       makeSite("site-current"),
     ]);
@@ -99,7 +99,7 @@ describe("NewSitePage", () => {
 
   it("shows a review state instead of choosing from duplicate active websites", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
-    mocks.listSitesCached.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
 
     vi.resetModules();
     const { default: NewSitePage } = await import("./page");
@@ -113,7 +113,7 @@ describe("NewSitePage", () => {
 
   it("keeps agency add-site onboarding available", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ actorPlan: "agency", maxSites: null }));
-    mocks.listSitesCached.mockResolvedValue([makeSite("site-client")]);
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-client")]);
 
     vi.resetModules();
     const { default: NewSitePage } = await import("./page");

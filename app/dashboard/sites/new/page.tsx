@@ -1,7 +1,7 @@
 import { OnboardingForm } from "./onboarding-form";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
-import { listSitesCached, listSupportedLanguagesCached } from "@internal/dashboard/data";
+import { listSitesFresh, listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -25,7 +25,7 @@ export default async function NewSitePage() {
   const isNormalCustomer = isCustomerDashboardWorkspace(auth);
   let sites: SiteSummary[] = [];
   if (auth.webhooksAuth) {
-    sites = await listSitesCached(auth.webhooksAuth);
+    sites = await listSitesFresh(auth.webhooksAuth);
   }
   const activeSites = sites.filter((site) => site.status === "active");
   if (isNormalCustomer && activeSites.length === 1) {

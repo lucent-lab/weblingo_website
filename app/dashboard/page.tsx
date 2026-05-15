@@ -10,7 +10,7 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
-import { listSitesCached } from "@internal/dashboard/data";
+import { listSitesFresh } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import { isCustomerDashboardWorkspace } from "@internal/dashboard/workspace";
@@ -20,7 +20,7 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
   if (!auth.webhooksAuth) {
     throw new Error("Webhooks authentication is unavailable.");
   }
-  const sites = await listSitesCached(auth.webhooksAuth);
+  const sites = await listSitesFresh(auth.webhooksAuth);
   const billingBlocked = !auth.mutationsAllowed;
   const maxSites = auth.account?.featureFlags.maxSites ?? null;
   const activeSites = sites.filter((site) => site.status === "active");

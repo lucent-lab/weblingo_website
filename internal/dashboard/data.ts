@@ -108,6 +108,8 @@ export const listSitesCached = cache(async (auth: WebhooksAuthContext) => {
   }
 });
 
+export const listSitesFresh = cache(async (auth: WebhooksAuthContext) => listSites(auth));
+
 export const getSiteSummaryCached = cache(async (auth: WebhooksAuthContext, siteId: string) => {
   const sites = await listSitesCached(auth);
   return sites.find((site) => site.id === siteId) ?? null;
