@@ -19,6 +19,7 @@ vi.mock("@internal/dashboard/auth", () => ({
 
 vi.mock("@internal/dashboard/data", () => ({
   listSitesCached: vi.fn(),
+  listSitesFresh: vi.fn(),
 }));
 
 describe("DashboardLayout", () => {
@@ -53,5 +54,19 @@ describe("DashboardLayout", () => {
     });
 
     await expect(DashboardLayout({ children: <div /> })).rejects.toThrow("redirect:/auth/login");
+  });
+
+  it("uses fresh site reads for customer shell site navigation and counts", async () => {
+    const data = await import("@internal/dashboard/data");
+    const { resolveLayoutSitesReader } = await import("./layout");
+
+    expect(resolveLayoutSitesReader(false)).toBe(data.listSitesFresh);
+  });
+
+  it("keeps agency shell site navigation and counts on the shared cached reader", async () => {
+    const data = await import("@internal/dashboard/data");
+    const { resolveLayoutSitesReader } = await import("./layout");
+
+    expect(resolveLayoutSitesReader(true)).toBe(data.listSitesCached);
   });
 });

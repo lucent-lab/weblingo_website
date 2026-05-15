@@ -29,9 +29,10 @@ import {
   getDashboardAuth,
   hasActorInternalOps,
   type DashboardAuth,
+  type WebhooksAuthContext,
 } from "@internal/dashboard/auth";
 import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
-import { listSitesCached } from "@internal/dashboard/data";
+import { listSitesCached, listSitesFresh } from "@internal/dashboard/data";
 import {
   getDashboardSitesLabel,
   resolveDashboardWorkspaceAudience,
@@ -47,6 +48,12 @@ export const metadata: Metadata = {
 type DashboardLayoutProps = {
   children: React.ReactNode;
 };
+
+type LayoutSitesReader = (auth: WebhooksAuthContext) => Promise<SiteSummary[]>;
+
+export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
+  return isAgency ? listSitesCached : listSitesFresh;
+}
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const auth = await getDashboardAuth();
@@ -147,6 +154,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const stripeBillingLabel = formatStripeBillingStatusLabel(auth.stripeBillingRuntime);
   const showTeamSwitcher = isAgency && workspaceOptions.length > 0;
   const teamSwitcherDisabled = workspaceOptions.length <= 1;
+  const listLayoutSites = resolveLayoutSitesReader(isAgency);
 
   return (
     <SidebarProvider defaultOpen>
@@ -192,7 +200,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             <SidebarGroupLabel>{sitesLabel}</SidebarGroupLabel>
             <SidebarGroupContent>
               <Suspense fallback={<SitesNavSkeleton />}>
-                <SitesNavAsync auth={auth} />
+                <SitesNavAsync auth={auth} listSites={listLayoutSites} />
               </Suspense>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -240,6 +248,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                     <SitesUsageSummaryAsync
                       auth={auth}
                       isAgency={isAgency}
+                      listSites={listLayoutSites}
                       sitesLabel={sitesLabel}
                     />
                   </Suspense>
@@ -297,11 +306,17 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 }
 
 // Async component for sidebar sites navigation - streams in while layout shell renders
-async function SitesNavAsync({ auth }: { auth: DashboardAuth }) {
+async function SitesNavAsync({
+  auth,
+  listSites,
+}: {
+  auth: DashboardAuth;
+  listSites: LayoutSitesReader;
+}) {
   let sites: SiteSummary[] = [];
   try {
     if (auth.webhooksAuth) {
-      sites = await listSitesCached(auth.webhooksAuth);
+      sites = await listSites(auth.webhooksAuth);
     }
   } catch (error) {
     console.warn("[dashboard] listSites failed:", error);
@@ -331,10 +346,12 @@ function SitesNavSkeleton() {
 async function SitesUsageSummaryAsync({
   auth,
   isAgency,
+  listSites,
   sitesLabel,
 }: {
   auth: DashboardAuth;
   isAgency: boolean;
+  listSites: LayoutSitesReader;
   sitesLabel: string;
 }) {
   const isAgencyViewingSelf = isAgency && auth.subjectAccountId === auth.actorAccountId;
@@ -355,7 +372,7 @@ async function SitesUsageSummaryAsync({
     if (!auth.webhooksAuth) {
       return <SitesUsageFallback label={sitesLabel} />;
     }
-    const sites = await listSitesCached(auth.webhooksAuth);
+    const sites = await listSites(auth.webhooksAuth);
     const activeSiteCount = sites.filter((site) => site.status === "active").length;
     const maxSites = auth.account?.featureFlags.maxSites ?? null;
 
