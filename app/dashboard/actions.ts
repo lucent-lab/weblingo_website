@@ -50,6 +50,7 @@ import {
   type DashboardAuth,
   type WebhooksAuthContext,
 } from "@internal/dashboard/auth";
+import { readDashboardErrorCode } from "@internal/dashboard/error-state";
 import {
   buildSiteSettingsUpdatePayload,
   deriveSiteSettingsAccess,
@@ -134,7 +135,7 @@ function toFriendlyDashboardActionError(error: unknown, fallback: string): strin
     if (error.status === 0) {
       return "Unable to reach the dashboard service. Try again in a moment.";
     }
-    if (getWebhooksErrorCode(error) === "single_site_account_limit") {
+    if (readDashboardErrorCode(error) === "single_site_account_limit") {
       return "This account already has a website. Open the existing website workspace and use Settings to change the source URL when it changes.";
     }
     if (error.status === 401 || error.status === 403) {
@@ -151,15 +152,6 @@ function toFriendlyDashboardActionError(error: unknown, fallback: string): strin
     }
   }
   return fallback;
-}
-
-function getWebhooksErrorCode(error: WebhooksApiError): string | null {
-  const details = error.details;
-  if (details === null || typeof details !== "object" || Array.isArray(details)) {
-    return null;
-  }
-  const code = (details as Record<string, unknown>).code;
-  return typeof code === "string" ? code : null;
 }
 
 function toTranslateAndServeError(error: unknown, fallback: string): string {

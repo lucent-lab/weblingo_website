@@ -225,7 +225,7 @@ function resolveDashboardErrorTechnicalDetails(error: unknown): unknown | null {
   return null;
 }
 
-function readDashboardErrorCode(error: WebhooksApiError): string | null {
+export function readDashboardErrorCode(error: WebhooksApiError): string | null {
   const details = error.details;
   if (
     details === null ||

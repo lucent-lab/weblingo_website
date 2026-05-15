@@ -13,6 +13,7 @@ import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/au
 import { listSitesCached } from "@internal/dashboard/data";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
+import { isCustomerDashboardWorkspace } from "@internal/dashboard/workspace";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
@@ -37,17 +38,13 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 
 type OverviewData = Awaited<ReturnType<typeof getOverviewData>>;
 
-function isNormalCustomerDashboard(auth: DashboardAuth): boolean {
-  return auth.actorAccount?.planType !== "agency";
-}
-
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const onboardingState = resolveDashboardOnboardingState(auth, t);
   const pricingPath = `/${locale}/pricing`;
-  const normalCustomerDashboard = isNormalCustomerDashboard(auth);
+  const normalCustomerDashboard = isCustomerDashboardWorkspace(auth);
   let overviewData: OverviewData | null = null;
   let overviewError: unknown = null;
 

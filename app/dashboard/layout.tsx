@@ -32,6 +32,10 @@ import {
 } from "@internal/dashboard/auth";
 import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
 import { listSitesCached } from "@internal/dashboard/data";
+import {
+  getDashboardSitesLabel,
+  resolveDashboardWorkspaceAudience,
+} from "@internal/dashboard/workspace";
 import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
@@ -55,7 +59,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const email = auth.user?.email ?? "—";
-  const isAgency = auth.actorAccount?.planType === "agency";
+  const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
+  const isAgency = workspaceAudience === "agency";
+  const sitesLabel = getDashboardSitesLabel(workspaceAudience);
   const canAccessInternalOps = hasActorInternalOps(auth);
   const pricingPath = `/${locale}/pricing`;
   const navItems = [
@@ -183,7 +189,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>{isAgency ? "Sites" : "Website"}</SidebarGroupLabel>
+            <SidebarGroupLabel>{sitesLabel}</SidebarGroupLabel>
             <SidebarGroupContent>
               <Suspense fallback={<SitesNavSkeleton />}>
                 <SitesNavAsync auth={auth} />
@@ -230,10 +236,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                       </span>
                     </>
                   ) : null}
-                  <Suspense
-                    fallback={<SitesUsageFallback label={isAgency ? "Sites" : "Website"} />}
-                  >
-                    <SitesUsageSummaryAsync auth={auth} isAgency={isAgency} />
+                  <Suspense fallback={<SitesUsageFallback label={sitesLabel} />}>
+                    <SitesUsageSummaryAsync
+                      auth={auth}
+                      isAgency={isAgency}
+                      sitesLabel={sitesLabel}
+                    />
                   </Suspense>
                 </nav>
                 {auth.actingAsCustomer ? (
@@ -241,9 +249,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                     Acting as {subjectLabel}
                   </Badge>
                 ) : null}
-                {auth.actingAsCustomer && auth.actorAccount?.planType === "agency" ? (
+                {auth.actingAsCustomer && isAgency ? (
                   <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                    Agency status: {auth.actorAccount.planStatus ?? "unknown"}
+                    Agency status: {auth.actorAccount?.planStatus ?? "unknown"}
                   </Badge>
                 ) : null}
               </div>
@@ -323,9 +331,11 @@ function SitesNavSkeleton() {
 async function SitesUsageSummaryAsync({
   auth,
   isAgency,
+  sitesLabel,
 }: {
   auth: DashboardAuth;
   isAgency: boolean;
+  sitesLabel: string;
 }) {
   const isAgencyViewingSelf = isAgency && auth.subjectAccountId === auth.actorAccountId;
 
@@ -343,7 +353,7 @@ async function SitesUsageSummaryAsync({
 
   try {
     if (!auth.webhooksAuth) {
-      return <SitesUsageFallback label={isAgency ? "Sites" : "Website"} />;
+      return <SitesUsageFallback label={sitesLabel} />;
     }
     const sites = await listSitesCached(auth.webhooksAuth);
     const activeSiteCount = sites.filter((site) => site.status === "active").length;
@@ -351,7 +361,7 @@ async function SitesUsageSummaryAsync({
 
     return (
       <span className="flex items-center gap-1">
-        <span className="text-muted-foreground">{isAgency ? "Sites" : "Website"}</span>
+        <span className="text-muted-foreground">{sitesLabel}</span>
         <span className="text-foreground">
           {activeSiteCount} / {maxSites === null ? "Unlimited" : maxSites}
         </span>
@@ -359,7 +369,7 @@ async function SitesUsageSummaryAsync({
     );
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
-    return <SitesUsageFallback label={isAgency ? "Sites" : "Website"} />;
+    return <SitesUsageFallback label={sitesLabel} />;
   }
 }
 
@@ -381,7 +391,7 @@ function buildWorkspaceOptions(auth: DashboardAuth) {
   const options = [
     {
       id: actorId,
-      label: auth.actorAccount?.planType === "agency" ? "My agency" : "My account",
+      label: resolveDashboardWorkspaceAudience(auth) === "agency" ? "My agency" : "My account",
     },
   ];
   for (const customer of getActiveAgencyCustomers(auth.agencyCustomers)) {
@@ -399,7 +409,7 @@ function resolveBillingBanner(auth: DashboardAuth): { message: string; ctaLabel:
     return null;
   }
   const status = issue.status.replaceAll("_", " ");
-  const isAgency = auth.actorAccount?.planType === "agency";
+  const isAgency = resolveDashboardWorkspaceAudience(auth) === "agency";
   if (issue.scope === "actor" && isAgency) {
     return {
       message: auth.actingAsCustomer
