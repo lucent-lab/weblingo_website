@@ -26,9 +26,6 @@ type CollectFixtureRequestIssueOptions = {
 
 function normalizeUrlForAssertion(value: string): string {
   const url = new URL(value, FIXTURE_BASE_ORIGIN);
-  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
-    url.pathname = url.pathname.slice(0, -1);
-  }
   const sortedParams = Array.from(url.searchParams.entries()).sort(
     ([leftKey, leftValue], [rightKey, rightValue]) =>
       leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue),
