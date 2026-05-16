@@ -1,5 +1,7 @@
 import { expect, test, type Page, type Request } from "@playwright/test";
 
+import { stubPosthogAnalyticsProxy } from "../helpers/analytics-proxy";
+
 const PREVIEW_ID = "preview-ui-1111-1111-1111-111111111111";
 const STATUS_TOKEN = "preview-ui-status-token";
 const PREVIEW_URL = "https://preview.weblingo.app/_preview/preview-ui-ready";
@@ -17,22 +19,6 @@ type BrowserEventSource = {
   closed: boolean;
   url: string;
 };
-
-async function stubAnalyticsProxy(page: Page): Promise<void> {
-  await page.route("**/api/analytics/posthog/**", async (route) => {
-    const url = new URL(route.request().url());
-    const isScriptRequest = url.pathname.endsWith(".js") || url.pathname.includes("/array/");
-    if (isScriptRequest) {
-      await route.fulfill({
-        body: "",
-        contentType: "application/javascript; charset=utf-8",
-        status: 200,
-      });
-      return;
-    }
-    await route.fulfill({ status: 204 });
-  });
-}
 
 async function installMockEventSource(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -120,7 +106,7 @@ test("try form submits a mocked preview and exposes the ready handoff", async ({
   const appOrigin = new URL(baseURL ?? "http://127.0.0.1:3000").origin;
 
   await installMockEventSource(page);
-  await stubAnalyticsProxy(page);
+  await stubPosthogAnalyticsProxy(page);
   page.on("console", (message) => {
     if (message.type() !== "error") {
       return;

@@ -1,4 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { stubPosthogAnalyticsProxy } from "./helpers/analytics-proxy";
 
 const blockedLaunchStrings = [
   "AI translation, human proof",
@@ -17,25 +19,9 @@ const blockedLaunchStrings = [
   "Notify me",
 ];
 
-async function stubAnalyticsProxy(page: Page) {
-  await page.route("**/api/analytics/posthog/**", async (route) => {
-    const url = new URL(route.request().url());
-    const isScriptRequest = url.pathname.endsWith(".js") || url.pathname.includes("/array/");
-    if (isScriptRequest) {
-      await route.fulfill({
-        body: "",
-        contentType: "application/javascript; charset=utf-8",
-        status: 200,
-      });
-      return;
-    }
-    await route.fulfill({ status: 204 });
-  });
-}
-
 test("home page exposes the try form", async ({ page }) => {
   const consoleErrors: string[] = [];
-  await stubAnalyticsProxy(page);
+  await stubPosthogAnalyticsProxy(page);
   page.on("console", (message) => {
     if (message.type() !== "error") {
       return;
@@ -66,7 +52,7 @@ test("home page exposes the try form", async ({ page }) => {
 
 test("expansion landing page renders core sections", async ({ page }) => {
   const consoleErrors: string[] = [];
-  await stubAnalyticsProxy(page);
+  await stubPosthogAnalyticsProxy(page);
   page.on("console", (message) => {
     if (message.type() !== "error") {
       return;
