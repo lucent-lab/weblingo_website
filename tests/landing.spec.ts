@@ -66,6 +66,9 @@ test("expansion landing page renders core sections", async ({ page }) => {
 
   await page.goto("/en/landing/expansion");
   await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.getByTestId("hero-outcome-rotator")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Generate a private preview" })).toHaveCount(3);
+  await expect(page.getByRole("link", { name: "Talk through a rollout" })).toHaveCount(1);
   await expect(page.getByTestId("social-proof-callout")).toBeVisible();
   await expect(page.getByTestId("how-steps-timeline")).toBeVisible();
 
