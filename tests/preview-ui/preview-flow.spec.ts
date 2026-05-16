@@ -9,6 +9,7 @@ type PreviewRequestPayload = {
   sourceLang?: string;
   targetLang?: string;
   locale?: string;
+  email?: string;
 };
 
 type BrowserEventSource = {
@@ -16,6 +17,22 @@ type BrowserEventSource = {
   closed: boolean;
   url: string;
 };
+
+async function stubAnalyticsProxy(page: Page): Promise<void> {
+  await page.route("**/api/analytics/posthog/**", async (route) => {
+    const url = new URL(route.request().url());
+    const isScriptRequest = url.pathname.endsWith(".js") || url.pathname.includes("/array/");
+    if (isScriptRequest) {
+      await route.fulfill({
+        body: "",
+        contentType: "application/javascript; charset=utf-8",
+        status: 200,
+      });
+      return;
+    }
+    await route.fulfill({ status: 204 });
+  });
+}
 
 async function installMockEventSource(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -103,6 +120,7 @@ test("try form submits a mocked preview and exposes the ready handoff", async ({
   const appOrigin = new URL(baseURL ?? "http://127.0.0.1:3000").origin;
 
   await installMockEventSource(page);
+  await stubAnalyticsProxy(page);
   page.on("console", (message) => {
     if (message.type() !== "error") {
       return;
@@ -144,10 +162,11 @@ test("try form submits a mocked preview and exposes the ready handoff", async ({
     });
   });
 
-  await page.goto("/en");
+  await page.goto("/en/try");
 
   await page.getByPlaceholder("https://example.jp").fill("https://example.com");
-  await page.getByRole("button", { name: "Generate preview" }).click();
+  await page.getByLabel("Email").fill("qa@example.com");
+  await page.getByRole("button", { name: "Generate a private preview" }).click();
 
   await expect(page.getByText("example.com", { exact: true })).toBeVisible();
   await expect(page.getByText("Fetching page").first()).toBeVisible();
@@ -179,6 +198,7 @@ test("try form submits a mocked preview and exposes the ready handoff", async ({
       sourceLang: "en",
       targetLang: "fr",
       locale: "en",
+      email: "qa@example.com",
     },
   ]);
   expect(

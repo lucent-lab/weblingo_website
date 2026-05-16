@@ -3,6 +3,7 @@ const PREFIX = "Turn international traffic into";
 
 const PAGE_CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none';";
+const FIXTURE_ROBOTS = "noindex, nofollow, noarchive";
 
 const ROUTE_DATA_BODY = [
   "0:[",
@@ -189,6 +190,7 @@ export async function GET(request: Request): Promise<Response> {
       headers: {
         "cache-control": "public, max-age=60",
         "content-type": "text/x-component; charset=utf-8",
+        "x-robots-tag": FIXTURE_ROBOTS,
         "x-weblingo-hydration-fixture": "rotator",
         "x-weblingo-fixture-route-data": "1",
       },
@@ -201,6 +203,7 @@ export async function GET(request: Request): Promise<Response> {
       "cache-control": "public, max-age=60",
       "content-security-policy": PAGE_CSP,
       "content-type": "text/html; charset=utf-8",
+      "x-robots-tag": FIXTURE_ROBOTS,
       "x-weblingo-hydration-fixture": "rotator",
     },
   });

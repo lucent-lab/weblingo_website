@@ -13,10 +13,12 @@ function routeContext(slug?: string[]) {
 
 function expectPublicFixtureCache(response: Response): void {
   expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+  expect(response.headers.get("x-robots-tag")).toContain("noindex");
 }
 
 function expectNoStoreFixtureCache(response: Response): void {
   expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("x-robots-tag")).toContain("noindex");
 }
 
 describe("showcase fixture pages", () => {

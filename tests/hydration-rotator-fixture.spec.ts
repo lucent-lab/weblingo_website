@@ -11,7 +11,8 @@ test("hydration rotator fixture cycles states and serves route data", async ({ p
     }
   });
 
-  await page.goto("/fixtures/hydration/rotator");
+  const response = await page.goto("/fixtures/hydration/rotator");
+  expect(response?.headers()["x-robots-tag"]).toContain("noindex");
 
   const rotator = page.getByTestId("fixture-client-rotator");
   await expect(rotator).toBeVisible();

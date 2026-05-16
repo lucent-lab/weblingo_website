@@ -1,6 +1,6 @@
 # Showcase Regression Fixtures
 
-The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo showcase regression tests. They are intentionally plain route-handler HTML so the backend crawler, renderer, publisher, and showcase serve path see stable markup.
+The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo showcase regression tests. They are intentionally plain route-handler HTML so the backend crawler, renderer, publisher, and showcase serve path see stable markup. Fixture responses send `X-Robots-Tag: noindex, nofollow, noarchive`; they are QA targets, not public marketing pages.
 
 ## Fixture Paths
 
@@ -35,6 +35,9 @@ The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo sh
   - Source-only fallback sentinel. Use it as an untranslated target in live showcase matrices.
 - `/fixtures/showcase/pricing-original-only`, `/fixtures/showcase/docs/source-only`, and `/fixtures/showcase/app/source-only`
   - Additional source-only sentinels for sales, docs, and app-style flows.
+- `/fixtures/hydration/rotator`
+  - Deterministic client-runtime fixture for dynamic text repair.
+  - Cycles source-owned visible states through `data-testid="fixture-client-rotator"`, advances `data-rotator-tick`, and requests same-path `_rsc=fixture` route data so backend live QA can verify hydration-sensitive behavior without depending on the homepage hero.
 
 ## Backend Live Suite
 
@@ -128,6 +131,26 @@ Matrix example:
       "https://weblingo.app/fixtures/showcase/app/source-only?from=dashboard#settings"
     ],
     "expectedDeploymentId": "deployment-id-from-publish"
+  },
+  {
+    "name": "rotator",
+    "pageUrl": "https://t2.weblingo.app/weblingo.app/en/fixtures/hydration/rotator",
+    "sourceOrigin": "https://weblingo.app",
+    "expectedText": ["Turn international traffic into"],
+    "expectedDeploymentId": "deployment-id-from-publish",
+    "minimumInternalLinks": 0,
+    "minimumStylesheets": 0,
+    "minimumAlternates": 0,
+    "requireCanonical": false,
+    "checkClickThroughs": false,
+    "rotatorRuntime": {
+      "selector": "[data-testid=\"fixture-client-rotator\"]",
+      "wordSelector": ".rotator-word",
+      "tickAttribute": "data-rotator-tick",
+      "minimumDistinctStates": 2,
+      "routeDataUrl": "https://t2.weblingo.app/weblingo.app/en/fixtures/hydration/rotator?_rsc=fixture",
+      "forbiddenStates": ["conversions", "bookings", "signups", "revenue"]
+    }
   }
 ]
 ```
@@ -140,7 +163,7 @@ The website repo runs the source fixture browser suite in CI:
 corepack pnpm test:showcase:fixtures
 ```
 
-That Playwright suite submits urlencoded and multipart marketing forms, asserts multipart requests are sent with browser-generated boundaries, clicks representative internal/source-only links, checks responsive/preloaded/root-base CSS/JS/image assets, verifies docs base-fragment and root-base behavior, asserts canonical/OG/Twitter URL metadata, checks page and static fixture asset cache headers, confirms the external reference does not prefetch and then clicks it through a local route interception, rejects malformed form bodies on both form endpoints, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
+That Playwright suite submits urlencoded and multipart marketing forms, asserts multipart requests are sent with browser-generated boundaries, clicks representative internal/source-only links, checks responsive/preloaded/root-base CSS/JS/image assets, verifies docs base-fragment and root-base behavior, asserts canonical/OG/Twitter URL metadata, checks page and static fixture asset cache/robots headers, confirms the external reference does not prefetch and then clicks it through a local route interception, rejects malformed form bodies on both form endpoints, and fails on any unexpected browser request graph entry, including successful off-fixture requests.
 
 For a production-server smoke of the same fixture suite, run:
 
