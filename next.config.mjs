@@ -9,6 +9,19 @@ const nextConfig = {
   reactStrictMode: true,
   pageExtensions: ["ts", "tsx", "mdx"],
   allowedDevOrigins: ["localhost", "127.0.0.1"],
+  async headers() {
+    return [
+      {
+        source: "/fixtures/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive",
+          },
+        ],
+      },
+    ];
+  },
   turbopack: {
     root: projectRoot,
   },

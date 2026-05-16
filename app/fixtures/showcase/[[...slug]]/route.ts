@@ -285,6 +285,7 @@ const PAGES: Record<string, FixturePage> = {
 
 const RESPONSE_HEADERS = {
   "cache-control": "public, max-age=60",
+  "x-robots-tag": "noindex, nofollow, noarchive",
   "x-weblingo-showcase-fixture": "1",
 };
 

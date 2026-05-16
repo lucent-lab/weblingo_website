@@ -12,10 +12,15 @@ test.describe("dashboard smoke", () => {
     "Dashboard smoke requires DASHBOARD_E2E_MOCK=1.",
   );
 
-  test("loads the dashboard overview shell", async ({ page }) => {
+  test("loads the dashboard entry shell", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "Manage" })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/dashboard/sites/${SITE_ID}$`));
+    await expect(
+      page.getByRole("heading", { name: "https://source.example.test", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Back to dashboard" }),
+    ).toBeVisible();
   });
 
   test("navigates site detail and pages pagination", async ({ page }) => {

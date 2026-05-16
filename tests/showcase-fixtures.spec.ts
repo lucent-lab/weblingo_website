@@ -1,7 +1,9 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
 
-const FIXTURE_BASE_ORIGIN = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
-  .origin;
+const playwrightPort = process.env.PLAYWRIGHT_PORT ?? "3000";
+const FIXTURE_BASE_ORIGIN = new URL(
+  process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`,
+).origin;
 const FIXTURE_PAGE_CACHE_CONTROL = "public, max-age=60";
 const FIXTURE_STATIC_ASSET_CACHE_CONTROL = "public, max-age=0";
 const STATIC_FIXTURE_ASSET_PATHS = new Set([
@@ -24,9 +26,6 @@ type CollectFixtureRequestIssueOptions = {
 
 function normalizeUrlForAssertion(value: string): string {
   const url = new URL(value, FIXTURE_BASE_ORIGIN);
-  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
-    url.pathname = url.pathname.slice(0, -1);
-  }
   const sortedParams = Array.from(url.searchParams.entries()).sort(
     ([leftKey, leftValue], [rightKey, rightValue]) =>
       leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue),
@@ -163,6 +162,7 @@ async function gotoFixture(page: Page, path: string): Promise<Response> {
   expect(response!.headers()["cache-control"], `${path} cache-control`).toBe(
     FIXTURE_PAGE_CACHE_CONTROL,
   );
+  expect(response!.headers()["x-robots-tag"], `${path} robots header`).toContain("noindex");
   return response!;
 }
 

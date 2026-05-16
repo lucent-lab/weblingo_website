@@ -10,6 +10,7 @@ describe("hydration rotator fixture", () => {
     expect(response.headers.get("x-weblingo-hydration-fixture")).toBe("rotator");
     expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(response.headers.get("content-security-policy")).toContain("script-src");
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
     expect(html).toContain('data-testid="fixture-client-rotator"');
     expect(html).toContain("Turn international traffic into");
     expect(html).toContain("bookings");
@@ -30,6 +31,7 @@ describe("hydration rotator fixture", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/x-component; charset=utf-8");
     expect(response.headers.get("x-weblingo-fixture-route-data")).toBe("1");
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
     expect(body).toContain("bookings");
     expect(body).toContain("revenue");
   });
