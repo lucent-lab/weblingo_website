@@ -1,13 +1,36 @@
 import { expect, test } from "@playwright/test";
 
 test("hydration rotator fixture cycles states and serves route data", async ({ page }) => {
+  const routeDataRequests: string[] = [];
+  const routeDataResponses: string[] = [];
+  const badRouteDataResponses: string[] = [];
   const failedRouteData: string[] = [];
+
+  function isRotatorRouteDataUrl(rawUrl: string): boolean {
+    const url = new URL(rawUrl);
+    return url.pathname === "/fixtures/hydration/rotator" && url.searchParams.has("_rsc");
+  }
+
+  page.on("request", (request) => {
+    if (isRotatorRouteDataUrl(request.url())) {
+      routeDataRequests.push(request.url());
+    }
+  });
   page.on("response", (response) => {
-    const url = new URL(response.url());
-    if (url.pathname === "/fixtures/hydration/rotator" && url.searchParams.has("_rsc")) {
+    if (isRotatorRouteDataUrl(response.url())) {
+      routeDataResponses.push(response.url());
       if (response.status() >= 400) {
-        failedRouteData.push(`${response.status()} ${response.url()}`);
+        badRouteDataResponses.push(`${response.status()} ${response.url()}`);
       }
+      const routeDataHeader = response.headers()["x-weblingo-fixture-route-data"];
+      if (routeDataHeader !== "1") {
+        badRouteDataResponses.push(`missing route-data header ${response.url()}`);
+      }
+    }
+  });
+  page.on("requestfailed", (request) => {
+    if (isRotatorRouteDataUrl(request.url())) {
+      failedRouteData.push(`${request.failure()?.errorText ?? "failed"} ${request.url()}`);
     }
   });
 
@@ -32,5 +55,13 @@ test("hydration rotator fixture cycles states and serves route data", async ({ p
 
   expect(observed).toEqual(new Set(["conversions", "bookings", "signups", "revenue"]));
   await expect(rotator.locator(".rotator-word-incoming")).toHaveCount(0);
+  expect(routeDataRequests.length, "fixture should request same-origin route data").toBeGreaterThan(
+    0,
+  );
+  expect(
+    routeDataResponses.length,
+    "fixture should receive same-origin route data",
+  ).toBeGreaterThan(0);
+  expect(badRouteDataResponses).toEqual([]);
   expect(failedRouteData).toEqual([]);
 });
