@@ -2,6 +2,11 @@
 
 The `/fixtures/showcase/*` routes are deterministic source pages for WebLingo showcase regression tests. They are intentionally plain route-handler HTML so the backend crawler, renderer, publisher, and showcase serve path see stable markup.
 
+For customer-domain SEO source fixtures, use
+[`docs/CUSTOMER_SEO_FIXTURES.md`](./CUSTOMER_SEO_FIXTURES.md). Those fixtures are separate from the
+showcase rewrite fixtures and cover customer sitemap, canonical, social metadata, fixture
+exclusion, and indexability behavior.
+
 ## Fixture Paths
 
 - `/fixtures/showcase/marketing`
