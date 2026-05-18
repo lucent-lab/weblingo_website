@@ -88,14 +88,23 @@ describe("DashboardLayout", () => {
   });
 
   it("hides normal-customer shell site navigation in duplicate-active review state", async () => {
-    const { resolveLayoutSiteNavEntries } = await import("./layout");
+    const { resolveLayoutSiteNavEntries, resolveLayoutSiteNavEmptyLabel } =
+      await import("./layout");
+    const duplicateSites = [makeSite("site-1"), makeSite("site-2")];
 
     expect(
       resolveLayoutSiteNavEntries({
         auth: makeAuth(),
-        sites: [makeSite("site-1"), makeSite("site-2")],
+        sites: duplicateSites,
       }),
     ).toEqual([]);
+    expect(
+      resolveLayoutSiteNavEmptyLabel({
+        auth: makeAuth(),
+        sites: duplicateSites,
+        emptyLabel: "No website yet.",
+      }),
+    ).toBe("Website records need review.");
   });
 
   it("keeps agency shell site navigation portfolio-style", async () => {

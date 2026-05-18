@@ -330,12 +330,13 @@ async function SitesNavAsync({
     console.warn("[dashboard] listSites failed:", error);
   }
 
-  const siteNavItems = resolveLayoutSiteNavEntries({
+  const siteNav = resolveLayoutSiteNavPresentation({
     auth,
     sites,
+    emptyLabel,
   });
 
-  return <SitesNav emptyLabel={emptyLabel} sites={siteNavItems} />;
+  return <SitesNav emptyLabel={siteNav.emptyLabel} sites={siteNav.sites} />;
 }
 
 export function resolveLayoutSiteNavEntries({
@@ -345,12 +346,40 @@ export function resolveLayoutSiteNavEntries({
   auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
   sites: SiteSummary[];
 }): SiteNavEntry[] {
+  return resolveLayoutSiteNavPresentation({ auth, sites, emptyLabel: "" }).sites;
+}
+
+export function resolveLayoutSiteNavEmptyLabel({
+  auth,
+  sites,
+  emptyLabel,
+}: {
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
+  sites: SiteSummary[];
+  emptyLabel: string;
+}): string {
+  return resolveLayoutSiteNavPresentation({ auth, sites, emptyLabel }).emptyLabel;
+}
+
+export function resolveLayoutSiteNavPresentation({
+  auth,
+  sites,
+  emptyLabel,
+}: {
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
+  sites: SiteSummary[];
+  emptyLabel: string;
+}): { emptyLabel: string; sites: SiteNavEntry[] } {
   const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
-  return workspace.visibleSites.map((site) => ({
-    id: site.id,
-    label: formatSiteLabel(site.sourceUrl),
-    status: site.status,
-  }));
+  return {
+    emptyLabel:
+      workspace.kind === "duplicate_current_websites" ? "Website records need review." : emptyLabel,
+    sites: workspace.visibleSites.map((site) => ({
+      id: site.id,
+      label: formatSiteLabel(site.sourceUrl),
+      status: site.status,
+    })),
+  };
 }
 
 // Skeleton fallback for sidebar sites while loading

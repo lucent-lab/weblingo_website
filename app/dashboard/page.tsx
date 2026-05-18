@@ -134,6 +134,15 @@ function OverviewActions({
   }
 
   if (normalCustomerDashboard) {
+    if (data.workspace.kind === "duplicate_current_websites") {
+      return (
+        <Button asChild variant="secondary">
+          <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">
+            Contact support
+          </a>
+        </Button>
+      );
+    }
     if (data.workspace.kind === "no_current_website" && data.workspace.canCreateSite) {
       return (
         <Button asChild>

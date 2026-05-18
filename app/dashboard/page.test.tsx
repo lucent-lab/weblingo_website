@@ -150,6 +150,8 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/more than one active website record/)).toBeTruthy();
     expect(screen.queryByText("Free account ready")).toBeNull();
     expect(screen.queryByText("Open website")).toBeNull();
+    expect(screen.queryByText("Review plan")).toBeNull();
+    expect(screen.getAllByText("Contact support").length).toBeGreaterThan(0);
     expect(screen.queryByText("Site portfolio")).toBeNull();
     expect(container.querySelector('a[href="/dashboard/sites/new"]')).toBeNull();
     expect(mocks.sitesList).not.toHaveBeenCalled();
