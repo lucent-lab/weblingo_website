@@ -157,6 +157,28 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
+  it("does not render free onboarding create links when the website state cannot load", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ accountPlan: "free" }));
+    mocks.resolveDashboardOnboardingState.mockReturnValue({
+      stage: "claimed_free_account",
+      title: "Free account ready",
+      description: "Create your first website.",
+      badge: "Free",
+    });
+    mocks.listSitesFresh.mockRejectedValue(new Error("site list failed"));
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+    const tree = await DashboardPage();
+
+    const { container } = render(tree);
+    expect(screen.getByText("Could not load sites")).toBeTruthy();
+    expect(screen.getByText("site list failed")).toBeTruthy();
+    expect(screen.queryByText("Free account ready")).toBeNull();
+    expect(container.querySelector('a[href="/dashboard/sites/new"]')).toBeNull();
+    expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
   it("keeps agency portfolio behavior unchanged", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(
       makeAuth({

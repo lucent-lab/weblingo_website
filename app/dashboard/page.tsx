@@ -58,7 +58,8 @@ export default async function DashboardPage() {
   }
   const showClaimedFreeOnboarding =
     onboardingState.stage === "claimed_free_account" &&
-    !(normalCustomerDashboard && overviewData && overviewData.workspace.activeSites.length > 0);
+    overviewData !== null &&
+    !(normalCustomerDashboard && overviewData.workspace.activeSites.length > 0);
 
   return (
     <div className="space-y-6">

@@ -12616,6 +12616,43 @@
             },
             "description": "Success"
           },
+          "207": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "customerRoutes": true,
+                  "dryRun": true,
+                  "requestedSiteIds": [
+                    "site_123"
+                  ],
+                  "results": [
+                    {
+                      "context": "customer",
+                      "runtimeRequestPolicy": {
+                        "expectedVersion": "site-config:2026-05-05T00:00:00.000Z",
+                        "servedVersion": "site-config:2026-05-05T00:00:00.000Z",
+                        "stale": false
+                      },
+                      "siteId": "site_123",
+                      "status": "dry_run"
+                    }
+                  ],
+                  "showcaseRoutes": true,
+                  "totals": {
+                    "dryRun": 2,
+                    "failed": 0,
+                    "refreshed": 0,
+                    "sitesConsidered": 1,
+                    "skipped": 0
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRouteCacheReconcileResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
           "401": {
             "content": {
               "application/json": {
