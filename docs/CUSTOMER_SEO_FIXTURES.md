@@ -42,8 +42,21 @@ Backend live/manual customer-domain SEO QA should use these pages to assert:
 - `og:url`, `twitter:url`, `og:locale`, localized social text from existing metadata, and image
   fallback behavior;
 - `html lang` and `html dir` from locale metadata;
-- `X-Robots-Tag` and robots behavior for `noindex` vs explicitly indexable customer sites;
+- `X-Robots-Tag` on explicit `noindex` pages and robots behavior for `noindex` vs explicitly
+  indexable customer sites;
 - no `x-default` unless the site has an explicit, validated default landing URL.
+
+## Website Smoke
+
+The website repo includes these source fixtures in the existing fixture browser smoke:
+
+```sh
+corepack pnpm test:showcase:fixtures
+```
+
+That command now covers `/fixtures/showcase/*` and `/fixtures/customer-seo/*`. It asserts the
+customer SEO fixture head tags, no-image fallback, internal noindex response header, representative
+links, and request graph.
 
 Keep this fixture set deterministic and small. If a future QA case needs source-page behavior that
 is not listed here, add the route and update this document in the same change.
