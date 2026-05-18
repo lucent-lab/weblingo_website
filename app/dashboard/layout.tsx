@@ -36,6 +36,7 @@ import { listSitesCached, listSitesFresh } from "@internal/dashboard/data";
 import {
   getDashboardSitesLabel,
   resolveDashboardMaxSitesLimit,
+  resolveDashboardWebsiteWorkspaceState,
   resolveDashboardWorkspaceAudience,
 } from "@internal/dashboard/workspace";
 import { resolvePreferredLocale } from "@internal/i18n";
@@ -330,7 +331,7 @@ async function SitesNavAsync({
   }
 
   const siteNavItems = resolveLayoutSiteNavEntries({
-    isAgency: resolveDashboardWorkspaceAudience(auth) === "agency",
+    auth,
     sites,
   });
 
@@ -338,17 +339,14 @@ async function SitesNavAsync({
 }
 
 export function resolveLayoutSiteNavEntries({
-  isAgency,
+  auth,
   sites,
 }: {
-  isAgency: boolean;
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
   sites: SiteSummary[];
 }): SiteNavEntry[] {
-  const currentSites = isAgency
-    ? sites
-    : sites.filter((site) => site.status === "active").slice(0, 2);
-  const visibleSites = !isAgency && currentSites.length !== 1 ? [] : currentSites;
-  return visibleSites.map((site) => ({
+  const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
+  return workspace.visibleSites.map((site) => ({
     id: site.id,
     label: formatSiteLabel(site.sourceUrl),
     status: site.status,

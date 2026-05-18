@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import {
   isCustomerDashboardWorkspace,
-  resolveDashboardMaxSitesLimit,
+  resolveDashboardWebsiteWorkspaceState,
 } from "@internal/dashboard/workspace";
 import { resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
@@ -25,19 +25,15 @@ export default async function NewSitePage() {
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const isNormalCustomer = isCustomerDashboardWorkspace(auth);
-  const maxSites = resolveDashboardMaxSitesLimit(auth);
   let sites: SiteSummary[] = [];
   if (auth.webhooksAuth) {
     sites = await listSitesFresh(auth.webhooksAuth);
   }
-  const activeSites = sites.filter((site) => site.status === "active");
-  if (isNormalCustomer && activeSites.length === 1) {
-    redirect(`/dashboard/sites/${activeSites[0]!.id}`);
+  const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
+  if (isNormalCustomer && workspace.kind === "single_current_website" && workspace.currentSite) {
+    redirect(`/dashboard/sites/${workspace.currentSite.id}`);
   }
-  const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
-  const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;
-  const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
-  if (isNormalCustomer && activeSites.length > 1) {
+  if (isNormalCustomer && workspace.kind === "duplicate_current_websites") {
     return (
       <Card>
         <CardHeader>
@@ -60,10 +56,10 @@ export default async function NewSitePage() {
       </Card>
     );
   }
-  if (!canCreateSite) {
+  if (!workspace.canCreateSite) {
     const title = billingBlocked
       ? "Billing action required"
-      : atSiteLimit
+      : workspace.atSiteLimit
         ? "Site limit reached"
         : isNormalCustomer
           ? "Website creation is locked"
@@ -72,10 +68,10 @@ export default async function NewSitePage() {
       ? isNormalCustomer
         ? "Update billing to create your website workspace."
         : "Update billing to resume onboarding new sites."
-      : atSiteLimit
+      : workspace.atSiteLimit
         ? isNormalCustomer
           ? "This account already has a website. Open the existing workspace and use settings to change the source URL."
-          : `Your plan allows ${maxSites} active site(s). Upgrade to add more.`
+          : `Your plan allows ${workspace.maxSites} active site(s). Upgrade to add more.`
         : isNormalCustomer
           ? "Review your plan before creating a website workspace."
           : "Upgrade your plan to onboard new sites and start translating.";

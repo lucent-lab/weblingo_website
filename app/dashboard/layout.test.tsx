@@ -75,7 +75,7 @@ describe("DashboardLayout", () => {
 
     expect(
       resolveLayoutSiteNavEntries({
-        isAgency: false,
+        auth: makeAuth(),
         sites: [makeSite("site-old", "inactive"), makeSite("site-current")],
       }),
     ).toEqual([
@@ -92,7 +92,7 @@ describe("DashboardLayout", () => {
 
     expect(
       resolveLayoutSiteNavEntries({
-        isAgency: false,
+        auth: makeAuth(),
         sites: [makeSite("site-1"), makeSite("site-2")],
       }),
     ).toEqual([]);
@@ -103,7 +103,7 @@ describe("DashboardLayout", () => {
 
     expect(
       resolveLayoutSiteNavEntries({
-        isAgency: true,
+        auth: makeAuth("agency"),
         sites: [makeSite("site-old", "inactive"), makeSite("site-current")],
       }),
     ).toEqual([
@@ -120,6 +120,15 @@ describe("DashboardLayout", () => {
     ]);
   });
 });
+
+function makeAuth(planType = "starter") {
+  return {
+    actorAccount: { planType },
+    account: { featureFlags: { maxSites: planType === "agency" ? null : 1 } },
+    mutationsAllowed: true,
+    has: () => true,
+  };
+}
 
 function makeSite(id: string, status: "active" | "inactive" = "active") {
   return {

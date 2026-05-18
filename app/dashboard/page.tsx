@@ -15,7 +15,7 @@ import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import {
   isCustomerDashboardWorkspace,
-  resolveDashboardMaxSitesLimit,
+  resolveDashboardWebsiteWorkspaceState,
 } from "@internal/dashboard/workspace";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
@@ -24,19 +24,10 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
     throw new Error("Webhooks authentication is unavailable.");
   }
   const sites = await listSitesFresh(auth.webhooksAuth);
-  const billingBlocked = !auth.mutationsAllowed;
-  const maxSites = resolveDashboardMaxSitesLimit(auth);
-  const activeSites = sites.filter((site) => site.status === "active");
-  const hasAvailableSlot = maxSites === null || activeSites.length < maxSites;
-  const atSiteLimit = maxSites !== null && activeSites.length >= maxSites;
-  const canCreateSite = auth.has({ feature: "site_create" }) && !billingBlocked && hasAvailableSlot;
+  const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
   return {
     sites,
-    activeSites,
-    billingBlocked,
-    maxSites,
-    atSiteLimit,
-    canCreateSite,
+    workspace,
   };
 });
 
@@ -58,12 +49,16 @@ export default async function DashboardPage() {
     overviewError = error;
   }
 
-  if (normalCustomerDashboard && overviewData?.activeSites.length === 1) {
-    redirect(`/dashboard/sites/${overviewData.activeSites[0]!.id}`);
+  if (
+    normalCustomerDashboard &&
+    overviewData?.workspace.kind === "single_current_website" &&
+    overviewData.workspace.currentSite
+  ) {
+    redirect(`/dashboard/sites/${overviewData.workspace.currentSite.id}`);
   }
   const showClaimedFreeOnboarding =
     onboardingState.stage === "claimed_free_account" &&
-    !(normalCustomerDashboard && overviewData && overviewData.activeSites.length > 0);
+    !(normalCustomerDashboard && overviewData && overviewData.workspace.activeSites.length > 0);
 
   return (
     <div className="space-y-6">
@@ -139,14 +134,14 @@ function OverviewActions({
   }
 
   if (normalCustomerDashboard) {
-    if (data.activeSites.length === 0 && data.canCreateSite) {
+    if (data.workspace.kind === "no_current_website" && data.workspace.canCreateSite) {
       return (
         <Button asChild>
           <Link href="/dashboard/sites/new">Create website</Link>
         </Button>
       );
     }
-    if (data.billingBlocked) {
+    if (data.workspace.billingBlocked) {
       return (
         <div className="flex flex-wrap items-center gap-2">
           <Button disabled variant="outline">
@@ -158,10 +153,10 @@ function OverviewActions({
         </div>
       );
     }
-    if (data.activeSites.length === 1) {
+    if (data.workspace.kind === "single_current_website" && data.workspace.currentSite) {
       return (
         <Button asChild variant="secondary">
-          <Link href={`/dashboard/sites/${data.activeSites[0]!.id}`}>Open website</Link>
+          <Link href={`/dashboard/sites/${data.workspace.currentSite.id}`}>Open website</Link>
         </Button>
       );
     }
@@ -179,11 +174,11 @@ function OverviewActions({
 
   return (
     <div className="flex flex-wrap gap-3">
-      {data.canCreateSite ? (
+      {data.workspace.canCreateSite ? (
         <Button asChild>
           <Link href="/dashboard/sites/new">Add a site</Link>
         </Button>
-      ) : data.billingBlocked ? (
+      ) : data.workspace.billingBlocked ? (
         <div className="flex flex-wrap items-center gap-2">
           <Button disabled variant="outline">
             Add a site
@@ -192,7 +187,7 @@ function OverviewActions({
             <Link href={pricingPath}>Update billing</Link>
           </Button>
         </div>
-      ) : data.atSiteLimit ? (
+      ) : data.workspace.atSiteLimit ? (
         <div className="flex flex-wrap items-center gap-2">
           <Button disabled variant="outline">
             Add a site
@@ -224,8 +219,8 @@ function OverviewSites({
   pricingPath: string;
   normalCustomerDashboard: boolean;
 }) {
-  const { sites, canCreateSite, billingBlocked } = data;
-  const currentSites = normalCustomerDashboard ? data.activeSites : sites;
+  const { sites, workspace } = data;
+  const currentSites = normalCustomerDashboard ? workspace.activeSites : sites;
 
   if (currentSites.length === 0) {
     return (
@@ -241,13 +236,13 @@ function OverviewSites({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          {canCreateSite ? (
+          {workspace.canCreateSite ? (
             <Button asChild>
               <Link href="/dashboard/sites/new">
                 {normalCustomerDashboard ? "Create website" : "Start onboarding"}
               </Link>
             </Button>
-          ) : billingBlocked ? (
+          ) : workspace.billingBlocked ? (
             <Button asChild variant="secondary">
               <Link href={pricingPath}>Update billing</Link>
             </Button>
