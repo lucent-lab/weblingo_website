@@ -61,6 +61,9 @@ export default async function DashboardPage() {
   if (normalCustomerDashboard && overviewData?.activeSites.length === 1) {
     redirect(`/dashboard/sites/${overviewData.activeSites[0]!.id}`);
   }
+  const showClaimedFreeOnboarding =
+    onboardingState.stage === "claimed_free_account" &&
+    !(normalCustomerDashboard && overviewData && overviewData.activeSites.length > 0);
 
   return (
     <div className="space-y-6">
@@ -85,7 +88,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {onboardingState.stage === "claimed_free_account" ? (
+      {showClaimedFreeOnboarding ? (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>

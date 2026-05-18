@@ -282,6 +282,50 @@ describe("dashboard capability actions", () => {
     expect(updateSite).not.toHaveBeenCalled();
   });
 
+  it("uses the existing site update path for source URL replacement", async () => {
+    const payload = {
+      sourceUrl: "https://www.new-example.com",
+      subdomainPattern: "https://{lang}.new-example.com",
+    };
+    deriveSiteSettingsAccess.mockReturnValue({
+      billingBlocked: false,
+      canEditBasics: true,
+      canEditLocales: true,
+      canEditServingMode: true,
+      canEditCrawlCaptureMode: true,
+      canEditClientRuntime: true,
+      canEditSpaRefresh: true,
+      canEditTranslatableAttributes: true,
+      canEditProfile: true,
+      canEditWebhooks: true,
+    });
+    buildSiteSettingsUpdatePayload.mockReturnValue({ ok: true, payload });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("sourceUrl", payload.sourceUrl);
+    formData.set("subdomainPattern", payload.subdomainPattern);
+
+    const result = await updateSiteSettingsAction(undefined, formData);
+
+    expect(result).toMatchObject({ ok: true, message: "Site settings saved." });
+    expect(updateSite).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      "site-1",
+      payload,
+    );
+    expect(createSite).not.toHaveBeenCalled();
+    expect(invalidateSiteDashboardCache).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      "site-1",
+    );
+    expect(invalidateSitesCache).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1/settings");
+  });
+
   it("blocks focused dashboard mutations when the workspace mutation lock is active", async () => {
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },

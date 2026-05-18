@@ -19,7 +19,7 @@ styles/              # Tailwind globals
 1. Request hits a localized route in `app/[locale]/…` (e.g., `/fr/pricing`).
 2. The page loads locale messages via `internal/i18n` and creates a translator.
 3. Components import data (e.g., pricing tiers) from `modules/pricing` and render localized copy.
-4. API routes under `app/api/stripe/*` delegate to `internal/billing/stripe.ts` and always attach `siteId` metadata so multiple sites can share a Stripe account.
+4. Dashboard routes call the backend webhooks API for account/site state. Normal customer workspaces resolve to zero or one current website; source URL changes stay on the existing site settings update flow.
 
 ## Internal Modules
 
@@ -30,8 +30,8 @@ styles/              # Tailwind globals
 
 ### `internal/billing/stripe`
 
-- Provides `createCheckoutSession`, `verifyStripeSignature`, and `getStripeClient` helpers.
-- Resolves pricing metadata via `modules/pricing/data.ts` and includes `SITE_ID` in Stripe metadata.
+- Provides legacy website-owned Stripe helpers while the backend-owned Managed Payments migration is in progress.
+- Public customer billing copy must preserve the one account/subscription/website contract. Do not add second-site checkout behavior for normal customers.
 
 ### `internal/i18n`
 
@@ -46,14 +46,13 @@ styles/              # Tailwind globals
 - `components/pricing-teaser.tsx` — Home page teaser built with shadcn/ui cards over the pricing catalog.
 - `components/ui/*` — Locally vendored shadcn/ui primitives (button, card, badge, input).
 
-The public pricing experience embeds Stripe’s Pricing Table on `/[locale]/pricing` using `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `STRIPE_PRICING_TABLE_ID`. The fallback table ensures we retain plan metadata for the Checkout API and non-embed contexts.
+The public pricing experience renders scoped rollout copy on `/[locale]/pricing`. Any Stripe embed or checkout fallback must keep the customer contract explicit: one self-serve subscription covers one website, while additional websites are scoped separately or through agency flows.
 
 ## Stripe Integration
 
 - `POST /api/stripe/create-checkout-session`
-  - Validates payload with zod.
-  - Creates a subscription Checkout session for the requested plan/cadence.
-  - Includes `siteId` + `planId` metadata in the Session and Subscription objects.
+  - Legacy website-owned checkout helper retained until backend Managed Payments owns checkout.
+  - Must not be used to create a normal-customer second website.
 
 - `POST /api/stripe/webhook`
   - Verifies webhook signature using the shared secret.

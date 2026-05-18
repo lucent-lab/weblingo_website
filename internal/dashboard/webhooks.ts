@@ -799,12 +799,22 @@ const customerDomainSummarySchema = z
     cta: customerCtaRefSchema.nullable().optional(),
   })
   .strict();
+const customerLanguageIndexingStatusSchema = z
+  .object({
+    mode: z.enum(["noindex", "indexable"]),
+    effectiveMode: z.enum(["noindex", "indexable"]),
+    optedIn: z.boolean(),
+    canIndex: z.boolean(),
+    blockers: z.array(z.string()),
+  })
+  .strict();
 const customerLanguageStatusSchema = z
   .object({
     tag: z.string(),
     labelKey: z.string().optional(),
     enabled: z.boolean(),
     serveEnabled: z.boolean(),
+    indexing: customerLanguageIndexingStatusSchema,
     servingStatus: customerServingStatusSchema,
     domain: z.string().nullable().optional(),
     domainStatus: customerDomainStatusValueSchema.nullable().optional(),
@@ -2815,6 +2825,16 @@ function createDashboardE2eMockProjectionServingStatus(
   };
 }
 
+function createDashboardE2eMockProjectionIndexingStatus(canIndex: boolean) {
+  return {
+    mode: canIndex ? ("indexable" as const) : ("noindex" as const),
+    effectiveMode: canIndex ? ("indexable" as const) : ("noindex" as const),
+    optedIn: canIndex,
+    canIndex,
+    blockers: canIndex ? [] : ["indexing_not_opted_in"],
+  };
+}
+
 function createDashboardE2eMockProjectionLanguages() {
   return [
     {
@@ -2822,6 +2842,7 @@ function createDashboardE2eMockProjectionLanguages() {
       labelKey: "languages.fr",
       enabled: true,
       serveEnabled: true,
+      indexing: createDashboardE2eMockProjectionIndexingStatus(true),
       servingStatus: createDashboardE2eMockProjectionServingStatus("live"),
       domain: "fr.example.test",
       domainStatus: "verified" as const,
@@ -2837,6 +2858,7 @@ function createDashboardE2eMockProjectionLanguages() {
       labelKey: "languages.ja",
       enabled: true,
       serveEnabled: true,
+      indexing: createDashboardE2eMockProjectionIndexingStatus(false),
       servingStatus: createDashboardE2eMockProjectionServingStatus("needs_domain"),
       domain: "verify.example.test",
       domainStatus: "pending" as const,

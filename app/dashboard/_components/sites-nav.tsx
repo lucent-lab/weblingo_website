@@ -21,9 +21,10 @@ export type SiteNavEntry = {
 
 type SitesNavProps = {
   sites: SiteNavEntry[];
+  emptyLabel?: string;
 };
 
-export function SitesNav({ sites }: SitesNavProps) {
+export function SitesNav({ sites, emptyLabel = "No sites yet." }: SitesNavProps) {
   const pathname = usePathname();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -32,7 +33,7 @@ export function SitesNav({ sites }: SitesNavProps) {
     <SidebarMenu>
       {isCollapsed ? null : sites.length === 0 ? (
         <SidebarMenuItem className="px-2 py-2 text-xs text-sidebar-foreground/70">
-          No sites yet.
+          {emptyLabel}
         </SidebarMenuItem>
       ) : (
         sites.map((site) => <SiteNavItem key={site.id} site={site} pathname={pathname} />)

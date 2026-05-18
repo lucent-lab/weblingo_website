@@ -53,11 +53,15 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 
 - `operationId`: `sites.update`
 
-14. List discovered pages for a site:
+14. Update indexing policy after readiness checks pass:
+
+- `operationId`: `sites.indexingPolicy.update`
+
+15. List discovered pages for a site:
 
 - `operationId`: `sites.pages.list`
 
-15. Generate language switcher snippets for custom frontend integration:
+16. Generate language switcher snippets for custom frontend integration:
     - `operationId`: `sites.switcherSnippets.get`
 
 ## Playbook: Admin Managed Demos
@@ -119,6 +123,9 @@ Cloudflare for SaaS flow:
    - `operationId`: `sites.domains.refresh`
 4. Enable locale serving:
    - `operationId`: `sites.locales.serve`
+5. After verified domains, active deployments, and language readiness checks pass, opt the site into
+   customer-domain indexing:
+   - `operationId`: `sites.indexingPolicy.update`
 
 Local/dev TXT verification flow:
 
@@ -126,6 +133,8 @@ Local/dev TXT verification flow:
    - `operationId`: `sites.domains.verify`
 2. Enable locale serving:
    - `operationId`: `sites.locales.serve`
+3. Keep indexing disabled for local/dev sites; only production customer domains should be opted in:
+   - `operationId`: `sites.indexingPolicy.update`
 
 ## Playbook 3: Crawl and Translate Lifecycle
 

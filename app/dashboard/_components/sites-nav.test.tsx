@@ -68,6 +68,13 @@ vi.mock("next/link", async () => {
 import { SitesNav } from "./sites-nav";
 
 describe("SitesNav", () => {
+  it("uses the caller-provided empty label", () => {
+    render(<SitesNav emptyLabel="No website yet." sites={[]} />);
+
+    expect(screen.getByText("No website yet.")).toBeTruthy();
+    expect(screen.queryByText("No sites yet.")).toBeNull();
+  });
+
   it("disables prefetch for per-site submenu links", () => {
     render(
       <SitesNav

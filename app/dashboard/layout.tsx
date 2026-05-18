@@ -201,7 +201,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             <SidebarGroupLabel>{sitesLabel}</SidebarGroupLabel>
             <SidebarGroupContent>
               <Suspense fallback={<SitesNavSkeleton />}>
-                <SitesNavAsync auth={auth} listSites={listLayoutSites} />
+                <SitesNavAsync
+                  auth={auth}
+                  emptyLabel={isAgency ? "No sites yet." : "No website yet."}
+                  listSites={listLayoutSites}
+                />
               </Suspense>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -309,9 +313,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 // Async component for sidebar sites navigation - streams in while layout shell renders
 async function SitesNavAsync({
   auth,
+  emptyLabel,
   listSites,
 }: {
   auth: DashboardAuth;
+  emptyLabel: string;
   listSites: LayoutSitesReader;
 }) {
   let sites: SiteSummary[] = [];
@@ -323,13 +329,30 @@ async function SitesNavAsync({
     console.warn("[dashboard] listSites failed:", error);
   }
 
-  const siteNavItems: SiteNavEntry[] = sites.map((site) => ({
+  const siteNavItems = resolveLayoutSiteNavEntries({
+    isAgency: resolveDashboardWorkspaceAudience(auth) === "agency",
+    sites,
+  });
+
+  return <SitesNav emptyLabel={emptyLabel} sites={siteNavItems} />;
+}
+
+export function resolveLayoutSiteNavEntries({
+  isAgency,
+  sites,
+}: {
+  isAgency: boolean;
+  sites: SiteSummary[];
+}): SiteNavEntry[] {
+  const currentSites = isAgency
+    ? sites
+    : sites.filter((site) => site.status === "active").slice(0, 2);
+  const visibleSites = !isAgency && currentSites.length !== 1 ? [] : currentSites;
+  return visibleSites.map((site) => ({
     id: site.id,
     label: formatSiteLabel(site.sourceUrl),
     status: site.status,
   }));
-
-  return <SitesNav sites={siteNavItems} />;
 }
 
 // Skeleton fallback for sidebar sites while loading

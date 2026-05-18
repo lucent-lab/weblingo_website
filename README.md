@@ -154,7 +154,7 @@ Ownership:
 
 ## Stripe Setup
 
-1. Create three recurring prices for the Launch, Growth, and Enterprise plans. Name the price IDs so they include the site identifier, e.g. `price_weblingo_growth_monthly`.
+1. Create recurring prices for the public customer plans and keep the self-serve contract aligned with the backend: one account/subscription covers one website. Additional websites require separate scoping or agency handling.
 2. Populate the matching IDs in `modules/pricing/data.ts`.
 3. Run `stripe listen --forward-to localhost:3000/api/stripe/webhook` for local development and set the `STRIPE_WEBHOOK_SECRET`.
 4. Configure Stripe Pricing Tables for each locale (or reuse one) and copy the IDs into `STRIPE_PRICING_TABLE_ID` (fallback) and the locale-specific envs (`STRIPE_PRICING_TABLE_ID_EN`, `FR`, `JA`). The embed renders on `/[locale]/pricing`, with the in-app comparison table acting as a fallback.
@@ -168,7 +168,7 @@ Ownership:
 - **Worker API**: Point `NEXT_PUBLIC_WEBHOOKS_API_BASE` to the live `webhooks` worker; enable CORS for the dashboard origin. Use `TRY_NOW_TOKEN` for server-side preview requests.
 - **Stripe**: Add webhook endpoint pointing to `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET` on the host.
 - **Dashboard**: `/dashboard` uses Supabase session cookies; ensure the domain matches your Supabase config so auth cookies persist.
-- **Smoke checks**: After deploy, verify `/[locale]` pages load, Stripe Pricing Table renders, and dashboard can list/create sites via the worker API.
+- **Smoke checks**: After deploy, verify `/[locale]` pages load, Stripe Pricing Table renders, and the dashboard shows no-site onboarding or routes a one-site customer directly to the website workspace.
 
 ## Roadmap For Additional Sites
 

@@ -122,15 +122,15 @@ export function OnboardingForm(props: {
     formAction,
     state,
     pending,
-    loading: "Creating site...",
-    success: "Site created.",
-    error: "Unable to create site.",
+    loading: "Creating website...",
+    success: "Website created.",
+    error: "Unable to create website.",
   });
 
   return (
     <Card>
       <CardHeader className="space-y-0">
-        <CardTitle className="text-xl">Site setup</CardTitle>
+        <CardTitle className="text-xl">Website setup</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={submitWithToast} className="relative">
@@ -332,7 +332,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button disabled={disabled || pending} type="submit">
-      {pending ? "Creating..." : "Create site"}
+      {pending ? "Creating..." : "Create website"}
     </Button>
   );
 }

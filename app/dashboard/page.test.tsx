@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   listSitesFresh: vi.fn(),
+  resolveDashboardOnboardingState: vi.fn(
+    (): { stage: string; title?: string; description?: string; badge?: string } => ({
+      stage: "none",
+    }),
+  ),
   redirect: vi.fn((href: string) => {
     const error = new Error(`NEXT_REDIRECT:${href}`);
     (error as Error & { digest?: string }).digest = `NEXT_REDIRECT;replace;${href}`;
@@ -32,7 +37,7 @@ vi.mock("@internal/dashboard/error-state", () => ({
   })),
 }));
 vi.mock("@internal/dashboard/onboarding-state", () => ({
-  resolveDashboardOnboardingState: vi.fn(() => ({ stage: "none" })),
+  resolveDashboardOnboardingState: mocks.resolveDashboardOnboardingState,
 }));
 vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: vi.fn(() => "en"),
@@ -47,6 +52,7 @@ vi.mock("./_components/sites-list", () => ({
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.resolveDashboardOnboardingState.mockReturnValue({ stage: "none" });
   });
 
   afterEach(() => {
@@ -125,19 +131,27 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
-  it("does not render a normal-customer portfolio even if stale data contains multiple sites", async () => {
-    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+  it("does not render free onboarding create links in duplicate-active review state", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth({ accountPlan: "free" }));
+    mocks.resolveDashboardOnboardingState.mockReturnValue({
+      stage: "claimed_free_account",
+      title: "Free account ready",
+      description: "Create your first website.",
+      badge: "Free",
+    });
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
 
     vi.resetModules();
     const { default: DashboardPage } = await import("./page");
     const tree = await DashboardPage();
 
-    render(tree);
+    const { container } = render(tree);
     expect(screen.getByText("Website workspace needs review")).toBeTruthy();
     expect(screen.getByText(/more than one active website record/)).toBeTruthy();
+    expect(screen.queryByText("Free account ready")).toBeNull();
     expect(screen.queryByText("Open website")).toBeNull();
     expect(screen.queryByText("Site portfolio")).toBeNull();
+    expect(container.querySelector('a[href="/dashboard/sites/new"]')).toBeNull();
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 

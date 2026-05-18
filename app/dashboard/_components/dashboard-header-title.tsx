@@ -15,7 +15,7 @@ type TitleOverride = {
 };
 
 const titleOverrides: TitleOverride[] = [
-  { match: /^\/dashboard\/sites\/new(\/|$)/, label: "Add a new site" },
+  { match: /^\/dashboard\/sites\/new(\/|$)/, label: "Website setup" },
   { match: /^\/dashboard\/sites\/[^/]+\/settings(\/|$)/, label: "Settings" },
 ];
 

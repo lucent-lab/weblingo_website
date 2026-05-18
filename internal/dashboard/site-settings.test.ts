@@ -117,6 +117,22 @@ describe("requiresSourceUrlReactivation", () => {
 });
 
 describe("buildSiteSettingsUpdatePayload", () => {
+  it("builds source URL replacement payloads through the existing settings update flow", () => {
+    const formData = new FormData();
+    formData.set("sourceUrl", "https://www.new-example.com");
+    formData.set("subdomainPattern", "https://{lang}.new-example.com");
+
+    const result = buildSiteSettingsUpdatePayload(formData, makeAccess({ canEditBasics: true }));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload).toEqual({
+        sourceUrl: "https://www.new-example.com",
+        subdomainPattern: "https://{lang}.new-example.com",
+      });
+    }
+  });
+
   it("requires basics when editing routing fields", () => {
     const formData = new FormData();
     formData.set("sourceUrl", "https://www.example.com");

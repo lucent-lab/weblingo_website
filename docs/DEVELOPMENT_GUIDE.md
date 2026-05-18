@@ -79,7 +79,7 @@ Other scripts:
 3. Run `stripe listen --forward-to localhost:3000/api/stripe/webhook` in development.
 4. Copy the webhook signing secret into `.env.local`.
 5. Create Stripe Pricing Tables per locale (or reuse a default) and copy the IDs into `STRIPE_PRICING_TABLE_ID` (fallback) and `STRIPE_PRICING_TABLE_ID_EN/FR/JA` so the embedded widget renders on `/[locale]/pricing` with locale-appropriate content.
-6. Metadata sent with checkout sessions includes `siteId` so events remain distinguishable when sharing the Stripe account.
+6. Keep pricing and billing copy aligned with the backend customer contract: one self-serve account/subscription maps to one website. Source URL changes use the existing site settings update flow, not a second-site checkout or create flow.
 
 ## Waitlist Capture
 

@@ -69,4 +69,72 @@ describe("DashboardLayout", () => {
 
     expect(resolveLayoutSitesReader(true)).toBe(data.listSitesCached);
   });
+
+  it("shows only the single active current website in normal-customer shell navigation", async () => {
+    const { resolveLayoutSiteNavEntries } = await import("./layout");
+
+    expect(
+      resolveLayoutSiteNavEntries({
+        isAgency: false,
+        sites: [makeSite("site-old", "inactive"), makeSite("site-current")],
+      }),
+    ).toEqual([
+      {
+        id: "site-current",
+        label: "site-current.example.com",
+        status: "active",
+      },
+    ]);
+  });
+
+  it("hides normal-customer shell site navigation in duplicate-active review state", async () => {
+    const { resolveLayoutSiteNavEntries } = await import("./layout");
+
+    expect(
+      resolveLayoutSiteNavEntries({
+        isAgency: false,
+        sites: [makeSite("site-1"), makeSite("site-2")],
+      }),
+    ).toEqual([]);
+  });
+
+  it("keeps agency shell site navigation portfolio-style", async () => {
+    const { resolveLayoutSiteNavEntries } = await import("./layout");
+
+    expect(
+      resolveLayoutSiteNavEntries({
+        isAgency: true,
+        sites: [makeSite("site-old", "inactive"), makeSite("site-current")],
+      }),
+    ).toEqual([
+      {
+        id: "site-old",
+        label: "site-old.example.com",
+        status: "inactive",
+      },
+      {
+        id: "site-current",
+        label: "site-current.example.com",
+        status: "active",
+      },
+    ]);
+  });
 });
+
+function makeSite(id: string, status: "active" | "inactive" = "active") {
+  return {
+    id,
+    accountId: "acct-1",
+    sourceUrl: `https://${id}.example.com`,
+    status,
+    servingMode: "strict" as const,
+    maxLocales: null,
+    siteProfile: null,
+    sourceLang: "en",
+    targetLangs: ["fr"],
+    localeCount: 1,
+    serveEnabledLocaleCount: 0,
+    domainCount: 1,
+    verifiedDomainCount: 0,
+  };
+}

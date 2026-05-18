@@ -1142,6 +1142,37 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "POST",
+        "operationId": "sites.indexingPolicy.update",
+        "path": "/sites/:siteId/indexing-policy"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "sites.indexingPolicy",
+      "id": "api.sites.indexingPolicy.update",
+      "name": "Set customer search indexing policy for a site",
+      "playbooks": [
+        {
+          "anchor": "playbook-site-portfolio-management",
+          "id": "playbook-site-portfolio-management",
+          "title": "Playbook: Site Portfolio Management"
+        },
+        {
+          "anchor": "playbook-2-domain-verification-and-serving-activation",
+          "id": "playbook-2",
+          "title": "Playbook 2: Domain Verification and Serving Activation"
+        }
+      ],
+      "routeIds": [
+        "sites.indexingPolicy.update"
+      ],
+      "stability": "GA",
+      "summary": "Stores the explicit site indexing opt-in policy used by the dashboard language projection and route cache. Sites default to noindex until this policy is set to indexable.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "GET",
         "operationId": "sites.list",
         "path": "/sites"

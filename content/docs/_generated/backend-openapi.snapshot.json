@@ -2810,6 +2810,37 @@
         ],
         "type": "object"
       },
+      "CustomerLanguageIndexingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "canIndex": {
+            "type": "boolean"
+          },
+          "effectiveMode": {
+            "$ref": "#/components/schemas/IndexingMode"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/IndexingMode"
+          },
+          "optedIn": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "effectiveMode",
+          "optedIn",
+          "canIndex",
+          "blockers"
+        ],
+        "type": "object"
+      },
       "CustomerLanguageStatus": {
         "additionalProperties": false,
         "properties": {
@@ -2840,6 +2871,9 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "indexing": {
+            "$ref": "#/components/schemas/CustomerLanguageIndexingStatus"
           },
           "labelKey": {
             "type": "string"
@@ -2882,6 +2916,7 @@
           "tag",
           "enabled",
           "serveEnabled",
+          "indexing",
           "servingStatus"
         ],
         "type": "object"
@@ -4322,6 +4357,13 @@
           "locales"
         ],
         "type": "object"
+      },
+      "IndexingMode": {
+        "enum": [
+          "noindex",
+          "indexable"
+        ],
+        "type": "string"
       },
       "LanguageSwitcherMode": {
         "enum": [
@@ -5989,6 +6031,19 @@
               }
             ]
           },
+          "indexingPolicy": {
+            "additionalProperties": false,
+            "description": "Default: noindex",
+            "properties": {
+              "mode": {
+                "$ref": "#/components/schemas/IndexingMode"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
           "languageSwitcher": {
             "anyOf": [
               {
@@ -7058,6 +7113,72 @@
           "serveEnabled",
           "servingStatus",
           "stateDrift"
+        ],
+        "type": "object"
+      },
+      "SetSiteIndexingPolicyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/IndexingMode"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "SetSiteIndexingPolicyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "indexingPolicy": {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "$ref": "#/components/schemas/IndexingMode"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "languages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "indexingPolicy": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mode": {
+                      "$ref": "#/components/schemas/IndexingMode"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ],
+                  "type": "object"
+                },
+                "tag": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tag",
+                "indexingPolicy"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "siteId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId",
+          "indexingPolicy",
+          "languages"
         ],
         "type": "object"
       },
@@ -8177,6 +8298,9 @@
                 "enabled": {
                   "type": "boolean"
                 },
+                "indexing": {
+                  "$ref": "#/components/schemas/CustomerLanguageIndexingStatus"
+                },
                 "labelKey": {
                   "type": "string"
                 },
@@ -8217,6 +8341,7 @@
               "required": [
                 "canRemove",
                 "enabled",
+                "indexing",
                 "serveEnabled",
                 "servingStatus",
                 "tag"
@@ -11619,6 +11744,22 @@
             },
             "description": "Success"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "single_site_account_limit"
+                  },
+                  "error": "Customer plans are limited to one active website"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Customer plans cannot be given a multi-site account override."
+          },
           "401": {
             "content": {
               "application/json": {
@@ -11634,6 +11775,22 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "single_site_account_limit"
+                  },
+                  "error": "Customer account has multiple active websites"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Changing an account into a customer plan is blocked while multiple active sites exist."
           },
           "429": {
             "content": {
@@ -14032,6 +14189,22 @@
             },
             "description": "Unauthorized"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "single_site_account_limit"
+                  },
+                  "error": "This account already has an active website"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Reactivating this site would create a second active customer website."
+          },
           "429": {
             "content": {
               "application/json": {
@@ -15105,6 +15278,13 @@
                   "languages": [
                     {
                       "enabled": true,
+                      "indexing": {
+                        "blockers": [
+                          "string"
+                        ],
+                        "canIndex": true,
+                        "optedIn": true
+                      },
                       "serveEnabled": true,
                       "servingStatus": {
                         "titleKey": "string"
@@ -16233,6 +16413,110 @@
         "tags": [
           "Sites",
           "Glossary"
+        ]
+      }
+    },
+    "/sites/{siteId}/indexing-policy": {
+      "post": {
+        "description": "Stores the explicit site indexing opt-in policy used by the dashboard language projection and route cache. Sites default to noindex until this policy is set to indexable.",
+        "operationId": "sites.indexingPolicy.update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "mode": "indexable"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SetSiteIndexingPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "indexingPolicy": {
+                    "mode": "noindex"
+                  },
+                  "languages": [
+                    {
+                      "indexingPolicy": {
+                        "mode": "noindex"
+                      },
+                      "tag": "string"
+                    }
+                  ],
+                  "siteId": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SetSiteIndexingPolicyResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set customer search indexing policy for a site",
+        "tags": [
+          "Sites"
         ]
       }
     },

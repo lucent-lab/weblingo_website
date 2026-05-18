@@ -56,11 +56,22 @@ function makeCustomerServingStatus() {
   };
 }
 
+function makeCustomerIndexingStatus() {
+  return {
+    mode: "indexable",
+    effectiveMode: "indexable",
+    optedIn: true,
+    canIndex: true,
+    blockers: [],
+  };
+}
+
 function makeCustomerLanguage() {
   return {
     tag: "fr",
     enabled: true,
     serveEnabled: true,
+    indexing: makeCustomerIndexingStatus(),
     servingStatus: makeCustomerServingStatus(),
     domain: "fr.example.com",
     domainStatus: "verified",

@@ -86,6 +86,13 @@ describe("DomainsPage", () => {
           labelKey: "languages.fr",
           enabled: true,
           serveEnabled: true,
+          indexing: {
+            mode: "noindex",
+            effectiveMode: "noindex",
+            optedIn: false,
+            canIndex: false,
+            blockers: ["indexing_not_opted_in", "domain_unverified"],
+          },
           servingStatus: {
             value: "needs_domain",
             rawStatus: "needs_domain",
