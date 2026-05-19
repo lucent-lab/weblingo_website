@@ -21,6 +21,18 @@ import { resolvePreviewStatusDecision } from "./preview-status-decision";
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
 let previewStatusRuntimeOwner: symbol | null = null;
 
+function resolveRetryHintDelayMs(
+  retryHint: PreviewStatusCenterJob["retryHint"] | null | undefined,
+): number | null {
+  if (!retryHint || retryHint.retryAfterSeconds === null) {
+    return null;
+  }
+  return Math.max(
+    DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+    retryHint.retryAfterSeconds * 1000,
+  );
+}
+
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
 }
@@ -125,6 +137,7 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
+        const retryHintDelayMs = resolveRetryHintDelayMs(decision.retryHint);
         updatePreviewStatusCenterJob(job.previewId, {
           status: decision.status,
           stage: decision.stage ?? undefined,
@@ -136,11 +149,16 @@ export function usePreviewStatusRuntime() {
           remoteStatusVerified: decision.remoteStatusVerified,
           retryCount,
           nextPollAt: decision.remoteStatusVerified
-            ? undefined
-            : Date.now() + calculatePreviewStatusCenterRetryDelayMs(retryCount),
+            ? retryHintDelayMs === null
+              ? undefined
+              : Date.now() + retryHintDelayMs
+            : Date.now() +
+              Math.max(calculatePreviewStatusCenterRetryDelayMs(retryCount), retryHintDelayMs ?? 0),
         });
         if (decision.remoteStatusVerified) {
-          resetPreviewStatusCenterJobRetry(job.previewId);
+          if (retryHintDelayMs === null) {
+            resetPreviewStatusCenterJobRetry(job.previewId);
+          }
         }
       } catch {
         const retryCount = job.retryCount + 1;

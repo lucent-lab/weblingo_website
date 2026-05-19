@@ -1648,6 +1648,49 @@ describe("TryForm preview status", () => {
     expect(MockEventSource.instances).toHaveLength(1);
   });
 
+  it("restores running UI when a timed-out preview status check remains active", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "timeout-active-8888-8888-8888-888888888888",
+          statusToken: "timeout-token",
+          status: "pending",
+        });
+      }
+      if (url === "/api/previews/timeout-active-8888-8888-8888-888888888888?token=timeout-token") {
+        return jsonResponse({ status: "waiting_provider_capacity", stage: "translating" });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("error");
+
+    await waitFor(() => {
+      expect(screen.getByText("Processing is taking longer than expected.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Processing is taking longer than expected.")).toBeNull();
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByText("Waiting for translation capacity...")).toBeTruthy();
+    });
+  });
+
   it("uses stage copy from the shared resolver", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

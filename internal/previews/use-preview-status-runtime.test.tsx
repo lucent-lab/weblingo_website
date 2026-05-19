@@ -223,6 +223,60 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("uses provider-capacity retry hints to delay the next active poll", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "waiting_provider_capacity",
+              stage: "translating",
+              retryHint: {
+                reason: "provider_capacity_wait",
+                retryAfterSeconds: 45,
+                emailRecommended: true,
+              },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "capacity-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "waiting_provider_capacity",
+      nextPollAt: 0,
+    });
+
+    const beforePoll = Date.now();
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "capacity-7777-7777-7777-777777777777",
+      );
+      expect(job?.retryHint).toEqual({
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 45,
+        emailRecommended: true,
+      });
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 45_000);
+    });
+  });
+
   it("keeps empty successful status responses unverified and schedules a retry", async () => {
     vi.stubGlobal(
       "fetch",

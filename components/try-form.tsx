@@ -807,6 +807,10 @@ export function TryForm({
         decision.remoteStatusVerified,
       );
       if (decision.remoteStatusVerified) {
+        setSubmissionError(null);
+        timedOutRef.current = false;
+        setTimedOut(false);
+        setTimedOutWithEmail(false);
         clearRestoredStatusCheckRetry(previewId);
       } else {
         markRestoredStatusCheckRetryAvailable(previewId);
