@@ -36,6 +36,7 @@ import {
 import {
   isActivePreviewJobPhase,
   parsePreviewRetryHint,
+  resolvePreviewRetryHintDelayMs,
   type ActivePreviewJobPhase,
   type PreviewRetryHint,
 } from "@internal/previews/preview-job-machine";
@@ -680,6 +681,9 @@ export function TryForm({
     retryHint?: PreviewRetryHint | null,
     remoteStatusVerified = true,
   ) {
+    const retryHintDelayMs = remoteStatusVerified
+      ? resolvePreviewRetryHintDelayMs(retryHint)
+      : null;
     updatePreviewStatusCenterJob(previewId, {
       status,
       stage: stage ?? undefined,
@@ -688,6 +692,7 @@ export function TryForm({
       errorStage: null,
       retryHint: retryHint ?? null,
       remoteStatusVerified,
+      ...(retryHintDelayMs === null ? {} : { nextPollAt: Date.now() + retryHintDelayMs }),
     });
   }
 

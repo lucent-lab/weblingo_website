@@ -1152,6 +1152,50 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("delays status polling from provider-capacity retry hints received over SSE", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "11111111-1111-1111-1111-111111111111",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    const beforeStatus = Date.now();
+    MockEventSource.instances[0].emit("status", {
+      status: "waiting_provider_capacity",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: true,
+      },
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "11111111-1111-1111-1111-111111111111",
+      );
+      expect(job?.status).toBe("waiting_provider_capacity");
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforeStatus + 30_000);
+    });
+  });
+
   it("restores persisted v2 jobs on mount without reopening SSE", async () => {
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -1195,9 +1239,18 @@ describe("TryForm preview status", () => {
 
   it("checks restored provider-capacity waits on mount", async () => {
     const fetchMock = vi.fn(async () =>
-      jsonResponse({ status: "processing", stage: "translating" }),
+      jsonResponse({
+        status: "waiting_provider_capacity",
+        stage: "translating",
+        retryHint: {
+          reason: "provider_capacity_wait",
+          retryAfterSeconds: 60,
+          emailRecommended: false,
+        },
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
+    const beforeStatus = Date.now();
     storeRestoredActiveJob({
       previewId: "waiting-7777-7777-7777-777777777777",
       statusToken: "waiting-token",
@@ -1215,6 +1268,10 @@ describe("TryForm preview status", () => {
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.getByText("waiting.example.com • English -> French")).toBeTruthy();
     });
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "waiting-7777-7777-7777-777777777777",
+    );
+    expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforeStatus + 60_000);
     expect(MockEventSource.instances).toHaveLength(0);
   });
 
