@@ -171,6 +171,7 @@ function isJobStatus(value: unknown): value is PreviewStatusCenterJobStatus {
   return (
     value === "pending" ||
     value === "processing" ||
+    value === "waiting_provider_capacity" ||
     value === "ready" ||
     value === "failed" ||
     value === "expired"
@@ -289,7 +290,7 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
 }
 
 function isActiveStatus(status: PreviewStatusCenterJobStatus): boolean {
-  return status === "pending" || status === "processing";
+  return status === "pending" || status === "processing" || status === "waiting_provider_capacity";
 }
 
 function normalizeTimestamp(value: number): number {

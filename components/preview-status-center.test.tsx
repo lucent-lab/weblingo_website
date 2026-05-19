@@ -25,6 +25,7 @@ vi.mock("@internal/analytics/client", async () => {
 
 const messages = {
   "try.center.capacityHint": "Capacity hint",
+  "try.center.providerCapacityHint": "Provider capacity hint",
   "try.center.dismiss": "Dismiss",
   "try.center.retryHint": "Retry hint",
   "try.error.default": "Preview failed",
@@ -39,6 +40,7 @@ const messages = {
   "try.stage.saving": "Saving",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing",
+  "try.status.waitingProviderCapacity": "Waiting for translation capacity",
   "try.status.restoring": "Checking preview status...",
   "try.status.ready": "Ready",
 } as const;
@@ -189,7 +191,7 @@ describe("PreviewStatusCenter", () => {
       sourceUrl: "https://provider-capacity.example.com",
       sourceLang: "en",
       targetLang: "fr",
-      status: "processing",
+      status: "waiting_provider_capacity",
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
@@ -200,7 +202,8 @@ describe("PreviewStatusCenter", () => {
     render(<PreviewStatusCenter messages={messages} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Capacity hint")).toBeTruthy();
+      expect(screen.getByText("Waiting for translation capacity")).toBeTruthy();
+      expect(screen.getByText("Provider capacity hint")).toBeTruthy();
     });
   });
 });

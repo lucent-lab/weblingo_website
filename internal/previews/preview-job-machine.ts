@@ -1,6 +1,12 @@
 import type { PreviewErrorCode, PreviewStage } from "./preview-sse";
 
-export type PreviewJobPhase = "pending" | "processing" | "ready" | "failed" | "expired";
+export type PreviewJobPhase =
+  | "pending"
+  | "processing"
+  | "waiting_provider_capacity"
+  | "ready"
+  | "failed"
+  | "expired";
 
 export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_capacity_wait";
 
@@ -100,11 +106,15 @@ type ReducePreviewJobContext = {
   defaultPollIntervalMs: number;
 };
 
-type ActivePreviewJobPhase = Extract<PreviewJobPhase, "pending" | "processing">;
+type ActivePreviewJobPhase = Extract<
+  PreviewJobPhase,
+  "pending" | "processing" | "waiting_provider_capacity"
+>;
 
 const ACTIVE_PHASE_ORDER: Record<ActivePreviewJobPhase, number> = {
   pending: 1,
   processing: 2,
+  waiting_provider_capacity: 3,
 };
 
 const STAGE_ORDER: Record<PreviewStage, number> = {
@@ -173,7 +183,7 @@ export function isPreviewJobTerminal(status: PreviewJobPhase): boolean {
 }
 
 function isActivePreviewJobPhase(status: PreviewJobPhase): status is ActivePreviewJobPhase {
-  return status === "pending" || status === "processing";
+  return status === "pending" || status === "processing" || status === "waiting_provider_capacity";
 }
 
 export function resolveNextPreviewJobPhase(

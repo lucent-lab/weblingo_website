@@ -32,6 +32,7 @@ export const PREVIEW_STATUS_CENTER_STAGE_MESSAGE_KEYS: Record<PreviewStage, stri
 
 export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.center.capacityHint",
+  "try.center.providerCapacityHint",
   "try.center.dismiss",
   "try.center.retryHint",
   "try.error.blocked_host",
@@ -63,6 +64,7 @@ export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.status.processing",
   "try.status.ready",
   "try.status.restoring",
+  "try.status.waitingProviderCapacity",
 ];
 
 type PreviewStatusCenterTranslator = (
@@ -95,7 +97,12 @@ export function resolvePreviewStatusCenterMessage(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string {
-  if (!job.remoteStatusVerified && (job.status === "pending" || job.status === "processing")) {
+  if (
+    !job.remoteStatusVerified &&
+    (job.status === "pending" ||
+      job.status === "processing" ||
+      job.status === "waiting_provider_capacity")
+  ) {
     return t("try.status.restoring");
   }
   if (job.status === "pending") {
@@ -103,6 +110,9 @@ export function resolvePreviewStatusCenterMessage(
   }
   if (job.status === "processing") {
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.processing");
+  }
+  if (job.status === "waiting_provider_capacity") {
+    return t("try.status.waitingProviderCapacity");
   }
   if (job.status === "ready") {
     return t("try.status.ready");
@@ -117,8 +127,12 @@ export function resolvePreviewStatusCenterCapacityHint(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string | null {
-  if (!isPreviewCapacityRetryHintReason(job.retryHint?.reason)) {
+  const retryHintReason = job.retryHint?.reason;
+  if (!isPreviewCapacityRetryHintReason(retryHintReason)) {
     return null;
+  }
+  if (retryHintReason === "provider_capacity_wait") {
+    return t("try.center.providerCapacityHint");
   }
   return t("try.center.capacityHint");
 }

@@ -17,7 +17,7 @@ export type ResolvedPreviewStatusError = {
 export type PreviewStatusDecision =
   | {
       kind: "active";
-      status: "pending" | "processing";
+      status: "pending" | "processing" | "waiting_provider_capacity";
       stage: PreviewStage | null;
       previewUrl?: string;
       retryHint: PreviewRetryHint | null;
@@ -162,7 +162,12 @@ export function resolvePreviewStatusDecision({
 
   return {
     kind: "active",
-    status: payload.status === "pending" ? "pending" : "processing",
+    status:
+      payload.status === "pending"
+        ? "pending"
+        : payload.status === "waiting_provider_capacity"
+          ? "waiting_provider_capacity"
+          : "processing",
     stage: isPreviewStage(payload.stage) ? payload.stage : null,
     previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
     retryHint: parsePreviewRetryHint(payload.retryHint),

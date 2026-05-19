@@ -75,8 +75,11 @@ const messages = {
   "try.status.creating": "Creating preview...",
   "try.status.capacityHint": "Capacity hint",
   "try.status.capacityEmailHint": "Capacity email hint",
+  "try.status.providerCapacityHint": "Provider capacity hint",
+  "try.status.providerCapacityEmailHint": "Provider capacity email hint",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing preview...",
+  "try.status.waitingProviderCapacity": "Waiting for translation capacity...",
   "try.status.restoring": "Checking preview status...",
   "try.status.processingHint": "Processing hint",
   "try.status.ready": "Ready",
@@ -1483,7 +1486,7 @@ describe("TryForm preview status", () => {
       sourceUrl: "https://provider-capacity.example.com",
       sourceLang: "en",
       targetLang: "fr",
-      status: "processing",
+      status: "waiting_provider_capacity",
       stage: "translating",
       retryHint: {
         reason: "provider_capacity_wait",
@@ -1502,7 +1505,7 @@ describe("TryForm preview status", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Capacity email hint")).toBeTruthy();
+      expect(screen.getByText("Provider capacity email hint")).toBeTruthy();
     });
   });
 

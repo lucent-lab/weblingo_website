@@ -37,7 +37,10 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
       }),
     [jobs],
   );
-  const isRunning = activeJob?.status === "pending" || activeJob?.status === "processing";
+  const isRunning =
+    activeJob?.status === "pending" ||
+    activeJob?.status === "processing" ||
+    activeJob?.status === "waiting_provider_capacity";
   const title = isRunning ? resolvePreviewStatusCenterMessage(activeJob, t) : t("try.header.title");
   const description = isRunning ? t("try.status.processingHint") : t("try.header.description");
 

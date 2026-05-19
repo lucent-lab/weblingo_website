@@ -153,6 +153,12 @@ describe("preview-job-machine", () => {
 
   it("keeps non-terminal rank progression", () => {
     expect(resolveNextPreviewJobPhase("pending", "processing")).toBe("processing");
+    expect(resolveNextPreviewJobPhase("processing", "waiting_provider_capacity")).toBe(
+      "waiting_provider_capacity",
+    );
+    expect(resolveNextPreviewJobPhase("waiting_provider_capacity", "processing")).toBe(
+      "waiting_provider_capacity",
+    );
     expect(resolveNextPreviewJobPhase("processing", "pending")).toBe("processing");
   });
 

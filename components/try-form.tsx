@@ -165,6 +165,9 @@ function resolvePreviewProgressStepId(
   if (trackedJob.status === "processing") {
     return "translating";
   }
+  if (trackedJob.status === "waiting_provider_capacity") {
+    return "translating";
+  }
   return "queued";
 }
 
@@ -177,6 +180,7 @@ export function resolveTryFormMode(
       case "pending":
         return "running_pending";
       case "processing":
+      case "waiting_provider_capacity":
         return "running_processing";
       case "ready":
         return "terminal_ready";
@@ -289,7 +293,9 @@ export function TryForm({
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
   const isRestoredStatusChecking =
     trackedJob !== null &&
-    (trackedJob.status === "pending" || trackedJob.status === "processing") &&
+    (trackedJob.status === "pending" ||
+      trackedJob.status === "processing" ||
+      trackedJob.status === "waiting_provider_capacity") &&
     !trackedJob.remoteStatusVerified;
   const isRequestInFlight = isPreviewRunning || isRestoredStatusChecking;
   const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking && !timedOut;
@@ -377,12 +383,20 @@ export function TryForm({
     return (currentProgressStepIndex / (progressSteps.length - 1)) * 100;
   }, [currentProgressStepIndex, progressSteps.length]);
   const activeRetryHint =
-    trackedJob && (trackedJob.status === "pending" || trackedJob.status === "processing")
+    trackedJob &&
+    (trackedJob.status === "pending" ||
+      trackedJob.status === "processing" ||
+      trackedJob.status === "waiting_provider_capacity")
       ? trackedJob.retryHint
       : null;
   const processingHintMessage = useMemo(() => {
     if (!isPreviewCapacityRetryHintReason(activeRetryHint?.reason)) {
       return t("try.status.processingHint");
+    }
+    if (activeRetryHint?.reason === "provider_capacity_wait") {
+      return showEmailField
+        ? t("try.status.providerCapacityEmailHint")
+        : t("try.status.providerCapacityHint");
     }
     return showEmailField ? t("try.status.capacityEmailHint") : t("try.status.capacityHint");
   }, [activeRetryHint, showEmailField, t]);
@@ -656,7 +670,7 @@ export function TryForm({
 
   function syncStatusCenterActiveState(
     previewId: string,
-    status: "pending" | "processing",
+    status: "pending" | "processing" | "waiting_provider_capacity",
     stage: PreviewStage | null,
     retryHint?: PreviewRetryHint | null,
     remoteStatusVerified = true,
@@ -1268,7 +1282,9 @@ export function TryForm({
             targetLang: normalizedTargetLang,
             previewId,
             status:
-              payload?.status === "pending" || payload?.status === "processing"
+              payload?.status === "pending" ||
+              payload?.status === "processing" ||
+              payload?.status === "waiting_provider_capacity"
                 ? payload.status
                 : "pending",
             stage: isPreviewStage(payload?.stage) ? payload.stage : null,
@@ -1281,7 +1297,9 @@ export function TryForm({
           sourceLang: normalizedSourceLang,
           targetLang: normalizedTargetLang,
           initialStatus:
-            payload?.status === "pending" || payload?.status === "processing"
+            payload?.status === "pending" ||
+            payload?.status === "processing" ||
+            payload?.status === "waiting_provider_capacity"
               ? payload.status
               : "pending",
           initialStage: isPreviewStage(payload?.stage) ? payload.stage : null,
