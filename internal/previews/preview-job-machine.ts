@@ -213,6 +213,9 @@ export function resolveNextPreviewJobPhase(
   if (!isActivePreviewJobPhase(current) || !isActivePreviewJobPhase(incoming)) {
     return current;
   }
+  if (current === "waiting_provider_capacity" && incoming === "processing") {
+    return incoming;
+  }
   return ACTIVE_PHASE_ORDER[incoming] >= ACTIVE_PHASE_ORDER[current] ? incoming : current;
 }
 

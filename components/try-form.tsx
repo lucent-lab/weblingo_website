@@ -829,7 +829,7 @@ export function TryForm({
     if (!trackedJob || trackedJob.remoteStatusVerified) {
       return;
     }
-    if (trackedJob.status !== "pending" && trackedJob.status !== "processing") {
+    if (!isActivePreviewJobPhase(trackedJob.status)) {
       return;
     }
     if (checkingStatus) {

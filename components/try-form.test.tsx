@@ -199,7 +199,7 @@ function storeRestoredActiveJob(
     sourceUrl?: string;
     sourceLang?: string;
     targetLang?: string;
-    status?: "pending" | "processing";
+    status?: "pending" | "processing" | "waiting_provider_capacity";
     stage?: string | null;
   } = {},
 ) {
@@ -1187,6 +1187,31 @@ describe("TryForm preview status", () => {
       expect(screen.queryByRole("button", { name: "Generate a private preview" })).toBeNull();
       expect(screen.queryAllByTestId("mock-language-combobox")).toHaveLength(0);
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
+    });
+    expect(MockEventSource.instances).toHaveLength(0);
+  });
+
+  it("checks restored provider-capacity waits on mount", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ status: "processing", stage: "translating" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "waiting-7777-7777-7777-777777777777",
+      statusToken: "waiting-token",
+      sourceUrl: "https://waiting.example.com",
+      status: "waiting_provider_capacity",
+      stage: "translating",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/waiting-7777-7777-7777-777777777777?token=waiting-token",
+      );
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.getByText("waiting.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
   });
