@@ -50,6 +50,7 @@ import {
 import {
   buildPreviewStatusCenterRequestKey,
   clearActivePreviewIdFromSession,
+  DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   hydratePreviewStatusCenterStore,
@@ -684,6 +685,12 @@ export function TryForm({
     const retryHintDelayMs = remoteStatusVerified
       ? resolvePreviewRetryHintDelayMs(retryHint)
       : null;
+    const nextPollAt =
+      remoteStatusVerified && retryHintDelayMs === null
+        ? Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS
+        : retryHintDelayMs === null
+          ? undefined
+          : Date.now() + retryHintDelayMs;
     updatePreviewStatusCenterJob(previewId, {
       status,
       stage: stage ?? undefined,
@@ -692,7 +699,7 @@ export function TryForm({
       errorStage: null,
       retryHint: retryHint ?? null,
       remoteStatusVerified,
-      ...(retryHintDelayMs === null ? {} : { nextPollAt: Date.now() + retryHintDelayMs }),
+      ...(nextPollAt === undefined ? {} : { nextPollAt }),
     });
   }
 

@@ -301,6 +301,7 @@ describe("usePreviewStatusRuntime", () => {
           }),
       ),
     );
+    const beforePoll = Date.now();
 
     upsertPreviewStatusCenterJob({
       previewId: "capacity-transient-7777-7777-7777-777777777777",
@@ -338,6 +339,7 @@ describe("usePreviewStatusRuntime", () => {
       });
       expect(job?.remoteStatusVerified).toBe(false);
       expect(job?.retryCount).toBe(1);
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 30_000);
     });
   });
 

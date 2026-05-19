@@ -163,10 +163,11 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
+        const retryHintDelayMs = resolvePreviewRetryHintDelayMs(job.retryHint);
         setPreviewStatusCenterJobRetry(
           job.previewId,
           retryCount,
-          calculatePreviewStatusCenterRetryDelayMs(retryCount),
+          Math.max(calculatePreviewStatusCenterRetryDelayMs(retryCount), retryHintDelayMs ?? 0),
         );
       }
     };

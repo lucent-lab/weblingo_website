@@ -7,6 +7,7 @@ import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,
+  DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
   getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -1193,6 +1194,68 @@ describe("TryForm preview status", () => {
       );
       expect(job?.status).toBe("waiting_provider_capacity");
       expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforeStatus + 30_000);
+    });
+  });
+
+  it("resumes normal status polling when SSE leaves provider-capacity wait", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/previews") {
+        return jsonResponse({
+          previewId: "11111111-1111-1111-1111-111111111111",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "waiting_provider_capacity",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 60,
+        emailRecommended: true,
+      },
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "11111111-1111-1111-1111-111111111111",
+      );
+      expect(job?.status).toBe("waiting_provider_capacity");
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(Date.now() + 55_000);
+    });
+
+    const beforeProcessing = Date.now();
+    MockEventSource.instances[0].emit("status", {
+      status: "processing",
+      stage: "translating",
+      retryHint: null,
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "11111111-1111-1111-1111-111111111111",
+      );
+      expect(job?.status).toBe("processing");
+      expect(job?.retryHint).toBeNull();
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(
+        beforeProcessing + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+      );
+      expect(job?.nextPollAt).toBeLessThan(beforeProcessing + 60_000);
     });
   });
 
