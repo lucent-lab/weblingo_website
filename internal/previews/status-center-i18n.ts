@@ -1,5 +1,9 @@
 import type { PreviewErrorCode, PreviewStage } from "./preview-sse";
-import { isPreviewCapacityRetryHintReason } from "./preview-job-machine";
+import {
+  isActivePreviewJobPhase,
+  isPreviewCapacityRetryHintReason,
+  type PreviewRetryHintReason,
+} from "./preview-job-machine";
 import type { PreviewStatusCenterJob } from "./status-center-store";
 
 export const PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, string> = {
@@ -97,12 +101,7 @@ export function resolvePreviewStatusCenterMessage(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string {
-  if (
-    !job.remoteStatusVerified &&
-    (job.status === "pending" ||
-      job.status === "processing" ||
-      job.status === "waiting_provider_capacity")
-  ) {
+  if (!job.remoteStatusVerified && isActivePreviewJobPhase(job.status)) {
     return t("try.status.restoring");
   }
   if (job.status === "pending") {
@@ -127,14 +126,21 @@ export function resolvePreviewStatusCenterCapacityHint(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string | null {
-  const retryHintReason = job.retryHint?.reason;
-  if (!isPreviewCapacityRetryHintReason(retryHintReason)) {
+  return resolvePreviewCapacityHintMessage(job.retryHint?.reason, t, {
+    browser: "try.center.capacityHint",
+    provider: "try.center.providerCapacityHint",
+  });
+}
+
+export function resolvePreviewCapacityHintMessage(
+  reason: PreviewRetryHintReason | null | undefined,
+  t: PreviewStatusCenterTranslator,
+  keys: { browser: string; provider: string },
+): string | null {
+  if (!isPreviewCapacityRetryHintReason(reason)) {
     return null;
   }
-  if (retryHintReason === "provider_capacity_wait") {
-    return t("try.center.providerCapacityHint");
-  }
-  return t("try.center.capacityHint");
+  return t(reason === "provider_capacity_wait" ? keys.provider : keys.browser);
 }
 
 export function resolvePreviewStatusCenterTextClass(job: PreviewStatusCenterJob): string {

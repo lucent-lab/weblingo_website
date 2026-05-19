@@ -1,4 +1,6 @@
 import {
+  isActivePreviewJobPhase,
+  isPreviewJobPhase,
   isPreviewJobTerminal,
   parsePreviewRetryHint,
   reducePreviewJob,
@@ -167,17 +169,6 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isJobStatus(value: unknown): value is PreviewStatusCenterJobStatus {
-  return (
-    value === "pending" ||
-    value === "processing" ||
-    value === "waiting_provider_capacity" ||
-    value === "ready" ||
-    value === "failed" ||
-    value === "expired"
-  );
-}
-
 function normalizeLangTagForRequestKey(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -289,10 +280,6 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
   };
 }
 
-function isActiveStatus(status: PreviewStatusCenterJobStatus): boolean {
-  return status === "pending" || status === "processing" || status === "waiting_provider_capacity";
-}
-
 function normalizeTimestamp(value: number): number {
   return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 }
@@ -309,8 +296,8 @@ export function comparePreviewStatusCenterJobs(
   a: PreviewStatusCenterJob,
   b: PreviewStatusCenterJob,
 ): number {
-  const activeA = isActiveStatus(a.status);
-  const activeB = isActiveStatus(b.status);
+  const activeA = isActivePreviewJobPhase(a.status);
+  const activeB = isActivePreviewJobPhase(b.status);
   if (activeA !== activeB) {
     return activeA ? -1 : 1;
   }
@@ -355,7 +342,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     !isString(value.sourceUrl) ||
     !isString(value.sourceLang) ||
     !isString(value.targetLang) ||
-    !isJobStatus(value.status) ||
+    !isPreviewJobPhase(value.status) ||
     !isFiniteNumber(value.createdAt) ||
     !isFiniteNumber(value.updatedAt)
   ) {
@@ -407,7 +394,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     !isString(value.sourceUrl) ||
     !isString(value.sourceLang) ||
     !isString(value.targetLang) ||
-    !isJobStatus(value.status) ||
+    !isPreviewJobPhase(value.status) ||
     !isFiniteNumber(value.createdAt) ||
     !isFiniteNumber(value.updatedAt)
   ) {
@@ -509,7 +496,7 @@ function resolveUnknownPhase(entry: unknown): string | null {
   if (!isString(entry.status)) {
     return null;
   }
-  return isJobStatus(entry.status) ? null : entry.status;
+  return isPreviewJobPhase(entry.status) ? null : entry.status;
 }
 
 function readV2JobsFromStorage():

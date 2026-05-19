@@ -238,6 +238,29 @@ describe("status-center-store", () => {
     expect(selected?.previewId).toBe("88888888-8888-8888-8888-888888888888");
   });
 
+  it("treats provider-capacity waits as active when selecting preferred jobs", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        previewId: "77777777-7777-7777-7777-777777777777",
+        status: "ready",
+      }),
+    );
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        previewId: "99999999-9999-9999-9999-999999999999",
+        status: "waiting_provider_capacity",
+        retryHint: {
+          reason: "provider_capacity_wait",
+          retryAfterSeconds: null,
+          emailRecommended: true,
+        },
+      }),
+    );
+
+    const selected = selectPreferredPreviewStatusCenterJob();
+    expect(selected?.previewId).toBe("99999999-9999-9999-9999-999999999999");
+  });
+
   it("uses deterministic comparator for ties and malformed metadata", () => {
     const a: PreviewStatusCenterJob = {
       ...buildJob({

@@ -106,7 +106,7 @@ type ReducePreviewJobContext = {
   defaultPollIntervalMs: number;
 };
 
-type ActivePreviewJobPhase = Extract<
+export type ActivePreviewJobPhase = Extract<
   PreviewJobPhase,
   "pending" | "processing" | "waiting_provider_capacity"
 >;
@@ -155,6 +155,17 @@ export function isPreviewCapacityRetryHintReason(value: unknown): value is Previ
   return value === "browser_capacity_exhausted" || value === "provider_capacity_wait";
 }
 
+export function isPreviewJobPhase(value: unknown): value is PreviewJobPhase {
+  return (
+    value === "pending" ||
+    value === "processing" ||
+    value === "waiting_provider_capacity" ||
+    value === "ready" ||
+    value === "failed" ||
+    value === "expired"
+  );
+}
+
 function resolveStringWithFallback(patchValue: string | undefined, currentValue: string): string {
   return isNonEmptyString(patchValue) ? patchValue : currentValue;
 }
@@ -182,7 +193,7 @@ export function isPreviewJobTerminal(status: PreviewJobPhase): boolean {
   return status === "ready" || status === "failed" || status === "expired";
 }
 
-function isActivePreviewJobPhase(status: PreviewJobPhase): status is ActivePreviewJobPhase {
+export function isActivePreviewJobPhase(status: unknown): status is ActivePreviewJobPhase {
   return status === "pending" || status === "processing" || status === "waiting_provider_capacity";
 }
 

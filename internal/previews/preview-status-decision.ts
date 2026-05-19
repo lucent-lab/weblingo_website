@@ -1,4 +1,9 @@
-import { parsePreviewRetryHint, type PreviewRetryHint } from "./preview-job-machine";
+import {
+  isActivePreviewJobPhase,
+  parsePreviewRetryHint,
+  type ActivePreviewJobPhase,
+  type PreviewRetryHint,
+} from "./preview-job-machine";
 import {
   hasExplicitFailure,
   isPreviewErrorCode,
@@ -17,7 +22,7 @@ export type ResolvedPreviewStatusError = {
 export type PreviewStatusDecision =
   | {
       kind: "active";
-      status: "pending" | "processing" | "waiting_provider_capacity";
+      status: ActivePreviewJobPhase;
       stage: PreviewStage | null;
       previewUrl?: string;
       retryHint: PreviewRetryHint | null;
@@ -162,12 +167,7 @@ export function resolvePreviewStatusDecision({
 
   return {
     kind: "active",
-    status:
-      payload.status === "pending"
-        ? "pending"
-        : payload.status === "waiting_provider_capacity"
-          ? "waiting_provider_capacity"
-          : "processing",
+    status: isActivePreviewJobPhase(payload.status) ? payload.status : "processing",
     stage: isPreviewStage(payload.stage) ? payload.stage : null,
     previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
     retryHint: parsePreviewRetryHint(payload.retryHint),

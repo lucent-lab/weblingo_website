@@ -34,12 +34,14 @@ import {
   resolvePreviewStatusDecision,
 } from "@internal/previews/preview-status-decision";
 import {
-  isPreviewCapacityRetryHintReason,
+  isActivePreviewJobPhase,
   parsePreviewRetryHint,
+  type ActivePreviewJobPhase,
   type PreviewRetryHint,
 } from "@internal/previews/preview-job-machine";
 import {
   PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS,
+  resolvePreviewCapacityHintMessage,
   resolvePreviewStatusCenterErrorMessage,
   resolvePreviewStatusCenterMessage,
   resolvePreviewStatusCenterStageMessage,
@@ -82,7 +84,7 @@ type ConnectStatusUpdatesOptions = {
   sourceUrl?: string;
   sourceLang?: string;
   targetLang?: string;
-  initialStatus?: "pending" | "processing";
+  initialStatus?: ActivePreviewJobPhase;
   initialStage?: PreviewStage | null;
   initialPreviewUrl?: string;
   initialRetryHint?: PreviewRetryHint | null;
@@ -138,6 +140,12 @@ function resolvePreviewRetryHint(payload: Record<string, unknown> | null): Previ
   return parsePreviewRetryHint(payload?.retryHint);
 }
 
+function resolveInitialPreviewStatus(
+  payload: Record<string, unknown> | null,
+): ActivePreviewJobPhase {
+  return isActivePreviewJobPhase(payload?.status) ? payload.status : "pending";
+}
+
 function resolvePreviewProgressStepId(
   mode: TryFormMode,
   trackedJob: PreviewStatusCenterJob | null,
@@ -175,20 +183,17 @@ export function resolveTryFormMode(
   isCreating: boolean,
   trackedJob: PreviewStatusCenterJob | null,
 ): TryFormMode {
-  if (trackedJob) {
-    switch (trackedJob.status) {
-      case "pending":
-        return "running_pending";
-      case "processing":
-      case "waiting_provider_capacity":
-        return "running_processing";
-      case "ready":
-        return "terminal_ready";
-      case "failed":
-        return "terminal_failed";
-      case "expired":
-        return "terminal_expired";
-    }
+  if (trackedJob && isActivePreviewJobPhase(trackedJob.status)) {
+    return trackedJob.status === "pending" ? "running_pending" : "running_processing";
+  }
+  if (trackedJob?.status === "ready") {
+    return "terminal_ready";
+  }
+  if (trackedJob?.status === "failed") {
+    return "terminal_failed";
+  }
+  if (trackedJob?.status === "expired") {
+    return "terminal_expired";
   }
   if (isCreating) {
     return "creating";
@@ -293,9 +298,7 @@ export function TryForm({
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
   const isRestoredStatusChecking =
     trackedJob !== null &&
-    (trackedJob.status === "pending" ||
-      trackedJob.status === "processing" ||
-      trackedJob.status === "waiting_provider_capacity") &&
+    isActivePreviewJobPhase(trackedJob.status) &&
     !trackedJob.remoteStatusVerified;
   const isRequestInFlight = isPreviewRunning || isRestoredStatusChecking;
   const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking && !timedOut;
@@ -383,22 +386,16 @@ export function TryForm({
     return (currentProgressStepIndex / (progressSteps.length - 1)) * 100;
   }, [currentProgressStepIndex, progressSteps.length]);
   const activeRetryHint =
-    trackedJob &&
-    (trackedJob.status === "pending" ||
-      trackedJob.status === "processing" ||
-      trackedJob.status === "waiting_provider_capacity")
-      ? trackedJob.retryHint
-      : null;
+    trackedJob && isActivePreviewJobPhase(trackedJob.status) ? trackedJob.retryHint : null;
   const processingHintMessage = useMemo(() => {
-    if (!isPreviewCapacityRetryHintReason(activeRetryHint?.reason)) {
-      return t("try.status.processingHint");
-    }
-    if (activeRetryHint?.reason === "provider_capacity_wait") {
-      return showEmailField
-        ? t("try.status.providerCapacityEmailHint")
-        : t("try.status.providerCapacityHint");
-    }
-    return showEmailField ? t("try.status.capacityEmailHint") : t("try.status.capacityHint");
+    return (
+      resolvePreviewCapacityHintMessage(activeRetryHint?.reason, t, {
+        browser: showEmailField ? "try.status.capacityEmailHint" : "try.status.capacityHint",
+        provider: showEmailField
+          ? "try.status.providerCapacityEmailHint"
+          : "try.status.providerCapacityHint",
+      }) ?? t("try.status.processingHint")
+    );
   }, [activeRetryHint, showEmailField, t]);
 
   const statusMessage = useMemo(() => {
@@ -670,7 +667,7 @@ export function TryForm({
 
   function syncStatusCenterActiveState(
     previewId: string,
-    status: "pending" | "processing" | "waiting_provider_capacity",
+    status: ActivePreviewJobPhase,
     stage: PreviewStage | null,
     retryHint?: PreviewRetryHint | null,
     remoteStatusVerified = true,
@@ -1273,6 +1270,7 @@ export function TryForm({
         trackedPreviewIdsRef.current.add(previewId);
         trackedPreviewTerminalRef.current.delete(previewId);
         trackedPreviewStatusSignaturesRef.current.delete(previewId);
+        const initialStatus = resolveInitialPreviewStatus(payload);
         captureAnalyticsEvent(
           ANALYTICS_EVENTS.previewCreateSucceeded,
           buildPreviewAnalyticsProperties({
@@ -1281,12 +1279,7 @@ export function TryForm({
             sourceLang: normalizedSourceLang,
             targetLang: normalizedTargetLang,
             previewId,
-            status:
-              payload?.status === "pending" ||
-              payload?.status === "processing" ||
-              payload?.status === "waiting_provider_capacity"
-                ? payload.status
-                : "pending",
+            status: initialStatus,
             stage: isPreviewStage(payload?.stage) ? payload.stage : null,
             retryHintReason: resolvePreviewRetryHint(payload)?.reason ?? null,
             fieldLayout,
@@ -1296,12 +1289,7 @@ export function TryForm({
           sourceUrl: trimmedUrl,
           sourceLang: normalizedSourceLang,
           targetLang: normalizedTargetLang,
-          initialStatus:
-            payload?.status === "pending" ||
-            payload?.status === "processing" ||
-            payload?.status === "waiting_provider_capacity"
-              ? payload.status
-              : "pending",
+          initialStatus,
           initialStage: isPreviewStage(payload?.stage) ? payload.stage : null,
           initialPreviewUrl: immediatePreview ?? undefined,
           initialRetryHint: resolvePreviewRetryHint(payload),
