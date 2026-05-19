@@ -14,10 +14,13 @@ import { TryPanelHeader } from "./try-panel-header";
 const messages = {
   "try.header.title": "Try WebLingo",
   "try.header.description": "Create a preview",
+  "try.status.capacityHint": "Capacity hint",
+  "try.status.providerCapacityHint": "Provider capacity hint",
   "try.status.processingHint": "Processing hint",
   "try.status.processing": "Processing",
   "try.status.pending": "Pending",
   "try.status.restoring": "Checking preview status...",
+  "try.status.waitingProviderCapacity": "Waiting for translation capacity",
   "try.stage.translating": "Translating",
 } as const;
 
@@ -141,5 +144,38 @@ describe("TryPanelHeader", () => {
       expect(screen.getByText("Processing hint")).toBeTruthy();
     });
     expect(screen.queryByRole("heading", { name: "Try WebLingo" })).toBeNull();
+  });
+
+  it("shows translation-capacity guidance in the running header", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "capacity-4444-4444-4444-444444444444",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://capacity.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "capacity-token",
+      sourceUrl: "https://capacity.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "waiting_provider_capacity",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 60,
+        emailRecommended: false,
+      },
+      remoteStatusVerified: true,
+    });
+
+    render(<TryPanelHeader messages={messages} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Waiting for translation capacity" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Provider capacity hint")).toBeTruthy();
+    });
+    expect(screen.queryByText("Processing hint")).toBeNull();
   });
 });

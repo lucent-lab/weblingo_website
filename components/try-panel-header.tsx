@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { createClientTranslator, type ClientMessages } from "@internal/i18n";
-import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
+import {
+  resolvePreviewCapacityHintMessage,
+  resolvePreviewStatusCenterMessage,
+} from "@internal/previews/status-center-i18n";
 import {
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
@@ -42,7 +45,16 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
     activeJob?.status === "processing" ||
     activeJob?.status === "waiting_provider_capacity";
   const title = isRunning ? resolvePreviewStatusCenterMessage(activeJob, t) : t("try.header.title");
-  const description = isRunning ? t("try.status.processingHint") : t("try.header.description");
+  const description = isRunning
+    ? (resolvePreviewCapacityHintMessage(
+        activeJob.remoteStatusVerified ? activeJob.retryHint?.reason : null,
+        t,
+        {
+          browser: "try.status.capacityHint",
+          provider: "try.status.providerCapacityHint",
+        },
+      ) ?? t("try.status.processingHint"))
+    : t("try.header.description");
 
   return (
     <>
