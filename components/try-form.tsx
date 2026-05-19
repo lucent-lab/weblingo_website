@@ -691,6 +691,23 @@ export function TryForm({
     });
   }
 
+  function syncStatusCenterTransientRetry(previewId: string) {
+    const existing = getPreviewStatusCenterJobsSnapshot().find(
+      (job) => job.previewId === previewId,
+    );
+    if (existing && isActivePreviewJobPhase(existing.status)) {
+      syncStatusCenterActiveState(
+        previewId,
+        existing.status,
+        existing.stage,
+        existing.retryHint,
+        false,
+      );
+      return;
+    }
+    syncStatusCenterActiveState(previewId, "processing", null, null, false);
+  }
+
   function syncStatusCenterTerminalState(
     previewId: string,
     status: "ready" | "failed" | "expired",
@@ -799,13 +816,17 @@ export function TryForm({
         return true;
       }
 
-      syncStatusCenterActiveState(
-        previewId,
-        decision.status,
-        decision.stage,
-        decision.retryHint,
-        decision.remoteStatusVerified,
-      );
+      if (decision.remoteStatusVerified) {
+        syncStatusCenterActiveState(
+          previewId,
+          decision.status,
+          decision.stage,
+          decision.retryHint,
+          true,
+        );
+      } else {
+        syncStatusCenterTransientRetry(previewId);
+      }
       if (decision.remoteStatusVerified) {
         setSubmissionError(null);
         timedOutRef.current = false;
@@ -817,7 +838,7 @@ export function TryForm({
       }
       return false;
     } catch {
-      syncStatusCenterActiveState(previewId, "processing", null, null, false);
+      syncStatusCenterTransientRetry(previewId);
       markRestoredStatusCheckRetryAvailable(previewId);
       return false;
     } finally {

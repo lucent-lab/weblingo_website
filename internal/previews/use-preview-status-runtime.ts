@@ -126,15 +126,18 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
-        const retryHintDelayMs = resolvePreviewRetryHintDelayMs(decision.retryHint);
+        const nextStatus = decision.remoteStatusVerified ? decision.status : job.status;
+        const nextStage = decision.remoteStatusVerified ? decision.stage : job.stage;
+        const nextRetryHint = decision.remoteStatusVerified ? decision.retryHint : job.retryHint;
+        const retryHintDelayMs = resolvePreviewRetryHintDelayMs(nextRetryHint);
         updatePreviewStatusCenterJob(job.previewId, {
-          status: decision.status,
-          stage: decision.stage ?? undefined,
+          status: nextStatus,
+          stage: nextStage ?? undefined,
           previewUrl: decision.previewUrl,
           error: null,
           errorCode: null,
           errorStage: null,
-          retryHint: decision.retryHint,
+          retryHint: nextRetryHint,
           remoteStatusVerified: decision.remoteStatusVerified,
           retryCount,
           nextPollAt: decision.remoteStatusVerified
@@ -190,11 +193,27 @@ export function usePreviewStatusRuntime() {
     };
 
     void tick();
+    const nextDueAt = Math.min(
+      ...jobs
+        .filter((job) => isPreviewStatusCenterJobActive(job))
+        .map((job) => job.nextPollAt)
+        .filter((nextPollAt) => Number.isFinite(nextPollAt)),
+    );
+    const nextDueDelayMs = nextDueAt - Date.now();
+    const nextDueTimeout =
+      nextDueDelayMs > 0 && nextDueDelayMs < DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS
+        ? window.setTimeout(() => {
+            void tick();
+          }, nextDueDelayMs)
+        : null;
     const interval = window.setInterval(() => {
       void tick();
     }, DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS);
 
     return () => {
+      if (nextDueTimeout !== null) {
+        window.clearTimeout(nextDueTimeout);
+      }
       window.clearInterval(interval);
     };
   }, [jobs]);

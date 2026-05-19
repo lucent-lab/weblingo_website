@@ -101,6 +101,9 @@ export function resolvePreviewStatusCenterMessage(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string {
+  if (job.status === "waiting_provider_capacity") {
+    return t("try.status.waitingProviderCapacity");
+  }
   if (!job.remoteStatusVerified && isActivePreviewJobPhase(job.status)) {
     return t("try.status.restoring");
   }
@@ -109,9 +112,6 @@ export function resolvePreviewStatusCenterMessage(
   }
   if (job.status === "processing") {
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.processing");
-  }
-  if (job.status === "waiting_provider_capacity") {
-    return t("try.status.waitingProviderCapacity");
   }
   if (job.status === "ready") {
     return t("try.status.ready");

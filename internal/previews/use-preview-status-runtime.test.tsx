@@ -224,6 +224,7 @@ describe("usePreviewStatusRuntime", () => {
   });
 
   it("uses provider-capacity retry hints as the next active poll delay", async () => {
+    const timeoutSpy = vi.spyOn(window, "setTimeout");
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -234,7 +235,7 @@ describe("usePreviewStatusRuntime", () => {
               stage: "translating",
               retryHint: {
                 reason: "provider_capacity_wait",
-                retryAfterSeconds: 1,
+                retryAfterSeconds: 2,
                 emailRecommended: true,
               },
             }),
@@ -270,13 +271,73 @@ describe("usePreviewStatusRuntime", () => {
       );
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
-        retryAfterSeconds: 1,
+        retryAfterSeconds: 2,
         emailRecommended: true,
       });
-      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 1_000);
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 2_000);
       expect(job?.nextPollAt).toBeLessThan(
         beforePoll + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
       );
+      expect(
+        timeoutSpy.mock.calls.some(([, delay]) => {
+          return (
+            typeof delay === "number" &&
+            delay >= 1_500 &&
+            delay < DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS
+          );
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("preserves provider-capacity state during transient status failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Unavailable" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "capacity-transient-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "waiting_provider_capacity",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: true,
+      },
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "capacity-transient-7777-7777-7777-777777777777",
+      );
+      expect(job?.status).toBe("waiting_provider_capacity");
+      expect(job?.stage).toBe("translating");
+      expect(job?.retryHint).toEqual({
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: true,
+      });
+      expect(job?.remoteStatusVerified).toBe(false);
+      expect(job?.retryCount).toBe(1);
     });
   });
 

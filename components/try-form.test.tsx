@@ -7,6 +7,7 @@ import type { SupportedLanguage } from "@internal/dashboard/webhooks";
 import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,
+  getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
@@ -231,6 +232,7 @@ function storeRestoredActiveJob(
         error: null,
         errorCode: null,
         errorStage: null,
+        retryHint: overrides.retryHint ?? null,
         createdAt,
         updatedAt,
         expiresAt: null,
@@ -1214,6 +1216,44 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("waiting.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
+  });
+
+  it("keeps restored provider-capacity waits visible when status checks fail transiently", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error("network unavailable");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "waiting-transient-7777-7777-7777-777777777777",
+      statusToken: "waiting-token",
+      sourceUrl: "https://waiting.example.com",
+      status: "waiting_provider_capacity",
+      stage: "translating",
+      retryHint: {
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: true,
+      },
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "waiting-transient-7777-7777-7777-777777777777",
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/previews/waiting-transient-7777-7777-7777-777777777777?token=waiting-token",
+      );
+      expect(job?.status).toBe("waiting_provider_capacity");
+      expect(job?.retryHint).toEqual({
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+        emailRecommended: true,
+      });
+      expect(job?.remoteStatusVerified).toBe(false);
+      expect(screen.getByText("Waiting for translation capacity...")).toBeTruthy();
+    });
   });
 
   it("tracks restored previews and later terminal transitions", async () => {
