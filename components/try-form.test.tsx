@@ -332,6 +332,14 @@ describe("TryForm preview status", () => {
         }),
       );
     });
+
+    eventSource?.emit("complete", {
+      previewUrl: "https://preview.example.com/p/9999",
+    });
+    await Promise.resolve();
+    expect(
+      captureAnalyticsEvent.mock.calls.filter(([event]) => event === ANALYTICS_EVENTS.previewReady),
+    ).toHaveLength(1);
   });
 
   it("renders visible funnel labels and sends the email with the preview request", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { Check, LoaderCircle } from "lucide-react";
 
@@ -251,6 +251,20 @@ export function TryForm({
   const handleCheckStatusRef = useRef<
     (previewIdOverride?: string, statusTokenOverride?: string) => Promise<boolean | null>
   >(async () => null);
+  const clearPreviewTracking = useCallback((previewId: string) => {
+    trackedPreviewIdsRef.current.delete(previewId);
+    trackedPreviewStatusSignaturesRef.current.delete(previewId);
+    trackedPreviewTerminalRef.current.delete(previewId);
+    restoredStatusCheckStartedRef.current.delete(previewId);
+    setRestoredStatusRetryPreviewIds((current) => {
+      if (!current.has(previewId)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.delete(previewId);
+      return next;
+    });
+  }, []);
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -456,20 +470,12 @@ export function TryForm({
     }
     writeActivePreviewIdToSession(restoredJob.previewId);
 
-    trackedPreviewIdsRef.current.add(restoredJob.previewId);
-    if (
-      restoredJob.status === "ready" ||
-      restoredJob.status === "failed" ||
-      restoredJob.status === "expired"
-    ) {
-      trackedPreviewTerminalRef.current.add(restoredJob.previewId);
-      trackedPreviewStatusSignaturesRef.current.set(
-        restoredJob.previewId,
-        buildPreviewAnalyticsSignature(restoredJob),
-      );
-    } else {
+    if (isActivePreviewJobPhase(restoredJob.status)) {
+      trackedPreviewIdsRef.current.add(restoredJob.previewId);
       trackedPreviewTerminalRef.current.delete(restoredJob.previewId);
       trackedPreviewStatusSignaturesRef.current.delete(restoredJob.previewId);
+    } else {
+      clearPreviewTracking(restoredJob.previewId);
     }
 
     setLastRequestKey(restoredJob.requestKey);
@@ -486,7 +492,7 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
+  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
 
   useEffect(() => {
     if (
@@ -577,6 +583,7 @@ export function TryForm({
           fieldLayout,
         }),
       );
+      clearPreviewTracking(trackedJob.previewId);
       return;
     }
 
@@ -597,8 +604,9 @@ export function TryForm({
           fieldLayout,
         }),
       );
+      clearPreviewTracking(trackedJob.previewId);
     }
-  }, [fieldLayout, locale, trackedJob]);
+  }, [clearPreviewTracking, fieldLayout, locale, trackedJob]);
 
   function closeEventSource() {
     if (eventSourceRef.current) {
@@ -725,8 +733,7 @@ export function TryForm({
     closeEventSource();
     if (trackedJob) {
       removePreviewStatusCenterJob(trackedJob.previewId);
-      clearRestoredStatusCheckRetry(trackedJob.previewId);
-      restoredStatusCheckStartedRef.current.delete(trackedJob.previewId);
+      clearPreviewTracking(trackedJob.previewId);
       clearActivePreviewIdFromSession(trackedJob.previewId);
     }
     setLastRequestKey(null);
