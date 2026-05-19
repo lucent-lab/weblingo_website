@@ -11,7 +11,6 @@ import {
   isPreviewStatusCenterJobActive,
   markPreviewStatusCenterJobTerminal,
   resetPreviewStatusCenterJobRetry,
-  setPreviewStatusCenterJobRetry,
   subscribePreviewStatusCenterStore,
   updatePreviewStatusCenterJob,
   type PreviewStatusCenterJob,
@@ -164,11 +163,15 @@ export function usePreviewStatusRuntime() {
         }
 
         const retryHintDelayMs = resolvePreviewRetryHintDelayMs(job.retryHint);
-        setPreviewStatusCenterJobRetry(
-          job.previewId,
-          retryCount,
-          Math.max(calculatePreviewStatusCenterRetryDelayMs(retryCount), retryHintDelayMs ?? 0),
+        const retryDelayMs = Math.max(
+          calculatePreviewStatusCenterRetryDelayMs(retryCount),
+          retryHintDelayMs ?? 0,
         );
+        updatePreviewStatusCenterJob(job.previewId, {
+          remoteStatusVerified: false,
+          retryCount,
+          nextPollAt: Date.now() + retryDelayMs,
+        });
       }
     };
 

@@ -321,6 +321,7 @@ describe("usePreviewStatusRuntime", () => {
         retryAfterSeconds: 30,
         emailRecommended: true,
       },
+      remoteStatusVerified: true,
       nextPollAt: 0,
     });
 
