@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 
 export async function stubPosthogAnalyticsProxy(page: Page): Promise<void> {
-  await page.route("**/api/analytics/posthog/**", async (route) => {
+  const fulfillAnalyticsProxy = async (route: Route) => {
     const url = new URL(route.request().url());
     const isScriptRequest = url.pathname.endsWith(".js") || url.pathname.includes("/array/");
     if (isScriptRequest) {
@@ -13,5 +13,8 @@ export async function stubPosthogAnalyticsProxy(page: Page): Promise<void> {
       return;
     }
     await route.fulfill({ status: 204 });
-  });
+  };
+
+  await page.route("**/_analytics/posthog/**", fulfillAnalyticsProxy);
+  await page.route("**/api/analytics/posthog/**", fulfillAnalyticsProxy);
 }

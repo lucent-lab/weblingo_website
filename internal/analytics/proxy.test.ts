@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPosthogProxyApiHost,
   buildPosthogProxyRequestHeaders,
   buildPosthogProxyResponseHeaders,
   buildPosthogUpstreamUrl,
@@ -8,12 +9,21 @@ import {
 } from "./proxy";
 
 describe("PostHog proxy helpers", () => {
+  it("builds the first-party proxy api host from the app URL", () => {
+    expect(buildPosthogProxyApiHost("https://weblingo.app")).toBe(
+      "https://weblingo.app/_analytics/posthog",
+    );
+    expect(buildPosthogProxyApiHost("https://weblingo.app/")).toBe(
+      "https://weblingo.app/_analytics/posthog",
+    );
+  });
+
   it("builds upstream urls with preserved query strings", () => {
     expect(
       buildPosthogUpstreamUrl(
         "https://eu.i.posthog.com/ingest/",
         ["e"],
-        "https://weblingo.app/api/analytics/posthog/e/?v=2&compression=gzip",
+        "https://weblingo.app/_analytics/posthog/e/?v=2&compression=gzip",
       ).toString(),
     ).toBe("https://eu.i.posthog.com/ingest/e?v=2&compression=gzip");
   });
@@ -29,7 +39,7 @@ describe("PostHog proxy helpers", () => {
         host: "weblingo.app",
         referer: "https://weblingo.app/dashboard",
       }),
-      "https://weblingo.app/api/analytics/posthog/e",
+      "https://weblingo.app/_analytics/posthog/e",
     );
 
     expect(headers.get("authorization")).toBeNull();
