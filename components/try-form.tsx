@@ -402,7 +402,9 @@ export function TryForm({
     return (currentProgressStepIndex / (progressSteps.length - 1)) * 100;
   }, [currentProgressStepIndex, progressSteps.length]);
   const activeRetryHint =
-    trackedJob && isActivePreviewJobPhase(trackedJob.status) ? trackedJob.retryHint : null;
+    trackedJob && trackedJob.remoteStatusVerified && isActivePreviewJobPhase(trackedJob.status)
+      ? trackedJob.retryHint
+      : null;
   const processingHintMessage = useMemo(() => {
     return (
       resolvePreviewCapacityHintMessage(activeRetryHint?.reason, t, {

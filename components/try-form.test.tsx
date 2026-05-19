@@ -1372,7 +1372,9 @@ describe("TryForm preview status", () => {
         emailRecommended: true,
       });
       expect(job?.remoteStatusVerified).toBe(false);
-      expect(screen.getByText("Waiting for translation capacity...")).toBeTruthy();
+      expect(screen.getByText("Checking preview status...")).toBeTruthy();
+      expect(screen.getByText("Processing hint")).toBeTruthy();
+      expect(screen.queryByText("Provider capacity email hint")).toBeNull();
     });
   });
 
