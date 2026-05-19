@@ -47,12 +47,16 @@ describe("PostHog proxy helpers", () => {
     const headers = buildPosthogProxyResponseHeaders(
       new Headers({
         connection: "close",
+        "content-encoding": "gzip",
+        "content-length": "123",
         "content-type": "application/json",
         "transfer-encoding": "chunked",
       }),
     );
 
     expect(headers.get("connection")).toBeNull();
+    expect(headers.get("content-encoding")).toBeNull();
+    expect(headers.get("content-length")).toBeNull();
     expect(headers.get("transfer-encoding")).toBeNull();
     expect(headers.get("content-type")).toBe("application/json");
   });

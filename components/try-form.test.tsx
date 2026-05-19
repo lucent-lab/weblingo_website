@@ -528,7 +528,7 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("re-emits try form started on a retry attempt after a failed request", async () => {
+  it("does not re-emit try form started on a retry attempt after a failed request", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -559,7 +559,7 @@ describe("TryForm preview status", () => {
         captureAnalyticsEvent.mock.calls.filter(
           ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
         ),
-      ).toHaveLength(2);
+      ).toHaveLength(1);
     });
   });
 
