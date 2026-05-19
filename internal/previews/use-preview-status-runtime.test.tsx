@@ -223,7 +223,7 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
-  it("uses provider-capacity retry hints to delay the next active poll", async () => {
+  it("uses provider-capacity retry hints as the next active poll delay", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -234,7 +234,7 @@ describe("usePreviewStatusRuntime", () => {
               stage: "translating",
               retryHint: {
                 reason: "provider_capacity_wait",
-                retryAfterSeconds: 45,
+                retryAfterSeconds: 1,
                 emailRecommended: true,
               },
             }),
@@ -270,10 +270,13 @@ describe("usePreviewStatusRuntime", () => {
       );
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
-        retryAfterSeconds: 45,
+        retryAfterSeconds: 1,
         emailRecommended: true,
       });
-      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 45_000);
+      expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 1_000);
+      expect(job?.nextPollAt).toBeLessThan(
+        beforePoll + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
+      );
     });
   });
 

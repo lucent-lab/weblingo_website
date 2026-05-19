@@ -17,21 +17,10 @@ import {
   type PreviewStatusCenterJob,
 } from "./status-center-store";
 import { resolvePreviewStatusDecision } from "./preview-status-decision";
+import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
 let previewStatusRuntimeOwner: symbol | null = null;
-
-function resolveRetryHintDelayMs(
-  retryHint: PreviewStatusCenterJob["retryHint"] | null | undefined,
-): number | null {
-  if (!retryHint || retryHint.retryAfterSeconds === null) {
-    return null;
-  }
-  return Math.max(
-    DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
-    retryHint.retryAfterSeconds * 1000,
-  );
-}
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
@@ -137,7 +126,7 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
-        const retryHintDelayMs = resolveRetryHintDelayMs(decision.retryHint);
+        const retryHintDelayMs = resolvePreviewRetryHintDelayMs(decision.retryHint);
         updatePreviewStatusCenterJob(job.previewId, {
           status: decision.status,
           stage: decision.stage ?? undefined,

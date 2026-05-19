@@ -72,6 +72,7 @@ describe("status-center-store", () => {
     expect(beforeReset.jobs).toHaveLength(1);
     expect(beforeReset.jobs[0].previewId).toBe("11111111-1111-1111-1111-111111111111");
     expect(getPreviewStatusCenterJobsSnapshot()).toBe(beforeReset.jobs);
+    const persistedNextPollAt = beforeReset.jobs[0].nextPollAt;
 
     resetPreviewStatusCenterStoreForTests();
     hydratePreviewStatusCenterStore();
@@ -79,8 +80,37 @@ describe("status-center-store", () => {
     const afterHydrate = getPreviewStatusCenterSnapshot();
     expect(afterHydrate.jobs).toHaveLength(1);
     expect(afterHydrate.jobs[0].sourceUrl).toBe("https://example.com");
-    expect(afterHydrate.jobs[0].nextPollAt).toBeLessThanOrEqual(Date.now());
+    expect(afterHydrate.jobs[0].nextPollAt).toBe(persistedNextPollAt);
     expect(afterHydrate.jobs[0].remoteStatusVerified).toBe(false);
+  });
+
+  it("derives active polling from retry hints when no explicit poll time exists", () => {
+    const now = Date.now();
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        status: "waiting_provider_capacity",
+        retryHint: {
+          reason: "provider_capacity_wait",
+          retryAfterSeconds: 30,
+          emailRecommended: true,
+        },
+      }),
+    );
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs[0].nextPollAt).toBeGreaterThanOrEqual(now + 30_000);
+
+    const stored = JSON.parse(
+      String(window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)),
+    ) as Array<Record<string, unknown>>;
+    delete stored[0].nextPollAt;
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    resetPreviewStatusCenterStoreForTests();
+    hydratePreviewStatusCenterStore();
+
+    const afterHydrate = getPreviewStatusCenterSnapshot();
+    expect(afterHydrate.jobs[0].nextPollAt).toBeGreaterThanOrEqual(now + 30_000);
   });
 
   it("marks a job terminal and supports dismissing it", () => {

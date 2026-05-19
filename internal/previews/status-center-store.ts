@@ -5,6 +5,7 @@ import {
   parsePreviewRetryHint,
   reducePreviewJob,
   resolveNextPreviewJobPhase,
+  resolvePreviewRetryHintDelayMs,
   type PreviewJob,
   type PreviewJobEvent,
   type PreviewJobPatch,
@@ -264,6 +265,17 @@ function parseOptionalPreviewStage(value: unknown): PreviewStage | null {
   return isPreviewStage(value) ? value : null;
 }
 
+function resolveHydratedActiveNextPollAt(
+  storedNextPollAt: unknown,
+  retryHint: PreviewStatusCenterJob["retryHint"],
+): number {
+  if (isFiniteNumber(storedNextPollAt)) {
+    return storedNextPollAt;
+  }
+  const retryHintDelayMs = resolvePreviewRetryHintDelayMs(retryHint);
+  return Date.now() + (retryHintDelayMs ?? 0);
+}
+
 function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
   const terminal = isPreviewStatusCenterJobTerminal(job.status);
   return {
@@ -360,6 +372,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   );
   const stage = parseOptionalPreviewStage(value.stage);
   const errorStage = parseOptionalPreviewStage(value.errorStage);
+  const retryHint = parsePreviewRetryHint(value.retryHint);
 
   return normalizeJob({
     previewId: value.previewId,
@@ -374,13 +387,15 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
-    retryHint: parsePreviewRetryHint(value.retryHint),
+    retryHint,
     remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
     retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
-    nextPollAt: isPreviewStatusCenterJobTerminal(status) ? Number.POSITIVE_INFINITY : Date.now(),
+    nextPollAt: isPreviewStatusCenterJobTerminal(status)
+      ? Number.POSITIVE_INFINITY
+      : resolveHydratedActiveNextPollAt(value.nextPollAt, retryHint),
   });
 }
 
@@ -427,7 +442,9 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
     retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
-    nextPollAt: isPreviewStatusCenterJobTerminal(status) ? Number.POSITIVE_INFINITY : Date.now(),
+    nextPollAt: isPreviewStatusCenterJobTerminal(status)
+      ? Number.POSITIVE_INFINITY
+      : resolveHydratedActiveNextPollAt(value.nextPollAt, null),
   });
 }
 

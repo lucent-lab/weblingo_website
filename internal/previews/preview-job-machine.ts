@@ -170,12 +170,22 @@ function resolveStringWithFallback(patchValue: string | undefined, currentValue:
   return isNonEmptyString(patchValue) ? patchValue : currentValue;
 }
 
+export function resolvePreviewRetryHintDelayMs(
+  retryHint: PreviewRetryHint | null | undefined,
+): number | null {
+  if (!retryHint || retryHint.retryAfterSeconds === null) {
+    return null;
+  }
+  return Math.max(0, retryHint.retryAfterSeconds * 1000);
+}
+
 function resolveNextPollAt(
   currentValue: number | undefined,
   patchValue: number | undefined,
   terminal: boolean,
   now: number,
   defaultPollIntervalMs: number,
+  retryHint?: PreviewRetryHint | null,
 ): number {
   if (patchValue !== undefined) {
     return patchValue;
@@ -185,6 +195,10 @@ function resolveNextPollAt(
   }
   if (currentValue !== undefined) {
     return currentValue;
+  }
+  const retryHintDelayMs = resolvePreviewRetryHintDelayMs(retryHint);
+  if (retryHintDelayMs !== null) {
+    return now + retryHintDelayMs;
   }
   return now + defaultPollIntervalMs;
 }
@@ -245,6 +259,11 @@ function reduceUpsert(
   const stage = terminal
     ? null
     : resolveNextPreviewJobStage(existing?.stage ?? null, input.stage ?? undefined);
+  const retryHint = terminal
+    ? null
+    : input.retryHint === undefined
+      ? (existing?.retryHint ?? null)
+      : input.retryHint;
 
   return {
     previewId: input.previewId,
@@ -259,11 +278,7 @@ function reduceUpsert(
     error: input.error ?? existing?.error ?? null,
     errorCode: input.errorCode ?? existing?.errorCode ?? null,
     errorStage: input.errorStage ?? existing?.errorStage ?? null,
-    retryHint: terminal
-      ? null
-      : input.retryHint === undefined
-        ? (existing?.retryHint ?? null)
-        : input.retryHint,
+    retryHint,
     remoteStatusVerified: terminal
       ? true
       : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true),
@@ -277,6 +292,7 @@ function reduceUpsert(
       terminal,
       context.now,
       context.defaultPollIntervalMs,
+      retryHint,
     ),
   };
 }
@@ -294,6 +310,11 @@ function reducePatch(
   const stage = terminal
     ? null
     : resolveNextPreviewJobStage(existing.stage, patch.stage ?? undefined);
+  const retryHint = terminal
+    ? null
+    : patch.retryHint === undefined
+      ? existing.retryHint
+      : patch.retryHint;
 
   return {
     ...existing,
@@ -308,11 +329,7 @@ function reducePatch(
     error: patch.error === undefined ? existing.error : patch.error,
     errorCode: patch.errorCode === undefined ? existing.errorCode : patch.errorCode,
     errorStage: patch.errorStage === undefined ? existing.errorStage : patch.errorStage,
-    retryHint: terminal
-      ? null
-      : patch.retryHint === undefined
-        ? existing.retryHint
-        : patch.retryHint,
+    retryHint,
     remoteStatusVerified: terminal
       ? true
       : (patch.remoteStatusVerified ?? existing.remoteStatusVerified),
@@ -327,6 +344,7 @@ function reducePatch(
       terminal,
       context.now,
       context.defaultPollIntervalMs,
+      retryHint,
     ),
   };
 }
