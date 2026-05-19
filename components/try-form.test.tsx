@@ -528,7 +528,7 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("re-emits try form started on a retry attempt after a failed request", async () => {
+  it("does not re-emit try form started on a retry attempt after a failed request", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -559,7 +559,7 @@ describe("TryForm preview status", () => {
         captureAnalyticsEvent.mock.calls.filter(
           ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
         ),
-      ).toHaveLength(2);
+      ).toHaveLength(1);
     });
   });
 
@@ -1414,6 +1414,13 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "owner@example.com" },
     });
+
+    expect(
+      captureAnalyticsEvent.mock.calls.filter(
+        ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
+      ),
+    ).toHaveLength(0);
+
     fireEvent.click(screen.getByRole("button", { name: "Email me" }));
 
     await waitFor(() => {

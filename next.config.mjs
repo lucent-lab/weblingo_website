@@ -12,7 +12,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: "/fixtures/:path*",
+        source: "/fixtures/:path((?!customer-seo(?:/|$)).*)",
         headers: [
           {
             key: "X-Robots-Tag",

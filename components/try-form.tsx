@@ -1304,7 +1304,6 @@ export function TryForm({
       const message = error instanceof Error ? error.message : "Failed to generate preview.";
       setSubmissionError(message);
     } finally {
-      trackedTryStartRef.current = false;
       setIsCreating(false);
     }
   }
@@ -1706,7 +1705,6 @@ export function TryForm({
                         <Input
                           value={pendingEmail}
                           onChange={(event) => {
-                            trackTryFormStarted();
                             setPendingEmail(event.currentTarget.value);
                           }}
                           placeholder={t("try.form.emailPlaceholder")}
@@ -1774,7 +1772,6 @@ export function TryForm({
                   <Input
                     value={pendingEmail}
                     onChange={(event) => {
-                      trackTryFormStarted();
                       setPendingEmail(event.currentTarget.value);
                     }}
                     placeholder={t("try.form.emailPlaceholder")}

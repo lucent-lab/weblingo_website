@@ -19,13 +19,18 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
 
 ## Playbook: Site Portfolio Management
 
+This legacy-named playbook covers normal customer current-website management plus agency-owned
+portfolio contexts. Normal customer subjects resolve zero or one current website; agency-owned
+contexts can still use portfolio-style site lists.
+
 1. List agency customer accounts (agency plans):
    - `operationId`: `agency.customers.list`
 2. Create/invite agency customer account (agency plans):
    - `operationId`: `agency.customers.create`
 3. Update an existing managed customer between Starter and Pro:
    - `operationId`: `agency.customers.update`
-4. List portfolio sites:
+4. List sites for the current subject. Normal customer subjects resolve zero or one current website;
+   agency-owned contexts can still list portfolio sites:
    - `operationId`: `sites.list`
 5. Load consolidated site dashboard payload (detail + deployments, optional pages):
    - `operationId`: `sites.dashboard.get`
