@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { resolvePreviewStatusCenterMessage } from "./status-center-i18n";
+import {
+  resolvePreviewStatusCenterCapacityHint,
+  resolvePreviewStatusCenterMessage,
+} from "./status-center-i18n";
 import type { PreviewStatusCenterJob } from "./status-center-store";
 
 const messages = {
+  "try.center.providerCapacityHint": "Provider capacity hint",
   "try.status.restoring": "Checking preview status...",
   "try.status.waitingProviderCapacity": "Waiting for translation capacity",
 } as const;
@@ -40,9 +44,9 @@ function buildJob(input: Partial<PreviewStatusCenterJob>): PreviewStatusCenterJo
 }
 
 describe("resolvePreviewStatusCenterMessage", () => {
-  it("shows restoring copy for hydrated provider-capacity jobs until status is verified", () => {
+  it("shows provider-capacity copy for hydrated provider-capacity jobs before status is verified", () => {
     expect(resolvePreviewStatusCenterMessage(buildJob({ remoteStatusVerified: false }), t)).toBe(
-      "Checking preview status...",
+      "Waiting for translation capacity",
     );
   });
 
@@ -50,5 +54,11 @@ describe("resolvePreviewStatusCenterMessage", () => {
     expect(resolvePreviewStatusCenterMessage(buildJob({ remoteStatusVerified: true }), t)).toBe(
       "Waiting for translation capacity",
     );
+  });
+
+  it("shows provider-capacity hints for hydrated provider-capacity jobs before status is verified", () => {
+    expect(
+      resolvePreviewStatusCenterCapacityHint(buildJob({ remoteStatusVerified: false }), t),
+    ).toBe("Provider capacity hint");
   });
 });

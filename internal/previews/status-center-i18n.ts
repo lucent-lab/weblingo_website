@@ -101,11 +101,11 @@ export function resolvePreviewStatusCenterMessage(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string {
-  if (!job.remoteStatusVerified && isActivePreviewJobPhase(job.status)) {
-    return t("try.status.restoring");
-  }
   if (job.status === "waiting_provider_capacity") {
     return t("try.status.waitingProviderCapacity");
+  }
+  if (!job.remoteStatusVerified && isActivePreviewJobPhase(job.status)) {
+    return t("try.status.restoring");
   }
   if (job.status === "pending") {
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.pending");
@@ -126,7 +126,7 @@ export function resolvePreviewStatusCenterCapacityHint(
   job: PreviewStatusCenterJob,
   t: PreviewStatusCenterTranslator,
 ): string | null {
-  if (!job.remoteStatusVerified) {
+  if (!job.remoteStatusVerified && job.status !== "waiting_provider_capacity") {
     return null;
   }
   return resolvePreviewCapacityHintMessage(job.retryHint?.reason, t, {

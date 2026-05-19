@@ -178,4 +178,55 @@ describe("TryPanelHeader", () => {
     });
     expect(screen.queryByText("Processing hint")).toBeNull();
   });
+
+  it("keeps translation-capacity guidance for restored unverified waits", async () => {
+    const now = Date.now();
+    const previewId = "capacity-restored-5555-5555-5555-555555555555";
+    window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId,
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://capacity-restored.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
+          statusToken: "capacity-restored-token",
+          sourceUrl: "https://capacity-restored.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "waiting_provider_capacity",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          retryHint: {
+            reason: "provider_capacity_wait",
+            retryAfterSeconds: 60,
+            emailRecommended: false,
+          },
+          remoteStatusVerified: true,
+          createdAt: now - 60_000,
+          updatedAt: now,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 60_000,
+        },
+      ]),
+    );
+
+    render(<TryPanelHeader messages={messages} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Waiting for translation capacity" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Provider capacity hint")).toBeTruthy();
+    });
+    expect(screen.queryByRole("heading", { name: "Checking preview status..." })).toBeNull();
+    expect(screen.queryByText("Processing hint")).toBeNull();
+  });
 });

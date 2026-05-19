@@ -47,7 +47,9 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
   const title = isRunning ? resolvePreviewStatusCenterMessage(activeJob, t) : t("try.header.title");
   const description = isRunning
     ? (resolvePreviewCapacityHintMessage(
-        activeJob.remoteStatusVerified ? activeJob.retryHint?.reason : null,
+        activeJob.remoteStatusVerified || activeJob.status === "waiting_provider_capacity"
+          ? activeJob.retryHint?.reason
+          : null,
         t,
         {
           browser: "try.status.capacityHint",
