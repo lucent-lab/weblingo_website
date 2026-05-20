@@ -2469,6 +2469,11 @@
             "type": "boolean"
           },
           {
+            "name": "recapture_mode",
+            "optional": true,
+            "type": "\"forensic\""
+          },
+          {
             "name": "target_langs",
             "optional": true,
             "type": "LangTag[]"
@@ -2512,6 +2517,11 @@
             "name": "force",
             "optional": true,
             "type": "boolean"
+          },
+          {
+            "name": "recapture_mode",
+            "optional": true,
+            "type": "\"forensic\""
           },
           {
             "name": "skip_usage_accounting",
