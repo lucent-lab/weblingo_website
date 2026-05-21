@@ -7,6 +7,10 @@ For customer-domain SEO source fixtures, use
 showcase rewrite fixtures and cover customer sitemap, canonical, social metadata, fixture
 exclusion, and indexability behavior.
 
+For preview-only source fixtures, use
+[`docs/PREVIEW_QA_FIXTURES.md`](./PREVIEW_QA_FIXTURES.md). Those routes cover structural
+placeholder preservation and domain-bound external widgets that need a deployed browser surface.
+
 ## Fixture Paths
 
 - `/fixtures/showcase/marketing`
