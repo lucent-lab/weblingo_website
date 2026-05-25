@@ -102,4 +102,39 @@ describe("POST /api/stripe/create-checkout-session", () => {
       (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
     }
   });
+
+  it("treats upstream Invalid Stripe errors as internal failures", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+
+    try {
+      createCheckoutSession.mockRejectedValueOnce(new Error("Invalid API key provided"));
+
+      vi.resetModules();
+      const { POST } = await import("./route");
+      const response = await POST(
+        makeRequest({ planId: "starter", cadence: "monthly", locale: "en" }),
+      );
+
+      expect(response.status).toBe(500);
+      const payload = await response.json();
+      expect(payload).toMatchObject({ error: "Unable to start checkout right now" });
+      expect(JSON.stringify(payload)).not.toContain("Invalid API key provided");
+      expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+        "checkout_session_create_failed",
+        expect.objectContaining({
+          failure_kind: "server",
+          failure_status: 500,
+        }),
+        expect.any(Object),
+      );
+      expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ source: "stripe_create_checkout_session" }),
+        expect.any(Object),
+      );
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+    }
+  });
 });

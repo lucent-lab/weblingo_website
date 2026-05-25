@@ -19,6 +19,17 @@ const bodySchema = z.object({
   locale: z.enum(i18nConfig.locales),
 });
 
+function isCheckoutClientError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.startsWith("Unknown pricing plan:") ||
+    /^Missing (monthly|yearly) price for plan:/.test(error.message)
+  );
+}
+
 export async function POST(request: NextRequest) {
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
     return NextResponse.json({ error: "Checkout disabled" }, { status: 403 });
@@ -70,15 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create checkout session";
-    const clientErrorPatterns = [
-      "Unknown pricing plan",
-      "Missing monthly price",
-      "Missing yearly price",
-      "Invalid",
-    ];
-    const isClientError =
-      error instanceof Error &&
-      clientErrorPatterns.some((pattern) => error.message.includes(pattern));
+    const isClientError = isCheckoutClientError(error);
     const status = isClientError ? 400 : 500;
 
     await captureServerAnalyticsEvent(

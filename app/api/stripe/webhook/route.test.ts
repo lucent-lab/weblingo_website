@@ -507,9 +507,10 @@ describe("POST /api/stripe/webhook", () => {
       auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
+    const retrieveCustomer = vi.fn().mockResolvedValue({ email: null });
     getStripeClient.mockReturnValue({
       subscriptions: { retrieve: vi.fn() },
-      customers: { retrieve: vi.fn() },
+      customers: { retrieve: retrieveCustomer },
     });
 
     const event = {
@@ -533,6 +534,7 @@ describe("POST /api/stripe/webhook", () => {
 
     expect(response.status).toBe(200);
     expect(listUsers).toHaveBeenCalled();
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_abc");
     expect(updateUserById).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
   });
@@ -608,7 +610,7 @@ describe("POST /api/stripe/webhook", () => {
     );
   });
 
-  it("stops paging Supabase users after the scan cap when no Stripe customer is found", async () => {
+  it("falls back to Stripe customer email after the Supabase scan cap", async () => {
     const listUsers = vi.fn().mockImplementation(({ page, perPage }) =>
       Promise.resolve({
         data: {
@@ -626,10 +628,14 @@ describe("POST /api/stripe/webhook", () => {
       auth: { admin: { listUsers, updateUserById, createUser } },
     });
 
-    const retrieveCustomer = vi.fn().mockResolvedValue({ email: null });
+    const retrieveCustomer = vi.fn().mockResolvedValue({ email: "billing@example.com" });
     getStripeClient.mockReturnValue({
       subscriptions: { retrieve: vi.fn() },
       customers: { retrieve: retrieveCustomer },
+    });
+    fetchUserByEmail.mockResolvedValue({
+      id: "user-by-email",
+      user_metadata: { existing: true },
     });
 
     const event = {
@@ -652,9 +658,19 @@ describe("POST /api/stripe/webhook", () => {
     const response = await POST(makeRequest("{}"));
 
     expect(response.status).toBe(200);
-    expect(retrieveCustomer).not.toHaveBeenCalled();
     expect(listUsers).toHaveBeenCalledTimes(25);
-    expect(updateUserById).not.toHaveBeenCalled();
+    expect(retrieveCustomer).toHaveBeenCalledWith("cus_cap");
+    expect(fetchUserByEmail).toHaveBeenCalledWith("billing@example.com");
+    expect(updateUserById).toHaveBeenCalledWith(
+      "user-by-email",
+      expect.objectContaining({
+        user_metadata: expect.objectContaining({
+          existing: true,
+          stripeCustomerId: "cus_cap",
+          lastStripeSubscriptionId: "sub_cap",
+        }),
+      }),
+    );
     expect(createUser).not.toHaveBeenCalled();
   });
 

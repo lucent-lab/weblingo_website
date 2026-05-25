@@ -191,6 +191,7 @@ async function upsertStripeBillingMetadata({
 }) {
   const supabase = createServiceRoleClient();
   let existingUser: Awaited<ReturnType<typeof findSupabaseUserByStripeCustomerId>> | null = null;
+  let resolvedEmail = email;
 
   try {
     existingUser = await findSupabaseUserByStripeCustomerId(customerId);
@@ -212,9 +213,32 @@ async function upsertStripeBillingMetadata({
     return;
   }
 
-  if (!existingUser && email) {
+  if (!existingUser && !resolvedEmail && !allowCreate) {
     try {
-      existingUser = await fetchUserByEmail(email);
+      resolvedEmail = await resolveStripeCustomerEmail(customerId);
+    } catch (customerError) {
+      console.warn(
+        JSON.stringify(
+          {
+            level: "warn",
+            message:
+              "Failed to resolve Stripe customer email for subscription metadata recovery; continuing",
+            siteId: SITE_ID,
+            customerId: maskStripeId(customerId),
+            ...logContext,
+            subscriptionId: maskStripeIdOrNull(metadata.lastStripeSubscriptionId),
+            error: customerError instanceof Error ? customerError.message : String(customerError),
+          },
+          null,
+          0,
+        ),
+      );
+    }
+  }
+
+  if (!existingUser && resolvedEmail) {
+    try {
+      existingUser = await fetchUserByEmail(resolvedEmail);
     } catch (fetchError) {
       console.error(
         JSON.stringify(
@@ -234,7 +258,7 @@ async function upsertStripeBillingMetadata({
     }
   }
 
-  if (!existingUser && !email && allowCreate) {
+  if (!existingUser && !resolvedEmail && allowCreate) {
     console.warn(
       JSON.stringify(
         {
@@ -307,7 +331,7 @@ async function upsertStripeBillingMetadata({
     return;
   }
 
-  if (!email) {
+  if (!resolvedEmail) {
     console.warn(
       JSON.stringify(
         {
@@ -328,7 +352,7 @@ async function upsertStripeBillingMetadata({
   }
 
   const { error } = await supabase.auth.admin.createUser({
-    email,
+    email: resolvedEmail,
     email_confirm: true,
     user_metadata: userMetadata,
   });
