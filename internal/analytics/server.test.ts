@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const posthogMock = vi.hoisted(() => {
+  const shutdownPromises: Array<Promise<unknown> | undefined> = [];
   const instances: Array<{
     capture: ReturnType<typeof vi.fn>;
     captureException: ReturnType<typeof vi.fn>;
@@ -11,13 +12,13 @@ const posthogMock = vi.hoisted(() => {
     const instance = {
       capture: vi.fn(),
       captureException: vi.fn(),
-      shutdown: vi.fn().mockResolvedValue(undefined),
+      shutdown: vi.fn(() => shutdownPromises.shift() ?? Promise.resolve(undefined)),
     };
     instances.push(instance);
     return instance;
   });
 
-  return { PostHog, instances };
+  return { PostHog, instances, shutdownPromises };
 });
 
 vi.mock("posthog-node", () => ({ PostHog: posthogMock.PostHog }));
@@ -53,6 +54,7 @@ beforeEach(() => {
   setRequiredEnv();
   posthogMock.PostHog.mockClear();
   posthogMock.instances.length = 0;
+  posthogMock.shutdownPromises.length = 0;
 });
 
 describe("server analytics helpers", () => {
@@ -98,7 +100,7 @@ describe("server analytics helpers", () => {
 
   it("captures exceptions without leaking empty properties", async () => {
     const { captureServerException } = await import("./server");
-    const error = new Error("failed");
+    const error = new Error("secret sk_test_leak");
 
     await captureServerException(
       error,
@@ -111,10 +113,30 @@ describe("server analytics helpers", () => {
       },
     );
 
-    expect(posthogMock.instances[0]?.captureException).toHaveBeenCalledWith(error, "server", {
-      source: "checkout",
-      runtime: "server",
-    });
+    const capturedError = posthogMock.instances[0]?.captureException.mock.calls[0]?.[0];
+    expect(capturedError).toBeInstanceOf(Error);
+    expect(capturedError.message).toBe("Server exception captured");
+    expect(capturedError.name).toBe("ServerAnalyticsException");
+    expect(capturedError.message).not.toContain("sk_test_leak");
+    expect(posthogMock.instances[0]?.captureException).toHaveBeenCalledWith(
+      capturedError,
+      "server",
+      {
+        source: "checkout",
+        error_name: "Error",
+        runtime: "server",
+      },
+    );
+    expect(posthogMock.instances[0]?.shutdown).toHaveBeenCalledWith(1000);
+  });
+
+  it("does not wait for PostHog shutdown before resolving", async () => {
+    posthogMock.shutdownPromises.push(new Promise(() => undefined));
+    const { captureServerAnalyticsEvent } = await import("./server");
+
+    await expect(captureServerAnalyticsEvent("waitlist_signup_saved")).resolves.toBeUndefined();
+
+    expect(posthogMock.instances[0]?.capture).toHaveBeenCalledOnce();
     expect(posthogMock.instances[0]?.shutdown).toHaveBeenCalledWith(1000);
   });
 

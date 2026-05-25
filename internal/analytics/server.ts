@@ -57,12 +57,25 @@ function sanitizeGroups(
   return Object.keys(sanitized).length ? sanitized : undefined;
 }
 
-async function shutdownPostHog(client: PostHog): Promise<void> {
-  try {
-    await client.shutdown(POSTHOG_SHUTDOWN_TIMEOUT_MS);
-  } catch {
+function shutdownPostHog(client: PostHog): void {
+  void client.shutdown(POSTHOG_SHUTDOWN_TIMEOUT_MS).catch(() => {
     // Analytics must never break user-facing flows.
+  });
+}
+
+function resolveErrorName(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "unknown";
   }
+
+  const trimmed = error.name.trim();
+  return trimmed ? trimmed.slice(0, 80) : "Error";
+}
+
+function buildSafeAnalyticsException(): Error {
+  const safeError = new Error("Server exception captured");
+  safeError.name = "ServerAnalyticsException";
+  return safeError;
 }
 
 export function hashAnalyticsIdentifier(namespace: string, value: string | null | undefined) {
@@ -81,9 +94,8 @@ export async function captureServerAnalyticsEvent(
   properties: AnalyticsProperties = {},
   options: ServerAnalyticsOptions = {},
 ): Promise<void> {
-  const client = createPostHogServerClient();
-
   try {
+    const client = createPostHogServerClient();
     client.capture({
       distinctId: normalizeDistinctId(options.distinctId),
       event,
@@ -93,10 +105,9 @@ export async function captureServerAnalyticsEvent(
         runtime: "server",
       }),
     });
+    shutdownPostHog(client);
   } catch {
     // Analytics must never break user-facing flows.
-  } finally {
-    await shutdownPostHog(client);
   }
 }
 
@@ -105,20 +116,19 @@ export async function captureServerException(
   properties: AnalyticsProperties = {},
   options: ServerAnalyticsOptions = {},
 ): Promise<void> {
-  const client = createPostHogServerClient();
-
   try {
+    const client = createPostHogServerClient();
     client.captureException(
-      error,
+      buildSafeAnalyticsException(),
       normalizeDistinctId(options.distinctId),
       sanitizeAnalyticsProperties({
         ...properties,
+        error_name: resolveErrorName(error),
         runtime: "server",
       }),
     );
+    shutdownPostHog(client);
   } catch {
     // Analytics must never break user-facing flows.
-  } finally {
-    await shutdownPostHog(client);
   }
 }
