@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { ANALYTICS_EVENTS, extractPublicUrlContext } from "@internal/analytics/events";
+import {
+  captureServerAnalyticsEvent,
+  captureServerException,
+  hashAnalyticsIdentifier,
+} from "@internal/analytics/server";
 import { envServer } from "@internal/core/env-server";
 import { rateLimitFixedWindow } from "@internal/core/rate-limit";
 import { redis } from "@internal/core/redis";
@@ -47,6 +53,10 @@ export async function submitContactMessage(locale: string, formData: FormData) {
         0,
       ),
     );
+    await captureServerException(error, {
+      source: "contact_rate_limit",
+      locale,
+    });
     if (process.env.NODE_ENV === "production") {
       return redirect(`/${locale}/contact?error=server`);
     }
@@ -78,6 +88,8 @@ export async function submitContactMessage(locale: string, formData: FormData) {
     message: parsed.data.message?.trim() || null,
   });
 
+  const { sourceHost, sourcePath } = extractPublicUrlContext(parsed.data.domain);
+
   if (error) {
     console.error(
       JSON.stringify(
@@ -90,8 +102,37 @@ export async function submitContactMessage(locale: string, formData: FormData) {
         0,
       ),
     );
+    await captureServerAnalyticsEvent(ANALYTICS_EVENTS.contactMessageFailed, {
+      locale,
+      source_host: sourceHost,
+      source_path: sourcePath,
+      locales_present: Boolean(parsed.data.locales?.trim()),
+      message_present: Boolean(parsed.data.message?.trim()),
+      failure_kind: "database",
+    });
+    await captureServerException(error, {
+      source: "contact_insert",
+      locale,
+      source_host: sourceHost,
+      source_path: sourcePath,
+    });
     return redirect(`/${locale}/contact?error=server`);
   }
+
+  await captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.contactMessageSubmitted,
+    {
+      locale,
+      source_host: sourceHost,
+      source_path: sourcePath,
+      domain_present: Boolean(parsed.data.domain?.trim()),
+      locales_present: Boolean(parsed.data.locales?.trim()),
+      message_present: Boolean(parsed.data.message?.trim()),
+    },
+    {
+      distinctId: hashAnalyticsIdentifier("contact_domain", parsed.data.domain),
+    },
+  );
 
   redirect(`/${locale}/contact?submitted=1`);
 }

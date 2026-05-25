@@ -4,6 +4,15 @@ import type { NextRequest } from "next/server";
 const createCheckoutSession = vi.fn();
 vi.mock("@internal/billing", () => ({ createCheckoutSession }));
 
+const analyticsMocks = vi.hoisted(() => ({
+  captureServerAnalyticsEvent: vi.fn(),
+  captureServerException: vi.fn(),
+  hashAnalyticsIdentifier: vi.fn((namespace: string, value: string | null | undefined) =>
+    value ? `${namespace}:hashed` : null,
+  ),
+}));
+vi.mock("@internal/analytics/server", () => analyticsMocks);
+
 const ORIGINAL_ENV = { ...process.env };
 
 function setRequiredEnv() {
@@ -49,6 +58,9 @@ beforeAll(() => {
 
 beforeEach(() => {
   createCheckoutSession.mockReset();
+  analyticsMocks.captureServerAnalyticsEvent.mockReset();
+  analyticsMocks.captureServerException.mockReset();
+  analyticsMocks.hashAnalyticsIdentifier.mockClear();
 });
 
 describe("POST /api/stripe/create-checkout-session", () => {
@@ -70,6 +82,22 @@ describe("POST /api/stripe/create-checkout-session", () => {
       expect(payload).toMatchObject({ error: "Unable to start checkout right now" });
       expect(payload.request_id).toBeTruthy();
       expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
+      expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+        "checkout_session_create_failed",
+        expect.objectContaining({
+          plan_id: "starter",
+          cadence: "monthly",
+          locale: "en",
+          failure_kind: "server",
+          failure_status: 500,
+        }),
+        expect.any(Object),
+      );
+      expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ source: "stripe_create_checkout_session" }),
+        expect.any(Object),
+      );
     } finally {
       (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
     }

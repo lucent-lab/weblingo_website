@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
+import {
+  captureServerAnalyticsEvent,
+  captureServerException,
+  hashAnalyticsIdentifier,
+} from "@internal/analytics/server";
 import { createCheckoutSession } from "@internal/billing";
 import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
 import { envServer } from "@internal/core/env-server";
@@ -47,6 +53,20 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${appUrl}/${normalizedLocale}/checkout/cancel`,
     });
 
+    await captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.checkoutSessionCreateSucceeded,
+      {
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+        email_present: Boolean(email),
+        checkout_url_present: Boolean(session.url),
+      },
+      {
+        distinctId: hashAnalyticsIdentifier("stripe_session", session.id),
+      },
+    );
+
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create checkout session";
@@ -61,9 +81,44 @@ export async function POST(request: NextRequest) {
       clientErrorPatterns.some((pattern) => error.message.includes(pattern));
     const status = isClientError ? 400 : 500;
 
+    await captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.checkoutSessionCreateFailed,
+      {
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+        email_present: Boolean(email),
+        failure_kind: isClientError ? "client" : "server",
+        failure_status: status,
+        error_name: error instanceof Error ? error.name : "unknown",
+      },
+      {
+        distinctId: hashAnalyticsIdentifier(
+          "checkout_request",
+          `${planId}:${cadence}:${normalizedLocale}`,
+        ),
+      },
+    );
+
     if (status !== 500) {
       return NextResponse.json({ error: message }, { status });
     }
+
+    await captureServerException(
+      error,
+      {
+        source: "stripe_create_checkout_session",
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+      },
+      {
+        distinctId: hashAnalyticsIdentifier(
+          "checkout_request",
+          `${planId}:${cadence}:${normalizedLocale}`,
+        ),
+      },
+    );
 
     const requestId = buildRequestId();
     console.error(

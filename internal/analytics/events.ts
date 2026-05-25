@@ -18,6 +18,14 @@ export const ANALYTICS_EVENTS = {
   checkoutSuccessView: "checkout_success_view",
   checkoutCancelView: "checkout_cancel_view",
   checkoutCtaClicked: "checkout_cta_clicked",
+  checkoutSessionCreateSucceeded: "checkout_session_create_succeeded",
+  checkoutSessionCreateFailed: "checkout_session_create_failed",
+  stripeWebhookReceived: "stripe_webhook_received",
+  stripeWebhookProcessed: "stripe_webhook_processed",
+  waitlistSignupSaved: "waitlist_signup_saved",
+  waitlistSignupFailed: "waitlist_signup_failed",
+  contactMessageSubmitted: "contact_message_submitted",
+  contactMessageFailed: "contact_message_failed",
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];

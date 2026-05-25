@@ -8,6 +8,15 @@ vi.mock("@internal/core/redis", () => ({ redis: {} }));
 const createServiceRoleClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient }));
 
+const analyticsMocks = vi.hoisted(() => ({
+  captureServerAnalyticsEvent: vi.fn(),
+  captureServerException: vi.fn(),
+  hashAnalyticsIdentifier: vi.fn((namespace: string, value: string | null | undefined) =>
+    value ? `${namespace}:hashed` : null,
+  ),
+}));
+vi.mock("@internal/analytics/server", () => analyticsMocks);
+
 const ORIGINAL_ENV = { ...process.env };
 
 function setRequiredEnv() {
@@ -55,6 +64,9 @@ beforeAll(() => {
 beforeEach(() => {
   rateLimitFixedWindow.mockReset();
   createServiceRoleClient.mockReset();
+  analyticsMocks.captureServerAnalyticsEvent.mockReset();
+  analyticsMocks.captureServerException.mockReset();
+  analyticsMocks.hashAnalyticsIdentifier.mockClear();
 });
 
 describe("POST /api/waitlist", () => {
@@ -106,6 +118,10 @@ describe("POST /api/waitlist", () => {
         error_cause_syscall: "getaddrinfo",
         error_cause_hostname: "example.upstash.io",
       });
+      expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+        error,
+        expect.objectContaining({ source: "waitlist_rate_limit" }),
+      );
     } finally {
       logSpy.mockRestore();
     }
@@ -160,5 +176,12 @@ describe("POST /api/waitlist", () => {
     });
     expect(from).toHaveBeenCalledOnce();
     expect(upsert).toHaveBeenCalledOnce();
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "waitlist_signup_saved",
+      expect.objectContaining({
+        site_url_present: false,
+      }),
+      expect.objectContaining({ distinctId: "waitlist_signup:hashed" }),
+    );
   });
 });

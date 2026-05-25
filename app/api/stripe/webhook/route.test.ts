@@ -10,6 +10,15 @@ const createServiceRoleClient = vi.fn();
 const fetchUserByEmail = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient, fetchUserByEmail }));
 
+const analyticsMocks = vi.hoisted(() => ({
+  captureServerAnalyticsEvent: vi.fn(),
+  captureServerException: vi.fn(),
+  hashAnalyticsIdentifier: vi.fn((namespace: string, value: string | null | undefined) =>
+    value ? `${namespace}:hashed` : null,
+  ),
+}));
+vi.mock("@internal/analytics/server", () => analyticsMocks);
+
 const ORIGINAL_ENV = { ...process.env };
 
 function setRequiredEnv() {
@@ -59,6 +68,9 @@ beforeEach(() => {
   getStripeClient.mockReset();
   createServiceRoleClient.mockReset();
   fetchUserByEmail.mockReset();
+  analyticsMocks.captureServerAnalyticsEvent.mockReset();
+  analyticsMocks.captureServerException.mockReset();
+  analyticsMocks.hashAnalyticsIdentifier.mockClear();
 });
 
 describe("POST /api/stripe/webhook", () => {
@@ -115,6 +127,19 @@ describe("POST /api/stripe/webhook", () => {
     const response = await POST(makeRequest("{}"));
 
     expect(response.status).toBe(200);
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "stripe_webhook_received",
+      expect.objectContaining({ stripe_event_type: "checkout.session.completed" }),
+      expect.any(Object),
+    );
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "stripe_webhook_processed",
+      expect.objectContaining({
+        stripe_event_type: "checkout.session.completed",
+        outcome: "checkout_metadata_upsert_attempted",
+      }),
+      expect.any(Object),
+    );
     expect(retrieveSubscription).toHaveBeenCalledOnce();
     expect(listUsers).toHaveBeenCalled();
     expect(fetchUserByEmail).not.toHaveBeenCalled();

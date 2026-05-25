@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
 import { createServiceRoleClient, fetchUserByEmail } from "@/lib/supabase/admin";
+import { ANALYTICS_EVENTS, type AnalyticsProperties } from "@internal/analytics/events";
+import {
+  captureServerAnalyticsEvent,
+  captureServerException,
+  hashAnalyticsIdentifier,
+} from "@internal/analytics/server";
 import { getStripeClient, verifyStripeSignature } from "@internal/billing";
 import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
 import { SITE_ID } from "@modules/pricing";
@@ -373,6 +379,10 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
+    await captureServerException(error, {
+      source: "stripe_webhook_signature",
+      error_name: error instanceof Error ? error.name : "unknown",
+    });
     const message = isProdEnv()
       ? "Invalid Stripe signature"
       : error instanceof Error
@@ -385,11 +395,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
+  const webhookDistinctId = hashAnalyticsIdentifier("stripe_event", event.id);
+  const webhookAnalyticsProperties: AnalyticsProperties = {
+    stripe_event_type: event.type,
+  };
+
+  await captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.stripeWebhookReceived,
+    webhookAnalyticsProperties,
+    {
+      distinctId: webhookDistinctId,
+    },
+  );
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+      const sessionSubscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : (session.subscription?.id ?? null);
+      webhookAnalyticsProperties.checkout_mode = session.mode;
+      webhookAnalyticsProperties.locale = session.locale;
+      webhookAnalyticsProperties.customer_present = Boolean(session.customer);
+      webhookAnalyticsProperties.subscription_present = Boolean(sessionSubscriptionId);
 
       if (session.mode !== "subscription") {
+        webhookAnalyticsProperties.outcome = "unexpected_checkout_mode";
         console.warn(
           JSON.stringify(
             {
@@ -408,10 +440,6 @@ export async function POST(request: NextRequest) {
 
       const customerId =
         typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
-      const sessionSubscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : (session.subscription?.id ?? null);
       let subscription: Stripe.Subscription | null = null;
 
       try {
@@ -439,6 +467,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!customerId) {
+        webhookAnalyticsProperties.outcome = "missing_customer";
         console.error(
           JSON.stringify(
             {
@@ -468,6 +497,8 @@ export async function POST(request: NextRequest) {
           0,
         ),
       );
+
+      webhookAnalyticsProperties.subscription_status = subscription?.status ?? null;
 
       let email = extractCustomerEmail(session);
       if (!email) {
@@ -506,12 +537,15 @@ export async function POST(request: NextRequest) {
           subscriptionId: maskStripeIdOrNull(sessionSubscriptionId) ?? undefined,
         },
       });
+      webhookAnalyticsProperties.outcome = "checkout_metadata_upsert_attempted";
       break;
     }
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = resolveStripeCustomerIdFromSubscription(subscription);
+      webhookAnalyticsProperties.customer_present = Boolean(customerId);
+      webhookAnalyticsProperties.subscription_status = subscription.status;
       console.log(
         JSON.stringify(
           {
@@ -526,6 +560,7 @@ export async function POST(request: NextRequest) {
         ),
       );
       if (!customerId) {
+        webhookAnalyticsProperties.outcome = "missing_customer";
         console.warn(
           JSON.stringify(
             {
@@ -552,11 +587,20 @@ export async function POST(request: NextRequest) {
           subscriptionId: maskStripeId(subscription.id),
         },
       });
+      webhookAnalyticsProperties.outcome = "subscription_metadata_upsert_attempted";
       break;
     }
     default:
       break;
   }
+
+  await captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.stripeWebhookProcessed,
+    webhookAnalyticsProperties,
+    {
+      distinctId: webhookDistinctId,
+    },
+  );
 
   return NextResponse.json({ received: true });
 }
