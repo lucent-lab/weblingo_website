@@ -94,4 +94,16 @@ describe("preview QA fixture scenarios", () => {
     expect(body).toBe("Unknown preview QA fixture scenario.");
     expect(body).not.toContain(payload);
   });
+
+  it("does not accept prototype property names as preview QA scenarios", async () => {
+    const response = await GET(
+      requestFor("/fixtures/preview-qa/__proto__"),
+      routeContext("__proto__"),
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-weblingo-preview-qa-scenario")).toBe("unknown");
+    expect(body).toBe("Unknown preview QA fixture scenario.");
+  });
 });

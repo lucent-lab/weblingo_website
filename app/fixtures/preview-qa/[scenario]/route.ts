@@ -426,7 +426,7 @@ const SCENARIOS: Record<ScenarioId, ScenarioPayload> = {
 };
 
 function isScenarioId(value: string): value is ScenarioId {
-  return value in SCENARIOS;
+  return Object.prototype.hasOwnProperty.call(SCENARIOS, value);
 }
 
 export async function GET(
