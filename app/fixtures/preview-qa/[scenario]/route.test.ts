@@ -79,6 +79,50 @@ describe("preview QA fixture scenarios", () => {
     expect(html).toContain('data-weblingo-passive-external="webflow-cdn-image"');
   });
 
+  it("serves the inline composite boundary fixture with hydration sentinels", async () => {
+    const response = await GET(
+      requestFor("/fixtures/preview-qa/inline-composite-boundaries"),
+      routeContext("inline-composite-boundaries"),
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-weblingo-preview-qa-fixture")).toBe("1");
+    expect(response.headers.get("x-weblingo-preview-qa-scenario")).toBe(
+      "inline-composite-boundaries",
+    );
+    expect(response.headers.get("content-security-policy")).toContain("'unsafe-inline'");
+    expect(html).toContain('data-fixture-scenario="inline-composite-boundaries"');
+    expect(html).toContain('data-testid="mission-critical-heading"');
+    expect(html).toContain(
+      'Systems Engineering for <span id="gradient-word" class="gradient-word" data-testid="mission-critical-word">Mission-Critical</span>',
+    );
+    expect(html).toContain('data-testid="inline-empty-spacer"><strong> </strong>');
+    expect(html).toContain('data-testid="foundations-word">Foundations.</span>');
+    expect(html).toContain("data-inline-composite-hydrated");
+    expect(html).toContain("__WEBLINGO_PREVIEW_QA_INLINE_COMPOSITE__");
+  });
+
+  it("serves the source repair context fixture with repeated hydration restores", async () => {
+    const response = await GET(
+      requestFor("/fixtures/preview-qa/source-repair-context"),
+      routeContext("source-repair-context"),
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-weblingo-preview-qa-fixture")).toBe("1");
+    expect(response.headers.get("x-weblingo-preview-qa-scenario")).toBe("source-repair-context");
+    expect(html).toContain('data-fixture-scenario="source-repair-context"');
+    expect(html).toContain('data-testid="source-repair-hero">Automated accounting</h1>');
+    expect(html).toContain('data-testid="source-repair-card-heading">Automated accounting</h2>');
+    expect(html).toContain('data-testid="source-repair-second-heading">Automated accounting</h2>');
+    expect(html).toContain('data-testid="source-repair-card-copy">Accounting automation</p>');
+    expect(html).toContain('data-testid="source-repair-button">Accounting automation</button>');
+    expect(html).toContain("data-source-repair-hydrated");
+    expect(html).toContain("__WEBLINGO_PREVIEW_QA_SOURCE_REPAIR__");
+  });
+
   it("returns a fixed 404 for unknown preview QA scenarios", async () => {
     const payload = "<script>alert(1)</script>";
     const response = await GET(requestFor("/fixtures/preview-qa/unknown"), routeContext(payload));
@@ -93,5 +137,17 @@ describe("preview QA fixture scenarios", () => {
     );
     expect(body).toBe("Unknown preview QA fixture scenario.");
     expect(body).not.toContain(payload);
+  });
+
+  it("does not accept prototype property names as preview QA scenarios", async () => {
+    const response = await GET(
+      requestFor("/fixtures/preview-qa/__proto__"),
+      routeContext("__proto__"),
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-weblingo-preview-qa-scenario")).toBe("unknown");
+    expect(body).toBe("Unknown preview QA fixture scenario.");
   });
 });
