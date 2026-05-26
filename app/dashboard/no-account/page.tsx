@@ -7,6 +7,7 @@ import { PricingTableEmbed } from "./pricing-table";
 import { claimAccount } from "@/app/dashboard/no-account/actions";
 import { logout } from "@/app/auth/logout/actions";
 import { ActionForm } from "@/components/dashboard/action-form";
+import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,9 +69,9 @@ export default async function NoAccountPage() {
               <Link href={`/${locale}/pricing`}>View pricing page</Link>
             </Button>
             <form action={logout}>
-              <Button type="submit" variant="outline">
-                Sign out
-              </Button>
+              <SignOutButton variant="outline">
+                {t("dashboard.auth.signOut", "Sign out")}
+              </SignOutButton>
             </form>
             <Button asChild variant="ghost">
               <a href="mailto:contact@weblingo.app">Contact support</a>

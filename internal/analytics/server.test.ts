@@ -23,6 +23,15 @@ const posthogMock = vi.hoisted(() => {
 
 vi.mock("posthog-node", () => ({ PostHog: posthogMock.PostHog }));
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve;
+  });
+
+  return { promise, resolve };
+}
+
 function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
@@ -130,14 +139,33 @@ describe("server analytics helpers", () => {
     expect(posthogMock.instances[0]?.shutdown).toHaveBeenCalledWith(1000);
   });
 
-  it("does not wait for PostHog shutdown before resolving", async () => {
-    posthogMock.shutdownPromises.push(new Promise(() => undefined));
+  it("waits for the bounded PostHog shutdown flush before resolving", async () => {
+    const shutdown = createDeferred();
+    posthogMock.shutdownPromises.push(shutdown.promise);
+    const { captureServerAnalyticsEvent } = await import("./server");
+
+    let resolved = false;
+    const capturePromise = captureServerAnalyticsEvent("waitlist_signup_saved").then(() => {
+      resolved = true;
+    });
+
+    expect(posthogMock.instances[0]?.capture).toHaveBeenCalledOnce();
+    expect(posthogMock.instances[0]?.shutdown).toHaveBeenCalledWith(1000);
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    shutdown.resolve();
+    await capturePromise;
+    expect(resolved).toBe(true);
+  });
+
+  it("swallows PostHog shutdown failures", async () => {
+    posthogMock.shutdownPromises.push(Promise.reject(new Error("flush failed")));
     const { captureServerAnalyticsEvent } = await import("./server");
 
     await expect(captureServerAnalyticsEvent("waitlist_signup_saved")).resolves.toBeUndefined();
 
     expect(posthogMock.instances[0]?.capture).toHaveBeenCalledOnce();
-    expect(posthogMock.instances[0]?.shutdown).toHaveBeenCalledWith(1000);
   });
 
   it("hashes identifiers without retaining the raw value", async () => {

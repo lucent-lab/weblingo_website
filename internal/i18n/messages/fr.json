@@ -181,6 +181,7 @@
   "login.title": "Connexion client",
   "login.description": "Accédez à votre tableau de bord de localisation, analytics et facturation.",
   "login.cta": "Portail disponible prochainement",
+  "dashboard.auth.signOut": "Se déconnecter",
   "dashboard.site.status.deactivate": "Mettre en pause la localisation",
   "dashboard.site.status.reactivate": "Activer la localisation",
   "dashboard.site.status.activateHelpLabel": "Détails de l'activation",

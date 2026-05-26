@@ -57,10 +57,12 @@ function sanitizeGroups(
   return Object.keys(sanitized).length ? sanitized : undefined;
 }
 
-function shutdownPostHog(client: PostHog): void {
-  void client.shutdown(POSTHOG_SHUTDOWN_TIMEOUT_MS).catch(() => {
+async function shutdownPostHog(client: PostHog): Promise<void> {
+  try {
+    await client.shutdown(POSTHOG_SHUTDOWN_TIMEOUT_MS);
+  } catch {
     // Analytics must never break user-facing flows.
-  });
+  }
 }
 
 function resolveErrorName(error: unknown): string {
@@ -105,7 +107,7 @@ export async function captureServerAnalyticsEvent(
         runtime: "server",
       }),
     });
-    shutdownPostHog(client);
+    await shutdownPostHog(client);
   } catch {
     // Analytics must never break user-facing flows.
   }
@@ -127,7 +129,7 @@ export async function captureServerException(
         runtime: "server",
       }),
     );
-    shutdownPostHog(client);
+    await shutdownPostHog(client);
   } catch {
     // Analytics must never break user-facing flows.
   }

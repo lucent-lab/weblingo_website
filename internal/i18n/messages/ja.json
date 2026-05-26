@@ -181,6 +181,7 @@
   "login.title": "顧客ログイン",
   "login.description": "ローカリゼーションのダッシュボード、分析、請求ポータルにアクセスできます。",
   "login.cta": "ポータルは近日公開",
+  "dashboard.auth.signOut": "サインアウト",
   "dashboard.site.status.deactivate": "ローカライズを一時停止",
   "dashboard.site.status.reactivate": "ローカライズを有効化",
   "dashboard.site.status.activateHelpLabel": "有効化の詳細",

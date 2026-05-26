@@ -9,6 +9,8 @@ import { DashboardNav } from "./_components/dashboard-nav";
 import { SitesNav, type SiteNavEntry } from "./_components/sites-nav";
 import { WorkspaceSwitcher } from "./_components/workspace-switcher";
 
+import { DashboardAnalyticsIdentity } from "@/components/dashboard/analytics-identity";
+import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +41,7 @@ import {
   resolveDashboardWebsiteWorkspaceState,
   resolveDashboardWorkspaceAudience,
 } from "@internal/dashboard/workspace";
-import { resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
@@ -67,6 +69,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const email = auth.user?.email ?? "—";
   const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
   const isAgency = workspaceAudience === "agency";
@@ -160,6 +163,15 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   return (
     <SidebarProvider defaultOpen>
+      <DashboardAnalyticsIdentity
+        userId={auth.user.id}
+        accountId={auth.subjectAccountId ?? auth.account.accountId}
+        actorAccountId={auth.actorAccountId}
+        planType={auth.account.planType}
+        planStatus={auth.account.planStatus}
+        workspaceAudience={workspaceAudience}
+        actingAsCustomer={auth.actingAsCustomer}
+      />
       <Sidebar collapsible="icon">
         <SidebarHeader className="gap-4">
           <div className="flex items-center gap-2 px-2 pt-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pt-1">
@@ -260,7 +272,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                   </Suspense>
                 </nav>
                 {auth.actingAsCustomer ? (
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                  <Badge variant="outline" className="ph-mask text-[10px] uppercase tracking-wide">
                     Acting as {subjectLabel}
                   </Badge>
                 ) : null}
@@ -275,7 +287,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">
                     Signed in
                   </span>
-                  <span className="text-sm font-medium">{email}</span>
+                  <span className="ph-mask text-sm font-medium">{email}</span>
                   {stripeBillingLabel ? (
                     <Badge
                       variant="outline"
@@ -286,9 +298,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                   ) : null}
                 </div>
                 <form action={logout}>
-                  <Button size="sm" variant="outline" type="submit">
-                    Sign out
-                  </Button>
+                  <SignOutButton>{t("dashboard.auth.signOut", "Sign out")}</SignOutButton>
                 </form>
               </div>
             </div>

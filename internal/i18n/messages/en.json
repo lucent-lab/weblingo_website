@@ -209,6 +209,7 @@
   "login.title": "Customer login",
   "login.description": "Access your localization dashboard, analytics, and billing portal.",
   "login.cta": "Portal coming soon",
+  "dashboard.auth.signOut": "Sign out",
   "dashboard.site.status.deactivate": "Pause localization",
   "dashboard.site.status.reactivate": "Enable localization",
   "dashboard.site.status.activateHelpLabel": "Activation details",
