@@ -1,4 +1,8 @@
-type ScenarioId = "structural-placeholders" | "domain-bound-widgets";
+type ScenarioId =
+  | "structural-placeholders"
+  | "domain-bound-widgets"
+  | "inline-composite-boundaries"
+  | "source-repair-context";
 
 type ScenarioPayload = {
   csp: string;
@@ -256,6 +260,200 @@ const STRUCTURAL_HTML = `<!doctype html>
   </body>
 </html>`;
 
+const INLINE_COMPOSITE_HTML = `<!doctype html>
+<html lang="en" data-fixture="preview-qa" data-fixture-scenario="inline-composite-boundaries">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview QA Fixture: Inline Composite Boundaries</title>
+    <link rel="icon" href="data:," />
+    <link rel="canonical" href="${SOURCE_ORIGIN}/fixtures/preview-qa/inline-composite-boundaries" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #161b22;
+        background: #f7f9fc;
+      }
+
+      main {
+        width: min(960px, calc(100vw - 32px));
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 820px;
+        font-size: clamp(2.2rem, 6vw, 5rem);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin-top: 18px;
+        max-width: 680px;
+        line-height: 1.65;
+      }
+
+      .gradient-word {
+        color: #2458d3;
+      }
+
+      .glitch-word-gray {
+        color: #64748b;
+      }
+
+      .text-gradient {
+        display: inline;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 class="ttile-h1" data-testid="mission-critical-heading">Systems Engineering for <span id="gradient-word" class="gradient-word" data-testid="mission-critical-word">Mission-Critical</span><span class="text-gradient" data-testid="inline-empty-spacer"><strong> </strong></span><span class="glitch-word glitch-word-gray" data-testid="foundations-word">Foundations.</span></h1>
+      <p>
+        The first heading text node intentionally ends with a space before the gradient span. A
+        translated preview should let the whole inline composite own target-language spacing and
+        ordering after hydration restores the source phrase.
+      </p>
+    </main>
+    <script>
+      (function () {
+        function restoreSourceHeading() {
+          var heading = document.querySelector('[data-testid="mission-critical-heading"]');
+          if (!heading) return;
+          heading.innerHTML = 'Systems Engineering for <span id="gradient-word" class="gradient-word" data-testid="mission-critical-word">Mission-Critical</span><span class="text-gradient" data-testid="inline-empty-spacer"><strong> </strong></span><span class="glitch-word glitch-word-gray" data-testid="foundations-word">Foundations.</span>';
+          heading.setAttribute("data-fixture-hydration", "source-restored");
+          document.documentElement.setAttribute("data-inline-composite-hydrated", "1");
+          window.__WEBLINGO_PREVIEW_QA_INLINE_COMPOSITE__ = {
+            restored: true,
+            firstTextNode: heading.firstChild ? heading.firstChild.textContent : null
+          };
+        }
+
+        window.setTimeout(restoreSourceHeading, 120);
+      })();
+    </script>
+  </body>
+</html>`;
+
+const SOURCE_REPAIR_HTML = `<!doctype html>
+<html lang="en" data-fixture="preview-qa" data-fixture-scenario="source-repair-context">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview QA Fixture: Source Repair Context</title>
+    <link rel="icon" href="data:," />
+    <link rel="canonical" href="${SOURCE_ORIGIN}/fixtures/preview-qa/source-repair-context" />
+    <style>
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #172025;
+        background: #fafbf8;
+      }
+
+      main {
+        width: min(900px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 52px 0 80px;
+      }
+
+      h1,
+      h2,
+      p,
+      button {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        font-size: clamp(2.25rem, 5vw, 4.6rem);
+        line-height: 1;
+      }
+
+      p {
+        margin-top: 14px;
+        line-height: 1.65;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-top: 28px;
+      }
+
+      .card {
+        border: 1px solid #cdd8d2;
+        border-radius: 8px;
+        padding: 18px;
+        background: #fff;
+      }
+
+      button {
+        margin-top: 18px;
+        border: 0;
+        border-radius: 6px;
+        padding: 12px 16px;
+        color: #fff;
+        background: #2458d3;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-testid="source-repair-hero">Automated accounting</h1>
+      <p data-testid="source-repair-intro">
+        This page repeats short business phrases in different tags and selectors so translated
+        previews can prove source-repair logic chooses the right context after hydration restores
+        source text.
+      </p>
+      <section class="cards" aria-label="Repeated source-repair phrases">
+        <article class="card">
+          <h2 data-testid="source-repair-card-heading">Automated accounting</h2>
+          <p data-testid="source-repair-card-copy">Accounting automation</p>
+        </article>
+        <article class="card">
+          <h2 data-testid="source-repair-second-heading">Automated accounting</h2>
+          <button type="button" data-testid="source-repair-button">Accounting automation</button>
+        </article>
+      </section>
+    </main>
+    <script>
+      (function () {
+        var restores = [
+          ["source-repair-hero", "Automated accounting"],
+          ["source-repair-card-heading", "Automated accounting"],
+          ["source-repair-second-heading", "Automated accounting"],
+          ["source-repair-card-copy", "Accounting automation"],
+          ["source-repair-button", "Accounting automation"]
+        ];
+
+        function restoreSourceText() {
+          for (var i = 0; i < restores.length; i += 1) {
+            var target = document.querySelector('[data-testid="' + restores[i][0] + '"]');
+            if (target) target.textContent = restores[i][1];
+          }
+          document.documentElement.setAttribute("data-source-repair-hydrated", "1");
+          window.__WEBLINGO_PREVIEW_QA_SOURCE_REPAIR__ = { restored: true };
+        }
+
+        window.setTimeout(restoreSourceText, 120);
+      })();
+    </script>
+  </body>
+</html>`;
+
 const DOMAIN_BOUND_HTML = `<!doctype html>
 <html lang="en" data-fixture="preview-qa" data-fixture-scenario="domain-bound-widgets">
   <head>
@@ -422,6 +620,14 @@ const SCENARIOS: Record<ScenarioId, ScenarioPayload> = {
   "domain-bound-widgets": {
     csp: DOMAIN_BOUND_CSP,
     html: DOMAIN_BOUND_HTML,
+  },
+  "inline-composite-boundaries": {
+    csp: STRUCTURAL_CSP,
+    html: INLINE_COMPOSITE_HTML,
+  },
+  "source-repair-context": {
+    csp: STRUCTURAL_CSP,
+    html: SOURCE_REPAIR_HTML,
   },
 };
 

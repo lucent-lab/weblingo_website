@@ -9,7 +9,8 @@ exclusion, and indexability behavior.
 
 For preview-only source fixtures, use
 [`docs/PREVIEW_QA_FIXTURES.md`](./PREVIEW_QA_FIXTURES.md). Those routes cover structural
-placeholder preservation and domain-bound external widgets that need a deployed browser surface.
+placeholder preservation, inline composite text boundaries, source-repair context, and
+domain-bound external widgets that need a deployed browser surface.
 
 ## Fixture Paths
 
