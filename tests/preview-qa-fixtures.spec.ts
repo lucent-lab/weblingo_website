@@ -132,6 +132,48 @@ test("preview QA structural fixture preserves browser-observable subtree order",
   await expect(page.getByTestId("guestbook-sign-sr-label")).toHaveText("Sign guestbook");
 });
 
+test("preview QA inline composite fixture exposes boundary spacing after hydration", async ({
+  page,
+}) => {
+  const response = await page.goto("/fixtures/preview-qa/inline-composite-boundaries");
+  expect(response?.status()).toBe(200);
+  expect(response?.headers()["x-weblingo-preview-qa-scenario"]).toBe("inline-composite-boundaries");
+
+  await expect(page.locator("html")).toHaveAttribute("data-inline-composite-hydrated", "1");
+
+  const headingShape = await page.getByTestId("mission-critical-heading").evaluate((node) => ({
+    firstTextNode:
+      node.firstChild?.nodeType === Node.TEXT_NODE ? node.firstChild.textContent : null,
+    childTestIds: Array.from(node.children).map((child) => child.getAttribute("data-testid")),
+    spacerText: node.querySelector('[data-testid="inline-empty-spacer"]')?.textContent,
+    hydration: (node as HTMLElement).dataset.fixtureHydration,
+  }));
+
+  expect(headingShape).toEqual({
+    firstTextNode: "Systems Engineering for ",
+    childTestIds: ["mission-critical-word", "inline-empty-spacer", "foundations-word"],
+    spacerText: " ",
+    hydration: "source-restored",
+  });
+  await expect(page.getByTestId("mission-critical-word")).toHaveText("Mission-Critical");
+  await expect(page.getByTestId("foundations-word")).toHaveText("Foundations.");
+});
+
+test("preview QA source repair fixture repeats context-sensitive hydrated source text", async ({
+  page,
+}) => {
+  const response = await page.goto("/fixtures/preview-qa/source-repair-context");
+  expect(response?.status()).toBe(200);
+  expect(response?.headers()["x-weblingo-preview-qa-scenario"]).toBe("source-repair-context");
+
+  await expect(page.locator("html")).toHaveAttribute("data-source-repair-hydrated", "1");
+  await expect(page.getByTestId("source-repair-hero")).toHaveText("Automated accounting");
+  await expect(page.getByTestId("source-repair-card-heading")).toHaveText("Automated accounting");
+  await expect(page.getByTestId("source-repair-second-heading")).toHaveText("Automated accounting");
+  await expect(page.getByTestId("source-repair-card-copy")).toHaveText("Accounting automation");
+  await expect(page.getByTestId("source-repair-button")).toHaveText("Accounting automation");
+});
+
 test("preview QA domain-bound fixture separates capability candidates from passive controls", async ({
   page,
 }) => {

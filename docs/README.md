@@ -5,6 +5,7 @@
 - Development Guide — `docs/DEVELOPMENT_GUIDE.md`
 - Architecture Overview — `docs/ARCHITECTURE.md`
 - Testing Policy — `docs/TESTING_POLICY.md`
+- Preview QA Fixtures — `docs/PREVIEW_QA_FIXTURES.md`
 - Dashboard Flows & Use Cases — `docs/dashboard-flow-and-use-cases.md`
 - Dashboard Latency Remediation Report (2026-02-14) — `docs/reports/dashboard-latency-remediation-2026-02-14.md`
 - Recommended Structure Reference — `docs/recommended_structure.md`

@@ -85,6 +85,12 @@ PREVIEW_UX_CASES_JSON='[
     "url": "https://preview.weblingo.app/_preview/<preview-id>",
     "requiredText": ["海外"],
     "forbiddenText": ["Turn international traffic into", "bookings", "signups", "revenue"],
+    "dom": [
+      {
+        "selector": "[data-testid=\"hero-outcome-rotator\"]",
+        "textExcludes": ["Turn international traffic into"]
+      }
+    ],
     "rotator": {
       "selector": "[data-testid=\"hero-outcome-rotator\"]",
       "minDistinctStates": 4,

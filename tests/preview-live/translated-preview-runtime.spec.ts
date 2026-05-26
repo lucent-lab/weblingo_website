@@ -11,6 +11,7 @@ type LivePreviewCase = {
   url: string;
   requiredText?: string[];
   forbiddenText?: string[];
+  dom?: DomAssertion[];
   rotator?: {
     selector: string;
     minDistinctStates?: number;
@@ -18,6 +19,15 @@ type LivePreviewCase = {
     intervalMs?: number;
     forbiddenText?: string[];
   };
+};
+
+type DomAssertion = {
+  selector: string;
+  textIncludes?: string[];
+  textExcludes?: string[];
+  firstChildTextEquals?: string;
+  firstChildTextEndsWith?: string;
+  childTestIds?: string[];
 };
 
 type SourceTextHit = {
@@ -53,6 +63,49 @@ function parsePositiveInteger(value: unknown, fieldName: string): number | undef
     throw new Error(`${fieldName} must be a positive integer.`);
   }
   return value;
+}
+
+function parseString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} must be a string.`);
+  }
+  return value;
+}
+
+function parseDomAssertions(value: unknown, fieldName: string): DomAssertion[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${fieldName} must be an array.`);
+  }
+
+  return value.map((entry, index) => {
+    const entryField = `${fieldName}[${index}]`;
+    if (!isRecord(entry)) {
+      throw new Error(`${entryField} must be an object.`);
+    }
+    if (typeof entry.selector !== "string" || !entry.selector.trim()) {
+      throw new Error(`${entryField}.selector must be a non-empty string.`);
+    }
+    return {
+      selector: entry.selector,
+      textIncludes: parseStringArray(entry.textIncludes, `${entryField}.textIncludes`),
+      textExcludes: parseStringArray(entry.textExcludes, `${entryField}.textExcludes`),
+      firstChildTextEquals: parseString(
+        entry.firstChildTextEquals,
+        `${entryField}.firstChildTextEquals`,
+      ),
+      firstChildTextEndsWith: parseString(
+        entry.firstChildTextEndsWith,
+        `${entryField}.firstChildTextEndsWith`,
+      ),
+      childTestIds: parseStringArray(entry.childTestIds, `${entryField}.childTestIds`),
+    };
+  });
 }
 
 function parseLivePreviewCases(): LivePreviewCase[] {
@@ -112,6 +165,7 @@ function parseLivePreviewCases(): LivePreviewCase[] {
       url: entry.url,
       requiredText: parseStringArray(entry.requiredText, `${entry.name}.requiredText`),
       forbiddenText: parseStringArray(entry.forbiddenText, `${entry.name}.forbiddenText`),
+      dom: parseDomAssertions(entry.dom, `${entry.name}.dom`),
       rotator,
     };
   });
@@ -205,6 +259,48 @@ function includesAnyForbiddenText(value: string, forbiddenText: string[] | undef
   return forbiddenText.filter((phrase) => phrase && value.includes(phrase));
 }
 
+async function assertDomAssertions(page: Page, assertions: DomAssertion[] | undefined) {
+  for (const assertion of assertions ?? []) {
+    const locator = page.locator(assertion.selector);
+    await expect(locator, `${assertion.selector} should resolve to one element`).toHaveCount(1);
+    const snapshot = await locator.evaluate((node) => ({
+      textContent: node.textContent ?? "",
+      firstChildText:
+        node.firstChild?.nodeType === Node.TEXT_NODE ? node.firstChild.textContent : null,
+      childTestIds: Array.from(node.children).map((child) => child.getAttribute("data-testid")),
+    }));
+
+    for (const expected of assertion.textIncludes ?? []) {
+      expect(snapshot.textContent, `${assertion.selector} should contain ${expected}`).toContain(
+        expected,
+      );
+    }
+    for (const forbidden of assertion.textExcludes ?? []) {
+      expect(
+        snapshot.textContent,
+        `${assertion.selector} should not contain ${forbidden}`,
+      ).not.toContain(forbidden);
+    }
+    if (assertion.firstChildTextEquals !== undefined) {
+      expect(snapshot.firstChildText, `${assertion.selector} first text node`).toBe(
+        assertion.firstChildTextEquals,
+      );
+    }
+    if (assertion.firstChildTextEndsWith !== undefined) {
+      expect(snapshot.firstChildText, `${assertion.selector} first text node`).not.toBeNull();
+      expect(
+        (snapshot.firstChildText ?? "").endsWith(assertion.firstChildTextEndsWith),
+        `${assertion.selector} first text node should end with ${JSON.stringify(assertion.firstChildTextEndsWith)}`,
+      ).toBe(true);
+    }
+    if (assertion.childTestIds) {
+      expect(snapshot.childTestIds, `${assertion.selector} direct child test ids`).toEqual(
+        assertion.childTestIds,
+      );
+    }
+  }
+}
+
 const liveCases = parseLivePreviewCases();
 
 if (liveCases.length === 0) {
@@ -272,6 +368,8 @@ if (liveCases.length === 0) {
 
         const persistentForbiddenHits = includesAnyForbiddenText(bodyText, forbiddenText);
         expect(persistentForbiddenHits, "source-language text stayed visible").toEqual([]);
+
+        await assertDomAssertions(page, previewCase.dom);
 
         const sourceTextHits = await page.evaluate(
           () => window.__weblingoPreviewUxProbe?.sourceTextHits ?? [],
