@@ -2,7 +2,6 @@
 
 import type { PostHogConfig } from "posthog-js";
 import posthog from "posthog-js";
-import { buildPosthogProxyApiHost } from "@internal/analytics/proxy";
 import { env } from "@internal/core";
 
 import {
@@ -95,7 +94,8 @@ const sanitizePostHogCaptureResult: AnalyticsBeforeSend = (result) => {
 
 export function buildAnalyticsInitConfig(): AnalyticsInitConfig {
   return {
-    api_host: buildPosthogProxyApiHost(env.NEXT_PUBLIC_APP_URL),
+    api_host: env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST,
+    ui_host: "https://eu.posthog.com",
     defaults: "2025-05-24",
     autocapture: false,
     capture_pageview: false,

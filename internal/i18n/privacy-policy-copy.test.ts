@@ -16,6 +16,8 @@ describe("privacy policy analytics copy", () => {
     const retention = messages["legal.privacy.sections.retention.body"];
 
     expect(analytics).toContain("PostHog");
+    expect(analytics).toContain("metrics.weblingo.app");
+    expect(analytics).toContain("Cloudflare");
     expect(retention).toContain("30");
   });
 

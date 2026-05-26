@@ -16,6 +16,7 @@ function setRequiredClientEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "https://weblingo.app";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "https://metrics.weblingo.app";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example.com";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "supabase-key";
@@ -42,7 +43,8 @@ describe("client analytics helpers", () => {
     expect(posthogMock.init).toHaveBeenCalledWith(
       "phc_test",
       expect.objectContaining({
-        api_host: "https://weblingo.app/_analytics/posthog",
+        api_host: "https://metrics.weblingo.app",
+        ui_host: "https://eu.posthog.com",
         autocapture: false,
         capture_heatmaps: false,
         capture_pageleave: false,
@@ -92,6 +94,19 @@ describe("client analytics helpers", () => {
 
     expect(sanitized?.properties.$current_url).toBe("https://weblingo.app/dashboard");
     expect(sanitized?.properties.$referrer).toBe("https://example.com/");
+  });
+
+  it("keeps browser routing separate from the upstream PostHog ingestion host", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "https://metrics.weblingo.app";
+    process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
+    const { buildAnalyticsInitConfig } = await import("./client");
+
+    expect(buildAnalyticsInitConfig()).toEqual(
+      expect.objectContaining({
+        api_host: "https://metrics.weblingo.app",
+        ui_host: "https://eu.posthog.com",
+      }),
+    );
   });
 
   it("identifies dashboard users and groups them by account", async () => {
