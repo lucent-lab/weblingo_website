@@ -39,7 +39,7 @@ const sections = [
   },
 ];
 
-const PRIVACY_POLICY_LAST_UPDATED = new Date("2025-11-05");
+const PRIVACY_POLICY_LAST_UPDATED = new Date("2026-05-26");
 
 export async function generateMetadata({
   params,
