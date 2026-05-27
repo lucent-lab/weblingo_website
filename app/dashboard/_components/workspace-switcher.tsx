@@ -31,7 +31,7 @@ export function WorkspaceSwitcher({
       </label>
       <input name="redirectTo" type="hidden" value={pathname} />
       <select
-        className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        className="ph-mask h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         defaultValue={currentId}
         name="subjectAccountId"
         onChange={() => formRef.current?.requestSubmit()}

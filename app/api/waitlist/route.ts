@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
+import { ANALYTICS_EVENTS, extractPublicUrlContext } from "@internal/analytics/events";
+import {
+  captureServerAnalyticsEvent,
+  captureServerException,
+  hashAnalyticsIdentifier,
+} from "@internal/analytics/server";
 import {
   readJsonBodyLimited,
   RequestBodyInvalidJsonError,
@@ -65,6 +71,10 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
+    captureServerException(error, {
+      source: "waitlist_rate_limit",
+      route: "/api/waitlist",
+    });
     return NextResponse.json(
       { error: "Service temporarily unavailable. Please try again shortly." },
       { status: 503 },
@@ -123,6 +133,7 @@ export async function POST(request: NextRequest) {
     .single<WaitlistRow>();
 
   if (error) {
+    const { sourceHost, sourcePath } = extractPublicUrlContext(parsed.data.siteUrl);
     console.error(
       JSON.stringify(
         {
@@ -134,8 +145,31 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.waitlistSignupFailed, {
+      source_host: sourceHost,
+      source_path: sourcePath,
+      failure_kind: "database",
+    });
+    captureServerException(error, {
+      source: "waitlist_upsert",
+      source_host: sourceHost,
+      source_path: sourcePath,
+    });
     return NextResponse.json({ error: "Unable to save signup right now" }, { status: 500 });
   }
+
+  const { sourceHost, sourcePath } = extractPublicUrlContext(parsed.data.siteUrl);
+  captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.waitlistSignupSaved,
+    {
+      source_host: sourceHost,
+      source_path: sourcePath,
+      site_url_present: Boolean(parsed.data.siteUrl),
+    },
+    {
+      distinctId: hashAnalyticsIdentifier("waitlist_signup", data.id),
+    },
+  );
 
   return NextResponse.json({ ok: true, signupId: data.id, createdAt: data.created_at });
 }

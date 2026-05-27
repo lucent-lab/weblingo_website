@@ -25,6 +25,15 @@ vi.mock("@internal/core/redis", () => ({ redis: {} }));
 const createServiceRoleClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createServiceRoleClient }));
 
+const analyticsMocks = vi.hoisted(() => ({
+  captureServerAnalyticsEvent: vi.fn(),
+  captureServerException: vi.fn(),
+  hashAnalyticsIdentifier: vi.fn((namespace: string, value: string | null | undefined) =>
+    value ? `${namespace}:hashed` : null,
+  ),
+}));
+vi.mock("@internal/analytics/server", () => analyticsMocks);
+
 const ORIGINAL_ENV = { ...process.env };
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
@@ -66,6 +75,9 @@ beforeEach(() => {
   createServiceRoleClient.mockReset();
   redirect.mockClear();
   headers.mockClear();
+  analyticsMocks.captureServerAnalyticsEvent.mockReset();
+  analyticsMocks.captureServerException.mockReset();
+  analyticsMocks.hashAnalyticsIdentifier.mockClear();
 });
 
 describe("submitContactMessage", () => {
@@ -108,6 +120,10 @@ describe("submitContactMessage", () => {
         url: "/en/contact?error=server",
       });
       expect(createServiceRoleClient).not.toHaveBeenCalled();
+      expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ source: "contact_rate_limit", locale: "en" }),
+      );
     } finally {
       (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
     }
@@ -141,5 +157,14 @@ describe("submitContactMessage", () => {
     expect(createServiceRoleClient).toHaveBeenCalledOnce();
     expect(from).toHaveBeenCalledOnce();
     expect(insert).toHaveBeenCalledOnce();
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "contact_message_submitted",
+      expect.objectContaining({
+        locale: "en",
+        source_host: "example.com",
+        domain_present: true,
+      }),
+      expect.objectContaining({ distinctId: "contact_domain:hashed" }),
+    );
   });
 });

@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
+import {
+  captureServerAnalyticsEvent,
+  captureServerException,
+  hashAnalyticsIdentifier,
+} from "@internal/analytics/server";
 import { createCheckoutSession } from "@internal/billing";
 import { buildPublicErrorBody, buildRequestId, isProdEnv } from "@internal/core/public-errors";
 import { envServer } from "@internal/core/env-server";
@@ -12,6 +18,17 @@ const bodySchema = z.object({
   email: z.string().email().optional(),
   locale: z.enum(i18nConfig.locales),
 });
+
+function isCheckoutClientError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.startsWith("Unknown pricing plan:") ||
+    /^Missing (monthly|yearly) price for plan:/.test(error.message)
+  );
+}
 
 export async function POST(request: NextRequest) {
   if (envServer.PUBLIC_PORTAL_MODE !== "enabled") {
@@ -47,23 +64,64 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${appUrl}/${normalizedLocale}/checkout/cancel`,
     });
 
+    captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.checkoutSessionCreateSucceeded,
+      {
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+        email_present: Boolean(email),
+        checkout_url_present: Boolean(session.url),
+      },
+      {
+        distinctId: hashAnalyticsIdentifier("stripe_session", session.id),
+      },
+    );
+
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create checkout session";
-    const clientErrorPatterns = [
-      "Unknown pricing plan",
-      "Missing monthly price",
-      "Missing yearly price",
-      "Invalid",
-    ];
-    const isClientError =
-      error instanceof Error &&
-      clientErrorPatterns.some((pattern) => error.message.includes(pattern));
+    const isClientError = isCheckoutClientError(error);
     const status = isClientError ? 400 : 500;
+
+    captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.checkoutSessionCreateFailed,
+      {
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+        email_present: Boolean(email),
+        failure_kind: isClientError ? "client" : "server",
+        failure_status: status,
+        error_name: error instanceof Error ? error.name : "unknown",
+      },
+      {
+        distinctId: hashAnalyticsIdentifier(
+          "checkout_request",
+          `${planId}:${cadence}:${normalizedLocale}`,
+        ),
+      },
+    );
 
     if (status !== 500) {
       return NextResponse.json({ error: message }, { status });
     }
+
+    captureServerException(
+      error,
+      {
+        source: "stripe_create_checkout_session",
+        plan_id: planId,
+        cadence,
+        locale: normalizedLocale,
+      },
+      {
+        distinctId: hashAnalyticsIdentifier(
+          "checkout_request",
+          `${planId}:${cadence}:${normalizedLocale}`,
+        ),
+      },
+    );
 
     const requestId = buildRequestId();
     console.error(

@@ -7,8 +7,11 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { logout } from "@/app/auth/logout/actions";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
+import { createClientTranslator } from "@internal/i18n";
+import messages from "@internal/i18n/messages/en.json";
 
 type DashboardError = Error & { digest?: string };
 
@@ -22,6 +25,7 @@ export default function DashboardError({
   const router = useRouter();
   const isProd = process.env.NODE_ENV === "production";
   const [showDetails, setShowDetails] = useState(!isProd);
+  const t = useMemo(() => createClientTranslator(messages), []);
 
   useEffect(() => {
     console.error(error);
@@ -57,9 +61,7 @@ export default function DashboardError({
               <Link href="/dashboard">Dashboard home</Link>
             </Button>
             <form action={logout}>
-              <Button size="sm" variant="outline" type="submit">
-                Sign out
-              </Button>
+              <SignOutButton>{t("dashboard.auth.signOut", "Sign out")}</SignOutButton>
             </form>
             <Button asChild size="sm" variant="link">
               <a href="mailto:contact@weblingo.app">Contact support</a>
