@@ -45,6 +45,7 @@ describe("client analytics helpers", () => {
       expect.objectContaining({
         api_host: "https://metrics.weblingo.app",
         ui_host: "https://eu.posthog.com",
+        defaults: "2026-01-30",
         autocapture: false,
         capture_heatmaps: false,
         capture_pageleave: false,

@@ -96,7 +96,7 @@ export function buildAnalyticsInitConfig(): AnalyticsInitConfig {
   return {
     api_host: env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST,
     ui_host: "https://eu.posthog.com",
-    defaults: "2025-05-24",
+    defaults: "2026-01-30",
     autocapture: false,
     capture_pageview: false,
     capture_pageleave: false,
