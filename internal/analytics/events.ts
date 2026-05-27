@@ -26,6 +26,7 @@ export const ANALYTICS_EVENTS = {
   waitlistSignupFailed: "waitlist_signup_failed",
   contactMessageSubmitted: "contact_message_submitted",
   contactMessageFailed: "contact_message_failed",
+  navigationPageView: "navigation_page_view",
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
@@ -52,9 +53,12 @@ type PageAnalyticsInput = {
   locale?: string | null;
   pageType?: string | null;
   pagePath?: string | null;
+  routeTemplate?: string | null;
+  routeArea?: string | null;
   variant?: string | null;
   segment?: string | null;
   sessionPresent?: boolean | null;
+  dashboardRoute?: boolean | null;
 };
 
 type CtaAnalyticsInput = PageAnalyticsInput & {
@@ -212,9 +216,12 @@ export function buildPageAnalyticsProperties(
   input: PageAnalyticsInput,
 ): Record<string, SanitizedAnalyticsPropertyValue> {
   return sanitizeAnalyticsProperties({
+    dashboard_route: input.dashboardRoute ?? undefined,
     locale: normalizeTrimmed(input.locale),
     page_type: normalizeTrimmed(input.pageType),
     page_path: normalizeSourcePath(input.pagePath ?? ""),
+    route_area: normalizeTrimmed(input.routeArea),
+    route_template: normalizeSourcePath(input.routeTemplate ?? ""),
     variant: normalizeTrimmed(input.variant),
     segment: normalizeTrimmed(input.segment),
     session_present: input.sessionPresent ?? undefined,

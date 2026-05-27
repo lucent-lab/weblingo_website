@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 
-import { AnalyticsPageView } from "@/components/analytics-page-view";
 import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { TryForm } from "@/components/try-form";
 import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  ANALYTICS_EVENTS,
-  buildCtaAnalyticsProperties,
-  buildPageAnalyticsProperties,
-} from "@internal/analytics/events";
+import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
@@ -50,16 +45,6 @@ export async function LandingSegmentPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <AnalyticsPageView
-        event={ANALYTICS_EVENTS.marketingPageView}
-        properties={buildPageAnalyticsProperties({
-          locale,
-          pagePath: resolvedPagePath,
-          pageType: "landing",
-          segment,
-          variant: segment === "expansion" ? "expansion" : undefined,
-        })}
-      />
       <section
         id="try"
         className="section-reveal relative isolate overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"

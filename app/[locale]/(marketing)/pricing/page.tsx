@@ -2,15 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowRight, Check } from "lucide-react";
 
-import { AnalyticsPageView } from "@/components/analytics-page-view";
 import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  ANALYTICS_EVENTS,
-  buildCtaAnalyticsProperties,
-  buildPageAnalyticsProperties,
-} from "@internal/analytics/events";
+import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 const rolloutCardIds = ["preview", "pilot", "agency"] as const;
@@ -29,15 +24,6 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
 
   return (
     <div className="min-h-screen bg-background">
-      <AnalyticsPageView
-        event={ANALYTICS_EVENTS.pricingPageView}
-        properties={buildPageAnalyticsProperties({
-          locale,
-          pagePath: pricingPagePath,
-          pageType: "pricing",
-        })}
-      />
-
       <section className="section-reveal relative overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="absolute inset-0 hero-pattern hero-gradient -z-10" />
         <div className="mx-auto max-w-4xl text-center">

@@ -156,4 +156,22 @@ describe("client analytics helpers", () => {
 
     expect(posthogMock.reset).toHaveBeenCalledOnce();
   });
+
+  it("can send navigation events immediately", async () => {
+    const { captureAnalyticsEvent } = await import("./client");
+
+    captureAnalyticsEvent(
+      "navigation_page_view",
+      { route_template: "/dashboard" },
+      {
+        sendInstantly: true,
+      },
+    );
+
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      "navigation_page_view",
+      { route_template: "/dashboard" },
+      { send_instantly: true },
+    );
+  });
 });
