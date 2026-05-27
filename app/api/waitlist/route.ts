@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
-    await captureServerException(error, {
+    captureServerException(error, {
       source: "waitlist_rate_limit",
       route: "/api/waitlist",
     });
@@ -145,12 +145,12 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
-    await captureServerAnalyticsEvent(ANALYTICS_EVENTS.waitlistSignupFailed, {
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.waitlistSignupFailed, {
       source_host: sourceHost,
       source_path: sourcePath,
       failure_kind: "database",
     });
-    await captureServerException(error, {
+    captureServerException(error, {
       source: "waitlist_upsert",
       source_host: sourceHost,
       source_path: sourcePath,
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { sourceHost, sourcePath } = extractPublicUrlContext(parsed.data.siteUrl);
-  await captureServerAnalyticsEvent(
+  captureServerAnalyticsEvent(
     ANALYTICS_EVENTS.waitlistSignupSaved,
     {
       source_host: sourceHost,

@@ -53,7 +53,7 @@ export async function submitContactMessage(locale: string, formData: FormData) {
         0,
       ),
     );
-    await captureServerException(error, {
+    captureServerException(error, {
       source: "contact_rate_limit",
       locale,
     });
@@ -102,7 +102,7 @@ export async function submitContactMessage(locale: string, formData: FormData) {
         0,
       ),
     );
-    await captureServerAnalyticsEvent(ANALYTICS_EVENTS.contactMessageFailed, {
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.contactMessageFailed, {
       locale,
       source_host: sourceHost,
       source_path: sourcePath,
@@ -110,7 +110,7 @@ export async function submitContactMessage(locale: string, formData: FormData) {
       message_present: Boolean(parsed.data.message?.trim()),
       failure_kind: "database",
     });
-    await captureServerException(error, {
+    captureServerException(error, {
       source: "contact_insert",
       locale,
       source_host: sourceHost,
@@ -119,7 +119,7 @@ export async function submitContactMessage(locale: string, formData: FormData) {
     return redirect(`/${locale}/contact?error=server`);
   }
 
-  await captureServerAnalyticsEvent(
+  captureServerAnalyticsEvent(
     ANALYTICS_EVENTS.contactMessageSubmitted,
     {
       locale,

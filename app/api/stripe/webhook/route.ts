@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
         0,
       ),
     );
-    await captureServerException(error, {
+    captureServerException(error, {
       source: "stripe_webhook_signature",
       error_name: error instanceof Error ? error.name : "unknown",
     });
@@ -424,13 +424,9 @@ export async function POST(request: NextRequest) {
     stripe_event_type: event.type,
   };
 
-  await captureServerAnalyticsEvent(
-    ANALYTICS_EVENTS.stripeWebhookReceived,
-    webhookAnalyticsProperties,
-    {
-      distinctId: webhookDistinctId,
-    },
-  );
+  captureServerAnalyticsEvent(ANALYTICS_EVENTS.stripeWebhookReceived, webhookAnalyticsProperties, {
+    distinctId: webhookDistinctId,
+  });
 
   switch (event.type) {
     case "checkout.session.completed": {
@@ -618,13 +614,9 @@ export async function POST(request: NextRequest) {
       break;
   }
 
-  await captureServerAnalyticsEvent(
-    ANALYTICS_EVENTS.stripeWebhookProcessed,
-    webhookAnalyticsProperties,
-    {
-      distinctId: webhookDistinctId,
-    },
-  );
+  captureServerAnalyticsEvent(ANALYTICS_EVENTS.stripeWebhookProcessed, webhookAnalyticsProperties, {
+    distinctId: webhookDistinctId,
+  });
 
   return NextResponse.json({ received: true });
 }

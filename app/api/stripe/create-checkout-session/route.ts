@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${appUrl}/${normalizedLocale}/checkout/cancel`,
     });
 
-    await captureServerAnalyticsEvent(
+    captureServerAnalyticsEvent(
       ANALYTICS_EVENTS.checkoutSessionCreateSucceeded,
       {
         plan_id: planId,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const isClientError = isCheckoutClientError(error);
     const status = isClientError ? 400 : 500;
 
-    await captureServerAnalyticsEvent(
+    captureServerAnalyticsEvent(
       ANALYTICS_EVENTS.checkoutSessionCreateFailed,
       {
         plan_id: planId,
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status });
     }
 
-    await captureServerException(
+    captureServerException(
       error,
       {
         source: "stripe_create_checkout_session",

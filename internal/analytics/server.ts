@@ -2,7 +2,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { PostHog } from "posthog-node";
+import { after } from "next/server";
+import { PostHog, type EventMessage } from "posthog-node";
 
 import { envServer } from "@internal/core/env-server";
 
@@ -13,12 +14,22 @@ import {
 } from "./events";
 
 const SERVER_ANALYTICS_DISTINCT_ID = "server";
-const POSTHOG_SHUTDOWN_TIMEOUT_MS = 1_000;
 
 type ServerAnalyticsOptions = {
   distinctId?: string | null;
   groups?: Record<string, string | null | undefined>;
 };
+
+type SafeExceptionFrame = {
+  type: string;
+  value: string;
+  mechanism: {
+    handled: boolean;
+    type: string;
+  };
+};
+
+type ServerImmediateEvent = Pick<EventMessage, "distinctId" | "event" | "groups" | "properties">;
 
 function createPostHogServerClient() {
   return new PostHog(envServer.NEXT_PUBLIC_POSTHOG_KEY, {
@@ -57,14 +68,6 @@ function sanitizeGroups(
   return Object.keys(sanitized).length ? sanitized : undefined;
 }
 
-async function shutdownPostHog(client: PostHog): Promise<void> {
-  try {
-    await client.shutdown(POSTHOG_SHUTDOWN_TIMEOUT_MS);
-  } catch {
-    // Analytics must never break user-facing flows.
-  }
-}
-
 function resolveErrorName(error: unknown): string {
   if (!(error instanceof Error)) {
     return "unknown";
@@ -80,6 +83,27 @@ function buildSafeAnalyticsException(): Error {
   return safeError;
 }
 
+function buildSafeExceptionList(error: Error): SafeExceptionFrame[] {
+  return [
+    {
+      type: error.name,
+      value: error.message,
+      mechanism: {
+        handled: true,
+        type: "generic",
+      },
+    },
+  ];
+}
+
+function scheduleServerAnalytics(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
+
 export function hashAnalyticsIdentifier(namespace: string, value: string | null | undefined) {
   const normalizedNamespace = namespace.trim();
   const normalizedValue = typeof value === "string" ? value.trim() : "";
@@ -91,46 +115,51 @@ export function hashAnalyticsIdentifier(namespace: string, value: string | null 
   return `${normalizedNamespace}:${digest}`;
 }
 
-export async function captureServerAnalyticsEvent(
-  event: AnalyticsEventName,
-  properties: AnalyticsProperties = {},
-  options: ServerAnalyticsOptions = {},
-): Promise<void> {
+async function sendServerImmediateEvent(payload: ServerImmediateEvent): Promise<void> {
   try {
     const client = createPostHogServerClient();
-    client.capture({
-      distinctId: normalizeDistinctId(options.distinctId),
-      event,
-      groups: sanitizeGroups(options.groups),
-      properties: sanitizeAnalyticsProperties({
-        ...properties,
-        runtime: "server",
-      }),
-    });
-    await shutdownPostHog(client);
+    await client.captureImmediate(payload);
   } catch {
     // Analytics must never break user-facing flows.
   }
 }
 
-export async function captureServerException(
+export function captureServerAnalyticsEvent(
+  event: AnalyticsEventName,
+  properties: AnalyticsProperties = {},
+  options: ServerAnalyticsOptions = {},
+): void {
+  const payload: ServerImmediateEvent = {
+    distinctId: normalizeDistinctId(options.distinctId),
+    event,
+    groups: sanitizeGroups(options.groups),
+    properties: sanitizeAnalyticsProperties({
+      ...properties,
+      runtime: "server",
+    }),
+  };
+
+  scheduleServerAnalytics(() => sendServerImmediateEvent(payload));
+}
+
+export function captureServerException(
   error: unknown,
   properties: AnalyticsProperties = {},
   options: ServerAnalyticsOptions = {},
-): Promise<void> {
-  try {
-    const client = createPostHogServerClient();
-    client.captureException(
-      buildSafeAnalyticsException(),
-      normalizeDistinctId(options.distinctId),
-      sanitizeAnalyticsProperties({
+): void {
+  const safeError = buildSafeAnalyticsException();
+  const payload: ServerImmediateEvent = {
+    distinctId: normalizeDistinctId(options.distinctId),
+    event: "$exception",
+    properties: {
+      $exception_list: buildSafeExceptionList(safeError),
+      ...sanitizeAnalyticsProperties({
         ...properties,
         error_name: resolveErrorName(error),
         runtime: "server",
       }),
-    );
-    await shutdownPostHog(client);
-  } catch {
-    // Analytics must never break user-facing flows.
-  }
+    },
+  };
+
+  scheduleServerAnalytics(() => sendServerImmediateEvent(payload));
 }
