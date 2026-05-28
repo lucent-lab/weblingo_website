@@ -3,6 +3,7 @@ import { i18nConfig } from "@internal/i18n";
 import { buildPageAnalyticsProperties, type AnalyticsProperties } from "./events";
 
 type NavigationAnalyticsInput = {
+  homePageVariant?: "classic" | "expansion";
   pathname: string | null;
   searchParams?: URLSearchParams | null;
 };
@@ -138,7 +139,9 @@ function resolveRouteDetails({
   routeTemplate,
   searchParams,
   segments,
+  homePageVariant,
 }: {
+  homePageVariant?: "classic" | "expansion";
   routeArea: string;
   routeTemplate: string;
   searchParams?: URLSearchParams | null;
@@ -187,13 +190,22 @@ function resolveRouteDetails({
   }
 
   if (routeTemplate === "/[locale]" || routeTemplate === "/") {
-    return { pageType: "home" };
+    if (homePageVariant === "expansion") {
+      return {
+        pageType: "landing",
+        segment: "expansion",
+        variant: "expansion",
+      };
+    }
+
+    return { pageType: "home", variant: "classic" };
   }
 
   return { pageType: routeArea };
 }
 
 export function buildNavigationAnalyticsProperties({
+  homePageVariant,
   pathname,
   searchParams,
 }: NavigationAnalyticsInput): AnalyticsProperties {
@@ -205,7 +217,13 @@ export function buildNavigationAnalyticsProperties({
     ? templateDashboardRoute(segments)
     : templateLocalizedRoute(segments, locale);
   const routeArea = resolveRouteArea(segments, locale);
-  const routeDetails = resolveRouteDetails({ routeArea, routeTemplate, searchParams, segments });
+  const routeDetails = resolveRouteDetails({
+    homePageVariant,
+    routeArea,
+    routeTemplate,
+    searchParams,
+    segments,
+  });
 
   return buildPageAnalyticsProperties({
     dashboardRoute,

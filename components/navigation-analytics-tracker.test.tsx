@@ -36,26 +36,29 @@ describe("NavigationAnalyticsTracker", () => {
   });
 
   it("captures the initial route and subsequent route changes once per pathname", async () => {
-    const rendered = render(<NavigationAnalyticsTracker />);
+    const rendered = render(<NavigationAnalyticsTracker homePageVariant="expansion" />);
 
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
         "navigation_page_view",
         expect.objectContaining({
           locale: "en",
+          page_type: "landing",
           route_template: "/[locale]",
+          segment: "expansion",
+          variant: "expansion",
         }),
         { sendInstantly: true },
       );
     });
     expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
 
-    rendered.rerender(<NavigationAnalyticsTracker />);
+    rendered.rerender(<NavigationAnalyticsTracker homePageVariant="expansion" />);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
 
     pathname = "/dashboard/sites/site_1234567890/settings";
-    rendered.rerender(<NavigationAnalyticsTracker />);
+    rendered.rerender(<NavigationAnalyticsTracker homePageVariant="expansion" />);
 
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledWith(

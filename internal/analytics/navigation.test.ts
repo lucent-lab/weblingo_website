@@ -80,6 +80,27 @@ describe("navigation analytics helpers", () => {
   });
 
   it("keeps safe page-specific dimensions on the global navigation event", () => {
+    expect(
+      buildNavigationAnalyticsProperties({
+        homePageVariant: "expansion",
+        pathname: "/en",
+      }),
+    ).toMatchObject({
+      page_type: "landing",
+      segment: "expansion",
+      variant: "expansion",
+    });
+
+    expect(
+      buildNavigationAnalyticsProperties({
+        homePageVariant: "classic",
+        pathname: "/en",
+      }),
+    ).toMatchObject({
+      page_type: "home",
+      variant: "classic",
+    });
+
     expect(buildNavigationAnalyticsProperties({ pathname: "/en/landing/expansion" })).toMatchObject(
       {
         page_type: "landing",

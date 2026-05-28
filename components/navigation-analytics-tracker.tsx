@@ -24,7 +24,11 @@ function shouldSkipRecentNavigationCapture(key: string): boolean {
   return now - lastCapturedAt < strictModeDuplicateWindowMs;
 }
 
-export function NavigationAnalyticsTracker() {
+type NavigationAnalyticsTrackerProps = {
+  homePageVariant?: "classic" | "expansion";
+};
+
+export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyticsTrackerProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const lastTrackedPathnameRef = useRef<string | null>(null);
@@ -45,10 +49,10 @@ export function NavigationAnalyticsTracker() {
     lastTrackedPathnameRef.current = captureKey;
     captureAnalyticsEvent(
       ANALYTICS_EVENTS.navigationPageView,
-      buildNavigationAnalyticsProperties({ pathname, searchParams }),
+      buildNavigationAnalyticsProperties({ homePageVariant, pathname, searchParams }),
       { sendInstantly: true },
     );
-  }, [pathname, searchParams]);
+  }, [homePageVariant, pathname, searchParams]);
 
   return null;
 }
