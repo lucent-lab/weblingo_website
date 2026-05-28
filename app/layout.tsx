@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { cn } from "@/lib/utils";
 import { NavigationAnalyticsTracker } from "@/components/navigation-analytics-tracker";
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans text-foreground antialiased")}>
         <div className="flex min-h-screen flex-col">{children}</div>
-        <NavigationAnalyticsTracker />
+        <Suspense fallback={null}>
+          <NavigationAnalyticsTracker />
+        </Suspense>
         <PreviewStatusRuntimeBootstrap />
         <Sonner />
       </body>
