@@ -228,7 +228,7 @@ export function buildNavigationAnalyticsProperties({
   return buildPageAnalyticsProperties({
     dashboardRoute,
     locale,
-    pagePath: routeTemplate,
+    pagePath: dashboardRoute ? routeTemplate : pagePath,
     ...routeDetails,
     routeArea,
     routeTemplate,

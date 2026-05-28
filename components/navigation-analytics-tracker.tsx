@@ -47,11 +47,12 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
     }
 
     lastTrackedPathnameRef.current = captureKey;
-    captureAnalyticsEvent(
-      ANALYTICS_EVENTS.navigationPageView,
-      buildNavigationAnalyticsProperties({ homePageVariant, pathname, searchParams }),
-      { sendInstantly: true },
-    );
+    const properties = buildNavigationAnalyticsProperties({
+      homePageVariant,
+      pathname,
+      searchParams,
+    });
+    captureAnalyticsEvent(ANALYTICS_EVENTS.posthogPageView, properties, { sendInstantly: true });
   }, [homePageVariant, pathname, searchParams]);
 
   return null;

@@ -17,6 +17,8 @@ const POSTHOG_URL_PROPERTIES = [
   "$initial_referrer",
 ] as const;
 
+const POSTHOG_PATH_PROPERTIES = ["$pathname", "$initial_pathname"] as const;
+
 const POSTHOG_PROPERTY_DENYLIST = [
   "$current_url",
   "$initial_current_url",
@@ -79,14 +81,80 @@ function stripUrlQueryAndHash(value: unknown): unknown {
   }
 }
 
+function normalizeSafeNavigationPath(properties: Record<string, unknown>): string | null {
+  const pagePath = properties.page_path;
+  const routeTemplate = properties.route_template;
+  const candidate = typeof pagePath === "string" ? pagePath : routeTemplate;
+
+  if (typeof candidate !== "string" || !candidate.startsWith("/")) {
+    return null;
+  }
+
+  return candidate.replace(/[?#].*$/, "") || "/";
+}
+
+function rewriteUrlPath(value: unknown, safePath: string): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+    url.pathname = safePath;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return safePath;
+  }
+}
+
+function buildSafeCurrentUrl(properties: Record<string, unknown>, safePath: string): string {
+  const currentUrl = properties.$current_url;
+  if (typeof currentUrl === "string") {
+    return String(rewriteUrlPath(currentUrl, safePath));
+  }
+
+  const host = properties.$host;
+  if (typeof host === "string" && host.trim()) {
+    return `https://${host.replace(/^https?:\/\//, "").replace(/\/+$/, "")}${safePath}`;
+  }
+
+  try {
+    const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+    appUrl.pathname = safePath;
+    appUrl.search = "";
+    appUrl.hash = "";
+    return appUrl.toString();
+  } catch {
+    return safePath;
+  }
+}
+
 const sanitizePostHogCaptureResult: AnalyticsBeforeSend = (result) => {
   if (result === null) {
     return null;
   }
 
+  const safeNavigationPath = normalizeSafeNavigationPath(result.properties);
+
   for (const property of POSTHOG_URL_PROPERTIES) {
     if (property in result.properties) {
-      result.properties[property] = stripUrlQueryAndHash(result.properties[property]);
+      result.properties[property] =
+        safeNavigationPath === null
+          ? stripUrlQueryAndHash(result.properties[property])
+          : rewriteUrlPath(result.properties[property], safeNavigationPath);
+    }
+  }
+
+  if (safeNavigationPath !== null) {
+    result.properties.$current_url = buildSafeCurrentUrl(result.properties, safeNavigationPath);
+    result.properties.$pathname = safeNavigationPath;
+
+    for (const property of POSTHOG_PATH_PROPERTIES) {
+      if (property in result.properties) {
+        result.properties[property] = safeNavigationPath;
+      }
     }
   }
 

@@ -97,6 +97,59 @@ describe("client analytics helpers", () => {
     expect(sanitized?.properties.$referrer).toBe("https://example.com/");
   });
 
+  it("rewrites SDK URL properties to safe route templates for navigation events", async () => {
+    const { buildAnalyticsInitConfig } = await import("./client");
+    const config = buildAnalyticsInitConfig();
+    const beforeSend = config.before_send;
+
+    if (typeof beforeSend !== "function") {
+      throw new Error("Expected a single before_send function");
+    }
+
+    const sanitized = beforeSend({
+      event: "$pageview",
+      properties: {
+        $current_url: "https://weblingo.app/dashboard/sites/site_1234567890/settings?token=secret",
+        $initial_current_url: "https://weblingo.app/dashboard/sites/site_1234567890/settings",
+        $pathname: "/dashboard/sites/site_1234567890/settings",
+        page_path: "/dashboard/sites/[id]/settings",
+        route_template: "/dashboard/sites/[id]/settings",
+      },
+      uuid: "test-event",
+    });
+
+    expect(sanitized?.properties.$current_url).toBe(
+      "https://weblingo.app/dashboard/sites/[id]/settings",
+    );
+    expect(sanitized?.properties.$initial_current_url).toBe(
+      "https://weblingo.app/dashboard/sites/[id]/settings",
+    );
+    expect(sanitized?.properties.$pathname).toBe("/dashboard/sites/[id]/settings");
+  });
+
+  it("adds safe canonical pageview URL properties when PostHog omits the raw URL", async () => {
+    const { buildAnalyticsInitConfig } = await import("./client");
+    const config = buildAnalyticsInitConfig();
+    const beforeSend = config.before_send;
+
+    if (typeof beforeSend !== "function") {
+      throw new Error("Expected a single before_send function");
+    }
+
+    const sanitized = beforeSend({
+      event: "$pageview",
+      properties: {
+        $host: "www.weblingo.app",
+        page_path: "/[locale]/pricing",
+        route_template: "/[locale]/pricing",
+      },
+      uuid: "test-event",
+    });
+
+    expect(sanitized?.properties.$current_url).toBe("https://www.weblingo.app/[locale]/pricing");
+    expect(sanitized?.properties.$pathname).toBe("/[locale]/pricing");
+  });
+
   it("keeps browser routing separate from the upstream PostHog ingestion host", async () => {
     process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "https://metrics.weblingo.app";
     process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -157,11 +210,11 @@ describe("client analytics helpers", () => {
     expect(posthogMock.reset).toHaveBeenCalledOnce();
   });
 
-  it("can send navigation events immediately", async () => {
+  it("can send pageview events immediately", async () => {
     const { captureAnalyticsEvent } = await import("./client");
 
     captureAnalyticsEvent(
-      "navigation_page_view",
+      "$pageview",
       { route_template: "/dashboard" },
       {
         sendInstantly: true,
@@ -169,7 +222,7 @@ describe("client analytics helpers", () => {
     );
 
     expect(posthogMock.capture).toHaveBeenCalledWith(
-      "navigation_page_view",
+      "$pageview",
       { route_template: "/dashboard" },
       { send_instantly: true },
     );
