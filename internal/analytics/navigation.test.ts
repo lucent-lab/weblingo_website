@@ -9,7 +9,7 @@ describe("navigation analytics helpers", () => {
     ).toEqual({
       dashboard_route: false,
       locale: "en",
-      page_path: "/[locale]/contact",
+      page_path: "/en/contact",
       page_type: "contact",
       route_area: "marketing",
       route_template: "/[locale]/contact",

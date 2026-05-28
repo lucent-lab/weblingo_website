@@ -1,4 +1,5 @@
 export const ANALYTICS_EVENTS = {
+  posthogPageView: "$pageview",
   tryFormStarted: "try_form_started",
   tryFormSubmitted: "try_form_submitted",
   previewCreateSucceeded: "preview_create_succeeded",
@@ -26,7 +27,6 @@ export const ANALYTICS_EVENTS = {
   waitlistSignupFailed: "waitlist_signup_failed",
   contactMessageSubmitted: "contact_message_submitted",
   contactMessageFailed: "contact_message_failed",
-  navigationPageView: "navigation_page_view",
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];

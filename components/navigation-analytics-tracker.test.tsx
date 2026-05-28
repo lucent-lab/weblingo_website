@@ -40,7 +40,7 @@ describe("NavigationAnalyticsTracker", () => {
 
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
-        "navigation_page_view",
+        "$pageview",
         expect.objectContaining({
           locale: "en",
           page_type: "landing",
@@ -62,7 +62,7 @@ describe("NavigationAnalyticsTracker", () => {
 
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
-        "navigation_page_view",
+        "$pageview",
         expect.objectContaining({
           dashboard_route: true,
           route_template: "/dashboard/sites/[id]/settings",
@@ -102,7 +102,7 @@ describe("NavigationAnalyticsTracker", () => {
 
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
-        "navigation_page_view",
+        "$pageview",
         expect.objectContaining({
           page_type: "checkout_success",
           route_template: "/[locale]/checkout/success",
