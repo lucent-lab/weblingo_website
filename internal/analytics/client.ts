@@ -54,6 +54,7 @@ export {
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "./events";
+export { buildNavigationAnalyticsProperties } from "./navigation";
 
 function normalizeAnalyticsText(value: string | null | undefined): string | null {
   if (typeof value !== "string") {
@@ -153,6 +154,7 @@ export function initializeAnalytics(): void {
 export function captureAnalyticsEvent(
   event: AnalyticsEventName,
   properties: AnalyticsProperties = {},
+  options: { sendInstantly?: boolean } = {},
 ): void {
   if (typeof window === "undefined") {
     return;
@@ -160,7 +162,11 @@ export function captureAnalyticsEvent(
 
   try {
     initializeAnalytics();
-    posthog.capture(event, sanitizeAnalyticsProperties(properties));
+    posthog.capture(
+      event,
+      sanitizeAnalyticsProperties(properties),
+      options.sendInstantly === true ? { send_instantly: true } : undefined,
+    );
   } catch {
     // Analytics must never break user-facing flows.
   }

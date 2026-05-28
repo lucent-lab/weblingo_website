@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AnalyticsPageView } from "@/components/analytics-page-view";
 import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Button } from "@/components/ui/button";
-import {
-  ANALYTICS_EVENTS,
-  buildCtaAnalyticsProperties,
-  buildPageAnalyticsProperties,
-} from "@internal/analytics/events";
+import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
 import { normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 export default async function CheckoutCancelPage({
@@ -26,14 +21,6 @@ export default async function CheckoutCancelPage({
 
   return (
     <div className="bg-background py-24">
-      <AnalyticsPageView
-        event={ANALYTICS_EVENTS.checkoutCancelView}
-        properties={buildPageAnalyticsProperties({
-          locale,
-          pagePath: checkoutCancelPath,
-          pageType: "checkout_cancel",
-        })}
-      />
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 text-center">
         <span className="text-sm uppercase tracking-[0.3em] text-primary">
           {t("checkout.cancel.tagline")}

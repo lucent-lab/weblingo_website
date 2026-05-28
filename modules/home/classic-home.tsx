@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
 import { ArrowRight, BarChart3, Cloud, Globe, Lock, RefreshCcw, Zap } from "lucide-react";
 
-import { AnalyticsPageView } from "@/components/analytics-page-view";
 import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { TryForm } from "@/components/try-form";
 import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
-import {
-  ANALYTICS_EVENTS,
-  buildCtaAnalyticsProperties,
-  buildPageAnalyticsProperties,
-} from "@internal/analytics/events";
+import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
 import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
@@ -71,15 +66,6 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
 
   return (
     <div className="min-h-screen bg-background">
-      <AnalyticsPageView
-        event={ANALYTICS_EVENTS.marketingPageView}
-        properties={buildPageAnalyticsProperties({
-          locale,
-          pagePath: baseHref,
-          pageType: "home",
-          variant: "classic",
-        })}
-      />
       <section
         id="try"
         className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32"

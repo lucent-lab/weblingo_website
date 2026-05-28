@@ -1,11 +1,14 @@
 import "../styles/globals.css";
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { cn } from "@/lib/utils";
+import { NavigationAnalyticsTracker } from "@/components/navigation-analytics-tracker";
 import { PreviewStatusRuntimeBootstrap } from "@/components/preview-status-runtime-bootstrap";
 import { Sonner } from "@/components/ui/sonner";
 import { env } from "@internal/core";
+import { envServer } from "@internal/core/env-server";
 
 const appUrl = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
 
@@ -44,6 +47,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans text-foreground antialiased")}>
         <div className="flex min-h-screen flex-col">{children}</div>
+        <Suspense fallback={null}>
+          <NavigationAnalyticsTracker homePageVariant={envServer.HOME_PAGE_VARIANT} />
+        </Suspense>
         <PreviewStatusRuntimeBootstrap />
         <Sonner />
       </body>
