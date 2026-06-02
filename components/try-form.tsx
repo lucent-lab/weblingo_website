@@ -1201,6 +1201,7 @@ export function TryForm({
       closeEventSource();
 
       const requestKey = buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,

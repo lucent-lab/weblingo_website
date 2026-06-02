@@ -41,6 +41,7 @@ export type PreviewStatusCenterState = {
 };
 
 export type ParsedPreviewStatusCenterRequestKey = {
+  kind: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
@@ -188,12 +189,14 @@ function decodeRequestKeyPart(value: string): string {
 }
 
 export function buildPreviewStatusCenterRequestKey(input: {
+  kind?: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
   email?: string | null;
 }): string {
   const parts = [
+    input.kind ?? "preview",
     input.sourceUrl.trim(),
     normalizeLangTagForRequestKey(input.sourceLang),
     normalizeLangTagForRequestKey(input.targetLang),
@@ -209,7 +212,12 @@ export function parsePreviewStatusCenterRequestKey(
 ): ParsedPreviewStatusCenterRequestKey | null {
   if (requestKey.startsWith(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX)) {
     const encoded = requestKey.slice(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX.length);
-    const [sourceUrl, sourceLang, targetLang, email = "", ...rest] = encoded.split("|");
+    const parts = encoded.split("|");
+    const hasKind = parts[0] === "preview" || parts[0] === "prospect_showcase";
+    const kind: PreviewJobKind = hasKind ? (parts[0] as PreviewJobKind) : "preview";
+    const [, sourceUrl, sourceLang, targetLang, email = "", ...rest] = hasKind
+      ? parts
+      : ["preview", ...parts];
     if (!sourceUrl || !sourceLang || !targetLang || rest.length > 0) {
       return null;
     }
@@ -221,6 +229,7 @@ export function parsePreviewStatusCenterRequestKey(
       return null;
     }
     return {
+      kind,
       sourceUrl: decodedSourceUrl,
       sourceLang: decodedSourceLang,
       targetLang: decodedTargetLang,
@@ -233,6 +242,7 @@ export function parsePreviewStatusCenterRequestKey(
     return null;
   }
   return {
+    kind: "preview",
     sourceUrl,
     sourceLang,
     targetLang,
@@ -243,6 +253,7 @@ export function parsePreviewStatusCenterRequestKey(
 function resolveCanonicalRequestKey(
   requestKey: string | null | undefined,
   fallback: {
+    kind?: PreviewJobKind;
     sourceUrl: string;
     sourceLang: string;
     targetLang: string;
@@ -251,6 +262,7 @@ function resolveCanonicalRequestKey(
 ): string {
   const parsed = requestKey ? parsePreviewStatusCenterRequestKey(requestKey) : null;
   return buildPreviewStatusCenterRequestKey({
+    kind: parsed?.kind ?? fallback.kind,
     sourceUrl: parsed?.sourceUrl ?? fallback.sourceUrl,
     sourceLang: parsed?.sourceLang ?? fallback.sourceLang,
     targetLang: parsed?.targetLang ?? fallback.targetLang,
