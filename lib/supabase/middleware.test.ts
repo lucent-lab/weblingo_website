@@ -27,4 +27,24 @@ describe("updateSession", () => {
       "https://weblingo.app/demo-dashboard?token=demo-token",
     );
   });
+
+  it("rewrites a locale-prefixed public demo dashboard outside the authenticated dashboard layout", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/en/dashboard/demo?token=demo-token"),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://weblingo.app/demo-dashboard?token=demo-token",
+    );
+  });
+
+  it("rewrites a locale-prefixed public demo dashboard with a trailing slash", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/fr/dashboard/demo/?token=demo-token"),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://weblingo.app/demo-dashboard?token=demo-token",
+    );
+  });
 });

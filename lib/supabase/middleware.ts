@@ -2,13 +2,20 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
+import { i18nConfig } from "@internal/i18n";
 import { getSupabasePublicEnv } from "./env";
 
+const publicDemoDashboardPaths = new Set(
+  i18nConfig.locales.flatMap((locale) => [
+    `/${locale}/dashboard/demo`,
+    `/${locale}/dashboard/demo/`,
+  ]),
+);
+publicDemoDashboardPaths.add("/dashboard/demo");
+publicDemoDashboardPaths.add("/dashboard/demo/");
+
 export async function updateSession(request: NextRequest) {
-  if (
-    request.nextUrl.pathname === "/dashboard/demo" ||
-    request.nextUrl.pathname === "/dashboard/demo/"
-  ) {
+  if (publicDemoDashboardPaths.has(request.nextUrl.pathname)) {
     const url = new URL(request.url);
     url.pathname = "/demo-dashboard";
     return NextResponse.rewrite(url);
