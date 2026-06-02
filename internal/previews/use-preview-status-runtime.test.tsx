@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
@@ -67,6 +67,7 @@ describe("usePreviewStatusRuntime", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.localStorage.clear();
@@ -79,6 +80,51 @@ describe("usePreviewStatusRuntime", () => {
 
     await waitFor(() => {
       expect(activeIntervals.size).toBe(0);
+    });
+  });
+
+  it("expires ready jobs at expiresAt without active polling", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "ready-expiry-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "ready",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      expiresAt: Date.now() + 1000,
+      remoteStatusVerified: true,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    });
+
+    render(<RuntimeHarness />);
+    expect(activeIntervals.size).toBe(0);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "ready",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: null,
+      errorCode: "preview_expired",
     });
   });
 

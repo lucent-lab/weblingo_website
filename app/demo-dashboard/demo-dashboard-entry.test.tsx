@@ -84,6 +84,35 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("does not re-exchange a query token after URL scrubbing clears search params", async () => {
+    searchParamsState.value = new URLSearchParams("token=demo-token&source=mail");
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
+    let resolveClaim: (response: Response) => void = () => undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveClaim = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(<DemoDashboardEntry messages={messages} />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+    searchParamsState.value = new URLSearchParams("source=mail");
+    rerender(<DemoDashboardEntry messages={messages} />);
+
+    await act(async () => {
+      resolveClaim(jsonResponse(claimPayload("ps-demo")));
+      await Promise.resolve();
+    });
+
+    await screen.findByText("ps-demo");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("reads demo access tokens from the URL fragment and scrubs them before exchange", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?source=mail#token=fragment-token");
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-fragment")));
@@ -512,6 +541,37 @@ describe("DemoDashboardEntry", () => {
     expect(screen.getByText(/Continue with backend action: contact_sales/)).toBeTruthy();
     const workspaceLink = screen.getByRole("link", { name: /Open customer workspace/ });
     expect(workspaceLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
+  });
+
+  it("clears stale stored access tokens when the stored claim is expired", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T12:00:01.000Z"));
+    const claim = claimPayload("ps-expired", "2026-06-02T12:00:00.000Z");
+    window.sessionStorage.setItem("weblingo:demo-dashboard:access-token:v1", "stale-token");
+    window.sessionStorage.setItem("weblingo:demo-dashboard:claim:v1", JSON.stringify(claim));
+    window.sessionStorage.setItem(
+      "weblingo:demo-dashboard:conversion:v1",
+      JSON.stringify({
+        claimToken: claim.token,
+        conversionToken: claim.conversionToken,
+        prospectShowcaseRef: claim.prospectShowcaseRef,
+        payload: conversionPayload("checkout_pending"),
+      }),
+    );
+    const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-replayed")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
   });
 
   it("restores a completed conversion result after reload", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, CheckCircle2, LoaderCircle, LockKeyhole, MonitorPlay } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
@@ -185,6 +185,17 @@ function readStoredDemoAccessToken(): string {
     return window.sessionStorage.getItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY)?.trim() ?? "";
   } catch {
     return "";
+  }
+}
+
+function hasStoredDemoClaimPayload(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.sessionStorage.getItem(DEMO_CLAIM_SESSION_STORAGE_KEY) !== null;
+  } catch {
+    return false;
   }
 }
 
@@ -431,7 +442,7 @@ export function DemoDashboardEntry({
   const searchParams = useSearchParams();
   const trimmedToken =
     normalizeAccessToken(accessToken) || normalizeAccessToken(searchParams.get("token"));
-  return <DemoDashboardSession key={trimmedToken} accessToken={trimmedToken} messages={messages} />;
+  return <DemoDashboardSession accessToken={trimmedToken} messages={messages} />;
 }
 
 function DemoDashboardSession({
@@ -453,6 +464,7 @@ function DemoDashboardSession({
     status: "idle",
   });
   const [clientRestoreComplete, setClientRestoreComplete] = useState(Boolean(trimmedToken));
+  const handledExternalTokenRef = useRef(trimmedToken);
 
   const effectiveClaimState: ClaimState = !clientRestoreComplete
     ? { status: "loading" }
@@ -482,7 +494,24 @@ function DemoDashboardSession({
 
   useEffect(() => {
     if (trimmedToken) {
-      storeDemoAccessToken(trimmedToken);
+      if (handledExternalTokenRef.current !== trimmedToken) {
+        let canceled = false;
+        const nextToken = trimmedToken;
+        handledExternalTokenRef.current = nextToken;
+        queueMicrotask(() => {
+          if (canceled) {
+            return;
+          }
+          setClaimAccessToken(nextToken);
+          setClaimState({ status: "loading" });
+          setConversionState({ status: "idle" });
+          setClientRestoreComplete(true);
+        });
+        scrubDemoAccessTokenFromLocation();
+        return () => {
+          canceled = true;
+        };
+      }
       scrubDemoAccessTokenFromLocation();
       return;
     }
@@ -493,7 +522,6 @@ function DemoDashboardSession({
       if (!locationAccessToken) {
         return false;
       }
-      storeDemoAccessToken(locationAccessToken);
       scrubDemoAccessTokenFromLocation();
       setClaimAccessToken(locationAccessToken);
       setClaimState({ status: "loading" });
@@ -502,6 +530,30 @@ function DemoDashboardSession({
       return true;
     };
     const restoreStoredSession = () => {
+      const hadStoredClaim = hasStoredDemoClaimPayload();
+      const storedClaim = readStoredDemoClaimPayload();
+      if (storedClaim) {
+        clearStoredDemoAccessToken();
+        setClaimAccessToken("");
+        setClaimState({ status: "ready", payload: storedClaim });
+        setConversionState(() => {
+          const storedConversion = readStoredDemoConversionPayload(storedClaim);
+          return storedConversion
+            ? { status: "result", payload: storedConversion }
+            : { status: "idle" };
+        });
+        setClientRestoreComplete(true);
+        return;
+      }
+
+      if (hadStoredClaim) {
+        setClaimAccessToken("");
+        setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
+        setConversionState({ status: "idle" });
+        setClientRestoreComplete(true);
+        return;
+      }
+
       const storedAccessToken = readStoredDemoAccessToken();
       if (storedAccessToken) {
         setClaimAccessToken(storedAccessToken);
@@ -511,15 +563,9 @@ function DemoDashboardSession({
         return;
       }
 
-      const storedClaim = readStoredDemoClaimPayload();
       setClaimAccessToken("");
-      setClaimState(storedClaim ? { status: "ready", payload: storedClaim } : { status: "idle" });
-      setConversionState(() => {
-        const storedConversion = storedClaim ? readStoredDemoConversionPayload(storedClaim) : null;
-        return storedConversion
-          ? { status: "result", payload: storedConversion }
-          : { status: "idle" };
-      });
+      setClaimState({ status: "idle" });
+      setConversionState({ status: "idle" });
       setClientRestoreComplete(true);
     };
     const restoreFromHashChange = () => {
@@ -537,6 +583,10 @@ function DemoDashboardSession({
       if (restoreLocationAccessToken()) {
         return;
       }
+      if (claimAccessToken) {
+        setClientRestoreComplete(true);
+        return;
+      }
       restoreStoredSession();
     });
     window.addEventListener("hashchange", restoreFromHashChange);
@@ -544,7 +594,7 @@ function DemoDashboardSession({
       canceled = true;
       window.removeEventListener("hashchange", restoreFromHashChange);
     };
-  }, [trimmedToken]);
+  }, [claimAccessToken, trimmedToken, t]);
 
   const exchangeClaimToken = useCallback(
     async (isCanceled: () => boolean = () => false): Promise<ClaimState | null> => {
@@ -563,6 +613,7 @@ function DemoDashboardSession({
           return null;
         }
         if (!response.ok) {
+          storeDemoAccessToken(claimAccessToken);
           return {
             status: "error",
             message: parseErrorMessage(body, t("dashboard.demo.error.claimUnavailable")),
@@ -577,9 +628,11 @@ function DemoDashboardSession({
         clearStoredDemoAccessToken();
         return { status: "ready", payload: parsed };
       } catch {
-        return isCanceled()
-          ? null
-          : { status: "error", message: t("dashboard.demo.error.openFailed") };
+        if (isCanceled()) {
+          return null;
+        }
+        storeDemoAccessToken(claimAccessToken);
+        return { status: "error", message: t("dashboard.demo.error.openFailed") };
       }
     },
     [claimAccessToken, t],

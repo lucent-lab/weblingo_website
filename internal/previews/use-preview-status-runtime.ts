@@ -20,6 +20,7 @@ import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
 import { buildPreviewJobStatusUrl } from "./preview-job-policy";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
+const MAX_TIMEOUT_DELAY_MS = 2_147_483_647;
 let previewStatusRuntimeOwner: symbol | null = null;
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
@@ -69,6 +70,31 @@ export function usePreviewStatusRuntime() {
     hydratePreviewStatusCenterStore();
     cleanupPreviewStatusCenterJobs();
   }, []);
+
+  useEffect(() => {
+    if (!isOwnerRef.current) {
+      return;
+    }
+
+    let nextExpiryAt: number | null = null;
+    for (const job of jobs) {
+      if (job.status !== "ready" || job.expiresAt === null) {
+        continue;
+      }
+      nextExpiryAt = nextExpiryAt === null ? job.expiresAt : Math.min(nextExpiryAt, job.expiresAt);
+    }
+    if (nextExpiryAt === null) {
+      return;
+    }
+
+    const delayMs = Math.max(0, Math.min(nextExpiryAt - Date.now(), MAX_TIMEOUT_DELAY_MS));
+    const timeout = window.setTimeout(() => {
+      cleanupPreviewStatusCenterJobs();
+    }, delayMs);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [jobs]);
 
   useEffect(() => {
     if (!isOwnerRef.current) {
