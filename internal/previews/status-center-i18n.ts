@@ -59,6 +59,7 @@ export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.error.unknown",
   "try.error.waf_blocked",
   "try.preview.open",
+  "try.preview.openDemoDashboard",
   "try.stage.analyzing_content",
   "try.stage.fetching_page",
   "try.stage.generating_preview",

@@ -334,6 +334,50 @@ describe("DemoDashboardEntry", () => {
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBeNull();
   });
 
+  it("does not restore an older cached claim after a new access token fails", async () => {
+    window.sessionStorage.setItem(
+      "weblingo:demo-dashboard:claim:v1",
+      JSON.stringify(claimPayload("ps-old")),
+    );
+    window.sessionStorage.setItem(
+      "weblingo:demo-dashboard:conversion:v1",
+      JSON.stringify({
+        claimToken: "claim-ps-old",
+        conversionToken: "conversion-ps-old",
+        prospectShowcaseRef: "ps-old",
+        payload: conversionPayload("checkout_pending"),
+      }),
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: "temporary failure" }, 503))
+      .mockResolvedValueOnce(jsonResponse(claimPayload("ps-new")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { unmount } = render(<DemoDashboardEntry accessToken="new-token" messages={messages} />);
+
+    await screen.findByText("temporary failure");
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBe(
+      "new-token",
+    );
+
+    unmount();
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await screen.findByText("ps-new");
+    expect(screen.queryByText("ps-old")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "new-token" }),
+      }),
+    );
+  });
+
   it("scrubs the URL token and clears stale storage when a successful claim response is invalid", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     window.sessionStorage.setItem(

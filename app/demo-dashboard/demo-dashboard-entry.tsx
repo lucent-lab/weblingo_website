@@ -613,6 +613,7 @@ function DemoDashboardSession({
           return null;
         }
         if (!response.ok) {
+          clearStoredDemoClaimPayload();
           storeDemoAccessToken(claimAccessToken);
           return {
             status: "error",
@@ -631,6 +632,7 @@ function DemoDashboardSession({
         if (isCanceled()) {
           return null;
         }
+        clearStoredDemoClaimPayload();
         storeDemoAccessToken(claimAccessToken);
         return { status: "error", message: t("dashboard.demo.error.openFailed") };
       }

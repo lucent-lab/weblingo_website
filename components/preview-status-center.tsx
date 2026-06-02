@@ -116,6 +116,31 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
                 </Button>
               ) : null}
 
+              {job.status === "ready" && job.demoDashboardUrl ? (
+                <Button asChild size="sm" variant="secondary">
+                  <a
+                    href={job.demoDashboardUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => {
+                      captureAnalyticsEvent(
+                        ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+                        buildPreviewAnalyticsProperties({
+                          sourceUrl: job.sourceUrl,
+                          sourceLang: job.sourceLang,
+                          targetLang: job.targetLang,
+                          previewId: job.previewId,
+                          status: job.status,
+                          stage: job.stage,
+                        }),
+                      );
+                    }}
+                  >
+                    {t("try.preview.openDemoDashboard")}
+                  </a>
+                </Button>
+              ) : null}
+
               {terminal ? (
                 <Button
                   size="sm"
