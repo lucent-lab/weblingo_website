@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   const rateLimitResponse = await enforcePreviewRateLimit({
     key: buildPreviewIpRateLimitKey(request, "prospect-claim"),
-    limit: config.statusMaxPerWindow,
+    limit: config.createMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "json",
     limitedMessage: "Too many demo access requests. Please try again shortly.",

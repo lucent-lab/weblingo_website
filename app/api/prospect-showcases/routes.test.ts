@@ -210,6 +210,14 @@ describe("/api/prospect-showcases proxy routes", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(200);
+    expect(rateLimitFixedWindow).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        key: "rl:v1:preview:prospect-claim:ip:1.2.3.4",
+        limit: 20,
+        windowMs: 60000,
+      }),
+    );
     expect(request.nextUrl.search).toBe("");
     expect(fetchWithTimeout).toHaveBeenCalledWith(
       "https://api.example.com/api/prospect-showcases/claim",

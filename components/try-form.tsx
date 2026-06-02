@@ -324,7 +324,7 @@ export function TryForm({
     [jobs, lastRequestKey],
   );
   const mode = useMemo(() => resolveTryFormMode(isCreating, trackedJob), [isCreating, trackedJob]);
-  const supportsPendingEmail = showEmailField && trackedJob?.kind !== "prospect_showcase";
+  const supportsPendingEmailRecovery = showEmailField && trackedJob?.kind !== "prospect_showcase";
 
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning =
@@ -1542,7 +1542,7 @@ export function TryForm({
                 </label>
               </div>
 
-              {showEmailField && !submittedEmail ? (
+              {showEmailField ? (
                 <>
                   <label className="flex flex-col gap-2 text-sm">
                     <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
@@ -1649,7 +1649,7 @@ export function TryForm({
                 </label>
               </div>
 
-              {supportsPendingEmail ? (
+              {showEmailField ? (
                 <>
                   <label className="flex flex-col gap-2 text-sm">
                     <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
@@ -1792,7 +1792,7 @@ export function TryForm({
                 </div>
               ) : null}
 
-              {supportsPendingEmail ? (
+              {supportsPendingEmailRecovery ? (
                 <div className="max-w-sm space-y-3 border-t border-border/65 pt-4">
                   {pendingEmailStatus === "saved" ? (
                     <p className="text-sm font-medium text-foreground">
@@ -1868,7 +1868,7 @@ export function TryForm({
       {timedOut && !timedOutWithEmail ? (
         <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <p>{t("try.status.timedOutNoEmail")}</p>
-          {supportsPendingEmail && !submittedEmail && pendingEmailStatus !== "saved" ? (
+          {supportsPendingEmailRecovery && !submittedEmail && pendingEmailStatus !== "saved" ? (
             <div className="flex flex-col gap-2">
               <p className="text-xs">{t("try.pending.emailPrompt")}</p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -1909,7 +1909,7 @@ export function TryForm({
               ) : null}
             </div>
           ) : null}
-          {supportsPendingEmail && !submittedEmail && pendingEmailStatus === "saved" ? (
+          {supportsPendingEmailRecovery && !submittedEmail && pendingEmailStatus === "saved" ? (
             <p className="text-xs text-primary">{t("try.pending.emailSaved")}</p>
           ) : null}
           <Button

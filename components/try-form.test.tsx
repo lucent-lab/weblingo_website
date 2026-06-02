@@ -1448,6 +1448,74 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("keeps the legacy email field editable after restoring a prospect showcase job", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        prospectShowcaseRef: "prospect-next-3333",
+        statusToken: "next-token",
+        status: "pending",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      kind: "prospect_showcase",
+      sourceUrl: "https://restore.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          kind: "prospect_showcase",
+          previewId: "prospect-legacy-2222-2222-2222-222222222222",
+          requestKey,
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "ready",
+          stage: null,
+          previewUrl: "https://showcase.example.com",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo",
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    const emailInput = await screen.findByDisplayValue("owner@example.com");
+    fireEvent.change(emailInput, { target: { value: "next@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const [, requestInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(String(requestInit.body))).toMatchObject({
+        sourceUrl: "https://restore.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "next@example.com",
+      });
+    });
+  });
+
   it("checks restored provider-capacity waits on mount", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({
