@@ -283,7 +283,6 @@ function DemoDashboardSession({
     }
 
     let canceled = false;
-    clearStoredDemoClaimPayload();
     void (async () => {
       try {
         const response = await fetch("/api/prospect-showcases/claim", {
@@ -303,13 +302,14 @@ function DemoDashboardSession({
           });
           return;
         }
-        scrubDemoAccessTokenFromLocation();
         const parsed = parseClaimPayload(body);
         if (!parsed) {
+          clearStoredDemoClaimPayload();
           setClaimState({ status: "error", message: t("dashboard.demo.error.invalidClaim") });
           return;
         }
         storeDemoClaimPayload(parsed);
+        scrubDemoAccessTokenFromLocation();
         setClaimState({ status: "ready", payload: parsed });
       } catch {
         if (!canceled) {

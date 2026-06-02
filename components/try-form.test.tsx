@@ -398,6 +398,17 @@ describe("TryForm preview status", () => {
         email: "owner@example.com",
       });
     });
+    await waitFor(() => {
+      expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(
+        buildPreviewStatusCenterRequestKey({
+          kind: "prospect_showcase",
+          sourceUrl: "https://launch.example.com/public-page",
+          sourceLang: "en",
+          targetLang: "fr",
+          email: "owner@example.com",
+        }),
+      );
+    });
   });
 
   it("captures preview terminal failures from the create response", async () => {

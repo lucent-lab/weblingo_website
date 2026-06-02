@@ -97,8 +97,12 @@ describe("DemoDashboardEntry", () => {
     expect(window.location.hash).toBe("#open");
   });
 
-  it("scrubs the URL token when a successful claim response is invalid", async () => {
+  it("keeps the URL token and clears stale storage when a successful claim response is invalid", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
+    window.sessionStorage.setItem(
+      "weblingo:demo-dashboard:claim:v1",
+      JSON.stringify(claimPayload("ps-stale")),
+    );
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -106,8 +110,9 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("Demo access response was invalid.");
     expect(window.location.pathname).toBe("/dashboard/demo");
-    expect(window.location.search).toBe("?source=mail");
+    expect(window.location.search).toBe("?token=demo-token&source=mail");
     expect(window.location.hash).toBe("#open");
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
   });
 
   it("clears stale claim and conversion state when the token changes", async () => {

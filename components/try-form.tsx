@@ -1205,6 +1205,7 @@ export function TryForm({
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,
+        email: showEmailField ? trimmedEmail : undefined,
       });
       setLastRequestKey(requestKey);
 
