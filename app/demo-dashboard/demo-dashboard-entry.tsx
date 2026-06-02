@@ -300,14 +300,21 @@ function getConversionNextActionCopy(t: Translator, nextAction?: string): string
   }
 }
 
+type AccessTokenInput = string | readonly string[] | null | undefined;
+
+function normalizeAccessToken(accessToken: AccessTokenInput): string {
+  const value = Array.isArray(accessToken) ? accessToken[0] : accessToken;
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function DemoDashboardEntry({
   accessToken,
   messages,
 }: {
-  accessToken: string;
+  accessToken: AccessTokenInput;
   messages: ClientMessages;
 }) {
-  const trimmedToken = accessToken.trim();
+  const trimmedToken = normalizeAccessToken(accessToken);
   return <DemoDashboardSession key={trimmedToken} accessToken={trimmedToken} messages={messages} />;
 }
 
@@ -354,6 +361,11 @@ function DemoDashboardSession({
         }).format(parsed)
       : payload.expiresAt;
   }, [payload]);
+  const expireCurrentDemoClaim = useCallback(() => {
+    clearStoredDemoClaimPayload();
+    setConversionState({ status: "idle" });
+    setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
+  }, [t]);
 
   const exchangeClaimToken = useCallback(
     async (isCanceled: () => boolean = () => false): Promise<ClaimState | null> => {
@@ -443,17 +455,20 @@ function DemoDashboardSession({
     }
     const delayMs = Math.max(0, Math.min(expiresAtMs - Date.now(), 2_147_483_647));
     const timeout = window.setTimeout(() => {
-      clearStoredDemoClaimPayload();
-      setConversionState({ status: "idle" });
-      setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
+      expireCurrentDemoClaim();
     }, delayMs);
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [payload, t]);
+  }, [expireCurrentDemoClaim, payload]);
 
   async function handleConvert() {
     if (!payload) {
+      return;
+    }
+    const currentPayload = payload;
+    if (!isFreshClaimPayload(currentPayload)) {
+      expireCurrentDemoClaim();
       return;
     }
     const normalizedEmail = email.trim().toLowerCase();
@@ -465,18 +480,22 @@ function DemoDashboardSession({
     setConversionState({ status: "submitting" });
     try {
       const response = await fetch(
-        `/api/prospect-showcases/${encodeURIComponent(payload.prospectShowcaseRef)}/convert`,
+        `/api/prospect-showcases/${encodeURIComponent(currentPayload.prospectShowcaseRef)}/convert`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: normalizedEmail,
-            conversionToken: payload.conversionToken,
-            dashboardToken: payload.token,
+            conversionToken: currentPayload.conversionToken,
+            dashboardToken: currentPayload.token,
           }),
         },
       );
       const body = await response.json().catch(() => null);
+      if (!isFreshClaimPayload(currentPayload)) {
+        expireCurrentDemoClaim();
+        return;
+      }
       if (!response.ok) {
         setConversionState({
           status: "error",
@@ -492,7 +511,7 @@ function DemoDashboardSession({
         });
         return;
       }
-      storeDemoConversionPayload(payload, parsed);
+      storeDemoConversionPayload(currentPayload, parsed);
       setConversionState({ status: "result", payload: parsed });
     } catch {
       setConversionState({ status: "error", message: t("dashboard.demo.error.convertFailed") });

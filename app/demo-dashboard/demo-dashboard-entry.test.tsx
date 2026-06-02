@@ -67,6 +67,24 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("uses the first token when the URL includes duplicated token params", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-demo")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <DemoDashboardEntry accessToken={["demo-token", "ignored-token"]} messages={messages} />,
+    );
+
+    await screen.findByText("ps-demo");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "demo-token" }),
+      }),
+    );
+  });
+
   it("restores the claimed demo session after the URL token is scrubbed", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token#open");
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-session")));
@@ -214,6 +232,48 @@ describe("DemoDashboardEntry", () => {
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(screen.queryByText("Activation started")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores conversion responses that resolve after demo access expires", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    let resolveConversion: (response: Response) => void = () => undefined;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(
+          jsonResponse(claimPayload("ps-expiring", "2026-06-02T12:00:00.000Z")),
+        );
+      }
+      return new Promise<Response>((resolve) => {
+        resolveConversion = resolve;
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("ps-expiring")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+
+    await act(async () => {
+      resolveConversion(jsonResponse(conversionPayload("converted")));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+    expect(screen.queryByText("Activation started")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
   });
 
   it("restores a completed conversion result after reload", async () => {
