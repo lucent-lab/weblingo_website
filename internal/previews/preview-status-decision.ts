@@ -59,10 +59,25 @@ type ResolvePreviewStatusDecisionInput = {
   payloadKind?: PreviewJobKind;
 };
 
+const PROSPECT_SHOWCASE_TERMINAL_STATUSES = new Set([
+  "checkout_pending",
+  "activation_pending",
+  "payment_failed",
+  "converted",
+]);
+
 function readDetails(payload: Record<string, unknown> | null): Record<string, unknown> | null {
   return payload && typeof payload.details === "object" && payload.details !== null
     ? (payload.details as Record<string, unknown>)
     : null;
+}
+
+function isProspectShowcaseTerminalStatus(payloadKind: PreviewJobKind, status: unknown): boolean {
+  return (
+    payloadKind === "prospect_showcase" &&
+    typeof status === "string" &&
+    PROSPECT_SHOWCASE_TERMINAL_STATUSES.has(status)
+  );
 }
 
 export function resolvePreviewErrorPayload(
@@ -152,7 +167,7 @@ export function resolvePreviewStatusDecision({
     };
   }
 
-  if (payload.status === "ready") {
+  if (payload.status === "ready" || isProspectShowcaseTerminalStatus(payloadKind, payload.status)) {
     return {
       kind: "terminal",
       status: "ready",
