@@ -257,6 +257,43 @@ describe("/api/prospect-showcases proxy routes", () => {
     expect(response.headers.get("pragma")).toBe("no-cache");
   });
 
+  test("POST /api/prospect-showcases/access-link/resend forwards original email upstream", async () => {
+    const { POST } = await import("./access-link/resend/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/access-link/resend", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ email: "Owner@Example.com" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      "https://api.example.com/api/prospect-showcases/access-link/resend",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "x-preview-token": "preview_token",
+          Accept: "application/json",
+        }),
+        body: JSON.stringify({ email: "Owner@Example.com" }),
+      }),
+      expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
+    );
+  });
+
   test("POST /api/prospect-showcases/:ref/convert sends dashboard token as bearer auth", async () => {
     const { POST } = await import("./[ref]/convert/route");
     allowRateLimit();

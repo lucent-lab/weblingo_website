@@ -166,9 +166,14 @@ describe("DemoDashboardEntry", () => {
   it("expires an open restored claim when its access window elapses", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
-    const fetchMock = vi.fn(async () =>
-      jsonResponse(claimPayload("ps-expiring", "2026-06-02T12:00:00.000Z")),
-    );
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(
+          jsonResponse(claimPayload("ps-expiring", "2026-06-02T12:00:00.000Z")),
+        );
+      }
+      return Promise.resolve(jsonResponse({ ok: true }));
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
@@ -186,6 +191,28 @@ describe("DemoDashboardEntry", () => {
     expect(screen.queryByText("ps-expiring")).toBeNull();
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Retry demo access" })).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Email fresh link" }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText("If this demo is eligible, we'll email a fresh access link."),
+    ).toBeTruthy();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/prospect-showcases/access-link/resend",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "owner@example.com" }),
+      }),
+    );
   });
 
   it("scrubs the URL token and keeps a failed claim exchange retryable", async () => {

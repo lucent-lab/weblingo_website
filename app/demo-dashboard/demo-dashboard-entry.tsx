@@ -22,6 +22,12 @@ type ConversionState =
   | { status: "result"; payload: DemoConversionPayload }
   | { status: "error"; message: string };
 
+type AccessLinkResendState =
+  | { status: "idle" }
+  | { status: "sending" }
+  | { status: "sent"; message: string }
+  | { status: "error"; message: string };
+
 type DemoClaimPayload = {
   token: string;
   expiresAt: string;
@@ -407,6 +413,9 @@ function DemoDashboardSession({
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [conversionState, setConversionState] = useState<ConversionState>({ status: "idle" });
+  const [accessLinkResendState, setAccessLinkResendState] = useState<AccessLinkResendState>({
+    status: "idle",
+  });
   const [clientRestoreComplete, setClientRestoreComplete] = useState(Boolean(trimmedToken));
 
   const effectiveClaimState: ClaimState = !clientRestoreComplete
@@ -428,8 +437,10 @@ function DemoDashboardSession({
       : payload.expiresAt;
   }, [payload]);
   const expireCurrentDemoClaim = useCallback(() => {
+    clearStoredDemoAccessToken();
     clearStoredDemoClaimPayload();
     setConversionState({ status: "idle" });
+    setClaimAccessToken("");
     setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
   }, [t]);
 
@@ -550,6 +561,41 @@ function DemoDashboardSession({
           storedConversion ? { status: "result", payload: storedConversion } : { status: "idle" },
         );
       }
+    }
+  }
+
+  async function handleResendAccessLink() {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!emailSchema.safeParse(normalizedEmail).success) {
+      setEmailError(t("dashboard.demo.form.emailInvalid"));
+      return;
+    }
+    setEmailError(null);
+    setAccessLinkResendState({ status: "sending" });
+    try {
+      const response = await fetch("/api/prospect-showcases/access-link/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+        cache: "no-store",
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        setAccessLinkResendState({
+          status: "error",
+          message: parseErrorMessage(body, t("dashboard.demo.resend.failed")),
+        });
+        return;
+      }
+      setAccessLinkResendState({
+        status: "sent",
+        message: t("dashboard.demo.resend.sent"),
+      });
+    } catch {
+      setAccessLinkResendState({
+        status: "error",
+        message: t("dashboard.demo.resend.failed"),
+      });
     }
   }
 
@@ -701,13 +747,58 @@ function DemoDashboardSession({
               <CardTitle>{t("dashboard.demo.error.title")}</CardTitle>
               <CardDescription>{effectiveClaimState.message}</CardDescription>
             </CardHeader>
-            {claimAccessToken ? (
-              <CardContent>
+            <CardContent className="grid gap-4">
+              {claimAccessToken ? (
                 <Button type="button" variant="outline" onClick={() => void handleRetryClaim()}>
                   {t("dashboard.demo.error.retry")}
                 </Button>
-              </CardContent>
-            ) : null}
+              ) : null}
+              <div className="grid gap-3 border-t border-border/70 pt-4">
+                <label className="flex flex-col gap-2 text-sm">
+                  <span className="font-medium">{t("dashboard.demo.resend.emailLabel")}</span>
+                  <Input
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.currentTarget.value);
+                      if (emailError) {
+                        setEmailError(null);
+                      }
+                      if (accessLinkResendState.status === "error") {
+                        setAccessLinkResendState({ status: "idle" });
+                      }
+                    }}
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder={t("dashboard.demo.form.emailPlaceholder")}
+                    disabled={accessLinkResendState.status === "sending"}
+                  />
+                </label>
+                {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
+                {accessLinkResendState.status === "sent" ||
+                accessLinkResendState.status === "error" ? (
+                  <p
+                    className={
+                      accessLinkResendState.status === "error"
+                        ? "text-sm text-destructive"
+                        : "text-sm text-muted-foreground"
+                    }
+                  >
+                    {accessLinkResendState.message}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleResendAccessLink()}
+                  disabled={accessLinkResendState.status === "sending" || !email.trim()}
+                >
+                  {accessLinkResendState.status === "sending"
+                    ? t("dashboard.demo.resend.submitting")
+                    : t("dashboard.demo.resend.submit")}
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         ) : null}
 
@@ -779,6 +870,9 @@ function DemoDashboardSession({
                           setEmail(event.currentTarget.value);
                           if (emailError) {
                             setEmailError(null);
+                          }
+                          if (accessLinkResendState.status === "error") {
+                            setAccessLinkResendState({ status: "idle" });
                           }
                         }}
                         type="email"
