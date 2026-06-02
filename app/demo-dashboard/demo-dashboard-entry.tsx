@@ -50,6 +50,7 @@ type DemoConversionPayload = {
 
 const emailSchema = z.email();
 const DEMO_CLAIM_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:claim:v1";
+const DEMO_CONVERSION_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:conversion:v1";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -106,6 +107,23 @@ function parseConversionPayload(value: unknown): DemoConversionPayload | null {
   };
 }
 
+function parseStoredConversionPayload(
+  value: unknown,
+  claim: DemoClaimPayload,
+): DemoConversionPayload | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  if (
+    value.claimToken !== claim.token ||
+    value.conversionToken !== claim.conversionToken ||
+    value.prospectShowcaseRef !== claim.prospectShowcaseRef
+  ) {
+    return null;
+  }
+  return parseConversionPayload(value.payload);
+}
+
 function isDemoConversionStatus(value: unknown): value is DemoConversionStatus {
   return (
     value === "checkout_pending" ||
@@ -151,6 +169,27 @@ function readStoredDemoClaimPayload(): DemoClaimPayload | null {
   }
 }
 
+function readStoredDemoConversionPayload(claim: DemoClaimPayload): DemoConversionPayload | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_CONVERSION_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = parseStoredConversionPayload(JSON.parse(raw), claim);
+    if (!parsed) {
+      clearStoredDemoConversionPayload();
+      return null;
+    }
+    return parsed;
+  } catch {
+    clearStoredDemoConversionPayload();
+    return null;
+  }
+}
+
 function storeDemoClaimPayload(payload: DemoClaimPayload): void {
   if (typeof window === "undefined") {
     return;
@@ -159,6 +198,26 @@ function storeDemoClaimPayload(payload: DemoClaimPayload): void {
     window.sessionStorage.setItem(DEMO_CLAIM_SESSION_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     window.sessionStorage.removeItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(DEMO_CONVERSION_SESSION_STORAGE_KEY);
+  }
+}
+
+function storeDemoConversionPayload(claim: DemoClaimPayload, payload: DemoConversionPayload): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(
+      DEMO_CONVERSION_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        claimToken: claim.token,
+        conversionToken: claim.conversionToken,
+        prospectShowcaseRef: claim.prospectShowcaseRef,
+        payload,
+      }),
+    );
+  } catch {
+    clearStoredDemoConversionPayload();
   }
 }
 
@@ -168,8 +227,20 @@ function clearStoredDemoClaimPayload(): void {
   }
   try {
     window.sessionStorage.removeItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(DEMO_CONVERSION_SESSION_STORAGE_KEY);
   } catch {
     // Ignore storage failures; the claim request remains the source of truth.
+  }
+}
+
+function clearStoredDemoConversionPayload(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(DEMO_CONVERSION_SESSION_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; the backend conversion response remains authoritative.
   }
 }
 
@@ -257,10 +328,17 @@ function DemoDashboardSession({
   });
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [conversionState, setConversionState] = useState<ConversionState>({ status: "idle" });
+  const [conversionState, setConversionState] = useState<ConversionState>(() => {
+    if (trimmedToken) {
+      return { status: "idle" };
+    }
+    const storedClaim = readStoredDemoClaimPayload();
+    const storedConversion = storedClaim ? readStoredDemoConversionPayload(storedClaim) : null;
+    return storedConversion ? { status: "result", payload: storedConversion } : { status: "idle" };
+  });
 
   const effectiveClaimState: ClaimState =
-    trimmedToken || claimState.status === "ready"
+    trimmedToken || claimState.status === "ready" || claimState.status === "error"
       ? claimState
       : { status: "error", message: t("dashboard.demo.error.missingToken") };
   const payload = effectiveClaimState.status === "ready" ? effectiveClaimState.payload : null;
@@ -322,6 +400,12 @@ function DemoDashboardSession({
     const nextState = await exchangeClaimToken();
     if (nextState) {
       setClaimState(nextState);
+      if (nextState.status === "ready") {
+        const storedConversion = readStoredDemoConversionPayload(nextState.payload);
+        setConversionState(
+          storedConversion ? { status: "result", payload: storedConversion } : { status: "idle" },
+        );
+      }
     }
   }
 
@@ -335,6 +419,12 @@ function DemoDashboardSession({
       const nextState = await exchangeClaimToken(() => canceled);
       if (!canceled && nextState) {
         setClaimState(nextState);
+        if (nextState.status === "ready") {
+          const storedConversion = readStoredDemoConversionPayload(nextState.payload);
+          setConversionState(
+            storedConversion ? { status: "result", payload: storedConversion } : { status: "idle" },
+          );
+        }
       }
     })();
 
@@ -342,6 +432,25 @@ function DemoDashboardSession({
       canceled = true;
     };
   }, [trimmedToken, exchangeClaimToken]);
+
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+    const expiresAtMs = Date.parse(payload.expiresAt);
+    if (!Number.isFinite(expiresAtMs)) {
+      return;
+    }
+    const delayMs = Math.max(0, Math.min(expiresAtMs - Date.now(), 2_147_483_647));
+    const timeout = window.setTimeout(() => {
+      clearStoredDemoClaimPayload();
+      setConversionState({ status: "idle" });
+      setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
+    }, delayMs);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [payload, t]);
 
   async function handleConvert() {
     if (!payload) {
@@ -383,6 +492,7 @@ function DemoDashboardSession({
         });
         return;
       }
+      storeDemoConversionPayload(payload, parsed);
       setConversionState({ status: "result", payload: parsed });
     } catch {
       setConversionState({ status: "error", message: t("dashboard.demo.error.convertFailed") });
@@ -403,9 +513,7 @@ function DemoDashboardSession({
       : "border-primary/25 bg-primary/10 text-primary";
   const conversionIsTerminal =
     conversionState.status === "result" && conversionState.payload.status === "converted";
-  const conversionRequiresPaymentRetry =
-    conversionState.status === "result" && conversionState.payload.nextAction === "retry_payment";
-  const showConversionForm = !conversionIsTerminal && !conversionRequiresPaymentRetry;
+  const showConversionForm = conversionState.status !== "result" && !conversionIsTerminal;
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">

@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import messages from "@internal/i18n/messages/en.json";
 import { DemoDashboardEntry } from "./demo-dashboard-entry";
 
-function claimPayload(ref: string) {
+function claimPayload(ref: string, expiresAt = new Date(Date.now() + 60_000).toISOString()) {
   return {
     token: `dashboard-${ref}`,
-    expiresAt: "2026-06-02T12:00:00.000Z",
+    expiresAt,
     prospectShowcaseRef: ref,
     siteId: `site-${ref}`,
     conversionToken: `conversion-${ref}`,
@@ -41,6 +41,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe("DemoDashboardEntry", () => {
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     window.sessionStorage.clear();
     window.history.replaceState(null, "", "/");
@@ -82,6 +83,31 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("ps-session");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("expires an open restored claim when its access window elapses", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(claimPayload("ps-expiring", "2026-06-02T12:00:00.000Z")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("ps-expiring")).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+    expect(screen.queryByText("ps-expiring")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
   });
 
   it("keeps the URL token when the claim exchange fails", async () => {
@@ -184,9 +210,37 @@ describe("DemoDashboardEntry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
 
     expect(await screen.findByText("Payment failed")).toBeTruthy();
-    expect(await screen.findByText(/Retry payment to unlock activation\./)).toBeTruthy();
+    expect(await screen.findByText(/Payment recovery is required/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(screen.queryByText("Activation started")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores a completed conversion result after reload", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(jsonResponse(claimPayload("ps-checkout")));
+      }
+      return Promise.resolve(jsonResponse(conversionPayload("checkout_pending")));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { unmount } = render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await screen.findByText("ps-checkout");
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
+    await screen.findByText("Payment required");
+    expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
+
+    unmount();
+    fetchMock.mockClear();
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await screen.findByText("Payment required");
+    expect(screen.getByText("ps-checkout")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
