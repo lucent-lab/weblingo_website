@@ -38,9 +38,14 @@ type DemoConversionStatus =
   | "converted";
 
 type DemoConversionPayload = {
+  prospectShowcaseRef: string;
   status: DemoConversionStatus;
-  activationStatus?: string;
-  nextAction?: string;
+  activationStatus: string;
+  locked: boolean;
+  lockedReason: string;
+  accountId: string;
+  siteId: string;
+  nextAction: string;
 };
 
 const emailSchema = z.email();
@@ -77,11 +82,26 @@ function parseConversionPayload(value: unknown): DemoConversionPayload | null {
   if (!isRecord(value) || !isDemoConversionStatus(value.status)) {
     return null;
   }
+  if (
+    typeof value.prospectShowcaseRef !== "string" ||
+    typeof value.activationStatus !== "string" ||
+    typeof value.locked !== "boolean" ||
+    typeof value.lockedReason !== "string" ||
+    typeof value.accountId !== "string" ||
+    typeof value.siteId !== "string" ||
+    typeof value.nextAction !== "string"
+  ) {
+    return null;
+  }
   return {
+    prospectShowcaseRef: value.prospectShowcaseRef,
     status: value.status,
-    activationStatus:
-      typeof value.activationStatus === "string" ? value.activationStatus : undefined,
-    nextAction: typeof value.nextAction === "string" ? value.nextAction : undefined,
+    activationStatus: value.activationStatus,
+    locked: value.locked,
+    lockedReason: value.lockedReason,
+    accountId: value.accountId,
+    siteId: value.siteId,
+    nextAction: value.nextAction,
   };
 }
 
@@ -228,12 +248,12 @@ function DemoDashboardSession({
           });
           return;
         }
+        scrubDemoAccessTokenFromLocation();
         const parsed = parseClaimPayload(body);
         if (!parsed) {
           setClaimState({ status: "error", message: t("dashboard.demo.error.invalidClaim") });
           return;
         }
-        scrubDemoAccessTokenFromLocation();
         setClaimState({ status: "ready", payload: parsed });
       } catch {
         if (!canceled) {

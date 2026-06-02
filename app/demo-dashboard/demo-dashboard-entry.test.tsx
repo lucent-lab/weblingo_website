@@ -16,6 +16,21 @@ function claimPayload(ref: string) {
   };
 }
 
+function conversionPayload(
+  status: "checkout_pending" | "activation_pending" | "payment_failed" | "converted",
+) {
+  return {
+    prospectShowcaseRef: "ps-payment",
+    status,
+    activationStatus: status === "converted" ? "active" : status,
+    locked: status !== "converted",
+    lockedReason: status === "converted" ? "none" : "payment_required",
+    accountId: "acct-customer",
+    siteId: "site-customer",
+    nextAction: status === "payment_failed" ? "retry_payment" : "complete_payment",
+  };
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -63,6 +78,19 @@ describe("DemoDashboardEntry", () => {
     expect(window.location.hash).toBe("#open");
   });
 
+  it("scrubs the URL token when a successful claim response is invalid", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+
+    await screen.findByText("Demo access response was invalid.");
+    expect(window.location.pathname).toBe("/dashboard/demo");
+    expect(window.location.search).toBe("?source=mail");
+    expect(window.location.hash).toBe("#open");
+  });
+
   it("clears stale claim and conversion state when the token changes", async () => {
     let resolveSecondClaim: (response: Response) => void = () => undefined;
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -99,9 +127,7 @@ describe("DemoDashboardEntry", () => {
       if (String(input) === "/api/prospect-showcases/claim") {
         return Promise.resolve(jsonResponse(claimPayload("ps-payment")));
       }
-      return Promise.resolve(
-        jsonResponse({ status: "payment_failed", nextAction: "retry_payment" }),
-      );
+      return Promise.resolve(jsonResponse(conversionPayload("payment_failed")));
     });
     vi.stubGlobal("fetch", fetchMock);
 
