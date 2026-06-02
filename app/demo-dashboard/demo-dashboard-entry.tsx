@@ -141,6 +141,25 @@ function getConversionResultCopy(t: Translator, status: DemoConversionStatus) {
   }
 }
 
+function getConversionNextActionCopy(t: Translator, nextAction?: string): string | null {
+  switch (nextAction) {
+    case "complete_payment":
+      return t("dashboard.demo.conversion.nextAction.completePayment");
+    case "wait_for_activation":
+      return t("dashboard.demo.conversion.nextAction.waitForActivation");
+    case "retry_payment":
+      return t("dashboard.demo.conversion.nextAction.retryPayment");
+    case "open_dashboard":
+      return t("dashboard.demo.conversion.nextAction.openDashboard");
+    case undefined:
+      return null;
+    default:
+      return t("dashboard.demo.conversion.nextAction.unknown", undefined, {
+        action: nextAction,
+      });
+  }
+}
+
 export function DemoDashboardEntry({
   accessToken,
   messages,
@@ -189,7 +208,6 @@ function DemoDashboardSession({
       return;
     }
 
-    scrubDemoAccessTokenFromLocation();
     let canceled = false;
     void (async () => {
       try {
@@ -215,6 +233,7 @@ function DemoDashboardSession({
           setClaimState({ status: "error", message: t("dashboard.demo.error.invalidClaim") });
           return;
         }
+        scrubDemoAccessTokenFromLocation();
         setClaimState({ status: "ready", payload: parsed });
       } catch {
         if (!canceled) {
@@ -277,6 +296,10 @@ function DemoDashboardSession({
   const conversionResultCopy =
     conversionState.status === "result"
       ? getConversionResultCopy(t, conversionState.payload.status)
+      : null;
+  const conversionNextActionCopy =
+    conversionState.status === "result"
+      ? getConversionNextActionCopy(t, conversionState.payload.nextAction)
       : null;
   const conversionResultTone =
     conversionState.status === "result" && conversionState.payload.status === "payment_failed"
@@ -371,6 +394,12 @@ function DemoDashboardSession({
                       {conversionResultCopy.title}
                     </div>
                     <p className="mt-1 opacity-85">{conversionResultCopy.message}</p>
+                    {conversionNextActionCopy ? (
+                      <p className="mt-2 text-xs font-medium">
+                        {t("dashboard.demo.conversion.nextAction.label")}:{" "}
+                        {conversionNextActionCopy}
+                      </p>
+                    ) : null}
                   </div>
                 ) : (
                   <>

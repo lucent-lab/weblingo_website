@@ -50,6 +50,19 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("keeps the URL token when the claim exchange fails", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
+    const fetchMock = vi.fn(async () => jsonResponse({ error: "temporary failure" }, 503));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+
+    await screen.findByText("temporary failure");
+    expect(window.location.pathname).toBe("/dashboard/demo");
+    expect(window.location.search).toBe("?token=demo-token&source=mail");
+    expect(window.location.hash).toBe("#open");
+  });
+
   it("clears stale claim and conversion state when the token changes", async () => {
     let resolveSecondClaim: (response: Response) => void = () => undefined;
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -101,6 +114,7 @@ describe("DemoDashboardEntry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
 
     expect(await screen.findByText("Payment failed")).toBeTruthy();
+    expect(await screen.findByText(/Retry payment to unlock activation\./)).toBeTruthy();
     expect(screen.queryByText("Activation started")).toBeNull();
   });
 });
