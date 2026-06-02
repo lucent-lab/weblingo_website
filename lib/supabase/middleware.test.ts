@@ -103,4 +103,14 @@ describe("updateSession", () => {
     );
     expect(response.cookies.get("sb-refresh-token")?.value).toBe("fresh-token");
   });
+
+  it("preserves dashboard return paths when redirecting anonymous users to login", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/dashboard/sites/site-customer?tab=billing"),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fsite-customer%3Ftab%3Dbilling",
+    );
+  });
 });

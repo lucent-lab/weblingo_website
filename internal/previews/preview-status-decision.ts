@@ -63,8 +63,8 @@ type ResolvePreviewStatusDecisionInput = {
 };
 
 type PayloadLocationPatch = {
-  previewUrl?: string;
-  demoDashboardUrl?: string;
+  previewUrl?: string | null;
+  demoDashboardUrl?: string | null;
   expiresAt?: number;
 };
 
@@ -95,13 +95,22 @@ function readPayloadMessage(payload: Record<string, unknown> | null): string | n
 function buildPayloadLocationPatch(
   payloadKind: PreviewJobKind,
   payload: Record<string, unknown> | null,
+  options: { clearMissingLinks?: boolean } = {},
 ): PayloadLocationPatch {
   const previewUrl = resolvePreviewJobPayloadUrl(payloadKind, payload);
   const demoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
   const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
   return {
-    ...(previewUrl === null ? {} : { previewUrl }),
-    ...(demoDashboardUrl === null ? {} : { demoDashboardUrl }),
+    ...(previewUrl === null
+      ? options.clearMissingLinks === true
+        ? { previewUrl: null }
+        : {}
+      : { previewUrl }),
+    ...(demoDashboardUrl === null
+      ? options.clearMissingLinks === true
+        ? { demoDashboardUrl: null }
+        : {}
+      : { demoDashboardUrl }),
     ...(expiresAt === null ? {} : { expiresAt }),
   };
 }
@@ -146,6 +155,8 @@ export function resolvePreviewStatusDecision({
       return {
         kind: "terminal",
         status: "expired",
+        previewUrl: null,
+        demoDashboardUrl: null,
         error: null,
         errorCode: "preview_expired",
         errorStage: null,
@@ -156,6 +167,8 @@ export function resolvePreviewStatusDecision({
       return {
         kind: "terminal",
         status: "failed",
+        previewUrl: null,
+        demoDashboardUrl: null,
         error: null,
         errorCode: "preview_not_found",
         errorStage: null,
@@ -177,6 +190,8 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: resolved.code === "preview_expired" ? "expired" : "failed",
+      previewUrl: null,
+      demoDashboardUrl: null,
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,
@@ -198,7 +213,7 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: "failed",
-      ...buildPayloadLocationPatch(payloadKind, payload),
+      ...buildPayloadLocationPatch(payloadKind, payload, { clearMissingLinks: true }),
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,
@@ -222,6 +237,8 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: resolved.code === "preview_expired" ? "expired" : "failed",
+      previewUrl: null,
+      demoDashboardUrl: null,
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,

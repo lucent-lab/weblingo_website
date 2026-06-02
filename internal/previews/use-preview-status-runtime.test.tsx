@@ -313,6 +313,53 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("clears stale action links when status polling terminalizes without links", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "missing-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "missing-7777-7777-7777-777777777777",
+      );
+      expect(job).toMatchObject({
+        status: "failed",
+        previewUrl: null,
+        demoDashboardUrl: null,
+        errorCode: "preview_not_found",
+      });
+    });
+  });
+
   it("uses provider-capacity retry hints as the next active poll delay", async () => {
     const timeoutSpy = vi.spyOn(window, "setTimeout");
     vi.stubGlobal(

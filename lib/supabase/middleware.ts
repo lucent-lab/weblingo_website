@@ -14,6 +14,13 @@ const publicDemoDashboardPaths = new Set(
 publicDemoDashboardPaths.add("/dashboard/demo");
 publicDemoDashboardPaths.add("/dashboard/demo/");
 
+function resolveDashboardReturnPath(pathname: string, search: string): string | null {
+  if (pathname !== "/dashboard" && !pathname.startsWith("/dashboard/")) {
+    return null;
+  }
+  return `${pathname}${search}`;
+}
+
 export async function updateSession(request: NextRequest) {
   const publicDemoDashboardLocale = getPublicDemoDashboardLocale(request.nextUrl.pathname);
 
@@ -70,6 +77,11 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    url.search = "";
+    const returnPath = resolveDashboardReturnPath(request.nextUrl.pathname, request.nextUrl.search);
+    if (returnPath) {
+      url.searchParams.set("next", returnPath);
+    }
     return NextResponse.redirect(url);
   }
 

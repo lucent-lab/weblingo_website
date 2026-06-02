@@ -58,6 +58,50 @@ describe("auth login actions", () => {
     expect(clearSubjectAccountId).toHaveBeenCalledOnce();
   });
 
+  it("redirects successful login to a sanitized dashboard return path", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { session: { access_token: "token" } },
+          error: null,
+        }),
+      },
+    });
+
+    vi.resetModules();
+    const { login } = await import("./actions");
+    const formData = new FormData();
+    formData.set("email", "customer@example.com");
+    formData.set("password", "password");
+    formData.set("redirectTo", "/dashboard/sites/site-customer");
+
+    await expect(login({ error: null, notice: null }, formData)).rejects.toMatchObject({
+      url: "/dashboard/sites/site-customer",
+    });
+  });
+
+  it("falls back to the dashboard when login receives an unsafe return path", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { session: { access_token: "token" } },
+          error: null,
+        }),
+      },
+    });
+
+    vi.resetModules();
+    const { login } = await import("./actions");
+    const formData = new FormData();
+    formData.set("email", "customer@example.com");
+    formData.set("password", "password");
+    formData.set("redirectTo", "https://example.test/dashboard");
+
+    await expect(login({ error: null, notice: null }, formData)).rejects.toMatchObject({
+      url: "/dashboard",
+    });
+  });
+
   it("clears the selected workspace after successful signup", async () => {
     createClient.mockResolvedValue({
       auth: {
