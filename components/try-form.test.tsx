@@ -1358,6 +1358,59 @@ describe("TryForm preview status", () => {
     expect(MockEventSource.instances).toHaveLength(0);
   });
 
+  it("restores email-scoped prospect showcase jobs with their submitted email", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      kind: "prospect_showcase",
+      sourceUrl: "https://restore.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          kind: "prospect_showcase",
+          previewId: "prospect-restore-2222-2222-2222-222222222222",
+          requestKey,
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "ready",
+          stage: null,
+          previewUrl: "https://showcase.example.com",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo",
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+        fieldLayout="funnel"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("https://restore.example.com")).toBeTruthy();
+      expect(screen.getByDisplayValue("owner@example.com")).toBeTruthy();
+      expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(requestKey);
+    });
+  });
+
   it("checks restored provider-capacity waits on mount", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({

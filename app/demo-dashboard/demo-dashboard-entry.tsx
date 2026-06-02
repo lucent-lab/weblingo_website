@@ -381,6 +381,8 @@ function DemoDashboardSession({
     conversionState.status === "result" && conversionState.payload.status === "payment_failed"
       ? "border-destructive/40 bg-destructive/5 text-destructive"
       : "border-primary/25 bg-primary/10 text-primary";
+  const conversionIsTerminal =
+    conversionState.status === "result" && conversionState.payload.status === "converted";
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
@@ -477,7 +479,8 @@ function DemoDashboardSession({
                       </p>
                     ) : null}
                   </div>
-                ) : (
+                ) : null}
+                {!conversionIsTerminal ? (
                   <>
                     <label className="flex flex-col gap-2 text-sm">
                       <span className="font-medium">{t("dashboard.demo.form.emailLabel")}</span>
@@ -511,7 +514,7 @@ function DemoDashboardSession({
                         : t("dashboard.demo.form.submit")}
                     </Button>
                   </>
-                )}
+                ) : null}
               </CardContent>
             </Card>
           </div>

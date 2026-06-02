@@ -310,11 +310,13 @@ export function TryForm({
   const currentRequestKey = useMemo(
     () =>
       buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
         sourceUrl: trimmedUrl,
-        sourceLang,
-        targetLang,
+        sourceLang: normalizedSourceLang,
+        targetLang: normalizedTargetLang,
+        email: showEmailField ? trimmedEmail : undefined,
       }),
-    [trimmedUrl, sourceLang, targetLang],
+    [normalizedSourceLang, normalizedTargetLang, showEmailField, trimmedEmail, trimmedUrl],
   );
 
   const trackedJob = useMemo(
@@ -511,7 +513,10 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
+    if (showEmailField) {
+      setEmail((current) => (current ? current : parsedRequest.email));
+    }
+  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, showEmailField, trimmedUrl]);
 
   useEffect(() => {
     if (

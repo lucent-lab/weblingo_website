@@ -165,6 +165,7 @@ describe("DemoDashboardEntry", () => {
 
     expect(await screen.findByText("Payment failed")).toBeTruthy();
     expect(await screen.findByText(/Retry payment to unlock activation\./)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Publish on my domain" })).toBeTruthy();
     expect(screen.queryByText("Activation started")).toBeNull();
   });
 });
