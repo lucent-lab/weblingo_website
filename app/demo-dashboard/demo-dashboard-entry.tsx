@@ -663,7 +663,7 @@ function DemoDashboardSession({
     if (!payload) {
       return;
     }
-    if (conversionState.status === "submitting" || conversionState.status === "result") {
+    if (conversionState.status === "submitting") {
       return;
     }
     const expiresAtMs = Date.parse(payload.expiresAt);

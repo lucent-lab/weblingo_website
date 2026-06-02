@@ -230,6 +230,43 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("expires a restored conversion result when its access window elapses", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    const claim = claimPayload("ps-payment", "2026-06-02T12:00:00.000Z");
+    window.sessionStorage.setItem("weblingo:demo-dashboard:claim:v1", JSON.stringify(claim));
+    window.sessionStorage.setItem(
+      "weblingo:demo-dashboard:conversion:v1",
+      JSON.stringify({
+        claimToken: claim.token,
+        conversionToken: claim.conversionToken,
+        prospectShowcaseRef: claim.prospectShowcaseRef,
+        payload: conversionPayload("checkout_pending"),
+      }),
+    );
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Payment required")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Finish payment/ })).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+    expect(screen.queryByText("Payment required")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Finish payment/ })).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("scrubs the URL token and keeps a failed claim exchange retryable", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     const fetchMock = vi.fn(async () => jsonResponse({ error: "temporary failure" }, 503));
