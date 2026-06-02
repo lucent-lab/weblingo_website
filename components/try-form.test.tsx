@@ -1643,6 +1643,42 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("does not show the legacy pending-email action for prospect showcase jobs", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "prospect-email-5555-5555-5555-555555555555",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://summary.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "summary-token",
+      sourceUrl: "https://summary.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+      stage: "translating",
+    });
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("summary.example.com • English -> French")).toBeTruthy();
+    });
+    expect(screen.queryByText("Get notified when your preview is ready")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Email me" })).toBeNull();
+  });
+
   it("shows the capacity-specific processing hint when browser slots are full", async () => {
     upsertPreviewStatusCenterJob({
       previewId: "capacity-6666-6666-6666-666666666666",
