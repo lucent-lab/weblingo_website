@@ -23,6 +23,12 @@ const MAX_STATUS_RETRY_ATTEMPTS = 4;
 const MAX_TIMEOUT_DELAY_MS = 2_147_483_647;
 let previewStatusRuntimeOwner: symbol | null = null;
 
+type PreviewStatusCenterJobWithExpiry = PreviewStatusCenterJob & { expiresAt: number };
+
+function hasTerminalExpiry(job: PreviewStatusCenterJob): job is PreviewStatusCenterJobWithExpiry {
+  return (job.status === "ready" || job.status === "failed") && job.expiresAt !== null;
+}
+
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
 }
@@ -78,7 +84,7 @@ export function usePreviewStatusRuntime() {
 
     let nextExpiryAt: number | null = null;
     for (const job of jobs) {
-      if (job.status !== "ready" || job.expiresAt === null) {
+      if (!hasTerminalExpiry(job)) {
         continue;
       }
       nextExpiryAt = nextExpiryAt === null ? job.expiresAt : Math.min(nextExpiryAt, job.expiresAt);

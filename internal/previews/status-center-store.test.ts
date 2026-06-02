@@ -151,6 +151,28 @@ describe("status-center-store", () => {
     });
   });
 
+  it("expires failed jobs with stale expiry and clears terminal action URLs", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        kind: "prospect_showcase",
+        previewId: "expired-failed-1111-1111-1111-111111111111",
+        status: "failed",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        error: "Payment failed. Retry checkout to continue activation.",
+        expiresAt: Date.now() - 1_000,
+      }),
+    );
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: null,
+      errorCode: "preview_expired",
+    });
+  });
+
   it("tracks and resets retry state for active jobs", () => {
     upsertPreviewStatusCenterJob(buildJob());
     const now = Date.now();

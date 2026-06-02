@@ -128,6 +128,50 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("expires failed jobs at expiresAt without active polling", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "failed-expiry-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      error: "Payment failed. Retry checkout to continue activation.",
+      expiresAt: Date.now() + 1000,
+      remoteStatusVerified: true,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    });
+
+    render(<RuntimeHarness />);
+    expect(activeIntervals.size).toBe(0);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: null,
+      errorCode: "preview_expired",
+    });
+  });
+
   it("creates polling interval for active jobs and clears it when jobs become terminal", async () => {
     upsertPreviewStatusCenterJob({
       previewId: "11111111-1111-1111-1111-111111111111",

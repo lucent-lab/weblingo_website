@@ -489,8 +489,12 @@ function parseLegacyPendingPreview(value: unknown): LegacyPendingPreviewState | 
   };
 }
 
-function expireReadyJob(job: PreviewStatusCenterJob, now: number): PreviewStatusCenterJob {
-  if (job.status !== "ready" || job.expiresAt === null || now < job.expiresAt) {
+function expireTerminalJob(job: PreviewStatusCenterJob, now: number): PreviewStatusCenterJob {
+  if (
+    (job.status !== "ready" && job.status !== "failed") ||
+    job.expiresAt === null ||
+    now < job.expiresAt
+  ) {
     return job;
   }
   return normalizeJob({
@@ -511,7 +515,7 @@ function expireReadyJob(job: PreviewStatusCenterJob, now: number): PreviewStatus
 
 function pruneJobs(jobs: PreviewStatusCenterJob[], now = Date.now()): PreviewStatusCenterJob[] {
   return jobs
-    .map((job) => expireReadyJob(job, now))
+    .map((job) => expireTerminalJob(job, now))
     .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
     .sort(comparePreviewStatusCenterJobs)
     .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS);
