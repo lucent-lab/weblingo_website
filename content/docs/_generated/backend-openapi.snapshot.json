@@ -5842,6 +5842,50 @@
         ],
         "type": "object"
       },
+      "ProspectShowcaseAccessLinkResendRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "description": "Email originally used to request the prospect demo.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseAccessLinkResendResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "description": "Always generic; the public endpoint never reveals whether a demo exists or whether the address has a WebLingo account.",
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseClaimRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "description": "Scoped dashboard-entry token from `demoDashboardUrl`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
       "ProspectShowcaseClaimResponse": {
         "additionalProperties": false,
         "properties": {
@@ -14367,9 +14411,86 @@
         ]
       }
     },
+    "/prospect-showcases/access-link/resend": {
+      "post": {
+        "description": "Accepts a public expired-link recovery request and always returns generic copy. If the submitted email matches an eligible prospect showcase, WebLingo queues a fresh access link to the original submitted email.",
+        "operationId": "prospectShowcases.accessLinkResend",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "owner@example.com"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseAccessLinkResendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "If this demo is eligible, we'll email the original access link.",
+                  "ok": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseAccessLinkResendResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Request a prospect showcase access-link resend",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
     "/prospect-showcases/claim": {
-      "get": {
+      "post": {
         "operationId": "prospectShowcases.claim",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "token": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseClaimRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

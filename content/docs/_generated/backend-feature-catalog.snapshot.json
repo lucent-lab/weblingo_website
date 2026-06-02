@@ -565,7 +565,33 @@
     {
       "endpoint": {
         "auth": "none",
-        "method": "GET",
+        "method": "POST",
+        "operationId": "prospectShowcases.accessLinkResend",
+        "path": "/prospect-showcases/access-link/resend"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.accessLinkResend",
+      "name": "Request a prospect showcase access-link resend",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.accessLinkResend"
+      ],
+      "stability": "GA",
+      "summary": "Accepts a public expired-link recovery request and always returns generic copy. If the submitted email matches an eligible prospect showcase, WebLingo queues a fresh access link to the original submitted email.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "none",
+        "method": "POST",
         "operationId": "prospectShowcases.claim",
         "path": "/prospect-showcases/claim"
       },
@@ -2772,26 +2798,6 @@
     },
     {
       "family": "pipeline",
-      "group": "preview-email",
-      "id": "pipeline.PreviewEmailQueuePayload",
-      "name": "PreviewEmailQueuePayload",
-      "payloadContract": {
-        "fields": [
-          {
-            "name": "preview_id",
-            "optional": false,
-            "type": "PreviewRequestId"
-          }
-        ],
-        "interfaceName": "PreviewEmailQueuePayload",
-        "kindLiteral": null
-      },
-      "stability": "Internal",
-      "summary": "Queue payload contract for preview-email worker messages.",
-      "userFacing": false
-    },
-    {
-      "family": "pipeline",
       "group": "preview",
       "id": "pipeline.PreviewQueuePayload",
       "name": "PreviewQueuePayload",
@@ -2848,6 +2854,56 @@
       },
       "stability": "Internal",
       "summary": "Queue payload contract for preview worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "preview",
+      "id": "pipeline.PreviewReadyEmailQueuePayload",
+      "name": "PreviewReadyEmailQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "preview_id",
+            "optional": false,
+            "type": "PreviewRequestId"
+          }
+        ],
+        "interfaceName": "PreviewReadyEmailQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for preview worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
+      "group": "pipeline",
+      "id": "pipeline.ProspectShowcaseAccessLinkEmailQueuePayload",
+      "name": "ProspectShowcaseAccessLinkEmailQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "type",
+            "optional": false,
+            "type": "\"prospect_showcase.access_link\""
+          },
+          {
+            "name": "prospect_showcase_id",
+            "optional": false,
+            "type": "ProspectShowcaseId"
+          },
+          {
+            "name": "claim_token_id",
+            "optional": false,
+            "type": "ShowcaseClaimTokenId"
+          }
+        ],
+        "interfaceName": "ProspectShowcaseAccessLinkEmailQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for pipeline worker messages.",
       "userFacing": false
     },
     {
