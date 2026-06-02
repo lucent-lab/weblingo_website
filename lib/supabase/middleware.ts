@@ -5,6 +5,15 @@ import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 import { getSupabasePublicEnv } from "./env";
 
 export async function updateSession(request: NextRequest) {
+  if (
+    request.nextUrl.pathname === "/dashboard/demo" ||
+    request.nextUrl.pathname === "/dashboard/demo/"
+  ) {
+    const url = new URL(request.url);
+    url.pathname = "/demo-dashboard";
+    return NextResponse.rewrite(url);
+  }
+
   if (isDashboardE2eMockEnabled()) {
     return NextResponse.next({ request });
   }

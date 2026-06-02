@@ -2,8 +2,14 @@ import {
   isActivePreviewJobPhase,
   parsePreviewRetryHint,
   type ActivePreviewJobPhase,
+  type PreviewJobKind,
   type PreviewRetryHint,
 } from "./preview-job-machine";
+import {
+  resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadStage,
+  resolvePreviewJobPayloadUrl,
+} from "./preview-job-policy";
 import {
   hasExplicitFailure,
   isPreviewErrorCode,
@@ -32,6 +38,7 @@ export type PreviewStatusDecision =
       kind: "terminal";
       status: "ready" | "failed" | "expired";
       previewUrl?: string | null;
+      demoDashboardUrl?: string | null;
       error?: string | null;
       errorCode?: PreviewErrorCode | null;
       errorStage?: PreviewStage | null;
@@ -49,6 +56,7 @@ type ResolvePreviewStatusDecisionInput = {
   defaultErrorMessage: string;
   resolveErrorMessage?: PreviewErrorMessageResolver;
   mapNotFoundToErrorCode?: boolean;
+  payloadKind?: PreviewJobKind;
 };
 
 function readDetails(payload: Record<string, unknown> | null): Record<string, unknown> | null {
@@ -90,6 +98,7 @@ export function resolvePreviewStatusDecision({
   defaultErrorMessage,
   resolveErrorMessage,
   mapNotFoundToErrorCode = false,
+  payloadKind = "preview",
 }: ResolvePreviewStatusDecisionInput): PreviewStatusDecision {
   if (!responseOk) {
     if (responseStatus === 410) {
@@ -147,7 +156,8 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: "ready",
-      previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : null,
+      previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload),
+      demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
       error: null,
       errorCode: null,
       errorStage: null,
@@ -168,8 +178,8 @@ export function resolvePreviewStatusDecision({
   return {
     kind: "active",
     status: isActivePreviewJobPhase(payload.status) ? payload.status : "processing",
-    stage: isPreviewStage(payload.stage) ? payload.stage : null,
-    previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
+    stage: resolvePreviewJobPayloadStage(payload.stage),
+    previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload) ?? undefined,
     retryHint: parsePreviewRetryHint(payload.retryHint),
     remoteStatusVerified: true,
   };

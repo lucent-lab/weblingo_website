@@ -43,6 +43,13 @@ type PreviewRateLimitOptions = {
 
 type PreviewBodyResult = { ok: true; payload: unknown } | { ok: false; response: Response };
 
+const UPSTREAM_RESPONSE_HEADERS_TO_COPY = [
+  "Cache-Control",
+  "Pragma",
+  "Expires",
+  "Retry-After",
+] as const;
+
 export function createPreviewProxyResponse(
   kind: PreviewProxyResponseKind,
   message: string,
@@ -59,6 +66,21 @@ export function createPreviewProxyResponse(
       ...headers,
     },
   });
+}
+
+export function buildPreviewUpstreamResponseHeaders(
+  upstream: Response,
+  fallbackContentType: string,
+): Headers {
+  const headers = new Headers();
+  headers.set("Content-Type", upstream.headers.get("content-type") ?? fallbackContentType);
+  for (const headerName of UPSTREAM_RESPONSE_HEADERS_TO_COPY) {
+    const value = upstream.headers.get(headerName);
+    if (value) {
+      headers.set(headerName, value);
+    }
+  }
+  return headers;
 }
 
 export function getPreviewProxyConfig(
@@ -99,12 +121,26 @@ export function isPreviewUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+export function isProspectShowcaseRef(value: string): boolean {
+  return /^[A-Za-z0-9_-]{10,80}$/.test(value);
+}
+
 export function validatePreviewId(
   id: string,
   responseKind: PreviewProxyResponseKind,
 ): Response | null {
   if (!id || !isPreviewUuid(id)) {
     return createPreviewProxyResponse(responseKind, "Invalid preview id", 400);
+  }
+  return null;
+}
+
+export function validateProspectShowcaseRef(
+  ref: string,
+  responseKind: PreviewProxyResponseKind,
+): Response | null {
+  if (!ref || !isProspectShowcaseRef(ref)) {
+    return createPreviewProxyResponse(responseKind, "Invalid prospect showcase reference", 400);
   }
   return null;
 }

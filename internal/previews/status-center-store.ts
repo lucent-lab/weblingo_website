@@ -8,6 +8,7 @@ import {
   resolvePreviewRetryHintDelayMs,
   type PreviewJob,
   type PreviewJobEvent,
+  type PreviewJobKind,
   type PreviewJobPatch,
   type PreviewJobPhase,
   type PreviewJobUpsertInput,
@@ -40,6 +41,7 @@ export type PreviewStatusCenterState = {
 };
 
 export type ParsedPreviewStatusCenterRequestKey = {
+  kind: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
@@ -187,12 +189,14 @@ function decodeRequestKeyPart(value: string): string {
 }
 
 export function buildPreviewStatusCenterRequestKey(input: {
+  kind?: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
   email?: string | null;
 }): string {
   const parts = [
+    input.kind ?? "preview",
     input.sourceUrl.trim(),
     normalizeLangTagForRequestKey(input.sourceLang),
     normalizeLangTagForRequestKey(input.targetLang),
@@ -208,7 +212,12 @@ export function parsePreviewStatusCenterRequestKey(
 ): ParsedPreviewStatusCenterRequestKey | null {
   if (requestKey.startsWith(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX)) {
     const encoded = requestKey.slice(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX.length);
-    const [sourceUrl, sourceLang, targetLang, email = "", ...rest] = encoded.split("|");
+    const parts = encoded.split("|");
+    const hasKind = parts[0] === "preview" || parts[0] === "prospect_showcase";
+    const kind: PreviewJobKind = hasKind ? (parts[0] as PreviewJobKind) : "preview";
+    const [, sourceUrl, sourceLang, targetLang, email = "", ...rest] = hasKind
+      ? parts
+      : ["preview", ...parts];
     if (!sourceUrl || !sourceLang || !targetLang || rest.length > 0) {
       return null;
     }
@@ -220,6 +229,7 @@ export function parsePreviewStatusCenterRequestKey(
       return null;
     }
     return {
+      kind,
       sourceUrl: decodedSourceUrl,
       sourceLang: decodedSourceLang,
       targetLang: decodedTargetLang,
@@ -232,6 +242,7 @@ export function parsePreviewStatusCenterRequestKey(
     return null;
   }
   return {
+    kind: "preview",
     sourceUrl,
     sourceLang,
     targetLang,
@@ -242,6 +253,7 @@ export function parsePreviewStatusCenterRequestKey(
 function resolveCanonicalRequestKey(
   requestKey: string | null | undefined,
   fallback: {
+    kind?: PreviewJobKind;
     sourceUrl: string;
     sourceLang: string;
     targetLang: string;
@@ -250,6 +262,7 @@ function resolveCanonicalRequestKey(
 ): string {
   const parsed = requestKey ? parsePreviewStatusCenterRequestKey(requestKey) : null;
   return buildPreviewStatusCenterRequestKey({
+    kind: parsed?.kind ?? fallback.kind,
     sourceUrl: parsed?.sourceUrl ?? fallback.sourceUrl,
     sourceLang: parsed?.sourceLang ?? fallback.sourceLang,
     targetLang: parsed?.targetLang ?? fallback.targetLang,
@@ -263,6 +276,10 @@ function parseOptionalPreviewErrorCode(value: unknown): PreviewErrorCode | null 
 
 function parseOptionalPreviewStage(value: unknown): PreviewStage | null {
   return isPreviewStage(value) ? value : null;
+}
+
+function parseOptionalPreviewJobKind(value: unknown): PreviewJobKind {
+  return value === "prospect_showcase" ? "prospect_showcase" : "preview";
 }
 
 function resolveHydratedActiveNextPollAt(
@@ -375,6 +392,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   const retryHint = parsePreviewRetryHint(value.retryHint);
 
   return normalizeJob({
+    kind: parseOptionalPreviewJobKind(value.kind),
     previewId: value.previewId,
     requestKey,
     statusToken: value.statusToken,
@@ -384,6 +402,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     status,
     stage: stage ?? (!isPreviewStatusCenterJobTerminal(status) ? errorStage : null),
     previewUrl: isString(value.previewUrl) ? value.previewUrl : null,
+    demoDashboardUrl: isString(value.demoDashboardUrl) ? value.demoDashboardUrl : null,
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
@@ -420,6 +439,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
   const legacyStage = parseOptionalPreviewStage(value.errorStage);
 
   return normalizeJob({
+    kind: "preview",
     previewId: value.previewId,
     requestKey: buildPreviewStatusCenterRequestKey({
       sourceUrl: value.sourceUrl,
@@ -433,6 +453,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     status,
     stage: !isPreviewStatusCenterJobTerminal(status) ? legacyStage : null,
     previewUrl: isString(value.previewUrl) ? value.previewUrl : null,
+    demoDashboardUrl: null,
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage: legacyStage,
@@ -655,6 +676,7 @@ function migrateLegacyJobsFromStorage(now: number): {
     const status: PreviewStatusCenterJobStatus = "processing";
     jobs.push(
       normalizeJob({
+        kind: "preview",
         previewId: pending.previewId,
         requestKey: canonicalRequestKey,
         statusToken: pending.statusToken,
@@ -664,6 +686,7 @@ function migrateLegacyJobsFromStorage(now: number): {
         status,
         stage: null,
         previewUrl: null,
+        demoDashboardUrl: null,
         error: null,
         errorCode: null,
         errorStage: null,
