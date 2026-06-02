@@ -1236,7 +1236,7 @@ describe("TryForm preview status", () => {
 
     MockEventSource.instances[0].emit("complete", {
       status: "ready",
-      demoDashboardUrl: "https://weblingo.app/dashboard/demo?token=dashboard-token",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
     });
 
     await waitFor(() => {
@@ -1244,7 +1244,7 @@ describe("TryForm preview status", () => {
     });
     expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
     expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo?token=dashboard-token",
+      "https://weblingo.app/dashboard/demo#token=dashboard-token",
     );
   });
 

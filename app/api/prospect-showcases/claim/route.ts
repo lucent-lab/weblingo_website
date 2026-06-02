@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const upstream = await fetchWithTimeout(
-      `${config.apiBase}/prospect-showcases/claim?token=${encodeURIComponent(token)}`,
+      `${config.apiBase}/prospect-showcases/claim`,
       {
-        method: "GET",
-        headers: { Accept: "application/json" },
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
         cache: "no-store",
       },
       { timeoutMs: config.upstreamStatusTimeoutMs, signal: request.signal },

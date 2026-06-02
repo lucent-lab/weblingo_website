@@ -279,15 +279,54 @@ function clearStoredDemoConversionPayload(): void {
   }
 }
 
+function readDemoAccessTokenFromLocationFragment(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!hash) {
+    return "";
+  }
+  try {
+    return new URLSearchParams(hash).get("token")?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function scrubDemoAccessTokenFromLocation(): void {
   if (typeof window === "undefined") {
     return;
   }
   const url = new URL(window.location.href);
-  if (!url.searchParams.has("token")) {
+  const hadQueryToken = url.searchParams.has("token");
+  if (hadQueryToken) {
+    url.searchParams.delete("token");
+  }
+
+  const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+  let nextHash = url.hash;
+  let hadHashToken = false;
+  if (hash) {
+    try {
+      const hashParams = new URLSearchParams(hash);
+      hadHashToken = hashParams.has("token");
+      if (hadHashToken) {
+        hashParams.delete("token");
+        const serialized = hashParams.toString();
+        nextHash = serialized ? `#${serialized}` : "";
+      }
+    } catch {
+      hadHashToken = false;
+    }
+  }
+
+  if (!hadQueryToken && !hadHashToken) {
     return;
   }
-  url.searchParams.delete("token");
+  url.hash = nextHash;
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -402,10 +441,20 @@ function DemoDashboardSession({
     }
 
     let canceled = false;
-    queueMicrotask(() => {
-      if (canceled) {
-        return;
+    const restoreFragmentAccessToken = () => {
+      const fragmentAccessToken = readDemoAccessTokenFromLocationFragment();
+      if (!fragmentAccessToken) {
+        return false;
       }
+      storeDemoAccessToken(fragmentAccessToken);
+      scrubDemoAccessTokenFromLocation();
+      setClaimAccessToken(fragmentAccessToken);
+      setClaimState({ status: "loading" });
+      setConversionState({ status: "idle" });
+      setClientRestoreComplete(true);
+      return true;
+    };
+    const restoreStoredSession = () => {
       const storedAccessToken = readStoredDemoAccessToken();
       if (storedAccessToken) {
         setClaimAccessToken(storedAccessToken);
@@ -425,9 +474,28 @@ function DemoDashboardSession({
           : { status: "idle" };
       });
       setClientRestoreComplete(true);
+    };
+    const restoreFromHashChange = () => {
+      queueMicrotask(() => {
+        if (!canceled) {
+          restoreFragmentAccessToken();
+        }
+      });
+    };
+
+    queueMicrotask(() => {
+      if (canceled) {
+        return;
+      }
+      if (restoreFragmentAccessToken()) {
+        return;
+      }
+      restoreStoredSession();
     });
+    window.addEventListener("hashchange", restoreFromHashChange);
     return () => {
       canceled = true;
+      window.removeEventListener("hashchange", restoreFromHashChange);
     };
   }, [trimmedToken]);
 

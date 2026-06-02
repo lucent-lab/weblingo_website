@@ -68,6 +68,52 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("reads demo access tokens from the URL fragment and scrubs them before exchange", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?source=mail#token=fragment-token");
+    const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-fragment")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await screen.findByText("ps-fragment");
+    expect(window.location.pathname).toBe("/dashboard/demo");
+    expect(window.location.search).toBe("?source=mail");
+    expect(window.location.hash).toBe("");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "fragment-token" }),
+      }),
+    );
+  });
+
+  it("restores a new fragment token after an in-page hash change", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo#token=first-fragment-token");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(claimPayload("ps-first-fragment")))
+      .mockResolvedValueOnce(jsonResponse(claimPayload("ps-second-fragment")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+    await screen.findByText("ps-first-fragment");
+
+    window.history.replaceState(null, "", "/dashboard/demo#token=second-fragment-token");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    await screen.findByText("ps-second-fragment");
+    expect(screen.queryByText("ps-first-fragment")).toBeNull();
+    expect(window.location.hash).toBe("");
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "second-fragment-token" }),
+      }),
+    );
+  });
+
   it("uses the first token when the URL includes duplicated token params", async () => {
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-demo")));
     vi.stubGlobal("fetch", fetchMock);

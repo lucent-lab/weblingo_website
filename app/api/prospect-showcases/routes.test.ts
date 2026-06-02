@@ -212,10 +212,14 @@ describe("/api/prospect-showcases proxy routes", () => {
     expect(response.status).toBe(200);
     expect(request.nextUrl.search).toBe("");
     expect(fetchWithTimeout).toHaveBeenCalledWith(
-      "https://api.example.com/api/prospect-showcases/claim?token=dashboard-token",
+      "https://api.example.com/api/prospect-showcases/claim",
       expect.objectContaining({
-        method: "GET",
-        headers: expect.objectContaining({ Accept: "application/json" }),
+        method: "POST",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({ token: "dashboard-token" }),
       }),
       expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
     );
