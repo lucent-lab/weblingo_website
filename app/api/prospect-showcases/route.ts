@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   buildPreviewHostRateLimitKey,
   buildPreviewIpRateLimitKey,
+  buildPreviewUpstreamResponseHeaders,
   createPreviewFetchErrorResponse,
   enforcePreviewRateLimit,
   getPreviewProxyConfig,
@@ -84,10 +85,9 @@ export async function POST(request: NextRequest) {
     );
 
     const text = await upstream.text();
-    const contentType = upstream.headers.get("content-type") ?? "application/json";
     return new NextResponse(text || undefined, {
       status: upstream.status,
-      headers: { "Content-Type": contentType },
+      headers: buildPreviewUpstreamResponseHeaders(upstream, "application/json"),
     });
   } catch (error) {
     return createPreviewFetchErrorResponse(error, "json");

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import {
   buildPreviewIpRateLimitKey,
+  buildPreviewUpstreamResponseHeaders,
   createPreviewFetchErrorResponse,
   enforcePreviewRateLimit,
   getPreviewProxyConfig,
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const text = await upstream.text();
     return new Response(text || "Demo stream unavailable.", {
       status: upstream.status,
-      headers: { "Content-Type": upstream.headers.get("content-type") ?? "text/plain" },
+      headers: buildPreviewUpstreamResponseHeaders(upstream, "text/plain"),
     });
   }
 

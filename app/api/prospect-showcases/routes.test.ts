@@ -221,6 +221,38 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test("POST /api/prospect-showcases/claim preserves upstream retry guidance", async () => {
+    const { POST } = await import("./claim/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "rate limited" }), {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+          Pragma: "no-cache",
+          "Retry-After": "17",
+        },
+      }),
+    );
+
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/claim", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ token: "dashboard-token" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("17");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
+
   test("POST /api/prospect-showcases/:ref/convert sends dashboard token as bearer auth", async () => {
     const { POST } = await import("./[ref]/convert/route");
     allowRateLimit();

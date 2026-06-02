@@ -43,6 +43,13 @@ type PreviewRateLimitOptions = {
 
 type PreviewBodyResult = { ok: true; payload: unknown } | { ok: false; response: Response };
 
+const UPSTREAM_RESPONSE_HEADERS_TO_COPY = [
+  "Cache-Control",
+  "Pragma",
+  "Expires",
+  "Retry-After",
+] as const;
+
 export function createPreviewProxyResponse(
   kind: PreviewProxyResponseKind,
   message: string,
@@ -59,6 +66,21 @@ export function createPreviewProxyResponse(
       ...headers,
     },
   });
+}
+
+export function buildPreviewUpstreamResponseHeaders(
+  upstream: Response,
+  fallbackContentType: string,
+): Headers {
+  const headers = new Headers();
+  headers.set("Content-Type", upstream.headers.get("content-type") ?? fallbackContentType);
+  for (const headerName of UPSTREAM_RESPONSE_HEADERS_TO_COPY) {
+    const value = upstream.headers.get(headerName);
+    if (value) {
+      headers.set(headerName, value);
+    }
+  }
+  return headers;
 }
 
 export function getPreviewProxyConfig(
