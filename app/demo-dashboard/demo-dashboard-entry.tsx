@@ -361,27 +361,18 @@ function DemoDashboardSession({
   messages: ClientMessages;
 }) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
-  const [claimAccessToken] = useState(() => trimmedToken || readStoredDemoAccessToken());
-  const [claimState, setClaimState] = useState<ClaimState>(() => {
-    if (claimAccessToken) {
-      return { status: "loading" };
-    }
-    const stored = readStoredDemoClaimPayload();
-    return stored ? { status: "ready", payload: stored } : { status: "idle" };
-  });
+  const [claimAccessToken, setClaimAccessToken] = useState(trimmedToken);
+  const [claimState, setClaimState] = useState<ClaimState>(
+    trimmedToken ? { status: "loading" } : { status: "idle" },
+  );
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [conversionState, setConversionState] = useState<ConversionState>(() => {
-    if (claimAccessToken) {
-      return { status: "idle" };
-    }
-    const storedClaim = readStoredDemoClaimPayload();
-    const storedConversion = storedClaim ? readStoredDemoConversionPayload(storedClaim) : null;
-    return storedConversion ? { status: "result", payload: storedConversion } : { status: "idle" };
-  });
+  const [conversionState, setConversionState] = useState<ConversionState>({ status: "idle" });
+  const [clientRestoreComplete, setClientRestoreComplete] = useState(Boolean(trimmedToken));
 
-  const effectiveClaimState: ClaimState =
-    claimAccessToken || claimState.status === "ready" || claimState.status === "error"
+  const effectiveClaimState: ClaimState = !clientRestoreComplete
+    ? { status: "loading" }
+    : claimAccessToken || claimState.status === "ready" || claimState.status === "error"
       ? claimState
       : { status: "error", message: t("dashboard.demo.error.missingToken") };
   const payload = effectiveClaimState.status === "ready" ? effectiveClaimState.payload : null;
@@ -404,11 +395,40 @@ function DemoDashboardSession({
   }, [t]);
 
   useEffect(() => {
-    if (!trimmedToken) {
+    if (trimmedToken) {
+      storeDemoAccessToken(trimmedToken);
+      scrubDemoAccessTokenFromLocation();
       return;
     }
-    storeDemoAccessToken(trimmedToken);
-    scrubDemoAccessTokenFromLocation();
+
+    let canceled = false;
+    queueMicrotask(() => {
+      if (canceled) {
+        return;
+      }
+      const storedAccessToken = readStoredDemoAccessToken();
+      if (storedAccessToken) {
+        setClaimAccessToken(storedAccessToken);
+        setClaimState({ status: "loading" });
+        setConversionState({ status: "idle" });
+        setClientRestoreComplete(true);
+        return;
+      }
+
+      const storedClaim = readStoredDemoClaimPayload();
+      setClaimAccessToken("");
+      setClaimState(storedClaim ? { status: "ready", payload: storedClaim } : { status: "idle" });
+      setConversionState(() => {
+        const storedConversion = storedClaim ? readStoredDemoConversionPayload(storedClaim) : null;
+        return storedConversion
+          ? { status: "result", payload: storedConversion }
+          : { status: "idle" };
+      });
+      setClientRestoreComplete(true);
+    });
+    return () => {
+      canceled = true;
+    };
   }, [trimmedToken]);
 
   const exchangeClaimToken = useCallback(

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import messages from "@internal/i18n/messages/en.json";
@@ -85,6 +86,18 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
+  it("server-renders a loading state while scrubbed sessions wait for client restore", () => {
+    const browserWindow = window;
+    vi.stubGlobal("window", undefined);
+    try {
+      const html = renderToString(<DemoDashboardEntry accessToken="" messages={messages} />);
+      expect(html).toContain("Opening demo workspace");
+      expect(html).not.toContain("Missing demo access token");
+    } finally {
+      vi.stubGlobal("window", browserWindow);
+    }
+  });
+
   it("restores the claimed demo session after the URL token is scrubbed", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token#open");
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-session")));
@@ -99,6 +112,7 @@ describe("DemoDashboardEntry", () => {
     fetchMock.mockClear();
     render(<DemoDashboardEntry accessToken="" messages={messages} />);
 
+    expect(screen.queryByText("Missing demo access token.")).toBeNull();
     await screen.findByText("ps-session");
     expect(fetchMock).not.toHaveBeenCalled();
   });
