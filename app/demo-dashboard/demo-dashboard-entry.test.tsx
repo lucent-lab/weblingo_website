@@ -128,7 +128,7 @@ describe("DemoDashboardEntry", () => {
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
   });
 
-  it("keeps the URL token when the claim exchange fails", async () => {
+  it("scrubs the URL token and keeps a failed claim exchange retryable", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     const fetchMock = vi.fn(async () => jsonResponse({ error: "temporary failure" }, 503));
     vi.stubGlobal("fetch", fetchMock);
@@ -137,11 +137,14 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("temporary failure");
     expect(window.location.pathname).toBe("/dashboard/demo");
-    expect(window.location.search).toBe("?token=demo-token&source=mail");
+    expect(window.location.search).toBe("?source=mail");
     expect(window.location.hash).toBe("#open");
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBe(
+      "demo-token",
+    );
   });
 
-  it("lets the user retry a failed claim exchange from the retained URL token", async () => {
+  it("lets the user retry a failed claim exchange from the stored access token", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     const fetchMock = vi
       .fn()
@@ -152,6 +155,7 @@ describe("DemoDashboardEntry", () => {
     render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
 
     await screen.findByText("temporary failure");
+    expect(window.location.search).toBe("?source=mail");
     fireEvent.click(screen.getByRole("button", { name: "Retry demo access" }));
 
     await screen.findByText("ps-retry");
@@ -159,9 +163,10 @@ describe("DemoDashboardEntry", () => {
     expect(window.location.pathname).toBe("/dashboard/demo");
     expect(window.location.search).toBe("?source=mail");
     expect(window.location.hash).toBe("#open");
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBeNull();
   });
 
-  it("keeps the URL token and clears stale storage when a successful claim response is invalid", async () => {
+  it("scrubs the URL token and clears stale storage when a successful claim response is invalid", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     window.sessionStorage.setItem(
       "weblingo:demo-dashboard:claim:v1",
@@ -174,8 +179,9 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("Demo access response was invalid.");
     expect(window.location.pathname).toBe("/dashboard/demo");
-    expect(window.location.search).toBe("?token=demo-token&source=mail");
+    expect(window.location.search).toBe("?source=mail");
     expect(window.location.hash).toBe("#open");
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:access-token:v1")).toBeNull();
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
   });
 

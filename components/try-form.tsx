@@ -1204,6 +1204,11 @@ export function TryForm({
       setPendingEmail("");
 
       closeEventSource();
+      if (trackedJob) {
+        removePreviewStatusCenterJob(trackedJob.previewId);
+        clearPreviewTracking(trackedJob.previewId);
+        clearActivePreviewIdFromSession(trackedJob.previewId);
+      }
 
       const requestKey = buildPreviewStatusCenterRequestKey({
         kind: "prospect_showcase",

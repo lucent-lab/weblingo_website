@@ -591,6 +591,43 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("clears a stale ready result when a retry create request fails", async () => {
+    upsertDefaultJob("pending", {
+      previewId: "bcbc2222-2222-2222-2222-222222222222",
+      previewUrl: "https://preview.example.com/p/ready",
+    });
+    markPreviewStatusCenterJobTerminal("bcbc2222-2222-2222-2222-222222222222", "ready", {
+      previewUrl: "https://preview.example.com/p/ready",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            error: "Fresh request failed.",
+          },
+          500,
+        ),
+      ),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "View showcase" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Fresh request failed.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+    });
+    expect(screen.queryByText("Ready")).toBeNull();
+    expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
+  });
+
   it("maps preview phases to deterministic modes", () => {
     expect(resolveTryFormMode(false, null)).toBe("idle");
     expect(resolveTryFormMode(true, null)).toBe("creating");

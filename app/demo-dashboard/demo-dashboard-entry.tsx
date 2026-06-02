@@ -49,6 +49,7 @@ type DemoConversionPayload = {
 };
 
 const emailSchema = z.email();
+const DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:access-token:v1";
 const DEMO_CLAIM_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:claim:v1";
 const DEMO_CONVERSION_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:conversion:v1";
 
@@ -169,6 +170,39 @@ function readStoredDemoClaimPayload(): DemoClaimPayload | null {
   }
 }
 
+function readStoredDemoAccessToken(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  try {
+    return window.sessionStorage.getItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function storeDemoAccessToken(rawToken: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY, rawToken);
+  } catch {
+    window.sessionStorage.removeItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY);
+  }
+}
+
+function clearStoredDemoAccessToken(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; the URL has already been scrubbed.
+  }
+}
+
 function readStoredDemoConversionPayload(claim: DemoClaimPayload): DemoConversionPayload | null {
   if (typeof window === "undefined") {
     return null;
@@ -226,6 +260,7 @@ function clearStoredDemoClaimPayload(): void {
     return;
   }
   try {
+    window.sessionStorage.removeItem(DEMO_ACCESS_TOKEN_SESSION_STORAGE_KEY);
     window.sessionStorage.removeItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
     window.sessionStorage.removeItem(DEMO_CONVERSION_SESSION_STORAGE_KEY);
   } catch {
@@ -326,8 +361,9 @@ function DemoDashboardSession({
   messages: ClientMessages;
 }) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
+  const [claimAccessToken] = useState(() => trimmedToken || readStoredDemoAccessToken());
   const [claimState, setClaimState] = useState<ClaimState>(() => {
-    if (trimmedToken) {
+    if (claimAccessToken) {
       return { status: "loading" };
     }
     const stored = readStoredDemoClaimPayload();
@@ -336,7 +372,7 @@ function DemoDashboardSession({
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [conversionState, setConversionState] = useState<ConversionState>(() => {
-    if (trimmedToken) {
+    if (claimAccessToken) {
       return { status: "idle" };
     }
     const storedClaim = readStoredDemoClaimPayload();
@@ -345,7 +381,7 @@ function DemoDashboardSession({
   });
 
   const effectiveClaimState: ClaimState =
-    trimmedToken || claimState.status === "ready" || claimState.status === "error"
+    claimAccessToken || claimState.status === "ready" || claimState.status === "error"
       ? claimState
       : { status: "error", message: t("dashboard.demo.error.missingToken") };
   const payload = effectiveClaimState.status === "ready" ? effectiveClaimState.payload : null;
@@ -367,16 +403,24 @@ function DemoDashboardSession({
     setClaimState({ status: "error", message: t("dashboard.demo.error.expired") });
   }, [t]);
 
+  useEffect(() => {
+    if (!trimmedToken) {
+      return;
+    }
+    storeDemoAccessToken(trimmedToken);
+    scrubDemoAccessTokenFromLocation();
+  }, [trimmedToken]);
+
   const exchangeClaimToken = useCallback(
     async (isCanceled: () => boolean = () => false): Promise<ClaimState | null> => {
-      if (!trimmedToken) {
+      if (!claimAccessToken) {
         return null;
       }
       try {
         const response = await fetch("/api/prospect-showcases/claim", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: trimmedToken }),
+          body: JSON.stringify({ token: claimAccessToken }),
           cache: "no-store",
         });
         const body = await response.json().catch(() => null);
@@ -395,7 +439,7 @@ function DemoDashboardSession({
           return { status: "error", message: t("dashboard.demo.error.invalidClaim") };
         }
         storeDemoClaimPayload(parsed);
-        scrubDemoAccessTokenFromLocation();
+        clearStoredDemoAccessToken();
         return { status: "ready", payload: parsed };
       } catch {
         return isCanceled()
@@ -403,7 +447,7 @@ function DemoDashboardSession({
           : { status: "error", message: t("dashboard.demo.error.openFailed") };
       }
     },
-    [trimmedToken, t],
+    [claimAccessToken, t],
   );
 
   async function handleRetryClaim() {
@@ -422,7 +466,7 @@ function DemoDashboardSession({
   }
 
   useEffect(() => {
-    if (!trimmedToken) {
+    if (!claimAccessToken) {
       return;
     }
 
@@ -443,7 +487,7 @@ function DemoDashboardSession({
     return () => {
       canceled = true;
     };
-  }, [trimmedToken, exchangeClaimToken]);
+  }, [claimAccessToken, exchangeClaimToken]);
 
   useEffect(() => {
     if (!payload) {
@@ -569,7 +613,7 @@ function DemoDashboardSession({
               <CardTitle>{t("dashboard.demo.error.title")}</CardTitle>
               <CardDescription>{effectiveClaimState.message}</CardDescription>
             </CardHeader>
-            {trimmedToken ? (
+            {claimAccessToken ? (
               <CardContent>
                 <Button type="button" variant="outline" onClick={() => void handleRetryClaim()}>
                   {t("dashboard.demo.error.retry")}
