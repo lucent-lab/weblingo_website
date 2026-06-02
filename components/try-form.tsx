@@ -976,10 +976,12 @@ export function TryForm({
     const handlePayload = (data: Record<string, unknown>) => {
       const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, data);
       const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(data);
-      if (payloadPreviewUrl || payloadDemoDashboardUrl) {
+      const payloadExpiresAt = resolvePreviewJobPayloadExpiresAt(data);
+      if (payloadPreviewUrl || payloadDemoDashboardUrl || payloadExpiresAt !== null) {
         updatePreviewStatusCenterJob(previewId, {
           previewUrl: payloadPreviewUrl ?? undefined,
           demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
+          expiresAt: payloadExpiresAt ?? undefined,
         });
       }
 
@@ -995,6 +997,7 @@ export function TryForm({
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
           demoDashboardUrl: decision.demoDashboardUrl,
+          expiresAt: decision.expiresAt,
           error: decision.error,
           errorCode: decision.errorCode,
           errorStage: decision.errorStage,
@@ -1003,7 +1006,14 @@ export function TryForm({
         return;
       }
 
-      syncStatusCenterActiveState(previewId, decision.status, decision.stage, decision.retryHint);
+      syncStatusCenterActiveState(
+        previewId,
+        decision.status,
+        decision.stage,
+        decision.retryHint,
+        true,
+        decision.expiresAt,
+      );
     };
 
     const parseEventPayload = (event: MessageEvent | Event): Record<string, unknown> | null => {
@@ -1967,17 +1977,44 @@ export function TryForm({
               </div>
             ) : null}
           </div>
-          <Button
-            onClick={() => {
-              void handleGenerate();
-            }}
-            disabled={isGenerateDisabled || isCreating}
-            variant="outline"
-            size="sm"
-            className="w-fit border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/5 hover:text-destructive"
-          >
-            {t("try.action.retry")}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={() => {
+                void handleGenerate();
+              }}
+              disabled={isGenerateDisabled || isCreating}
+              variant="outline"
+              size="sm"
+              className="w-fit border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            >
+              {t("try.action.retry")}
+            </Button>
+            {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
+              <Button asChild size="sm" variant="secondary" className="w-fit">
+                <a
+                  href={trackedJob.demoDashboardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    captureAnalyticsEvent(
+                      ANALYTICS_EVENTS.previewOpenClicked,
+                      buildPreviewAnalyticsProperties({
+                        locale,
+                        sourceUrl: trackedJob.sourceUrl,
+                        sourceLang: trackedJob.sourceLang,
+                        targetLang: trackedJob.targetLang,
+                        previewId: trackedJob.previewId,
+                        status: trackedJob.status,
+                        fieldLayout,
+                      }),
+                    );
+                  }}
+                >
+                  {t("try.preview.openDemoDashboard")}
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

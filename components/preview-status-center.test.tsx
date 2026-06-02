@@ -196,6 +196,48 @@ describe("PreviewStatusCenter", () => {
     );
   });
 
+  it("opens demo dashboards for failed payment jobs", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "66666666-6666-6666-6666-666666666666",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://payment-failed.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "payment-failed-token",
+      sourceUrl: "https://payment-failed.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+    });
+    markPreviewStatusCenterJobTerminal("66666666-6666-6666-6666-666666666666", "failed", {
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=payment-retry",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    const demoDashboardLink = await screen.findByRole("link", {
+      name: "Open demo dashboard",
+    });
+    expect(demoDashboardLink.getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=payment-retry",
+    );
+
+    demoDashboardLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(demoDashboardLink);
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+      ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+      expect.objectContaining({
+        preview_id: "66666666-6666-6666-6666-666666666666",
+        status: "failed",
+      }),
+    );
+  });
+
   it("renders a capacity hint for active jobs waiting on browser slots", async () => {
     upsertPreviewStatusCenterJob({
       previewId: "33333333-3333-3333-3333-333333333333",

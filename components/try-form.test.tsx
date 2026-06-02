@@ -1248,6 +1248,84 @@ describe("TryForm preview status", () => {
     );
   });
 
+  it("renders a demo dashboard continuation link when SSE reports payment failure", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-payment-failed",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=payment-retry",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=payment-retry",
+    );
+  });
+
+  it("persists expiry timestamps from SSE status updates", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-expiring-status",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "processing",
+      stage: "translating",
+      expiresAt: "2026-06-02T10:00:00.000Z",
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "prospect-expiring-status",
+      );
+      expect(job?.expiresAt).toBe(Date.parse("2026-06-02T10:00:00.000Z"));
+    });
+  });
+
   it("delays status polling from provider-capacity retry hints received over SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

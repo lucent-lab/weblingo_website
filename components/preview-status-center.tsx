@@ -116,7 +116,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
                 </Button>
               ) : null}
 
-              {job.status === "ready" && job.demoDashboardUrl ? (
+              {(job.status === "ready" || job.status === "failed") && job.demoDashboardUrl ? (
                 <Button asChild size="sm" variant="secondary">
                   <a
                     href={job.demoDashboardUrl}

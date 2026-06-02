@@ -62,6 +62,8 @@ describe("resolvePreviewStatusDecision", () => {
         payload: {
           status: "payment_failed",
           message: "Payment failed. Retry checkout to continue activation.",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+          expiresAt: "2026-06-02T10:00:00.000Z",
         },
         defaultErrorMessage: "Unable to check preview status.",
         payloadKind: "prospect_showcase",
@@ -69,6 +71,8 @@ describe("resolvePreviewStatusDecision", () => {
     ).toEqual({
       kind: "terminal",
       status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+      expiresAt: Date.parse("2026-06-02T10:00:00.000Z"),
       error: "Payment failed. Retry checkout to continue activation.",
       errorCode: null,
       errorStage: null,
