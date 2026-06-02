@@ -238,6 +238,34 @@ describe("PreviewStatusCenter", () => {
     );
   });
 
+  it("opens showcase links for failed jobs when a preview url is available", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "77777777-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://failed-showcase.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "failed-showcase-token",
+      sourceUrl: "https://failed-showcase.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+    });
+    markPreviewStatusCenterJobTerminal("77777777-7777-7777-7777-777777777777", "failed", {
+      previewUrl: "https://showcase.example.com/failed/fr",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    const showcaseLink = await screen.findByRole("link", { name: "Open preview" });
+    expect(showcaseLink.getAttribute("href")).toBe("https://showcase.example.com/failed/fr");
+  });
+
   it("renders a capacity hint for active jobs waiting on browser slots", async () => {
     upsertPreviewStatusCenterJob({
       previewId: "33333333-3333-3333-3333-333333333333",

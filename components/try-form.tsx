@@ -2031,6 +2031,31 @@ export function TryForm({
             >
               {t("try.action.retry")}
             </Button>
+            {trackedJob?.status === "failed" && trackedJob.previewUrl ? (
+              <Button asChild size="sm" variant="secondary" className="w-fit">
+                <a
+                  href={trackedJob.previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    captureAnalyticsEvent(
+                      ANALYTICS_EVENTS.previewOpenClicked,
+                      buildPreviewAnalyticsProperties({
+                        locale,
+                        sourceUrl: trackedJob.sourceUrl,
+                        sourceLang: trackedJob.sourceLang,
+                        targetLang: trackedJob.targetLang,
+                        previewId: trackedJob.previewId,
+                        status: trackedJob.status,
+                        fieldLayout,
+                      }),
+                    );
+                  }}
+                >
+                  {t("try.preview.viewShowcase")}
+                </a>
+              </Button>
+            ) : null}
             {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
               <Button asChild size="sm" variant="secondary" className="w-fit">
                 <a

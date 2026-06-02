@@ -1288,6 +1288,46 @@ describe("TryForm preview status", () => {
     );
   });
 
+  it("renders a showcase link when SSE payment failure includes a showcase url", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-payment-failed-showcase",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      showcaseUrl: "https://showcase.example.com/payment-failed/fr",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
+      "https://showcase.example.com/payment-failed/fr",
+    );
+  });
+
   it("does not mark prospect showcase complete frames with payment failure as ready", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

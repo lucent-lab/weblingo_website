@@ -91,7 +91,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
             ) : null}
 
             <div className="mt-3 flex items-center gap-2">
-              {job.status === "ready" && job.previewUrl ? (
+              {(job.status === "ready" || job.status === "failed") && job.previewUrl ? (
                 <Button asChild size="sm" variant="secondary">
                   <a
                     href={job.previewUrl}
