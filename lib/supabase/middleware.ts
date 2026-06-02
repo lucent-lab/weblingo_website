@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
-import { i18nConfig } from "@internal/i18n";
+import { i18nConfig, type Locale } from "@internal/i18n";
 import { getSupabasePublicEnv } from "./env";
 
 const publicDemoDashboardPaths = new Set(
@@ -15,13 +15,12 @@ publicDemoDashboardPaths.add("/dashboard/demo");
 publicDemoDashboardPaths.add("/dashboard/demo/");
 
 export async function updateSession(request: NextRequest) {
-  if (publicDemoDashboardPaths.has(request.nextUrl.pathname)) {
-    const url = new URL(request.url);
-    url.pathname = "/demo-dashboard";
-    return NextResponse.rewrite(url);
-  }
+  const publicDemoDashboardLocale = getPublicDemoDashboardLocale(request.nextUrl.pathname);
 
   if (isDashboardE2eMockEnabled()) {
+    if (publicDemoDashboardLocale !== undefined) {
+      return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale);
+    }
     return NextResponse.next({ request });
   }
 
@@ -58,6 +57,10 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  if (publicDemoDashboardLocale !== undefined) {
+    return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale, supabaseResponse);
+  }
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
@@ -84,4 +87,36 @@ export async function updateSession(request: NextRequest) {
   // of sync and terminate the user's session prematurely!
 
   return supabaseResponse;
+}
+
+function getPublicDemoDashboardLocale(pathname: string): Locale | null | undefined {
+  if (!publicDemoDashboardPaths.has(pathname)) {
+    return undefined;
+  }
+
+  const pathParts = pathname.split("/").filter(Boolean);
+  const maybeLocale = pathParts[0];
+  if (maybeLocale && i18nConfig.locales.includes(maybeLocale as Locale)) {
+    return maybeLocale as Locale;
+  }
+
+  return null;
+}
+
+function buildPublicDemoDashboardRewrite(
+  request: NextRequest,
+  locale: Locale | null,
+  supabaseResponse?: NextResponse,
+) {
+  const url = new URL(request.url);
+  url.pathname = "/demo-dashboard";
+  if (locale) {
+    url.searchParams.set("locale", locale);
+  }
+
+  const response = NextResponse.rewrite(url);
+  for (const cookie of supabaseResponse?.cookies.getAll() ?? []) {
+    response.cookies.set(cookie);
+  }
+  return response;
 }

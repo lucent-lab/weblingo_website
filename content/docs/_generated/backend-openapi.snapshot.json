@@ -6041,7 +6041,11 @@
           "translating",
           "building_showcase",
           "ready",
-          "failed"
+          "failed",
+          "checkout_pending",
+          "activation_pending",
+          "payment_failed",
+          "converted"
         ],
         "type": "string"
       },
@@ -6050,7 +6054,11 @@
           "pending",
           "processing",
           "ready",
-          "failed"
+          "failed",
+          "checkout_pending",
+          "activation_pending",
+          "payment_failed",
+          "converted"
         ],
         "type": "string"
       },
