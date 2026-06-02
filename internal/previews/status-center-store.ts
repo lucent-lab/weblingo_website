@@ -8,6 +8,7 @@ import {
   resolvePreviewRetryHintDelayMs,
   type PreviewJob,
   type PreviewJobEvent,
+  type PreviewJobKind,
   type PreviewJobPatch,
   type PreviewJobPhase,
   type PreviewJobUpsertInput,
@@ -265,6 +266,10 @@ function parseOptionalPreviewStage(value: unknown): PreviewStage | null {
   return isPreviewStage(value) ? value : null;
 }
 
+function parseOptionalPreviewJobKind(value: unknown): PreviewJobKind {
+  return value === "prospect_showcase" ? "prospect_showcase" : "preview";
+}
+
 function resolveHydratedActiveNextPollAt(
   storedNextPollAt: unknown,
   retryHint: PreviewStatusCenterJob["retryHint"],
@@ -375,6 +380,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   const retryHint = parsePreviewRetryHint(value.retryHint);
 
   return normalizeJob({
+    kind: parseOptionalPreviewJobKind(value.kind),
     previewId: value.previewId,
     requestKey,
     statusToken: value.statusToken,
@@ -384,6 +390,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     status,
     stage: stage ?? (!isPreviewStatusCenterJobTerminal(status) ? errorStage : null),
     previewUrl: isString(value.previewUrl) ? value.previewUrl : null,
+    demoDashboardUrl: isString(value.demoDashboardUrl) ? value.demoDashboardUrl : null,
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
@@ -420,6 +427,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
   const legacyStage = parseOptionalPreviewStage(value.errorStage);
 
   return normalizeJob({
+    kind: "preview",
     previewId: value.previewId,
     requestKey: buildPreviewStatusCenterRequestKey({
       sourceUrl: value.sourceUrl,
@@ -433,6 +441,7 @@ function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
     status,
     stage: !isPreviewStatusCenterJobTerminal(status) ? legacyStage : null,
     previewUrl: isString(value.previewUrl) ? value.previewUrl : null,
+    demoDashboardUrl: null,
     error: isString(value.error) ? value.error : null,
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage: legacyStage,
@@ -655,6 +664,7 @@ function migrateLegacyJobsFromStorage(now: number): {
     const status: PreviewStatusCenterJobStatus = "processing";
     jobs.push(
       normalizeJob({
+        kind: "preview",
         previewId: pending.previewId,
         requestKey: canonicalRequestKey,
         statusToken: pending.statusToken,
@@ -664,6 +674,7 @@ function migrateLegacyJobsFromStorage(now: number): {
         status,
         stage: null,
         previewUrl: null,
+        demoDashboardUrl: null,
         error: null,
         errorCode: null,
         errorStage: null,

@@ -99,12 +99,26 @@ export function isPreviewUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+export function isProspectShowcaseRef(value: string): boolean {
+  return /^[A-Za-z0-9_-]{10,80}$/.test(value);
+}
+
 export function validatePreviewId(
   id: string,
   responseKind: PreviewProxyResponseKind,
 ): Response | null {
   if (!id || !isPreviewUuid(id)) {
     return createPreviewProxyResponse(responseKind, "Invalid preview id", 400);
+  }
+  return null;
+}
+
+export function validateProspectShowcaseRef(
+  ref: string,
+  responseKind: PreviewProxyResponseKind,
+): Response | null {
+  if (!ref || !isProspectShowcaseRef(ref)) {
+    return createPreviewProxyResponse(responseKind, "Invalid prospect showcase reference", 400);
   }
   return null;
 }

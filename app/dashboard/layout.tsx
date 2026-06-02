@@ -60,6 +60,11 @@ export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
 }
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const requestHeaders = await headers();
+  if (requestHeaders.get("x-weblingo-demo-dashboard-entry") === "1") {
+    return children;
+  }
+
   const auth = await getDashboardAuth();
   if (!auth.user || !auth.session) {
     redirect("/auth/login");
@@ -68,7 +73,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     return children;
   }
 
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const locale = resolvePreferredLocale(requestHeaders.get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const email = auth.user?.email ?? "—";
   const workspaceAudience = resolveDashboardWorkspaceAudience(auth);

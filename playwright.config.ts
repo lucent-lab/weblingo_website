@@ -7,8 +7,9 @@ const previewTestEnv = {
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "pk_test_playwright",
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "phc_playwright",
-  NEXT_PUBLIC_POSTHOG_HOST:
-    process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://posthog.playwright.invalid",
+  NEXT_PUBLIC_POSTHOG_BROWSER_HOST:
+    process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST ?? `${baseURL}/_analytics/posthog`,
+  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
   NEXT_PUBLIC_SUPABASE_URL:
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://supabase.playwright.invalid",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:

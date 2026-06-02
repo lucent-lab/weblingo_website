@@ -21,6 +21,14 @@ import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
 let previewStatusRuntimeOwner: symbol | null = null;
 
+function buildStatusUrl(job: PreviewStatusCenterJob): string {
+  const token = encodeURIComponent(job.statusToken);
+  if (job.kind === "prospect_showcase") {
+    return `/api/prospect-showcases/${encodeURIComponent(job.previewId)}/status?token=${token}`;
+  }
+  return `/api/previews/${job.previewId}?token=${token}`;
+}
+
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
 }
@@ -81,12 +89,9 @@ export function usePreviewStatusRuntime() {
 
     const pollJob = async (job: PreviewStatusCenterJob) => {
       try {
-        const response = await fetch(
-          `/api/previews/${job.previewId}?token=${encodeURIComponent(job.statusToken)}`,
-          {
-            cache: "no-store",
-          },
-        );
+        const response = await fetch(buildStatusUrl(job), {
+          cache: "no-store",
+        });
 
         const bodyText = await response.text();
         let payload: Record<string, unknown> | null = null;
@@ -104,10 +109,12 @@ export function usePreviewStatusRuntime() {
           payload,
           defaultErrorMessage: "Unable to check preview status.",
           mapNotFoundToErrorCode: true,
+          payloadKind: job.kind,
         });
         if (decision.kind === "terminal") {
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
+            demoDashboardUrl: decision.demoDashboardUrl,
             error: decision.error,
             errorCode: decision.errorCode,
             errorStage: decision.errorStage,

@@ -5,6 +5,16 @@ import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 import { getSupabasePublicEnv } from "./env";
 
 export async function updateSession(request: NextRequest) {
+  if (request.nextUrl.pathname === "/dashboard/demo") {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-weblingo-demo-dashboard-entry", "1");
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
   if (isDashboardE2eMockEnabled()) {
     return NextResponse.next({ request });
   }

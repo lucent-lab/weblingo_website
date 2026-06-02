@@ -102,8 +102,11 @@ const messages = {
   "try.pending.emailSaved": "We'll email you when it's ready.",
   "try.pending.emailError": "Could not save email. Try again.",
   "try.preview.linkLabel": "Preview link",
+  "try.preview.showcaseLinkLabel": "Showcase link",
   "try.preview.open": "Open preview",
   "try.preview.openOverlay": "Open overlay preview",
+  "try.preview.viewShowcase": "View showcase",
+  "try.preview.openDemoDashboard": "Open demo dashboard",
   "try.preview.copy": "Copy link",
   "try.preview.copied": "Copied",
   "try.error.default": "Preview failed.",
@@ -271,7 +274,7 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "99999999-9999-9999-9999-999999999999",
+          prospectShowcaseRef: "99999999-9999-9999-9999-999999999999",
           statusToken: "status-token",
           status: "processing",
           stage: "translating",
@@ -323,7 +326,7 @@ describe("TryForm preview status", () => {
     const eventSource = MockEventSource.instances[0];
     expect(eventSource).toBeTruthy();
     eventSource?.emit("complete", {
-      previewUrl: "https://preview.example.com/p/9999",
+      showcaseUrl: "https://preview.example.com/p/9999",
     });
 
     await waitFor(() => {
@@ -337,7 +340,7 @@ describe("TryForm preview status", () => {
     });
 
     eventSource?.emit("complete", {
-      previewUrl: "https://preview.example.com/p/9999",
+      showcaseUrl: "https://preview.example.com/p/9999",
     });
     await Promise.resolve();
     expect(
@@ -348,7 +351,7 @@ describe("TryForm preview status", () => {
   it("renders visible funnel labels and sends the email with the preview request", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({
-        previewId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        prospectShowcaseRef: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
         statusToken: "email-token",
         status: "processing",
         stage: "translating",
@@ -402,7 +405,7 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+          prospectShowcaseRef: "ffffffff-ffff-ffff-ffff-ffffffffffff",
           statusToken: "status-token",
           status: "failed",
           errorCode: "render_failed",
@@ -501,10 +504,10 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "abababab-abab-abab-abab-abababababab",
+          prospectShowcaseRef: "abababab-abab-abab-abab-abababababab",
           statusToken: "status-token",
           status: "ready",
-          previewUrl: "https://preview.example.com/p/abab",
+          showcaseUrl: "https://preview.example.com/p/abab",
         }),
       ),
     );
@@ -521,7 +524,7 @@ describe("TryForm preview status", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
-    const openButton = await screen.findByRole("link", { name: "Open overlay preview" });
+    const openButton = await screen.findByRole("link", { name: "View showcase" });
     openButton.addEventListener("click", (event) => event.preventDefault(), { once: true });
     fireEvent.click(openButton);
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
@@ -948,7 +951,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("Ready")).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
-      expect(screen.getByRole("link", { name: "Open overlay preview" }).getAttribute("href")).toBe(
+      expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
         "https://preview.example.com/p/ready",
       );
     });
@@ -993,7 +996,7 @@ describe("TryForm preview status", () => {
     });
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return createPromise;
       }
       return jsonResponse({ status: "processing" });
@@ -1014,7 +1017,7 @@ describe("TryForm preview status", () => {
 
     resolveCreate(
       jsonResponse({
-        previewId: "ffff6666-6666-6666-6666-666666666666",
+        prospectShowcaseRef: "ffff6666-6666-6666-6666-666666666666",
         statusToken: "new-token",
         status: "pending",
       }),
@@ -1115,9 +1118,9 @@ describe("TryForm preview status", () => {
   it("persists preview jobs in v2 storage and marks ready from SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1144,7 +1147,7 @@ describe("TryForm preview status", () => {
 
     MockEventSource.instances[0].emit("status", {
       status: "ready",
-      previewUrl: "https://preview.test/p/abc",
+      showcaseUrl: "https://preview.test/p/abc",
     });
 
     await waitFor(() => {
@@ -1156,9 +1159,9 @@ describe("TryForm preview status", () => {
   it("delays status polling from provider-capacity retry hints received over SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1200,9 +1203,9 @@ describe("TryForm preview status", () => {
   it("resumes normal status polling when SSE leaves provider-capacity wait", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1441,7 +1444,7 @@ describe("TryForm preview status", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input) !== "/api/previews") {
+        if (String(input) !== "/api/prospect-showcases") {
           return Promise.resolve(jsonResponse({ status: "processing" }));
         }
 
@@ -1708,17 +1711,20 @@ describe("TryForm preview status", () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "33333333-3333-3333-3333-333333333333",
+          prospectShowcaseRef: "33333333-3333-3333-3333-333333333333",
           statusToken: "poll-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token"
+      ) {
         return jsonResponse({
           status: "ready",
-          previewUrl: "https://preview.test/p/poll",
+          showcaseUrl: "https://preview.test/p/poll",
         });
       }
       return jsonResponse({ status: "processing" });
@@ -1733,7 +1739,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token",
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token",
       );
       expect(screen.getByText("Ready")).toBeTruthy();
     });
@@ -1743,14 +1749,17 @@ describe("TryForm preview status", () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "33333333-3333-3333-3333-333333333333",
+          prospectShowcaseRef: "33333333-3333-3333-3333-333333333333",
           statusToken: "poll-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token"
+      ) {
         return jsonResponse({ error: "Not found" }, 404);
       }
       return jsonResponse({ status: "processing" });
@@ -1765,7 +1774,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token",
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token",
       );
       expect(screen.getByText("Preview not found")).toBeTruthy();
     });
@@ -1774,14 +1783,17 @@ describe("TryForm preview status", () => {
   it("closes SSE and uses a single status check when stream errors", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "44444444-4444-4444-4444-444444444444",
+          prospectShowcaseRef: "44444444-4444-4444-4444-444444444444",
           statusToken: "sse-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/44444444-4444-4444-4444-444444444444/status?token=sse-token"
+      ) {
         return jsonResponse({ status: "processing" });
       }
       return jsonResponse({ status: "processing" });
@@ -1803,7 +1815,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token",
+        "/api/prospect-showcases/44444444-4444-4444-4444-444444444444/status?token=sse-token",
       );
     });
     expect(stream.closed).toBe(true);
@@ -1813,14 +1825,17 @@ describe("TryForm preview status", () => {
   it("restores running UI when a timed-out preview status check remains active", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "timeout-active-8888-8888-8888-888888888888",
+          prospectShowcaseRef: "timeout-active-8888-8888-8888-888888888888",
           statusToken: "timeout-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/timeout-active-8888-8888-8888-888888888888?token=timeout-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/timeout-active-8888-8888-8888-888888888888/status?token=timeout-token"
+      ) {
         return jsonResponse({ status: "waiting_provider_capacity", stage: "translating" });
       }
       return jsonResponse({ status: "processing" });
@@ -1856,9 +1871,9 @@ describe("TryForm preview status", () => {
   it("uses stage copy from the shared resolver", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "55555555-5555-5555-5555-555555555555",
+          prospectShowcaseRef: "55555555-5555-5555-5555-555555555555",
           statusToken: "stage-token",
           status: "pending",
         });
@@ -1921,9 +1936,9 @@ describe("TryForm preview status", () => {
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "77777777-7777-7777-7777-777777777777",
+          prospectShowcaseRef: "77777777-7777-7777-7777-777777777777",
           statusToken: "next-token",
           status: "pending",
         });
@@ -1945,7 +1960,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews",
+        "/api/prospect-showcases",
         expect.objectContaining({ method: "POST" }),
       );
     });

@@ -564,6 +564,110 @@
     },
     {
       "endpoint": {
+        "auth": "none",
+        "method": "GET",
+        "operationId": "prospectShowcases.claim",
+        "path": "/prospect-showcases/claim"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.claim",
+      "name": "Exchange a prospect showcase access token for a scoped demo dashboard token",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.claim"
+      ],
+      "stability": "GA",
+      "summary": "Exchange a prospect showcase access token for a scoped demo dashboard token",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
+        "method": "POST",
+        "operationId": "prospectShowcases.convert",
+        "path": "/prospect-showcases/:prospectShowcaseRef/convert"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.convert",
+      "name": "Convert a prospect showcase into a new locked customer account",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.convert"
+      ],
+      "stability": "GA",
+      "summary": "Convert a prospect showcase into a new locked customer account",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewToken",
+        "method": "POST",
+        "operationId": "prospectShowcases.create",
+        "path": "/prospect-showcases"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.create",
+      "name": "Create a public prospect showcase demo",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.create"
+      ],
+      "stability": "GA",
+      "summary": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewStatusToken",
+        "method": "GET",
+        "operationId": "prospectShowcases.status",
+        "path": "/prospect-showcases/:prospectShowcaseRef/status"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.status",
+      "name": "Get prospect showcase status",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.status"
+      ],
+      "stability": "GA",
+      "summary": "Get prospect showcase status",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
         "auth": "bearer",
         "method": "GET",
         "operationId": "sites.consistency.blocks.list",
@@ -804,7 +908,7 @@
         "sites.create"
       ],
       "stability": "GA",
-      "summary": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl.",
+      "summary": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl. `targetLangs` must be non-empty and use supported languages. `localeAliases` keys must match normalized `targetLangs`; values are trimmed and lowercased, and `null` or blank clears an alias.",
       "userFacing": true
     },
     {
@@ -1853,7 +1957,7 @@
         "sites.update"
       ],
       "stability": "GA",
-      "summary": "Update site",
+      "summary": "Updates site settings. When `targetLangs` is present it must be non-empty and use supported languages. `localeAliases` keys must match the effective target language set: submitted `targetLangs` when present, otherwise the existing site locales. Alias values are trimmed and lowercased, and `null` or blank clears an alias.",
       "userFacing": true
     },
     {

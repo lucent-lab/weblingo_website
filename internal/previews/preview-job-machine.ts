@@ -10,6 +10,8 @@ export type PreviewJobPhase =
 
 export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_capacity_wait";
 
+export type PreviewJobKind = "preview" | "prospect_showcase";
+
 export type PreviewRetryHint = {
   reason: PreviewRetryHintReason;
   retryAfterSeconds: number | null;
@@ -17,6 +19,7 @@ export type PreviewRetryHint = {
 };
 
 export type PreviewJob = {
+  kind?: PreviewJobKind;
   previewId: string;
   requestKey: string;
   statusToken: string;
@@ -26,6 +29,7 @@ export type PreviewJob = {
   status: PreviewJobPhase;
   stage: PreviewStage | null;
   previewUrl: string | null;
+  demoDashboardUrl?: string | null;
   error: string | null;
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
@@ -39,6 +43,7 @@ export type PreviewJob = {
 };
 
 export type PreviewJobUpsertInput = {
+  kind?: PreviewJobKind;
   previewId: string;
   requestKey: string;
   statusToken: string;
@@ -48,6 +53,7 @@ export type PreviewJobUpsertInput = {
   status: PreviewJobPhase;
   stage?: PreviewStage | null;
   previewUrl?: string | null;
+  demoDashboardUrl?: string | null;
   error?: string | null;
   errorCode?: PreviewErrorCode | null;
   errorStage?: PreviewStage | null;
@@ -59,6 +65,7 @@ export type PreviewJobUpsertInput = {
 };
 
 export type PreviewJobPatch = Partial<{
+  kind: PreviewJobKind;
   requestKey: string;
   statusToken: string;
   sourceUrl: string;
@@ -67,6 +74,7 @@ export type PreviewJobPatch = Partial<{
   status: PreviewJobPhase;
   stage: PreviewStage | null;
   previewUrl: string | null;
+  demoDashboardUrl: string | null;
   error: string | null;
   errorCode: PreviewErrorCode | null;
   errorStage: PreviewStage | null;
@@ -266,6 +274,7 @@ function reduceUpsert(
       : input.retryHint;
 
   return {
+    kind: input.kind ?? existing?.kind ?? "preview",
     previewId: input.previewId,
     requestKey: resolveStringWithFallback(input.requestKey, existing?.requestKey ?? ""),
     statusToken: resolveStringWithFallback(input.statusToken, existing?.statusToken ?? ""),
@@ -275,6 +284,7 @@ function reduceUpsert(
     status,
     stage,
     previewUrl: input.previewUrl ?? existing?.previewUrl ?? null,
+    demoDashboardUrl: input.demoDashboardUrl ?? existing?.demoDashboardUrl ?? null,
     error: input.error ?? existing?.error ?? null,
     errorCode: input.errorCode ?? existing?.errorCode ?? null,
     errorStage: input.errorStage ?? existing?.errorStage ?? null,
@@ -318,6 +328,7 @@ function reducePatch(
 
   return {
     ...existing,
+    kind: patch.kind ?? existing.kind,
     requestKey: resolveStringWithFallback(patch.requestKey, existing.requestKey),
     statusToken: resolveStringWithFallback(patch.statusToken, existing.statusToken),
     sourceUrl: resolveStringWithFallback(patch.sourceUrl, existing.sourceUrl),
@@ -326,6 +337,8 @@ function reducePatch(
     status,
     stage,
     previewUrl: patch.previewUrl === undefined ? existing.previewUrl : patch.previewUrl,
+    demoDashboardUrl:
+      patch.demoDashboardUrl === undefined ? existing.demoDashboardUrl : patch.demoDashboardUrl,
     error: patch.error === undefined ? existing.error : patch.error,
     errorCode: patch.errorCode === undefined ? existing.errorCode : patch.errorCode,
     errorStage: patch.errorStage === undefined ? existing.errorStage : patch.errorStage,

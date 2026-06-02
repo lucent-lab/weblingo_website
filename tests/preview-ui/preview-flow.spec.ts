@@ -136,18 +136,18 @@ for (const previewFlowRoute of previewFlowRoutes) {
         routeDataFailures.push(`${request.failure()?.errorText ?? "failed"} ${request.url()}`);
       }
     });
-    await page.route("**/api/previews", async (route) => {
+    await page.route("**/api/prospect-showcases", async (route) => {
       apiRequests.push(previewApiRequestPath(route.request()));
       createPayloads.push((route.request().postDataJSON() ?? {}) as PreviewRequestPayload);
       await route.fulfill({
         status: 202,
         contentType: "application/json",
         body: JSON.stringify({
-          previewId: PREVIEW_ID,
+          prospectShowcaseRef: PREVIEW_ID,
           statusToken: STATUS_TOKEN,
           status: "pending",
-          stage: "fetching_page",
-          previewUrl: null,
+          stage: "accepted",
+          showcaseUrl: null,
           expiresAt: "2026-05-14T00:00:00.000Z",
         }),
       });
@@ -163,7 +163,9 @@ for (const previewFlowRoute of previewFlowRoutes) {
     await expect(page.getByText("Fetching page").first()).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => window.__weblingoPreviewEventSources?.[0]?.url ?? null))
-      .toBe(`/api/previews/${PREVIEW_ID}/stream?token=${encodeURIComponent(STATUS_TOKEN)}`);
+      .toBe(
+        `/api/prospect-showcases/${PREVIEW_ID}/stream?token=${encodeURIComponent(STATUS_TOKEN)}`,
+      );
 
     await dispatchPreviewEvent(page, "progress", {
       status: "processing",
@@ -173,16 +175,16 @@ for (const previewFlowRoute of previewFlowRoutes) {
 
     await dispatchPreviewEvent(page, "complete", {
       status: "ready",
-      previewUrl: PREVIEW_URL,
+      showcaseUrl: PREVIEW_URL,
     });
     await expect(page.getByText("Ready").first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open overlay preview" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "View showcase" })).toHaveAttribute(
       "href",
       PREVIEW_URL,
     );
     await expect(page.locator("input[readonly]").last()).toHaveValue(PREVIEW_URL);
 
-    expect(apiRequests).toEqual(["POST /api/previews"]);
+    expect(apiRequests).toEqual(["POST /api/prospect-showcases"]);
     expect(createPayloads).toEqual([
       {
         sourceUrl: "https://example.com",
