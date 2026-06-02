@@ -20,6 +20,12 @@ function claimPayload(ref: string, expiresAt = new Date(Date.now() + 60_000).toI
 function conversionPayload(
   status: "checkout_pending" | "activation_pending" | "payment_failed" | "converted",
 ) {
+  const nextActionByStatus = {
+    checkout_pending: "complete_payment",
+    activation_pending: "wait_for_activation",
+    payment_failed: "retry_payment",
+    converted: "open_dashboard",
+  } as const;
   return {
     prospectShowcaseRef: "ps-payment",
     status,
@@ -28,7 +34,7 @@ function conversionPayload(
     lockedReason: status === "converted" ? "none" : "payment_required",
     accountId: "acct-customer",
     siteId: "site-customer",
-    nextAction: status === "payment_failed" ? "retry_payment" : "complete_payment",
+    nextAction: nextActionByStatus[status],
   };
 }
 
@@ -322,9 +328,32 @@ describe("DemoDashboardEntry", () => {
 
     expect(await screen.findByText("Payment failed")).toBeTruthy();
     expect(await screen.findByText(/Payment recovery is required/)).toBeTruthy();
+    const retryPaymentLink = screen.getByRole("link", { name: /Retry payment/ });
+    expect(retryPaymentLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(screen.queryByText("Activation started")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders a customer workspace action after conversion completes", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(jsonResponse(claimPayload("ps-converted")));
+      }
+      return Promise.resolve(jsonResponse(conversionPayload("converted")));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await screen.findByText("ps-converted");
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
+
+    expect(await screen.findByText("Activation complete")).toBeTruthy();
+    const workspaceLink = screen.getByRole("link", { name: /Open customer workspace/ });
+    expect(workspaceLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
   });
 
   it("ignores conversion responses that resolve after demo access expires", async () => {
@@ -385,6 +414,8 @@ describe("DemoDashboardEntry", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
     await screen.findByText("Payment required");
+    const finishPaymentLink = screen.getByRole("link", { name: /Finish payment/ });
+    expect(finishPaymentLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
 
     unmount();
@@ -393,6 +424,7 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("Payment required");
     expect(screen.getByText("ps-checkout")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Finish payment/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, LoaderCircle, LockKeyhole, MonitorPlay } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, LoaderCircle, LockKeyhole, MonitorPlay } from "lucide-react";
 import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
@@ -380,6 +380,35 @@ function getConversionNextActionCopy(t: Translator, nextAction?: string): string
   }
 }
 
+function buildCustomerWorkspaceHref(siteId: string): string | null {
+  const trimmedSiteId = siteId.trim();
+  if (!trimmedSiteId) {
+    return null;
+  }
+  return `/dashboard/sites/${encodeURIComponent(trimmedSiteId)}`;
+}
+
+function getConversionAction(
+  t: Translator,
+  payload: DemoConversionPayload,
+): { href: string; label: string } | null {
+  const href = buildCustomerWorkspaceHref(payload.siteId);
+  if (!href) {
+    return null;
+  }
+  switch (payload.nextAction) {
+    case "complete_payment":
+      return { href, label: t("dashboard.demo.conversion.action.completePayment") };
+    case "retry_payment":
+      return { href, label: t("dashboard.demo.conversion.action.retryPayment") };
+    case "wait_for_activation":
+    case "open_dashboard":
+      return { href, label: t("dashboard.demo.conversion.action.openDashboard") };
+    default:
+      return null;
+  }
+}
+
 type AccessTokenInput = string | readonly string[] | null | undefined;
 
 function normalizeAccessToken(accessToken: AccessTokenInput): string {
@@ -704,6 +733,8 @@ function DemoDashboardSession({
     conversionState.status === "result"
       ? getConversionNextActionCopy(t, conversionState.payload.nextAction)
       : null;
+  const conversionAction =
+    conversionState.status === "result" ? getConversionAction(t, conversionState.payload) : null;
   const conversionResultTone =
     conversionState.status === "result" && conversionState.payload.status === "payment_failed"
       ? "border-destructive/40 bg-destructive/5 text-destructive"
@@ -857,6 +888,14 @@ function DemoDashboardSession({
                         {t("dashboard.demo.conversion.nextAction.label")}:{" "}
                         {conversionNextActionCopy}
                       </p>
+                    ) : null}
+                    {conversionAction ? (
+                      <Button asChild className="mt-3 w-full sm:w-auto">
+                        <a href={conversionAction.href}>
+                          <ArrowUpRight className="h-4 w-4" />
+                          {conversionAction.label}
+                        </a>
+                      </Button>
                     ) : null}
                   </div>
                 ) : null}

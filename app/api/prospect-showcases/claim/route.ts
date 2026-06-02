@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ token }),
         cache: "no-store",
       },
-      { timeoutMs: config.upstreamStatusTimeoutMs, signal: request.signal },
+      { timeoutMs: config.upstreamCreateTimeoutMs, signal: request.signal },
     );
 
     const text = await upstream.text();
