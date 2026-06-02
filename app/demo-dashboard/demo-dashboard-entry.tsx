@@ -410,7 +410,7 @@ function getConversionAction(
     case "open_dashboard":
       return { href, label: t("dashboard.demo.conversion.action.openDashboard") };
     default:
-      return null;
+      return { href, label: t("dashboard.demo.conversion.action.openDashboard") };
   }
 }
 
@@ -663,6 +663,9 @@ function DemoDashboardSession({
     if (!payload) {
       return;
     }
+    if (conversionState.status === "submitting" || conversionState.status === "result") {
+      return;
+    }
     const expiresAtMs = Date.parse(payload.expiresAt);
     if (!Number.isFinite(expiresAtMs)) {
       return;
@@ -674,7 +677,7 @@ function DemoDashboardSession({
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [expireCurrentDemoClaim, payload]);
+  }, [conversionState.status, expireCurrentDemoClaim, payload]);
 
   async function handleConvert() {
     if (!payload) {
@@ -706,10 +709,6 @@ function DemoDashboardSession({
         },
       );
       const body = await response.json().catch(() => null);
-      if (!isFreshClaimPayload(currentPayload)) {
-        expireCurrentDemoClaim();
-        return;
-      }
       if (!response.ok) {
         setConversionState({
           status: "error",

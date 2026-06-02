@@ -27,6 +27,7 @@ function claimPayload(ref: string, expiresAt = new Date(Date.now() + 60_000).toI
 
 function conversionPayload(
   status: "checkout_pending" | "activation_pending" | "payment_failed" | "converted",
+  nextAction?: string,
 ) {
   const nextActionByStatus = {
     checkout_pending: "complete_payment",
@@ -42,7 +43,7 @@ function conversionPayload(
     lockedReason: status === "converted" ? "none" : "payment_required",
     accountId: "acct-customer",
     siteId: "site-customer",
-    nextAction: nextActionByStatus[status],
+    nextAction: nextAction ?? nextActionByStatus[status],
   };
 }
 
@@ -411,7 +412,7 @@ describe("DemoDashboardEntry", () => {
     expect(workspaceLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
   });
 
-  it("ignores conversion responses that resolve after demo access expires", async () => {
+  it("renders conversion responses that resolve after demo access expires", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
     let resolveConversion: (response: Response) => void = () => undefined;
@@ -441,16 +442,39 @@ describe("DemoDashboardEntry", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
-    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
+    expect(screen.queryByText("Demo access has expired.")).toBeNull();
 
     await act(async () => {
       resolveConversion(jsonResponse(conversionPayload("converted")));
       await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
-    expect(screen.queryByText("Activation started")).toBeNull();
-    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
+    expect(screen.getByText("Activation complete")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Open customer workspace/ })).toBeTruthy();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeTruthy();
+  });
+
+  it("renders a workspace action for unknown conversion next actions", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(jsonResponse(claimPayload("ps-action")));
+      }
+      return Promise.resolve(jsonResponse(conversionPayload("checkout_pending", "contact_sales")));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await screen.findByText("ps-action");
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
+
+    expect(await screen.findByText("Payment required")).toBeTruthy();
+    expect(screen.getByText(/Continue with backend action: contact_sales/)).toBeTruthy();
+    const workspaceLink = screen.getByRole("link", { name: /Open customer workspace/ });
+    expect(workspaceLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
   });
 
   it("restores a completed conversion result after reload", async () => {
