@@ -49,6 +49,7 @@ type DemoConversionPayload = {
 };
 
 const emailSchema = z.email();
+const DEMO_CLAIM_SESSION_STORAGE_KEY = "weblingo:demo-dashboard:claim:v1";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -122,6 +123,54 @@ function parseErrorMessage(value: unknown, fallback: string): string {
     return value.message;
   }
   return fallback;
+}
+
+function isFreshClaimPayload(payload: DemoClaimPayload): boolean {
+  const expiresAt = Date.parse(payload.expiresAt);
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
+function readStoredDemoClaimPayload(): DemoClaimPayload | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = parseClaimPayload(JSON.parse(raw));
+    if (!parsed || !isFreshClaimPayload(parsed)) {
+      clearStoredDemoClaimPayload();
+      return null;
+    }
+    return parsed;
+  } catch {
+    clearStoredDemoClaimPayload();
+    return null;
+  }
+}
+
+function storeDemoClaimPayload(payload: DemoClaimPayload): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(DEMO_CLAIM_SESSION_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    window.sessionStorage.removeItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
+  }
+}
+
+function clearStoredDemoClaimPayload(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(DEMO_CLAIM_SESSION_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; the claim request remains the source of truth.
+  }
 }
 
 function scrubDemoAccessTokenFromLocation(): void {
@@ -199,16 +248,21 @@ function DemoDashboardSession({
   messages: ClientMessages;
 }) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
-  const [claimState, setClaimState] = useState<ClaimState>({
-    status: trimmedToken ? "loading" : "idle",
+  const [claimState, setClaimState] = useState<ClaimState>(() => {
+    if (trimmedToken) {
+      return { status: "loading" };
+    }
+    const stored = readStoredDemoClaimPayload();
+    return stored ? { status: "ready", payload: stored } : { status: "idle" };
   });
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [conversionState, setConversionState] = useState<ConversionState>({ status: "idle" });
 
-  const effectiveClaimState: ClaimState = trimmedToken
-    ? claimState
-    : { status: "error", message: t("dashboard.demo.error.missingToken") };
+  const effectiveClaimState: ClaimState =
+    trimmedToken || claimState.status === "ready"
+      ? claimState
+      : { status: "error", message: t("dashboard.demo.error.missingToken") };
   const payload = effectiveClaimState.status === "ready" ? effectiveClaimState.payload : null;
   const expiresAt = useMemo(() => {
     if (!payload) {
@@ -229,6 +283,7 @@ function DemoDashboardSession({
     }
 
     let canceled = false;
+    clearStoredDemoClaimPayload();
     void (async () => {
       try {
         const response = await fetch("/api/prospect-showcases/claim", {
@@ -254,6 +309,7 @@ function DemoDashboardSession({
           setClaimState({ status: "error", message: t("dashboard.demo.error.invalidClaim") });
           return;
         }
+        storeDemoClaimPayload(parsed);
         setClaimState({ status: "ready", payload: parsed });
       } catch {
         if (!canceled) {

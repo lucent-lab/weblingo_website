@@ -42,6 +42,7 @@ describe("DemoDashboardEntry", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    window.sessionStorage.clear();
     window.history.replaceState(null, "", "/");
   });
 
@@ -63,6 +64,24 @@ describe("DemoDashboardEntry", () => {
         body: JSON.stringify({ token: "demo-token" }),
       }),
     );
+  });
+
+  it("restores the claimed demo session after the URL token is scrubbed", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token#open");
+    const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-session")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { unmount } = render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await screen.findByText("ps-session");
+    expect(window.location.search).toBe("");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+    fetchMock.mockClear();
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await screen.findByText("ps-session");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("keeps the URL token when the claim exchange fails", async () => {
