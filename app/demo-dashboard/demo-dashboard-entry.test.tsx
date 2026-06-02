@@ -54,12 +54,12 @@ describe("DemoDashboardEntry", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("scrubs the URL token and sends the local claim request with a JSON body", async () => {
+  it("reads query tokens after hydration, scrubs them, and sends a JSON claim request", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-demo")));
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    render(<DemoDashboardEntry messages={messages} />);
 
     await screen.findByText("ps-demo");
     expect(window.location.pathname).toBe("/dashboard/demo");
@@ -121,12 +121,11 @@ describe("DemoDashboardEntry", () => {
   });
 
   it("uses the first token when the URL includes duplicated token params", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&token=ignored-token");
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-demo")));
     vi.stubGlobal("fetch", fetchMock);
 
-    render(
-      <DemoDashboardEntry accessToken={["demo-token", "ignored-token"]} messages={messages} />,
-    );
+    render(<DemoDashboardEntry messages={messages} />);
 
     await screen.findByText("ps-demo");
     expect(fetchMock).toHaveBeenCalledWith(
@@ -201,7 +200,7 @@ describe("DemoDashboardEntry", () => {
     expect(screen.queryByRole("button", { name: "Retry demo access" })).toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
-      target: { value: "owner@example.com" },
+      target: { value: " Owner@Example.COM " },
     });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Email fresh link" }));
@@ -216,7 +215,7 @@ describe("DemoDashboardEntry", () => {
       "/api/prospect-showcases/access-link/resend",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ email: "owner@example.com" }),
+        body: JSON.stringify({ email: "Owner@Example.COM" }),
       }),
     );
   });
@@ -322,7 +321,7 @@ describe("DemoDashboardEntry", () => {
     await screen.findByText("ps-payment");
 
     fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
-      target: { value: "owner@example.com" },
+      target: { value: " Owner@Example.COM " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
 
@@ -333,6 +332,16 @@ describe("DemoDashboardEntry", () => {
     expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(screen.queryByText("Activation started")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/prospect-showcases/ps-payment/convert",
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: "Owner@Example.COM",
+          conversionToken: "conversion-ps-payment",
+          dashboardToken: "dashboard-ps-payment",
+        }),
+      }),
+    );
   });
 
   it("renders a customer workspace action after conversion completes", async () => {

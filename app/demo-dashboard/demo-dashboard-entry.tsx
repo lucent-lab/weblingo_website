@@ -285,9 +285,13 @@ function clearStoredDemoConversionPayload(): void {
   }
 }
 
-function readDemoAccessTokenFromLocationFragment(): string {
+function readDemoAccessTokenFromLocation(): string {
   if (typeof window === "undefined") {
     return "";
+  }
+  const queryToken = new URL(window.location.href).searchParams.get("token")?.trim() ?? "";
+  if (queryToken) {
+    return queryToken;
   }
   const hash = window.location.hash.startsWith("#")
     ? window.location.hash.slice(1)
@@ -417,10 +421,10 @@ function normalizeAccessToken(accessToken: AccessTokenInput): string {
 }
 
 export function DemoDashboardEntry({
-  accessToken,
+  accessToken = "",
   messages,
 }: {
-  accessToken: AccessTokenInput;
+  accessToken?: AccessTokenInput;
   messages: ClientMessages;
 }) {
   const trimmedToken = normalizeAccessToken(accessToken);
@@ -481,14 +485,14 @@ function DemoDashboardSession({
     }
 
     let canceled = false;
-    const restoreFragmentAccessToken = () => {
-      const fragmentAccessToken = readDemoAccessTokenFromLocationFragment();
-      if (!fragmentAccessToken) {
+    const restoreLocationAccessToken = () => {
+      const locationAccessToken = readDemoAccessTokenFromLocation();
+      if (!locationAccessToken) {
         return false;
       }
-      storeDemoAccessToken(fragmentAccessToken);
+      storeDemoAccessToken(locationAccessToken);
       scrubDemoAccessTokenFromLocation();
-      setClaimAccessToken(fragmentAccessToken);
+      setClaimAccessToken(locationAccessToken);
       setClaimState({ status: "loading" });
       setConversionState({ status: "idle" });
       setClientRestoreComplete(true);
@@ -518,7 +522,7 @@ function DemoDashboardSession({
     const restoreFromHashChange = () => {
       queueMicrotask(() => {
         if (!canceled) {
-          restoreFragmentAccessToken();
+          restoreLocationAccessToken();
         }
       });
     };
@@ -527,7 +531,7 @@ function DemoDashboardSession({
       if (canceled) {
         return;
       }
-      if (restoreFragmentAccessToken()) {
+      if (restoreLocationAccessToken()) {
         return;
       }
       restoreStoredSession();
@@ -594,8 +598,8 @@ function DemoDashboardSession({
   }
 
   async function handleResendAccessLink() {
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!emailSchema.safeParse(normalizedEmail).success) {
+    const trimmedEmail = email.trim();
+    if (!emailSchema.safeParse(trimmedEmail).success) {
       setEmailError(t("dashboard.demo.form.emailInvalid"));
       return;
     }
@@ -605,7 +609,7 @@ function DemoDashboardSession({
       const response = await fetch("/api/prospect-showcases/access-link/resend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail }),
+        body: JSON.stringify({ email: trimmedEmail }),
         cache: "no-store",
       });
       const body = await response.json().catch(() => null);
@@ -678,8 +682,8 @@ function DemoDashboardSession({
       expireCurrentDemoClaim();
       return;
     }
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!emailSchema.safeParse(normalizedEmail).success) {
+    const trimmedEmail = email.trim();
+    if (!emailSchema.safeParse(trimmedEmail).success) {
       setEmailError(t("dashboard.demo.form.emailInvalid"));
       return;
     }
@@ -692,7 +696,7 @@ function DemoDashboardSession({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: normalizedEmail,
+            email: trimmedEmail,
             conversionToken: currentPayload.conversionToken,
             dashboardToken: currentPayload.token,
           }),

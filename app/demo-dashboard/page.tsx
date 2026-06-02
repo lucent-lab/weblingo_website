@@ -17,14 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function DemoDashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ token?: string | string[] }>;
-}) {
+export default async function DemoDashboardPage() {
   const { messages } = await resolveDemoDashboardMessages();
-  const token = (await searchParams).token;
-  return <DemoDashboardEntry accessToken={token} messages={messages} />;
+  return <DemoDashboardEntry messages={messages} />;
 }
 
 async function resolveDemoDashboardMessages(): Promise<{
