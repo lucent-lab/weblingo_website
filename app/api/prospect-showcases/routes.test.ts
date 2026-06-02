@@ -188,8 +188,8 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
-  test("GET /api/prospect-showcases/claim forwards dashboard token as a query token", async () => {
-    const { GET } = await import("./claim/route");
+  test("POST /api/prospect-showcases/claim forwards a body token upstream", async () => {
+    const { POST } = await import("./claim/route");
     allowRateLimit();
     fetchWithTimeout.mockResolvedValueOnce(
       new Response(JSON.stringify({ token: "dashboard-token", demo: true }), {
@@ -198,17 +198,19 @@ describe("/api/prospect-showcases proxy routes", () => {
       }),
     );
 
-    const request = buildNextRequest(
-      "http://localhost/api/prospect-showcases/claim?token=dashboard-token",
-      {
-        method: "GET",
-        headers: { "x-forwarded-for": "1.2.3.4" },
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/claim", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
       },
-    );
+      body: JSON.stringify({ token: "dashboard-token" }),
+    });
 
-    const response = await GET(request);
+    const response = await POST(request);
 
     expect(response.status).toBe(200);
+    expect(request.nextUrl.search).toBe("");
     expect(fetchWithTimeout).toHaveBeenCalledWith(
       "https://api.example.com/api/prospect-showcases/claim?token=dashboard-token",
       expect.objectContaining({

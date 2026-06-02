@@ -6,18 +6,31 @@ import {
   createPreviewProxyResponse,
   enforcePreviewRateLimit,
   getPreviewProxyConfig,
+  readPreviewJsonBodyLimited,
 } from "@internal/api/previews-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
 
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export async function POST(request: NextRequest) {
   const configResult = getPreviewProxyConfig("json");
   if (!configResult.ok) {
     return configResult.response;
   }
   const { config } = configResult;
-  const token = request.nextUrl.searchParams.get("token")?.trim() ?? "";
+
+  const bodyResult = await readPreviewJsonBodyLimited(request, 1_024);
+  if (!bodyResult.ok) {
+    return bodyResult.response;
+  }
+  if (!isRecord(bodyResult.payload)) {
+    return createPreviewProxyResponse("json", "Invalid request body", 400);
+  }
+  const token = typeof bodyResult.payload.token === "string" ? bodyResult.payload.token.trim() : "";
   if (!token) {
     return createPreviewProxyResponse("json", "Missing demo access token", 400);
   }
