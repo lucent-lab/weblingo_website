@@ -31,6 +31,29 @@ describe("resolvePreviewStatusDecision", () => {
     },
   );
 
+  it("omits prospect showcase terminal links that are absent from the payload", () => {
+    const decision = resolvePreviewStatusDecision({
+      responseOk: true,
+      responseStatus: 200,
+      payload: {
+        status: "checkout_pending",
+        message: "Complete payment to continue activation.",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+        expiresAt: "2026-06-02T10:00:00.000Z",
+      },
+      defaultErrorMessage: "Unable to check preview status.",
+      payloadKind: "prospect_showcase",
+    });
+
+    expect(decision).toMatchObject({
+      kind: "terminal",
+      status: "ready",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+      expiresAt: Date.parse("2026-06-02T10:00:00.000Z"),
+    });
+    expect(decision).not.toHaveProperty("previewUrl");
+  });
+
   it("terminalizes prospect showcase payment_failed as failed", () => {
     expect(
       resolvePreviewStatusDecision({
@@ -46,8 +69,6 @@ describe("resolvePreviewStatusDecision", () => {
     ).toEqual({
       kind: "terminal",
       status: "failed",
-      previewUrl: null,
-      demoDashboardUrl: null,
       error: "Payment failed. Retry checkout to continue activation.",
       errorCode: null,
       errorStage: null,

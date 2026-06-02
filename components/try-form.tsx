@@ -41,6 +41,7 @@ import {
   buildPreviewJobStatusUrl,
   buildPreviewJobStreamUrl,
   resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadExpiresAt,
   resolvePreviewJobPayloadStage,
   resolvePreviewJobPayloadUrl,
 } from "@internal/previews/preview-job-policy";
@@ -95,6 +96,7 @@ type ConnectStatusUpdatesOptions = {
   initialStage?: PreviewStage | null;
   initialPreviewUrl?: string;
   initialDemoDashboardUrl?: string;
+  initialExpiresAt?: number | null;
   initialRetryHint?: PreviewRetryHint | null;
 };
 
@@ -703,6 +705,7 @@ export function TryForm({
     stage: PreviewStage | null,
     retryHint?: PreviewRetryHint | null,
     remoteStatusVerified = true,
+    expiresAt?: number | null,
   ) {
     const retryHintDelayMs = remoteStatusVerified
       ? resolvePreviewRetryHintDelayMs(retryHint)
@@ -721,6 +724,7 @@ export function TryForm({
       errorStage: null,
       retryHint: retryHint ?? null,
       remoteStatusVerified,
+      expiresAt,
       ...(nextPollAt === undefined ? {} : { nextPollAt }),
     });
   }
@@ -748,18 +752,32 @@ export function TryForm({
     options: {
       previewUrl?: string | null;
       demoDashboardUrl?: string | null;
+      expiresAt?: number | null;
       error?: string | null;
       errorCode?: PreviewErrorCode | null;
       errorStage?: PreviewStage | null;
     } = {},
   ) {
-    markPreviewStatusCenterJobTerminal(previewId, status, {
-      previewUrl: options.previewUrl,
-      demoDashboardUrl: options.demoDashboardUrl,
-      error: options.error,
-      errorCode: options.errorCode,
-      errorStage: options.errorStage,
-    });
+    const patch: NonNullable<Parameters<typeof markPreviewStatusCenterJobTerminal>[2]> = {};
+    if (options.previewUrl !== undefined) {
+      patch.previewUrl = options.previewUrl;
+    }
+    if (options.demoDashboardUrl !== undefined) {
+      patch.demoDashboardUrl = options.demoDashboardUrl;
+    }
+    if (options.expiresAt !== undefined) {
+      patch.expiresAt = options.expiresAt;
+    }
+    if (options.error !== undefined) {
+      patch.error = options.error;
+    }
+    if (options.errorCode !== undefined) {
+      patch.errorCode = options.errorCode;
+    }
+    if (options.errorStage !== undefined) {
+      patch.errorStage = options.errorStage;
+    }
+    markPreviewStatusCenterJobTerminal(previewId, status, patch);
   }
 
   function markRestoredStatusCheckRetryAvailable(previewId: string) {
@@ -842,6 +860,7 @@ export function TryForm({
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
           demoDashboardUrl: decision.demoDashboardUrl,
+          expiresAt: decision.expiresAt,
           error: decision.error,
           errorCode: decision.errorCode,
           errorStage: decision.errorStage,
@@ -861,6 +880,7 @@ export function TryForm({
           decision.stage,
           decision.retryHint,
           true,
+          decision.expiresAt,
         );
       } else {
         syncStatusCenterTransientRetry(previewId);
@@ -1032,13 +1052,17 @@ export function TryForm({
       const payload = parseEventPayload(event as MessageEvent);
       const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, payload);
       const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+      const payloadExpiresAt = resolvePreviewJobPayloadExpiresAt(payload);
       if (payloadPreviewUrl || payloadDemoDashboardUrl) {
         syncStatusCenterTerminalState(previewId, "ready", {
-          previewUrl: payloadPreviewUrl,
-          demoDashboardUrl: payloadDemoDashboardUrl,
+          previewUrl: payloadPreviewUrl ?? undefined,
+          demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
+          expiresAt: payloadExpiresAt ?? undefined,
         });
       } else {
-        syncStatusCenterTerminalState(previewId, "ready");
+        syncStatusCenterTerminalState(previewId, "ready", {
+          expiresAt: payloadExpiresAt ?? undefined,
+        });
       }
       closeEventSource();
     });
@@ -1096,6 +1120,7 @@ export function TryForm({
       errorStage: null,
       previewUrl: options.initialPreviewUrl,
       demoDashboardUrl: options.initialDemoDashboardUrl,
+      expiresAt: options.initialExpiresAt,
       retryHint: options.initialRetryHint ?? null,
       remoteStatusVerified: true,
       retryCount: 0,
@@ -1260,6 +1285,7 @@ export function TryForm({
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
         const immediatePreview = resolvePreviewJobPayloadUrl("prospect_showcase", payload);
         const immediateDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+        const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
 
         if (payload?.status === "failed") {
           if (previewId) {
@@ -1290,11 +1316,13 @@ export function TryForm({
               sourceLang: normalizedSourceLang,
               targetLang: normalizedTargetLang,
               status: "processing",
+              expiresAt,
             });
             syncStatusCenterTerminalState(
               previewId,
               resolved.code === "preview_expired" ? "expired" : "failed",
               {
+                expiresAt: expiresAt ?? undefined,
                 error: resolved.message,
                 errorCode: resolved.code,
                 errorStage: resolved.stage,
@@ -1343,10 +1371,12 @@ export function TryForm({
             sourceLang: normalizedSourceLang,
             targetLang: normalizedTargetLang,
             status: "pending",
+            expiresAt,
           });
           syncStatusCenterTerminalState(previewId, "ready", {
-            previewUrl: immediatePreview,
-            demoDashboardUrl: immediateDemoDashboardUrl,
+            previewUrl: immediatePreview ?? undefined,
+            demoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
+            expiresAt: expiresAt ?? undefined,
           });
           return;
         }
@@ -1387,6 +1417,7 @@ export function TryForm({
           initialStage: resolvePreviewJobPayloadStage(payload?.stage),
           initialPreviewUrl: immediatePreview ?? undefined,
           initialDemoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
+          initialExpiresAt: expiresAt,
           initialRetryHint: resolvePreviewRetryHint(payload),
         });
       } finally {

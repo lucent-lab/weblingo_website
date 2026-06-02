@@ -489,8 +489,29 @@ function parseLegacyPendingPreview(value: unknown): LegacyPendingPreviewState | 
   };
 }
 
+function expireReadyJob(job: PreviewStatusCenterJob, now: number): PreviewStatusCenterJob {
+  if (job.status !== "ready" || job.expiresAt === null || now < job.expiresAt) {
+    return job;
+  }
+  return normalizeJob({
+    ...job,
+    status: "expired",
+    stage: null,
+    previewUrl: null,
+    demoDashboardUrl: null,
+    error: job.error,
+    errorCode: "preview_expired",
+    errorStage: null,
+    retryHint: null,
+    remoteStatusVerified: true,
+    retryCount: 0,
+    nextPollAt: Number.POSITIVE_INFINITY,
+  });
+}
+
 function pruneJobs(jobs: PreviewStatusCenterJob[], now = Date.now()): PreviewStatusCenterJob[] {
   return jobs
+    .map((job) => expireReadyJob(job, now))
     .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
     .sort(comparePreviewStatusCenterJobs)
     .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS);

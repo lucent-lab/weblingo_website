@@ -129,6 +129,28 @@ describe("status-center-store", () => {
     expect(getPreviewStatusCenterSnapshot().jobs).toHaveLength(0);
   });
 
+  it("expires ready jobs with stale expiry and clears terminal action URLs", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        kind: "prospect_showcase",
+        previewId: "expired-ready-1111-1111-1111-111111111111",
+        status: "ready",
+        previewUrl: "https://showcase.example.com/fr",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        expiresAt: Date.now() - 1_000,
+      }),
+    );
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: null,
+      errorCode: "preview_expired",
+    });
+  });
+
   it("tracks and resets retry state for active jobs", () => {
     upsertPreviewStatusCenterJob(buildJob());
     const now = Date.now();

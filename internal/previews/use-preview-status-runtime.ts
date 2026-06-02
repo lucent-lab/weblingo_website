@@ -111,6 +111,7 @@ export function usePreviewStatusRuntime() {
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
             demoDashboardUrl: decision.demoDashboardUrl,
+            expiresAt: decision.expiresAt,
             error: decision.error,
             errorCode: decision.errorCode,
             errorStage: decision.errorStage,
@@ -136,6 +137,7 @@ export function usePreviewStatusRuntime() {
           status: nextStatus,
           stage: nextStage ?? undefined,
           previewUrl: decision.previewUrl,
+          expiresAt: decision.expiresAt,
           error: null,
           errorCode: null,
           errorStage: null,

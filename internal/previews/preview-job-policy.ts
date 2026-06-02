@@ -41,6 +41,20 @@ export function resolvePreviewJobPayloadDemoDashboardUrl(
   return typeof payload?.demoDashboardUrl === "string" ? payload.demoDashboardUrl : null;
 }
 
+export function resolvePreviewJobPayloadExpiresAt(
+  payload: Record<string, unknown> | null,
+): number | null {
+  const raw = payload?.expiresAt;
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw;
+  }
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function resolvePreviewJobPayloadStage(value: unknown): PreviewStage | null {
   if (isPreviewStage(value)) {
     return value;
