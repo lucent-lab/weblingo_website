@@ -1296,6 +1296,14 @@ export function TryForm({
         const immediatePreview = resolvePreviewJobPayloadUrl("prospect_showcase", payload);
         const immediateDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
         const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+        const immediateDecision = resolvePreviewStatusDecision({
+          responseOk: true,
+          responseStatus: response.status,
+          payload,
+          defaultErrorMessage: t("try.error.default"),
+          resolveErrorMessage,
+          payloadKind: "prospect_showcase",
+        });
 
         if (payload?.status === "failed") {
           if (previewId) {
@@ -1332,6 +1340,8 @@ export function TryForm({
               previewId,
               resolved.code === "preview_expired" ? "expired" : "failed",
               {
+                previewUrl: immediatePreview ?? undefined,
+                demoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
                 expiresAt: expiresAt ?? undefined,
                 error: resolved.message,
                 errorCode: resolved.code,
@@ -1349,11 +1359,14 @@ export function TryForm({
           return;
         }
 
-        if (payload?.status === "ready") {
+        if (immediateDecision.kind === "terminal") {
           if (!previewId || !statusToken) {
-            trackPreviewCreateFailed();
+            trackPreviewCreateFailed({
+              errorCode: immediateDecision.errorCode,
+              errorStage: immediateDecision.errorStage,
+            });
             submittedEmailRef.current = "";
-            setSubmissionError(t("try.error.default"));
+            setSubmissionError(immediateDecision.error ?? t("try.error.default"));
             return;
           }
 
@@ -1368,7 +1381,9 @@ export function TryForm({
               sourceLang: normalizedSourceLang,
               targetLang: normalizedTargetLang,
               previewId,
-              status: "ready",
+              status: immediateDecision.status,
+              errorCode: immediateDecision.errorCode,
+              errorStage: immediateDecision.errorStage,
               fieldLayout,
             }),
           );
@@ -1383,10 +1398,14 @@ export function TryForm({
             status: "pending",
             expiresAt,
           });
-          syncStatusCenterTerminalState(previewId, "ready", {
-            previewUrl: immediatePreview ?? undefined,
-            demoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
-            expiresAt: expiresAt ?? undefined,
+          syncStatusCenterTerminalState(previewId, immediateDecision.status, {
+            previewUrl: immediateDecision.previewUrl ?? immediatePreview ?? undefined,
+            demoDashboardUrl:
+              immediateDecision.demoDashboardUrl ?? immediateDemoDashboardUrl ?? undefined,
+            expiresAt: immediateDecision.expiresAt ?? expiresAt ?? undefined,
+            error: immediateDecision.error ?? null,
+            errorCode: immediateDecision.errorCode ?? null,
+            errorStage: immediateDecision.errorStage ?? null,
           });
           return;
         }

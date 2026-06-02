@@ -1288,6 +1288,82 @@ describe("TryForm preview status", () => {
     );
   });
 
+  it("keeps the demo dashboard link when prospect showcase creation fails immediately", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-immediate-failed",
+          statusToken: "status-token",
+          status: "failed",
+          error: "Payment failed. Retry checkout to continue activation.",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-retry",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=immediate-retry",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-immediate-failed",
+    );
+    expect(job?.demoDashboardUrl).toBe("https://weblingo.app/dashboard/demo#token=immediate-retry");
+  });
+
+  it("stores prospect showcase immediate terminal guidance in the status center", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-immediate-checkout",
+          statusToken: "status-token",
+          status: "checkout_pending",
+          message: "Complete payment to publish this demo on your domain.",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Complete payment to publish this demo on your domain."),
+      ).toBeTruthy();
+    });
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-immediate-checkout",
+    );
+    expect(job).toMatchObject({
+      status: "ready",
+      error: "Complete payment to publish this demo on your domain.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+    });
+  });
+
   it("persists expiry timestamps from SSE status updates", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
