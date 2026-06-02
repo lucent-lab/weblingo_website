@@ -1954,7 +1954,7 @@ export function TryForm({
         <div className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <span>{t("try.status.ready")}</span>
+              <span>{resolvePreviewStatusCenterMessage(trackedJob, t)}</span>
               {trackedJob.previewUrl || trackedJob.demoDashboardUrl ? (
                 <div className="flex flex-col gap-2 sm:flex-row">
                   {trackedJob.previewUrl ? (

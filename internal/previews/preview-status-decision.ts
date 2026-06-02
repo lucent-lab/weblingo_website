@@ -59,10 +59,9 @@ type ResolvePreviewStatusDecisionInput = {
   payloadKind?: PreviewJobKind;
 };
 
-const PROSPECT_SHOWCASE_TERMINAL_STATUSES = new Set([
+const PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES = new Set([
   "checkout_pending",
   "activation_pending",
-  "payment_failed",
   "converted",
 ]);
 
@@ -76,8 +75,12 @@ function isProspectShowcaseTerminalStatus(payloadKind: PreviewJobKind, status: u
   return (
     payloadKind === "prospect_showcase" &&
     typeof status === "string" &&
-    PROSPECT_SHOWCASE_TERMINAL_STATUSES.has(status)
+    PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES.has(status)
   );
+}
+
+function readPayloadMessage(payload: Record<string, unknown> | null): string | null {
+  return typeof payload?.message === "string" ? payload.message : null;
 }
 
 export function resolvePreviewErrorPayload(
@@ -167,13 +170,27 @@ export function resolvePreviewStatusDecision({
     };
   }
 
-  if (payload.status === "ready" || isProspectShowcaseTerminalStatus(payloadKind, payload.status)) {
+  if (payloadKind === "prospect_showcase" && payload.status === "payment_failed") {
+    const resolved = resolvePreviewErrorPayload(payload, defaultErrorMessage, resolveErrorMessage);
+    return {
+      kind: "terminal",
+      status: "failed",
+      previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload),
+      demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
+      error: resolved.message,
+      errorCode: resolved.code,
+      errorStage: resolved.stage,
+    };
+  }
+
+  const isProspectShowcaseTerminal = isProspectShowcaseTerminalStatus(payloadKind, payload.status);
+  if (payload.status === "ready" || isProspectShowcaseTerminal) {
     return {
       kind: "terminal",
       status: "ready",
       previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload),
       demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
-      error: null,
+      error: isProspectShowcaseTerminal ? readPayloadMessage(payload) : null,
       errorCode: null,
       errorStage: null,
     };

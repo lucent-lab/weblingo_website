@@ -114,7 +114,7 @@ export function resolvePreviewStatusCenterMessage(
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.processing");
   }
   if (job.status === "ready") {
-    return t("try.status.ready");
+    return job.error ?? t("try.status.ready");
   }
   if (job.status === "expired") {
     return t("try.error.preview_expired");

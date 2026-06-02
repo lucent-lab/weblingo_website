@@ -57,6 +57,20 @@ describe("resolvePreviewStatusCenterMessage", () => {
     );
   });
 
+  it("uses ready job messages when a terminal prospect status carries one", () => {
+    expect(
+      resolvePreviewStatusCenterMessage(
+        buildJob({
+          kind: "prospect_showcase",
+          status: "ready",
+          error: "Complete payment to continue activation.",
+          remoteStatusVerified: true,
+        }),
+        t,
+      ),
+    ).toBe("Complete payment to continue activation.");
+  });
+
   it("shows provider-capacity hints for hydrated provider-capacity jobs before status is verified", () => {
     expect(
       resolvePreviewStatusCenterCapacityHint(buildJob({ remoteStatusVerified: false }), t),
