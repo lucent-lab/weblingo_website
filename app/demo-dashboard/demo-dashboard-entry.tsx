@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, CheckCircle2, LoaderCircle, LockKeyhole, MonitorPlay } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
@@ -427,7 +428,9 @@ export function DemoDashboardEntry({
   accessToken?: AccessTokenInput;
   messages: ClientMessages;
 }) {
-  const trimmedToken = normalizeAccessToken(accessToken);
+  const searchParams = useSearchParams();
+  const trimmedToken =
+    normalizeAccessToken(accessToken) || normalizeAccessToken(searchParams.get("token"));
   return <DemoDashboardSession key={trimmedToken} accessToken={trimmedToken} messages={messages} />;
 }
 

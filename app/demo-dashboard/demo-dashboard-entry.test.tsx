@@ -6,6 +6,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import messages from "@internal/i18n/messages/en.json";
 import { DemoDashboardEntry } from "./demo-dashboard-entry";
 
+const searchParamsState = vi.hoisted(() => ({
+  value: new URLSearchParams(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsState.value,
+}));
+
 function claimPayload(ref: string, expiresAt = new Date(Date.now() + 60_000).toISOString()) {
   return {
     token: `dashboard-${ref}`,
@@ -50,6 +58,7 @@ describe("DemoDashboardEntry", () => {
     cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    searchParamsState.value = new URLSearchParams();
     window.sessionStorage.clear();
     window.history.replaceState(null, "", "/");
   });
@@ -306,6 +315,43 @@ describe("DemoDashboardEntry", () => {
     });
     resolveSecondClaim(jsonResponse(claimPayload("ps-second")));
     await screen.findByText("ps-second");
+  });
+
+  it("clears stale claim and conversion state when the route query token changes", async () => {
+    searchParamsState.value = new URLSearchParams("token=first-token");
+    let resolveSecondClaim: (response: Response) => void = () => undefined;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { token?: string };
+        if (body.token === "first-token") {
+          return Promise.resolve(jsonResponse(claimPayload("ps-first")));
+        }
+        return new Promise<Response>((resolve) => {
+          resolveSecondClaim = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse({ status: "checkout_pending" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(<DemoDashboardEntry messages={messages} />);
+    await screen.findByText("ps-first");
+
+    searchParamsState.value = new URLSearchParams("token=second-token");
+    rerender(<DemoDashboardEntry messages={messages} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("ps-first")).toBeNull();
+      expect(screen.getByText("Opening demo workspace...")).toBeTruthy();
+    });
+    resolveSecondClaim(jsonResponse(claimPayload("ps-second")));
+    await screen.findByText("ps-second");
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "second-token" }),
+      }),
+    );
   });
 
   it("renders the backend conversion status instead of treating every 2xx as activated", async () => {
