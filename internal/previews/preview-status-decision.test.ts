@@ -103,6 +103,31 @@ describe("resolvePreviewStatusDecision", () => {
     });
   });
 
+  it("preserves explicit failure links from prospect showcase payloads", () => {
+    expect(
+      resolvePreviewStatusDecision({
+        responseOk: true,
+        responseStatus: 200,
+        payload: {
+          status: "failed",
+          message: "Payment recovery is required.",
+          showcaseUrl: "https://t2.weblingo.app/ps-demo/fr",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+        },
+        defaultErrorMessage: "Unable to check preview status.",
+        payloadKind: "prospect_showcase",
+      }),
+    ).toEqual({
+      kind: "terminal",
+      status: "failed",
+      previewUrl: "https://t2.weblingo.app/ps-demo/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+      error: "Payment recovery is required.",
+      errorCode: null,
+      errorStage: null,
+    });
+  });
+
   it("keeps generic preview unknown statuses active", () => {
     expect(
       resolvePreviewStatusDecision({

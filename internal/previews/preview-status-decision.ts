@@ -237,8 +237,7 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: resolved.code === "preview_expired" ? "expired" : "failed",
-      previewUrl: null,
-      demoDashboardUrl: null,
+      ...buildPayloadLocationPatch(payloadKind, payload, { clearMissingLinks: true }),
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,
