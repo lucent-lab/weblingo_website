@@ -642,7 +642,7 @@
     },
     {
       "endpoint": {
-        "auth": "previewToken",
+        "auth": "publicPreviewToken",
         "method": "POST",
         "operationId": "prospectShowcases.create",
         "path": "/prospect-showcases"

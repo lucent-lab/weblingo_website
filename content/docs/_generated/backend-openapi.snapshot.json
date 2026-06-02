@@ -14219,9 +14219,6 @@
         "security": [
           {
             "previewToken": []
-          },
-          {
-            "bearerAuth": []
           }
         ],
         "summary": "Create a public prospect showcase demo",
