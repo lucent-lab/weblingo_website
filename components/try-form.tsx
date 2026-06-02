@@ -1026,10 +1026,11 @@ export function TryForm({
     es.addEventListener("complete", (event) => {
       const payload = parseEventPayload(event as MessageEvent);
       const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, payload);
-      if (payloadPreviewUrl) {
+      const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+      if (payloadPreviewUrl || payloadDemoDashboardUrl) {
         syncStatusCenterTerminalState(previewId, "ready", {
           previewUrl: payloadPreviewUrl,
-          demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
+          demoDashboardUrl: payloadDemoDashboardUrl,
         });
       } else {
         syncStatusCenterTerminalState(previewId, "ready");
@@ -1942,31 +1943,33 @@ export function TryForm({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span>{t("try.status.ready")}</span>
-              {trackedJob.previewUrl ? (
+              {trackedJob.previewUrl || trackedJob.demoDashboardUrl ? (
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button asChild size="sm" variant="secondary" className="justify-center">
-                    <a
-                      href={trackedJob.previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => {
-                        captureAnalyticsEvent(
-                          ANALYTICS_EVENTS.previewOpenClicked,
-                          buildPreviewAnalyticsProperties({
-                            locale,
-                            sourceUrl: trackedJob.sourceUrl,
-                            sourceLang: trackedJob.sourceLang,
-                            targetLang: trackedJob.targetLang,
-                            previewId: trackedJob.previewId,
-                            status: trackedJob.status,
-                            fieldLayout,
-                          }),
-                        );
-                      }}
-                    >
-                      {t("try.preview.viewShowcase")}
-                    </a>
-                  </Button>
+                  {trackedJob.previewUrl ? (
+                    <Button asChild size="sm" variant="secondary" className="justify-center">
+                      <a
+                        href={trackedJob.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => {
+                          captureAnalyticsEvent(
+                            ANALYTICS_EVENTS.previewOpenClicked,
+                            buildPreviewAnalyticsProperties({
+                              locale,
+                              sourceUrl: trackedJob.sourceUrl,
+                              sourceLang: trackedJob.sourceLang,
+                              targetLang: trackedJob.targetLang,
+                              previewId: trackedJob.previewId,
+                              status: trackedJob.status,
+                              fieldLayout,
+                            }),
+                          );
+                        }}
+                      >
+                        {t("try.preview.viewShowcase")}
+                      </a>
+                    </Button>
+                  ) : null}
                   {trackedJob.demoDashboardUrl ? (
                     <Button asChild size="sm" className="justify-center">
                       <a href={trackedJob.demoDashboardUrl} target="_blank" rel="noreferrer">

@@ -1162,6 +1162,44 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("persists and renders a demo dashboard link when SSE completes without a showcase URL", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-dashboard-only",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("complete", {
+      status: "ready",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo?token=dashboard-token",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+    });
+    expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo?token=dashboard-token",
+    );
+  });
+
   it("delays status polling from provider-capacity retry hints received over SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
