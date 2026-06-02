@@ -28,6 +28,7 @@ import {
 
 function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenterJob>[0]> = {}) {
   return {
+    kind: "preview" as const,
     previewId: "11111111-1111-1111-1111-111111111111",
     requestKey: buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://example.com",

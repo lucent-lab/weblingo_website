@@ -19,7 +19,7 @@ export type PreviewRetryHint = {
 };
 
 export type PreviewJob = {
-  kind?: PreviewJobKind;
+  kind: PreviewJobKind;
   previewId: string;
   requestKey: string;
   statusToken: string;

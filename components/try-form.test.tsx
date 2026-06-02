@@ -586,6 +586,7 @@ describe("TryForm preview status", () => {
 
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -609,6 +610,7 @@ describe("TryForm preview status", () => {
     ).toBe("running_pending");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -632,6 +634,7 @@ describe("TryForm preview status", () => {
     ).toBe("running_processing");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -655,6 +658,7 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_ready");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -678,6 +682,7 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_failed");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -1081,6 +1086,7 @@ describe("TryForm preview status", () => {
 
       const expected = resolvePreviewStatusCenterMessage(
         {
+          kind: "preview",
           previewId: `phase-${phase.status}`,
           requestKey,
           statusToken: `token-${phase.status}`,

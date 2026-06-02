@@ -17,17 +17,10 @@ import {
 } from "./status-center-store";
 import { resolvePreviewStatusDecision } from "./preview-status-decision";
 import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
+import { buildPreviewJobStatusUrl } from "./preview-job-policy";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
 let previewStatusRuntimeOwner: symbol | null = null;
-
-function buildStatusUrl(job: PreviewStatusCenterJob): string {
-  const token = encodeURIComponent(job.statusToken);
-  if (job.kind === "prospect_showcase") {
-    return `/api/prospect-showcases/${encodeURIComponent(job.previewId)}/status?token=${token}`;
-  }
-  return `/api/previews/${job.previewId}?token=${token}`;
-}
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
@@ -89,9 +82,12 @@ export function usePreviewStatusRuntime() {
 
     const pollJob = async (job: PreviewStatusCenterJob) => {
       try {
-        const response = await fetch(buildStatusUrl(job), {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          buildPreviewJobStatusUrl(job.kind, job.previewId, job.statusToken),
+          {
+            cache: "no-store",
+          },
+        );
 
         const bodyText = await response.text();
         let payload: Record<string, unknown> | null = null;

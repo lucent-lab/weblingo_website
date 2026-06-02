@@ -61,10 +61,6 @@ export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const requestHeaders = await headers();
-  if (requestHeaders.get("x-weblingo-demo-dashboard-entry") === "1") {
-    return children;
-  }
-
   const auth = await getDashboardAuth();
   if (!auth.user || !auth.session) {
     redirect("/auth/login");

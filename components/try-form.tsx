@@ -24,11 +24,7 @@ import {
   normalizeLangTag,
   type ClientMessages,
 } from "@internal/i18n";
-import {
-  isPreviewStage,
-  type PreviewErrorCode,
-  type PreviewStage,
-} from "@internal/previews/preview-sse";
+import { type PreviewErrorCode, type PreviewStage } from "@internal/previews/preview-sse";
 import {
   resolvePreviewErrorPayload,
   resolvePreviewStatusDecision,
@@ -41,6 +37,13 @@ import {
   type PreviewJobKind,
   type PreviewRetryHint,
 } from "@internal/previews/preview-job-machine";
+import {
+  buildPreviewJobStatusUrl,
+  buildPreviewJobStreamUrl,
+  resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadStage,
+  resolvePreviewJobPayloadUrl,
+} from "@internal/previews/preview-job-policy";
 import {
   PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS,
   resolvePreviewCapacityHintMessage,
@@ -153,37 +156,6 @@ function resolveInitialPreviewStatus(
 
 function resolveProspectShowcaseRef(payload: Record<string, unknown> | null): string | null {
   return typeof payload?.prospectShowcaseRef === "string" ? payload.prospectShowcaseRef : null;
-}
-
-function resolveProspectShowcaseUrl(payload: Record<string, unknown> | null): string | null {
-  return typeof payload?.showcaseUrl === "string" ? payload.showcaseUrl : null;
-}
-
-function resolvePreviewUrl(payload: Record<string, unknown> | null): string | null {
-  return typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
-}
-
-function resolveDemoDashboardUrl(payload: Record<string, unknown> | null): string | null {
-  return typeof payload?.demoDashboardUrl === "string" ? payload.demoDashboardUrl : null;
-}
-
-function resolveProspectStage(value: unknown): PreviewStage | null {
-  if (isPreviewStage(value)) {
-    return value;
-  }
-  if (value === "accepted" || value === "queued" || value === "validating") {
-    return "fetching_page";
-  }
-  if (value === "creating_demo" || value === "crawling_source") {
-    return "analyzing_content";
-  }
-  if (value === "translating") {
-    return "translating";
-  }
-  if (value === "building_showcase") {
-    return "generating_preview";
-  }
-  return null;
 }
 
 function resolvePreviewProgressStepId(
@@ -840,11 +812,7 @@ export function TryForm({
     }
     setCheckingStatus(true);
     try {
-      const response = await fetch(
-        kind === "prospect_showcase"
-          ? `/api/prospect-showcases/${encodeURIComponent(previewId)}/status?token=${encodeURIComponent(statusToken)}`
-          : `/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`,
-      );
+      const response = await fetch(buildPreviewJobStatusUrl(kind, previewId, statusToken));
       const bodyText = await response.text();
       let payload: Record<string, unknown> | null = null;
       if (bodyText) {
@@ -952,11 +920,7 @@ export function TryForm({
   function connectSSE(previewId: string, statusToken: string, kind: PreviewJobKind) {
     closeEventSource();
 
-    const es = new EventSource(
-      kind === "prospect_showcase"
-        ? `/api/prospect-showcases/${encodeURIComponent(previewId)}/stream?token=${encodeURIComponent(statusToken)}`
-        : `/api/previews/${previewId}/stream?token=${encodeURIComponent(statusToken)}`,
-    );
+    const es = new EventSource(buildPreviewJobStreamUrl(kind, previewId, statusToken));
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -984,19 +948,12 @@ export function TryForm({
     }, 15_000);
 
     const handlePayload = (data: Record<string, unknown>) => {
-      if (kind === "preview" && typeof data.previewUrl === "string") {
+      const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, data);
+      const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(data);
+      if (payloadPreviewUrl || payloadDemoDashboardUrl) {
         updatePreviewStatusCenterJob(previewId, {
-          previewUrl: data.previewUrl,
-        });
-      }
-      if (
-        kind === "prospect_showcase" &&
-        (typeof data.showcaseUrl === "string" || typeof data.demoDashboardUrl === "string")
-      ) {
-        updatePreviewStatusCenterJob(previewId, {
-          previewUrl: typeof data.showcaseUrl === "string" ? data.showcaseUrl : undefined,
-          demoDashboardUrl:
-            typeof data.demoDashboardUrl === "string" ? data.demoDashboardUrl : undefined,
+          previewUrl: payloadPreviewUrl ?? undefined,
+          demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
         });
       }
 
@@ -1067,17 +1024,11 @@ export function TryForm({
 
     es.addEventListener("complete", (event) => {
       const payload = parseEventPayload(event as MessageEvent);
-      if (
-        payload &&
-        ((kind === "preview" && typeof payload.previewUrl === "string") ||
-          (kind === "prospect_showcase" && typeof payload.showcaseUrl === "string"))
-      ) {
+      const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, payload);
+      if (payloadPreviewUrl) {
         syncStatusCenterTerminalState(previewId, "ready", {
-          previewUrl:
-            kind === "prospect_showcase"
-              ? resolveProspectShowcaseUrl(payload)
-              : resolvePreviewUrl(payload),
-          demoDashboardUrl: resolveDemoDashboardUrl(payload),
+          previewUrl: payloadPreviewUrl,
+          demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
         });
       } else {
         syncStatusCenterTerminalState(previewId, "ready");
@@ -1293,8 +1244,8 @@ export function TryForm({
         const payload = (await response.json()) as Record<string, unknown>;
         const previewId = resolveProspectShowcaseRef(payload);
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
-        const immediatePreview = resolveProspectShowcaseUrl(payload);
-        const immediateDemoDashboardUrl = resolveDemoDashboardUrl(payload);
+        const immediatePreview = resolvePreviewJobPayloadUrl("prospect_showcase", payload);
+        const immediateDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
 
         if (payload?.status === "failed") {
           if (previewId) {
@@ -1408,7 +1359,7 @@ export function TryForm({
             targetLang: normalizedTargetLang,
             previewId,
             status: initialStatus,
-            stage: resolveProspectStage(payload?.stage),
+            stage: resolvePreviewJobPayloadStage(payload?.stage),
             retryHintReason: resolvePreviewRetryHint(payload)?.reason ?? null,
             fieldLayout,
           }),
@@ -1419,7 +1370,7 @@ export function TryForm({
           targetLang: normalizedTargetLang,
           kind: "prospect_showcase",
           initialStatus,
-          initialStage: resolveProspectStage(payload?.stage),
+          initialStage: resolvePreviewJobPayloadStage(payload?.stage),
           initialPreviewUrl: immediatePreview ?? undefined,
           initialDemoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
           initialRetryHint: resolvePreviewRetryHint(payload),

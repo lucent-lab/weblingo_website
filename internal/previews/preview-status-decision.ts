@@ -6,6 +6,11 @@ import {
   type PreviewRetryHint,
 } from "./preview-job-machine";
 import {
+  resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadStage,
+  resolvePreviewJobPayloadUrl,
+} from "./preview-job-policy";
+import {
   hasExplicitFailure,
   isPreviewErrorCode,
   isPreviewStage,
@@ -58,38 +63,6 @@ function readDetails(payload: Record<string, unknown> | null): Record<string, un
   return payload && typeof payload.details === "object" && payload.details !== null
     ? (payload.details as Record<string, unknown>)
     : null;
-}
-
-function resolvePayloadPreviewUrl(
-  payload: Record<string, unknown>,
-  payloadKind: PreviewJobKind,
-): string | null {
-  if (payloadKind === "preview" && typeof payload.previewUrl === "string") {
-    return payload.previewUrl;
-  }
-  if (payloadKind === "prospect_showcase" && typeof payload.showcaseUrl === "string") {
-    return payload.showcaseUrl;
-  }
-  return null;
-}
-
-function resolvePayloadStage(value: unknown): PreviewStage | null {
-  if (isPreviewStage(value)) {
-    return value;
-  }
-  if (value === "accepted" || value === "queued" || value === "validating") {
-    return "fetching_page";
-  }
-  if (value === "creating_demo" || value === "crawling_source") {
-    return "analyzing_content";
-  }
-  if (value === "translating") {
-    return "translating";
-  }
-  if (value === "building_showcase") {
-    return "generating_preview";
-  }
-  return null;
 }
 
 export function resolvePreviewErrorPayload(
@@ -183,9 +156,8 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: "ready",
-      previewUrl: resolvePayloadPreviewUrl(payload, payloadKind),
-      demoDashboardUrl:
-        typeof payload.demoDashboardUrl === "string" ? payload.demoDashboardUrl : null,
+      previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload),
+      demoDashboardUrl: resolvePreviewJobPayloadDemoDashboardUrl(payload),
       error: null,
       errorCode: null,
       errorStage: null,
@@ -206,8 +178,8 @@ export function resolvePreviewStatusDecision({
   return {
     kind: "active",
     status: isActivePreviewJobPhase(payload.status) ? payload.status : "processing",
-    stage: resolvePayloadStage(payload.stage),
-    previewUrl: resolvePayloadPreviewUrl(payload, payloadKind) ?? undefined,
+    stage: resolvePreviewJobPayloadStage(payload.stage),
+    previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload) ?? undefined,
     retryHint: parsePreviewRetryHint(payload.retryHint),
     remoteStatusVerified: true,
   };

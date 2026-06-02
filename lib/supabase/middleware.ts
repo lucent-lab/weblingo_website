@@ -6,13 +6,9 @@ import { getSupabasePublicEnv } from "./env";
 
 export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/dashboard/demo") {
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-weblingo-demo-dashboard-entry", "1");
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    const url = request.nextUrl.clone();
+    url.pathname = "/demo-dashboard";
+    return NextResponse.rewrite(url);
   }
 
   if (isDashboardE2eMockEnabled()) {

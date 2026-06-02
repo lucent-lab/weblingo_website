@@ -9,6 +9,7 @@ import {
 function buildJob(overrides: Partial<PreviewJob> = {}): PreviewJob {
   const now = 1_000;
   return {
+    kind: "preview",
     previewId: "11111111-1111-1111-1111-111111111111",
     requestKey: "https://example.com|en|fr|",
     statusToken: "status-token",
