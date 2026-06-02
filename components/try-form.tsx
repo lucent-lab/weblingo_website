@@ -1059,10 +1059,33 @@ export function TryForm({
     });
 
     es.addEventListener("complete", (event) => {
+      bump();
       const payload = parseEventPayload(event as MessageEvent);
       const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, payload);
       const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
       const payloadExpiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+      if (payload) {
+        const decision = resolvePreviewStatusDecision({
+          responseOk: true,
+          responseStatus: 200,
+          payload,
+          defaultErrorMessage: t("try.error.default"),
+          resolveErrorMessage,
+          payloadKind: kind,
+        });
+        if (decision.kind === "terminal") {
+          syncStatusCenterTerminalState(previewId, decision.status, {
+            previewUrl: decision.previewUrl ?? payloadPreviewUrl ?? undefined,
+            demoDashboardUrl: decision.demoDashboardUrl ?? payloadDemoDashboardUrl ?? undefined,
+            expiresAt: decision.expiresAt ?? payloadExpiresAt ?? undefined,
+            error: decision.error,
+            errorCode: decision.errorCode,
+            errorStage: decision.errorStage,
+          });
+          closeEventSource();
+          return;
+        }
+      }
       if (payloadPreviewUrl || payloadDemoDashboardUrl) {
         syncStatusCenterTerminalState(previewId, "ready", {
           previewUrl: payloadPreviewUrl ?? undefined,

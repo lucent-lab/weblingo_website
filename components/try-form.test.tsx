@@ -1288,6 +1288,55 @@ describe("TryForm preview status", () => {
     );
   });
 
+  it("does not mark prospect showcase complete frames with payment failure as ready", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-complete-payment-failed",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("complete", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText("Ready")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-complete-payment-failed",
+    );
+    expect(job).toMatchObject({
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+  });
+
   it("keeps the demo dashboard link when prospect showcase creation fails immediately", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === "/api/prospect-showcases") {
