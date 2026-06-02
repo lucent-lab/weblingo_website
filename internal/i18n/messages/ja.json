@@ -196,6 +196,7 @@
   "dashboard.demo.error.claimUnavailable": "デモアクセスリンクを利用できません。",
   "dashboard.demo.error.invalidClaim": "デモアクセスのレスポンスが不正です。",
   "dashboard.demo.error.openFailed": "デモダッシュボードを開けませんでした。",
+  "dashboard.demo.error.retry": "デモアクセスを再試行",
   "dashboard.demo.error.convertFailed": "ドメイン有効化を開始できませんでした。",
   "dashboard.demo.error.invalidConversion": "ドメイン有効化のレスポンスが不正です。",
   "dashboard.demo.site.title": "デモサイト",

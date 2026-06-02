@@ -224,6 +224,7 @@
   "dashboard.demo.error.claimUnavailable": "Demo access link is not available.",
   "dashboard.demo.error.invalidClaim": "Demo access response was invalid.",
   "dashboard.demo.error.openFailed": "Unable to open demo dashboard.",
+  "dashboard.demo.error.retry": "Retry demo access",
   "dashboard.demo.error.convertFailed": "Could not start domain activation.",
   "dashboard.demo.error.invalidConversion": "Domain activation response was invalid.",
   "dashboard.demo.site.title": "Demo site",

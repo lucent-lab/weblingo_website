@@ -97,6 +97,26 @@ describe("DemoDashboardEntry", () => {
     expect(window.location.hash).toBe("#open");
   });
 
+  it("lets the user retry a failed claim exchange from the retained URL token", async () => {
+    window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: "temporary failure" }, 503))
+      .mockResolvedValueOnce(jsonResponse(claimPayload("ps-retry")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+
+    await screen.findByText("temporary failure");
+    fireEvent.click(screen.getByRole("button", { name: "Retry demo access" }));
+
+    await screen.findByText("ps-retry");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(window.location.pathname).toBe("/dashboard/demo");
+    expect(window.location.search).toBe("?source=mail");
+    expect(window.location.hash).toBe("#open");
+  });
+
   it("keeps the URL token and clears stale storage when a successful claim response is invalid", async () => {
     window.history.replaceState(null, "", "/dashboard/demo?token=demo-token&source=mail#open");
     window.sessionStorage.setItem(
@@ -165,7 +185,8 @@ describe("DemoDashboardEntry", () => {
 
     expect(await screen.findByText("Payment failed")).toBeTruthy();
     expect(await screen.findByText(/Retry payment to unlock activation\./)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Publish on my domain" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Publish on my domain" })).toBeNull();
     expect(screen.queryByText("Activation started")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

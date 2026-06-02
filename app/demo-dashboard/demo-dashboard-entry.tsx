@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, LoaderCircle, LockKeyhole, MonitorPlay } from "lucide-react";
 import { z } from "zod";
 
@@ -277,13 +277,11 @@ function DemoDashboardSession({
       : payload.expiresAt;
   }, [payload]);
 
-  useEffect(() => {
-    if (!trimmedToken) {
-      return;
-    }
-
-    let canceled = false;
-    void (async () => {
+  const exchangeClaimToken = useCallback(
+    async (isCanceled: () => boolean = () => false): Promise<ClaimState | null> => {
+      if (!trimmedToken) {
+        return null;
+      }
       try {
         const response = await fetch("/api/prospect-showcases/claim", {
           method: "POST",
@@ -292,36 +290,58 @@ function DemoDashboardSession({
           cache: "no-store",
         });
         const body = await response.json().catch(() => null);
-        if (canceled) {
-          return;
+        if (isCanceled()) {
+          return null;
         }
         if (!response.ok) {
-          setClaimState({
+          return {
             status: "error",
             message: parseErrorMessage(body, t("dashboard.demo.error.claimUnavailable")),
-          });
-          return;
+          };
         }
         const parsed = parseClaimPayload(body);
         if (!parsed) {
           clearStoredDemoClaimPayload();
-          setClaimState({ status: "error", message: t("dashboard.demo.error.invalidClaim") });
-          return;
+          return { status: "error", message: t("dashboard.demo.error.invalidClaim") };
         }
         storeDemoClaimPayload(parsed);
         scrubDemoAccessTokenFromLocation();
-        setClaimState({ status: "ready", payload: parsed });
+        return { status: "ready", payload: parsed };
       } catch {
-        if (!canceled) {
-          setClaimState({ status: "error", message: t("dashboard.demo.error.openFailed") });
-        }
+        return isCanceled()
+          ? null
+          : { status: "error", message: t("dashboard.demo.error.openFailed") };
+      }
+    },
+    [trimmedToken, t],
+  );
+
+  async function handleRetryClaim() {
+    setClaimState({ status: "loading" });
+    setConversionState({ status: "idle" });
+    const nextState = await exchangeClaimToken();
+    if (nextState) {
+      setClaimState(nextState);
+    }
+  }
+
+  useEffect(() => {
+    if (!trimmedToken) {
+      return;
+    }
+
+    let canceled = false;
+    void (async () => {
+      const nextState = await exchangeClaimToken(() => canceled);
+      if (!canceled && nextState) {
+        setClaimState(nextState);
       }
     })();
 
     return () => {
       canceled = true;
     };
-  }, [trimmedToken, t]);
+  }, [trimmedToken, exchangeClaimToken]);
 
   async function handleConvert() {
     if (!payload) {
@@ -383,6 +403,9 @@ function DemoDashboardSession({
       : "border-primary/25 bg-primary/10 text-primary";
   const conversionIsTerminal =
     conversionState.status === "result" && conversionState.payload.status === "converted";
+  const conversionRequiresPaymentRetry =
+    conversionState.status === "result" && conversionState.payload.nextAction === "retry_payment";
+  const showConversionForm = !conversionIsTerminal && !conversionRequiresPaymentRetry;
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
@@ -419,6 +442,13 @@ function DemoDashboardSession({
               <CardTitle>{t("dashboard.demo.error.title")}</CardTitle>
               <CardDescription>{effectiveClaimState.message}</CardDescription>
             </CardHeader>
+            {trimmedToken ? (
+              <CardContent>
+                <Button type="button" variant="outline" onClick={() => void handleRetryClaim()}>
+                  {t("dashboard.demo.error.retry")}
+                </Button>
+              </CardContent>
+            ) : null}
           </Card>
         ) : null}
 
@@ -480,7 +510,7 @@ function DemoDashboardSession({
                     ) : null}
                   </div>
                 ) : null}
-                {!conversionIsTerminal ? (
+                {showConversionForm ? (
                   <>
                     <label className="flex flex-col gap-2 text-sm">
                       <span className="font-medium">{t("dashboard.demo.form.emailLabel")}</span>
