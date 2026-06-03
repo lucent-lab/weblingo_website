@@ -24,11 +24,7 @@ import {
   normalizeLangTag,
   type ClientMessages,
 } from "@internal/i18n";
-import {
-  isPreviewStage,
-  type PreviewErrorCode,
-  type PreviewStage,
-} from "@internal/previews/preview-sse";
+import { type PreviewErrorCode, type PreviewStage } from "@internal/previews/preview-sse";
 import {
   resolvePreviewErrorPayload,
   resolvePreviewStatusDecision,
@@ -38,8 +34,17 @@ import {
   parsePreviewRetryHint,
   resolvePreviewRetryHintDelayMs,
   type ActivePreviewJobPhase,
+  type PreviewJobKind,
   type PreviewRetryHint,
 } from "@internal/previews/preview-job-machine";
+import {
+  buildPreviewJobStatusUrl,
+  buildPreviewJobStreamUrl,
+  resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadExpiresAt,
+  resolvePreviewJobPayloadStage,
+  resolvePreviewJobPayloadUrl,
+} from "@internal/previews/preview-job-policy";
 import {
   PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS,
   resolvePreviewCapacityHintMessage,
@@ -83,12 +88,15 @@ type TryFormProps = {
 };
 
 type ConnectStatusUpdatesOptions = {
+  kind?: PreviewJobKind;
   sourceUrl?: string;
   sourceLang?: string;
   targetLang?: string;
   initialStatus?: ActivePreviewJobPhase;
   initialStage?: PreviewStage | null;
   initialPreviewUrl?: string;
+  initialDemoDashboardUrl?: string;
+  initialExpiresAt?: number | null;
   initialRetryHint?: PreviewRetryHint | null;
 };
 
@@ -146,6 +154,10 @@ function resolveInitialPreviewStatus(
   payload: Record<string, unknown> | null,
 ): ActivePreviewJobPhase {
   return isActivePreviewJobPhase(payload?.status) ? payload.status : "pending";
+}
+
+function resolveProspectShowcaseRef(payload: Record<string, unknown> | null): string | null {
+  return typeof payload?.prospectShowcaseRef === "string" ? payload.prospectShowcaseRef : null;
 }
 
 function resolvePreviewProgressStepId(
@@ -251,7 +263,11 @@ export function TryForm({
   const trackedPreviewTerminalRef = useRef<Set<string>>(new Set());
   const restoredStatusCheckStartedRef = useRef<Set<string>>(new Set());
   const handleCheckStatusRef = useRef<
-    (previewIdOverride?: string, statusTokenOverride?: string) => Promise<boolean | null>
+    (
+      previewIdOverride?: string,
+      statusTokenOverride?: string,
+      kindOverride?: PreviewJobKind,
+    ) => Promise<boolean | null>
   >(async () => null);
   const clearPreviewTracking = useCallback((previewId: string) => {
     trackedPreviewIdsRef.current.delete(previewId);
@@ -296,11 +312,13 @@ export function TryForm({
   const currentRequestKey = useMemo(
     () =>
       buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
         sourceUrl: trimmedUrl,
-        sourceLang,
-        targetLang,
+        sourceLang: normalizedSourceLang,
+        targetLang: normalizedTargetLang,
+        email: showEmailField ? trimmedEmail : undefined,
       }),
-    [trimmedUrl, sourceLang, targetLang],
+    [normalizedSourceLang, normalizedTargetLang, showEmailField, trimmedEmail, trimmedUrl],
   );
 
   const trackedJob = useMemo(
@@ -308,6 +326,7 @@ export function TryForm({
     [jobs, lastRequestKey],
   );
   const mode = useMemo(() => resolveTryFormMode(isCreating, trackedJob), [isCreating, trackedJob]);
+  const supportsPendingEmailRecovery = showEmailField && trackedJob?.kind !== "prospect_showcase";
 
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning =
@@ -496,7 +515,10 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
+    if (showEmailField) {
+      setEmail((current) => (current ? current : parsedRequest.email));
+    }
+  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, showEmailField, trimmedUrl]);
 
   useEffect(() => {
     if (
@@ -683,6 +705,7 @@ export function TryForm({
     stage: PreviewStage | null,
     retryHint?: PreviewRetryHint | null,
     remoteStatusVerified = true,
+    expiresAt?: number | null,
   ) {
     const retryHintDelayMs = remoteStatusVerified
       ? resolvePreviewRetryHintDelayMs(retryHint)
@@ -701,6 +724,7 @@ export function TryForm({
       errorStage: null,
       retryHint: retryHint ?? null,
       remoteStatusVerified,
+      expiresAt,
       ...(nextPollAt === undefined ? {} : { nextPollAt }),
     });
   }
@@ -727,17 +751,33 @@ export function TryForm({
     status: "ready" | "failed" | "expired",
     options: {
       previewUrl?: string | null;
+      demoDashboardUrl?: string | null;
+      expiresAt?: number | null;
       error?: string | null;
       errorCode?: PreviewErrorCode | null;
       errorStage?: PreviewStage | null;
     } = {},
   ) {
-    markPreviewStatusCenterJobTerminal(previewId, status, {
-      previewUrl: options.previewUrl,
-      error: options.error,
-      errorCode: options.errorCode,
-      errorStage: options.errorStage,
-    });
+    const patch: NonNullable<Parameters<typeof markPreviewStatusCenterJobTerminal>[2]> = {};
+    if (options.previewUrl !== undefined) {
+      patch.previewUrl = options.previewUrl;
+    }
+    if (options.demoDashboardUrl !== undefined) {
+      patch.demoDashboardUrl = options.demoDashboardUrl;
+    }
+    if (options.expiresAt !== undefined) {
+      patch.expiresAt = options.expiresAt;
+    }
+    if (options.error !== undefined) {
+      patch.error = options.error;
+    }
+    if (options.errorCode !== undefined) {
+      patch.errorCode = options.errorCode;
+    }
+    if (options.errorStage !== undefined) {
+      patch.errorStage = options.errorStage;
+    }
+    markPreviewStatusCenterJobTerminal(previewId, status, patch);
   }
 
   function markRestoredStatusCheckRetryAvailable(previewId: string) {
@@ -781,9 +821,11 @@ export function TryForm({
   async function handleCheckStatus(
     previewIdOverride?: string,
     statusTokenOverride?: string,
+    kindOverride?: PreviewJobKind,
   ): Promise<boolean | null> {
     const previewId = previewIdOverride ?? trackedJob?.previewId ?? null;
     const statusToken = statusTokenOverride ?? trackedJob?.statusToken ?? null;
+    const kind = kindOverride ?? trackedJob?.kind ?? "preview";
 
     if (!previewId || !statusToken || checkingStatus) {
       return null;
@@ -794,9 +836,7 @@ export function TryForm({
     }
     setCheckingStatus(true);
     try {
-      const response = await fetch(
-        `/api/previews/${previewId}?token=${encodeURIComponent(statusToken)}`,
-      );
+      const response = await fetch(buildPreviewJobStatusUrl(kind, previewId, statusToken));
       const bodyText = await response.text();
       let payload: Record<string, unknown> | null = null;
       if (bodyText) {
@@ -814,10 +854,13 @@ export function TryForm({
         defaultErrorMessage: t("try.error.default"),
         resolveErrorMessage,
         mapNotFoundToErrorCode: true,
+        payloadKind: kind,
       });
       if (decision.kind === "terminal") {
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
+          demoDashboardUrl: decision.demoDashboardUrl,
+          expiresAt: decision.expiresAt,
           error: decision.error,
           errorCode: decision.errorCode,
           errorStage: decision.errorStage,
@@ -837,6 +880,7 @@ export function TryForm({
           decision.stage,
           decision.retryHint,
           true,
+          decision.expiresAt,
         );
       } else {
         syncStatusCenterTransientRetry(previewId);
@@ -882,7 +926,11 @@ export function TryForm({
     }
 
     restoredStatusCheckStartedRef.current.add(trackedJob.previewId);
-    void handleCheckStatusRef.current(trackedJob.previewId, trackedJob.statusToken);
+    void handleCheckStatusRef.current(
+      trackedJob.previewId,
+      trackedJob.statusToken,
+      trackedJob.kind,
+    );
   }, [checkingStatus, restoredStatusRetryPreviewIds, trackedJob]);
 
   function handleRetryRestoredStatusCheck() {
@@ -892,15 +940,13 @@ export function TryForm({
     const previewId = trackedJob.previewId;
     clearRestoredStatusCheckRetry(previewId);
     restoredStatusCheckStartedRef.current.add(previewId);
-    void handleCheckStatus(trackedJob.previewId, trackedJob.statusToken);
+    void handleCheckStatus(trackedJob.previewId, trackedJob.statusToken, trackedJob.kind);
   }
 
-  function connectSSE(previewId: string, statusToken: string) {
+  function connectSSE(previewId: string, statusToken: string, kind: PreviewJobKind) {
     closeEventSource();
 
-    const es = new EventSource(
-      `/api/previews/${previewId}/stream?token=${encodeURIComponent(statusToken)}`,
-    );
+    const es = new EventSource(buildPreviewJobStreamUrl(kind, previewId, statusToken));
     eventSourceRef.current = es;
 
     let lastEventAt = Date.now();
@@ -928,9 +974,14 @@ export function TryForm({
     }, 15_000);
 
     const handlePayload = (data: Record<string, unknown>) => {
-      if (typeof data.previewUrl === "string") {
+      const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, data);
+      const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(data);
+      const payloadExpiresAt = resolvePreviewJobPayloadExpiresAt(data);
+      if (payloadPreviewUrl || payloadDemoDashboardUrl || payloadExpiresAt !== null) {
         updatePreviewStatusCenterJob(previewId, {
-          previewUrl: data.previewUrl,
+          previewUrl: payloadPreviewUrl ?? undefined,
+          demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
+          expiresAt: payloadExpiresAt ?? undefined,
         });
       }
 
@@ -940,10 +991,13 @@ export function TryForm({
         payload: data,
         defaultErrorMessage: t("try.error.default"),
         resolveErrorMessage,
+        payloadKind: kind,
       });
       if (decision.kind === "terminal") {
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
+          demoDashboardUrl: decision.demoDashboardUrl,
+          expiresAt: decision.expiresAt,
           error: decision.error,
           errorCode: decision.errorCode,
           errorStage: decision.errorStage,
@@ -952,7 +1006,14 @@ export function TryForm({
         return;
       }
 
-      syncStatusCenterActiveState(previewId, decision.status, decision.stage, decision.retryHint);
+      syncStatusCenterActiveState(
+        previewId,
+        decision.status,
+        decision.stage,
+        decision.retryHint,
+        true,
+        decision.expiresAt,
+      );
     };
 
     const parseEventPayload = (event: MessageEvent | Event): Record<string, unknown> | null => {
@@ -998,13 +1059,43 @@ export function TryForm({
     });
 
     es.addEventListener("complete", (event) => {
+      bump();
       const payload = parseEventPayload(event as MessageEvent);
-      if (payload && typeof payload.previewUrl === "string") {
+      const payloadPreviewUrl = resolvePreviewJobPayloadUrl(kind, payload);
+      const payloadDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+      const payloadExpiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+      if (payload) {
+        const decision = resolvePreviewStatusDecision({
+          responseOk: true,
+          responseStatus: 200,
+          payload,
+          defaultErrorMessage: t("try.error.default"),
+          resolveErrorMessage,
+          payloadKind: kind,
+        });
+        if (decision.kind === "terminal") {
+          syncStatusCenterTerminalState(previewId, decision.status, {
+            previewUrl: decision.previewUrl ?? payloadPreviewUrl ?? undefined,
+            demoDashboardUrl: decision.demoDashboardUrl ?? payloadDemoDashboardUrl ?? undefined,
+            expiresAt: decision.expiresAt ?? payloadExpiresAt ?? undefined,
+            error: decision.error,
+            errorCode: decision.errorCode,
+            errorStage: decision.errorStage,
+          });
+          closeEventSource();
+          return;
+        }
+      }
+      if (payloadPreviewUrl || payloadDemoDashboardUrl) {
         syncStatusCenterTerminalState(previewId, "ready", {
-          previewUrl: payload.previewUrl,
+          previewUrl: payloadPreviewUrl ?? undefined,
+          demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
+          expiresAt: payloadExpiresAt ?? undefined,
         });
       } else {
-        syncStatusCenterTerminalState(previewId, "ready");
+        syncStatusCenterTerminalState(previewId, "ready", {
+          expiresAt: payloadExpiresAt ?? undefined,
+        });
       }
       closeEventSource();
     });
@@ -1017,7 +1108,7 @@ export function TryForm({
       }
 
       const handleDisconnect = async () => {
-        const terminal = await handleCheckStatus(previewId, statusToken);
+        const terminal = await handleCheckStatus(previewId, statusToken, kind);
         if (terminal) {
           return;
         }
@@ -1045,8 +1136,10 @@ export function TryForm({
     options: ConnectStatusUpdatesOptions = {},
   ) {
     const parsedRequest = parsePreviewStatusCenterRequestKey(requestKey);
+    const kind = options.kind ?? "preview";
 
     upsertPreviewStatusCenterJob({
+      kind,
       previewId,
       requestKey,
       statusToken,
@@ -1059,6 +1152,8 @@ export function TryForm({
       errorCode: null,
       errorStage: null,
       previewUrl: options.initialPreviewUrl,
+      demoDashboardUrl: options.initialDemoDashboardUrl,
+      expiresAt: options.initialExpiresAt,
       retryHint: options.initialRetryHint ?? null,
       remoteStatusVerified: true,
       retryCount: 0,
@@ -1066,11 +1161,11 @@ export function TryForm({
     writeActivePreviewIdToSession(previewId);
 
     if (typeof window === "undefined" || typeof window.EventSource !== "function") {
-      void handleCheckStatus(previewId, statusToken);
+      void handleCheckStatus(previewId, statusToken, kind);
       return;
     }
 
-    connectSSE(previewId, statusToken);
+    connectSSE(previewId, statusToken, kind);
   }
 
   function trackTryFormStarted(overrides?: {
@@ -1167,11 +1262,18 @@ export function TryForm({
       setPendingEmail("");
 
       closeEventSource();
+      if (trackedJob) {
+        removePreviewStatusCenterJob(trackedJob.previewId);
+        clearPreviewTracking(trackedJob.previewId);
+        clearActivePreviewIdFromSession(trackedJob.previewId);
+      }
 
       const requestKey = buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,
+        email: showEmailField ? trimmedEmail : undefined,
       });
       setLastRequestKey(requestKey);
 
@@ -1183,7 +1285,7 @@ export function TryForm({
 
       try {
         requestAttempted = true;
-        const response = await fetch("/api/previews", {
+        const response = await fetch("/api/prospect-showcases", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1211,11 +1313,20 @@ export function TryForm({
           return;
         }
 
-        const payload = await response.json();
-        const previewId = typeof payload?.previewId === "string" ? payload.previewId : null;
+        const payload = (await response.json()) as Record<string, unknown>;
+        const previewId = resolveProspectShowcaseRef(payload);
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
-        const immediatePreview =
-          typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
+        const immediatePreview = resolvePreviewJobPayloadUrl("prospect_showcase", payload);
+        const immediateDemoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+        const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+        const immediateDecision = resolvePreviewStatusDecision({
+          responseOk: true,
+          responseStatus: response.status,
+          payload,
+          defaultErrorMessage: t("try.error.default"),
+          resolveErrorMessage,
+          payloadKind: "prospect_showcase",
+        });
 
         if (payload?.status === "failed") {
           if (previewId) {
@@ -1238,6 +1349,7 @@ export function TryForm({
               }),
             );
             upsertPreviewStatusCenterJob({
+              kind: "prospect_showcase",
               previewId,
               requestKey,
               statusToken,
@@ -1245,11 +1357,15 @@ export function TryForm({
               sourceLang: normalizedSourceLang,
               targetLang: normalizedTargetLang,
               status: "processing",
+              expiresAt,
             });
             syncStatusCenterTerminalState(
               previewId,
               resolved.code === "preview_expired" ? "expired" : "failed",
               {
+                previewUrl: immediatePreview ?? undefined,
+                demoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
+                expiresAt: expiresAt ?? undefined,
                 error: resolved.message,
                 errorCode: resolved.code,
                 errorStage: resolved.stage,
@@ -1266,11 +1382,14 @@ export function TryForm({
           return;
         }
 
-        if (payload?.status === "ready") {
+        if (immediateDecision.kind === "terminal") {
           if (!previewId || !statusToken) {
-            trackPreviewCreateFailed();
+            trackPreviewCreateFailed({
+              errorCode: immediateDecision.errorCode,
+              errorStage: immediateDecision.errorStage,
+            });
             submittedEmailRef.current = "";
-            setSubmissionError(t("try.error.default"));
+            setSubmissionError(immediateDecision.error ?? t("try.error.default"));
             return;
           }
 
@@ -1285,11 +1404,14 @@ export function TryForm({
               sourceLang: normalizedSourceLang,
               targetLang: normalizedTargetLang,
               previewId,
-              status: "ready",
+              status: immediateDecision.status,
+              errorCode: immediateDecision.errorCode,
+              errorStage: immediateDecision.errorStage,
               fieldLayout,
             }),
           );
           upsertPreviewStatusCenterJob({
+            kind: "prospect_showcase",
             previewId,
             requestKey,
             statusToken,
@@ -1297,9 +1419,16 @@ export function TryForm({
             sourceLang: normalizedSourceLang,
             targetLang: normalizedTargetLang,
             status: "pending",
+            expiresAt,
           });
-          syncStatusCenterTerminalState(previewId, "ready", {
-            previewUrl: immediatePreview,
+          syncStatusCenterTerminalState(previewId, immediateDecision.status, {
+            previewUrl: immediateDecision.previewUrl ?? immediatePreview ?? undefined,
+            demoDashboardUrl:
+              immediateDecision.demoDashboardUrl ?? immediateDemoDashboardUrl ?? undefined,
+            expiresAt: immediateDecision.expiresAt ?? expiresAt ?? undefined,
+            error: immediateDecision.error ?? null,
+            errorCode: immediateDecision.errorCode ?? null,
+            errorStage: immediateDecision.errorStage ?? null,
           });
           return;
         }
@@ -1326,7 +1455,7 @@ export function TryForm({
             targetLang: normalizedTargetLang,
             previewId,
             status: initialStatus,
-            stage: isPreviewStage(payload?.stage) ? payload.stage : null,
+            stage: resolvePreviewJobPayloadStage(payload?.stage),
             retryHintReason: resolvePreviewRetryHint(payload)?.reason ?? null,
             fieldLayout,
           }),
@@ -1335,9 +1464,12 @@ export function TryForm({
           sourceUrl: trimmedUrl,
           sourceLang: normalizedSourceLang,
           targetLang: normalizedTargetLang,
+          kind: "prospect_showcase",
           initialStatus,
-          initialStage: isPreviewStage(payload?.stage) ? payload.stage : null,
+          initialStage: resolvePreviewJobPayloadStage(payload?.stage),
           initialPreviewUrl: immediatePreview ?? undefined,
+          initialDemoDashboardUrl: immediateDemoDashboardUrl ?? undefined,
+          initialExpiresAt: expiresAt,
           initialRetryHint: resolvePreviewRetryHint(payload),
         });
       } finally {
@@ -1399,6 +1531,10 @@ export function TryForm({
     const previewId = trackedJob?.previewId;
     const statusToken = trackedJob?.statusToken;
     if (!previewId || !statusToken) {
+      return;
+    }
+    if (trackedJob?.kind === "prospect_showcase") {
+      setPendingEmailStatus("saved");
       return;
     }
     setPendingEmailStatus("submitting");
@@ -1489,7 +1625,7 @@ export function TryForm({
                 </label>
               </div>
 
-              {showEmailField && !submittedEmail ? (
+              {showEmailField ? (
                 <>
                   <label className="flex flex-col gap-2 text-sm">
                     <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
@@ -1739,7 +1875,7 @@ export function TryForm({
                 </div>
               ) : null}
 
-              {showEmailField ? (
+              {supportsPendingEmailRecovery ? (
                 <div className="max-w-sm space-y-3 border-t border-border/65 pt-4">
                   {pendingEmailStatus === "saved" ? (
                     <p className="text-sm font-medium text-foreground">
@@ -1815,7 +1951,7 @@ export function TryForm({
       {timedOut && !timedOutWithEmail ? (
         <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <p>{t("try.status.timedOutNoEmail")}</p>
-          {showEmailField && !submittedEmail && pendingEmailStatus !== "saved" ? (
+          {supportsPendingEmailRecovery && !submittedEmail && pendingEmailStatus !== "saved" ? (
             <div className="flex flex-col gap-2">
               <p className="text-xs">{t("try.pending.emailPrompt")}</p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -1856,7 +1992,7 @@ export function TryForm({
               ) : null}
             </div>
           ) : null}
-          {showEmailField && !submittedEmail && pendingEmailStatus === "saved" ? (
+          {supportsPendingEmailRecovery && !submittedEmail && pendingEmailStatus === "saved" ? (
             <p className="text-xs text-primary">{t("try.pending.emailSaved")}</p>
           ) : null}
           <Button
@@ -1883,17 +2019,69 @@ export function TryForm({
               </div>
             ) : null}
           </div>
-          <Button
-            onClick={() => {
-              void handleGenerate();
-            }}
-            disabled={isGenerateDisabled || isCreating}
-            variant="outline"
-            size="sm"
-            className="w-fit border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/5 hover:text-destructive"
-          >
-            {t("try.action.retry")}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={() => {
+                void handleGenerate();
+              }}
+              disabled={isGenerateDisabled || isCreating}
+              variant="outline"
+              size="sm"
+              className="w-fit border-destructive/30 bg-background/80 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            >
+              {t("try.action.retry")}
+            </Button>
+            {trackedJob?.status === "failed" && trackedJob.previewUrl ? (
+              <Button asChild size="sm" variant="secondary" className="w-fit">
+                <a
+                  href={trackedJob.previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    captureAnalyticsEvent(
+                      ANALYTICS_EVENTS.previewOpenClicked,
+                      buildPreviewAnalyticsProperties({
+                        locale,
+                        sourceUrl: trackedJob.sourceUrl,
+                        sourceLang: trackedJob.sourceLang,
+                        targetLang: trackedJob.targetLang,
+                        previewId: trackedJob.previewId,
+                        status: trackedJob.status,
+                        fieldLayout,
+                      }),
+                    );
+                  }}
+                >
+                  {t("try.preview.viewShowcase")}
+                </a>
+              </Button>
+            ) : null}
+            {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
+              <Button asChild size="sm" variant="secondary" className="w-fit">
+                <a
+                  href={trackedJob.demoDashboardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    captureAnalyticsEvent(
+                      ANALYTICS_EVENTS.previewOpenClicked,
+                      buildPreviewAnalyticsProperties({
+                        locale,
+                        sourceUrl: trackedJob.sourceUrl,
+                        sourceLang: trackedJob.sourceLang,
+                        targetLang: trackedJob.targetLang,
+                        previewId: trackedJob.previewId,
+                        status: trackedJob.status,
+                        fieldLayout,
+                      }),
+                    );
+                  }}
+                >
+                  {t("try.preview.openDemoDashboard")}
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -1901,32 +2089,41 @@ export function TryForm({
         <div className="rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <span>{t("try.status.ready")}</span>
-              {trackedJob.previewUrl ? (
+              <span>{resolvePreviewStatusCenterMessage(trackedJob, t)}</span>
+              {trackedJob.previewUrl || trackedJob.demoDashboardUrl ? (
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button asChild size="sm" variant="secondary" className="justify-center">
-                    <a
-                      href={trackedJob.previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() => {
-                        captureAnalyticsEvent(
-                          ANALYTICS_EVENTS.previewOpenClicked,
-                          buildPreviewAnalyticsProperties({
-                            locale,
-                            sourceUrl: trackedJob.sourceUrl,
-                            sourceLang: trackedJob.sourceLang,
-                            targetLang: trackedJob.targetLang,
-                            previewId: trackedJob.previewId,
-                            status: trackedJob.status,
-                            fieldLayout,
-                          }),
-                        );
-                      }}
-                    >
-                      {t("try.preview.openOverlay")}
-                    </a>
-                  </Button>
+                  {trackedJob.previewUrl ? (
+                    <Button asChild size="sm" variant="secondary" className="justify-center">
+                      <a
+                        href={trackedJob.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => {
+                          captureAnalyticsEvent(
+                            ANALYTICS_EVENTS.previewOpenClicked,
+                            buildPreviewAnalyticsProperties({
+                              locale,
+                              sourceUrl: trackedJob.sourceUrl,
+                              sourceLang: trackedJob.sourceLang,
+                              targetLang: trackedJob.targetLang,
+                              previewId: trackedJob.previewId,
+                              status: trackedJob.status,
+                              fieldLayout,
+                            }),
+                          );
+                        }}
+                      >
+                        {t("try.preview.viewShowcase")}
+                      </a>
+                    </Button>
+                  ) : null}
+                  {trackedJob.demoDashboardUrl ? (
+                    <Button asChild size="sm" className="justify-center">
+                      <a href={trackedJob.demoDashboardUrl} target="_blank" rel="noreferrer">
+                        {t("try.preview.openDemoDashboard")}
+                      </a>
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1934,7 +2131,7 @@ export function TryForm({
             {trackedJob.previewUrl ? (
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-primary/80">
-                  {t("try.preview.linkLabel")}
+                  {t("try.preview.showcaseLinkLabel")}
                 </span>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input

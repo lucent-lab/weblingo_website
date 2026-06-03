@@ -14,6 +14,18 @@ type AuthFormState = {
 
 type AuthActionKind = "login" | "signup";
 
+function resolveAuthRedirectPath(formData: FormData): string {
+  const value = String(formData.get("redirectTo") ?? "").trim();
+  if (
+    value === "/dashboard" ||
+    value.startsWith("/dashboard/") ||
+    value.startsWith("/dashboard?")
+  ) {
+    return value;
+  }
+  return "/dashboard";
+}
+
 function toFriendlySupabaseAuthError(error: unknown, action: AuthActionKind): string {
   const rawMessage =
     error && typeof error === "object" && "message" in error && typeof error.message === "string"
@@ -106,7 +118,7 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
 
   revalidatePath("/", "layout");
   await clearSubjectAccountId();
-  redirect("/dashboard");
+  redirect(resolveAuthRedirectPath(formData));
 }
 
 export async function signup(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
@@ -148,5 +160,5 @@ export async function signup(_: AuthFormState, formData: FormData): Promise<Auth
 
   revalidatePath("/", "layout");
   await clearSubjectAccountId();
-  redirect("/dashboard");
+  redirect(resolveAuthRedirectPath(formData));
 }

@@ -17,9 +17,17 @@ import {
 } from "./status-center-store";
 import { resolvePreviewStatusDecision } from "./preview-status-decision";
 import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
+import { buildPreviewJobStatusUrl } from "./preview-job-policy";
 
 const MAX_STATUS_RETRY_ATTEMPTS = 4;
+const MAX_TIMEOUT_DELAY_MS = 2_147_483_647;
 let previewStatusRuntimeOwner: symbol | null = null;
+
+type PreviewStatusCenterJobWithExpiry = PreviewStatusCenterJob & { expiresAt: number };
+
+function hasTerminalExpiry(job: PreviewStatusCenterJob): job is PreviewStatusCenterJobWithExpiry {
+  return (job.status === "ready" || job.status === "failed") && job.expiresAt !== null;
+}
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
   previewStatusRuntimeOwner = null;
@@ -74,6 +82,31 @@ export function usePreviewStatusRuntime() {
       return;
     }
 
+    let nextExpiryAt: number | null = null;
+    for (const job of jobs) {
+      if (!hasTerminalExpiry(job)) {
+        continue;
+      }
+      nextExpiryAt = nextExpiryAt === null ? job.expiresAt : Math.min(nextExpiryAt, job.expiresAt);
+    }
+    if (nextExpiryAt === null) {
+      return;
+    }
+
+    const delayMs = Math.max(0, Math.min(nextExpiryAt - Date.now(), MAX_TIMEOUT_DELAY_MS));
+    const timeout = window.setTimeout(() => {
+      cleanupPreviewStatusCenterJobs();
+    }, delayMs);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [jobs]);
+
+  useEffect(() => {
+    if (!isOwnerRef.current) {
+      return;
+    }
+
     const hasActiveJobs = jobs.some((job) => isPreviewStatusCenterJobActive(job));
     if (!hasActiveJobs) {
       return;
@@ -82,7 +115,7 @@ export function usePreviewStatusRuntime() {
     const pollJob = async (job: PreviewStatusCenterJob) => {
       try {
         const response = await fetch(
-          `/api/previews/${job.previewId}?token=${encodeURIComponent(job.statusToken)}`,
+          buildPreviewJobStatusUrl(job.kind, job.previewId, job.statusToken),
           {
             cache: "no-store",
           },
@@ -104,10 +137,13 @@ export function usePreviewStatusRuntime() {
           payload,
           defaultErrorMessage: "Unable to check preview status.",
           mapNotFoundToErrorCode: true,
+          payloadKind: job.kind,
         });
         if (decision.kind === "terminal") {
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
+            demoDashboardUrl: decision.demoDashboardUrl,
+            expiresAt: decision.expiresAt,
             error: decision.error,
             errorCode: decision.errorCode,
             errorStage: decision.errorStage,
@@ -133,6 +169,7 @@ export function usePreviewStatusRuntime() {
           status: nextStatus,
           stage: nextStage ?? undefined,
           previewUrl: decision.previewUrl,
+          expiresAt: decision.expiresAt,
           error: null,
           errorCode: null,
           errorStage: null,

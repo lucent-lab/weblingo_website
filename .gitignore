@@ -47,4 +47,6 @@ test-results/
 .vercel/
 *.log
 review.md
+HANDOFF.md
+review.json
 .playwright-cli/

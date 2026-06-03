@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
@@ -67,6 +67,7 @@ describe("usePreviewStatusRuntime", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.localStorage.clear();
@@ -79,6 +80,95 @@ describe("usePreviewStatusRuntime", () => {
 
     await waitFor(() => {
       expect(activeIntervals.size).toBe(0);
+    });
+  });
+
+  it("expires ready jobs at expiresAt without active polling", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "ready-expiry-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "ready",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      expiresAt: Date.now() + 1000,
+      remoteStatusVerified: true,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    });
+
+    render(<RuntimeHarness />);
+    expect(activeIntervals.size).toBe(0);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "ready",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      errorCode: "preview_expired",
+    });
+  });
+
+  it("expires failed jobs at expiresAt without active polling", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "failed-expiry-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      error: "Payment failed. Retry checkout to continue activation.",
+      expiresAt: Date.now() + 1000,
+      remoteStatusVerified: true,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    });
+
+    render(<RuntimeHarness />);
+    expect(activeIntervals.size).toBe(0);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
+      errorCode: "preview_expired",
     });
   });
 
@@ -219,6 +309,100 @@ describe("usePreviewStatusRuntime", () => {
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: 60,
         emailRecommended: true,
+      });
+    });
+  });
+
+  it("preserves prospect showcase demo dashboard links when status polling expires remotely", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Expired" }), {
+            status: 410,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "remote-expired-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "remote-expired-7777-7777-7777-777777777777",
+      );
+      expect(job).toMatchObject({
+        status: "expired",
+        previewUrl: null,
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        errorCode: "preview_expired",
+      });
+    });
+  });
+
+  it("clears stale action links when status polling terminalizes without links", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "missing-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "missing-7777-7777-7777-777777777777",
+      );
+      expect(job).toMatchObject({
+        status: "failed",
+        previewUrl: null,
+        demoDashboardUrl: null,
+        errorCode: "preview_not_found",
       });
     });
   });

@@ -56,6 +56,11 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
       {jobs.map((job) => {
         const terminal = isPreviewStatusCenterJobTerminal(job.status);
         const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
+        const showDemoDashboardAction =
+          Boolean(job.demoDashboardUrl) &&
+          (job.status === "ready" ||
+            job.status === "failed" ||
+            (job.kind === "prospect_showcase" && job.status === "expired"));
         return (
           <section
             key={job.previewId}
@@ -91,7 +96,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
             ) : null}
 
             <div className="mt-3 flex items-center gap-2">
-              {job.status === "ready" && job.previewUrl ? (
+              {(job.status === "ready" || job.status === "failed") && job.previewUrl ? (
                 <Button asChild size="sm" variant="secondary">
                   <a
                     href={job.previewUrl}
@@ -112,6 +117,31 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
                     }}
                   >
                     {t("try.preview.open")}
+                  </a>
+                </Button>
+              ) : null}
+
+              {showDemoDashboardAction && job.demoDashboardUrl ? (
+                <Button asChild size="sm" variant="secondary">
+                  <a
+                    href={job.demoDashboardUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => {
+                      captureAnalyticsEvent(
+                        ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+                        buildPreviewAnalyticsProperties({
+                          sourceUrl: job.sourceUrl,
+                          sourceLang: job.sourceLang,
+                          targetLang: job.targetLang,
+                          previewId: job.previewId,
+                          status: job.status,
+                          stage: job.stage,
+                        }),
+                      );
+                    }}
+                  >
+                    {t("try.preview.openDemoDashboard")}
                   </a>
                 </Button>
               ) : null}

@@ -1337,9 +1337,11 @@
             "type": "array"
           },
           "sourceLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` when present.",
             "type": "string"
           },
           "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           }
         },
@@ -1449,9 +1451,11 @@
             "type": "boolean"
           },
           "sourceLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` when present.",
             "type": "string"
           },
           "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           }
         },
@@ -1817,6 +1821,7 @@
             "type": "array"
           },
           "targetLangs": {
+            "description": "Every entry must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "items": {
               "type": "string"
             },
@@ -1916,6 +1921,7 @@
             "type": "array"
           },
           "targetLangs": {
+            "description": "Every entry must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "items": {
               "type": "string"
             },
@@ -2019,6 +2025,7 @@
             "type": "string"
           },
           "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           },
           "text": {
@@ -2115,6 +2122,7 @@
                 "null"
               ]
             },
+            "description": "Keys must match normalized `targetLangs` entries. Values are trimmed and lowercased; `null` or blank clears an alias. Nonblank normalized values must be 63 characters or fewer, use only lowercase letters, numbers, or hyphens, and not start or end with a hyphen.",
             "type": "object"
           },
           "localizedPathTemplates": {
@@ -2172,6 +2180,7 @@
             ]
           },
           "sourceLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           },
           "sourceSelection": {
@@ -2201,9 +2210,11 @@
             "type": "string"
           },
           "targetLangs": {
+            "description": "Non-empty list. Every entry must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "items": {
               "type": "string"
             },
+            "minItems": 1,
             "type": "array"
           },
           "translatableAttributes": {
@@ -2261,6 +2272,7 @@
         "additionalProperties": false,
         "properties": {
           "defaultLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` when present.",
             "type": [
               "string",
               "null"
@@ -4241,6 +4253,7 @@
             "type": "string"
           },
           "targetLangs": {
+            "description": "Every entry must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "items": {
               "type": "string"
             },
@@ -4885,7 +4898,7 @@
             "type": "string"
           },
           "targetLang": {
-            "description": "Target locale language tag this template applies to.",
+            "description": "Target locale this template applies to. Must be a configured supported target language.",
             "type": "string"
           },
           "targetPattern": {
@@ -5598,12 +5611,14 @@
             "type": "string"
           },
           "sourceLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           },
           "sourceUrl": {
             "type": "string"
           },
           "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           }
         },
@@ -5824,6 +5839,305 @@
         },
         "required": [
           "ok"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseAccessLinkResendRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "description": "Email originally used to request the prospect demo.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseAccessLinkResendResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "description": "Always generic; the public endpoint never reveals whether a demo exists or whether the address has a WebLingo account.",
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseClaimRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "description": "Scoped dashboard-entry token from `demoDashboardUrl`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseClaimResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "actorAccountId": {
+            "type": "string"
+          },
+          "conversionToken": {
+            "type": "string"
+          },
+          "demo": {
+            "const": true,
+            "type": "boolean"
+          },
+          "entitlements": {
+            "$ref": "#/components/schemas/Entitlements"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "prospectShowcaseId": {
+            "type": "string"
+          },
+          "prospectShowcaseRef": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "subjectAccountId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "entitlements",
+          "actorAccountId",
+          "subjectAccountId",
+          "prospectShowcaseId",
+          "prospectShowcaseRef",
+          "siteId",
+          "demo",
+          "conversionToken"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseConvertRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "conversionToken": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "conversionToken"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseConvertResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string"
+          },
+          "activationStatus": {
+            "enum": [
+              "activation_pending",
+              "payment_failed",
+              "active"
+            ],
+            "type": "string"
+          },
+          "inviteLink": {
+            "description": "Supabase invite/setup link for the newly created customer account.",
+            "type": "string"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "lockedReason": {
+            "type": "string"
+          },
+          "nextAction": {
+            "type": "string"
+          },
+          "prospectShowcaseRef": {
+            "type": "string"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "checkout_pending",
+              "activation_pending",
+              "payment_failed",
+              "converted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "prospectShowcaseRef",
+          "status",
+          "activationStatus",
+          "locked",
+          "lockedReason",
+          "accountId",
+          "siteId",
+          "nextAction"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcaseCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "sourceLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceUrl",
+          "sourceLang",
+          "targetLang",
+          "email"
+        ],
+        "type": "object"
+      },
+      "ProspectShowcasePublicStage": {
+        "enum": [
+          "accepted",
+          "queued",
+          "validating",
+          "creating_demo",
+          "crawling_source",
+          "translating",
+          "building_showcase",
+          "ready",
+          "failed",
+          "checkout_pending",
+          "activation_pending",
+          "payment_failed",
+          "converted"
+        ],
+        "type": "string"
+      },
+      "ProspectShowcasePublicStatus": {
+        "enum": [
+          "pending",
+          "processing",
+          "ready",
+          "failed",
+          "checkout_pending",
+          "activation_pending",
+          "payment_failed",
+          "converted"
+        ],
+        "type": "string"
+      },
+      "ProspectShowcaseStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "demoDashboardUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prospectShowcaseRef": {
+            "type": "string"
+          },
+          "showcaseUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "$ref": "#/components/schemas/ProspectShowcasePublicStage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProspectShowcasePublicStatus"
+          },
+          "statusToken": {
+            "description": "Only returned by create. Required for status polling and SSE.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "streamUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospectShowcaseRef",
+          "status",
+          "stage"
         ],
         "type": "object"
       },
@@ -7186,6 +7500,7 @@
         "additionalProperties": false,
         "properties": {
           "lang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           },
           "pageId": {
@@ -10056,11 +10371,11 @@
             "description": "Rule action. Exclude and canonical_source prevent the matched page from being translated directly."
           },
           "canonicalSourcePattern": {
-            "description": "Canonical source path pattern. Required for canonical_source rules; must mirror wildcard usage.",
+            "description": "Canonical source path pattern. Required for canonical_source rules; must mirror wildcard usage. Query strings and fragments are ignored for page identity and are not allowed in rules.",
             "type": "string"
           },
           "pattern": {
-            "description": "Source path pattern. Use a final `/*` segment for subtree rules.",
+            "description": "Source path pattern. Use a final `/*` segment for subtree rules. Query strings and fragments are ignored for page identity and are not allowed in rules.",
             "type": "string"
           }
         },
@@ -10626,6 +10941,7 @@
             "type": "string"
           },
           "targetLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
           }
         },
@@ -10998,6 +11314,7 @@
                 "null"
               ]
             },
+            "description": "Keys must match the effective target language set: submitted `targetLangs` when present, otherwise existing site locales. Values are trimmed and lowercased; `null` or blank clears an alias. Nonblank normalized values must be 63 characters or fewer, use only lowercase letters, numbers, or hyphens, and not start or end with a hyphen.",
             "type": "object"
           },
           "localizedPathTemplates": {
@@ -11088,9 +11405,11 @@
             "type": "string"
           },
           "targetLangs": {
+            "description": "When present, must be non-empty. Every entry must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "items": {
               "type": "string"
             },
+            "minItems": 1,
             "type": "array"
           },
           "translatableAttributes": {
@@ -11139,6 +11458,7 @@
         "additionalProperties": false,
         "properties": {
           "defaultLang": {
+            "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` when present.",
             "type": [
               "string",
               "null"
@@ -13827,6 +14147,487 @@
         ]
       }
     },
+    "/prospect-showcases": {
+      "post": {
+        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
+        "operationId": "prospectShowcases.create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "owner@example.com",
+                "sourceLang": "en",
+                "sourceUrl": "https://example.com",
+                "targetLang": "fr"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Your demo is being prepared.",
+                  "prospectShowcaseRef": "ps-example",
+                  "stage": "accepted",
+                  "status": "pending",
+                  "statusToken": "<status-token>",
+                  "statusUrl": "/api/prospect-showcases/ps-example/status",
+                  "streamUrl": "/api/prospect-showcases/ps-example/stream"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewToken": []
+          }
+        ],
+        "summary": "Create a public prospect showcase demo",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/{prospectShowcaseRef}/convert": {
+      "post": {
+        "operationId": "prospectShowcases.convert",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prospectShowcaseRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "conversionToken": "string",
+                "email": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseConvertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accountId": "string",
+                  "activationStatus": "activation_pending",
+                  "locked": true,
+                  "lockedReason": "string",
+                  "nextAction": "string",
+                  "prospectShowcaseRef": "string",
+                  "siteId": "string",
+                  "status": "checkout_pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseConvertResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Convert a prospect showcase into a new locked customer account",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/{prospectShowcaseRef}/status": {
+      "get": {
+        "operationId": "prospectShowcases.status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prospectShowcaseRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "prospectShowcaseRef": "string",
+                  "stage": "accepted",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewStatusToken": []
+          }
+        ],
+        "summary": "Get prospect showcase status",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/{prospectShowcaseRef}/stream": {
+      "get": {
+        "description": "Streams prospect showcase progress as Server-Sent Events using `text/event-stream`. Events carry the same public status fields returned by `GET /prospect-showcases/{prospectShowcaseRef}/status`.",
+        "operationId": "prospectShowcases.stream",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prospectShowcaseRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewStatusToken": []
+          }
+        ],
+        "summary": "Stream prospect showcase status updates",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/access-link/resend": {
+      "post": {
+        "description": "Accepts a public expired-link recovery request and always returns generic copy. If the submitted email matches an eligible prospect showcase, WebLingo queues a fresh access link to the original submitted email.",
+        "operationId": "prospectShowcases.accessLinkResend",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "owner@example.com"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseAccessLinkResendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "If this demo is eligible, we'll email the original access link.",
+                  "ok": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseAccessLinkResendResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Request a prospect showcase access-link resend",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/claim": {
+      "post": {
+        "operationId": "prospectShowcases.claim",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "token": "string"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ProspectShowcaseClaimRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "actorAccountId": "string",
+                  "conversionToken": "string",
+                  "demo": true,
+                  "entitlements": {
+                    "planStatus": "active",
+                    "planType": "free"
+                  },
+                  "expiresAt": "string",
+                  "prospectShowcaseId": "string",
+                  "prospectShowcaseRef": "string",
+                  "siteId": "string",
+                  "subjectAccountId": "string",
+                  "token": "string"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectShowcaseClaimResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Exchange a prospect showcase access token for a scoped demo dashboard token",
+        "tags": [
+          "Prospect Showcases"
+        ]
+      }
+    },
     "/sites": {
       "get": {
         "description": "Returns summary records for dashboard/navigation use. Breaking change: this response no longer includes full `Site` fields (`locales`, `domains`, `routeConfig`, `webhookUrl`, `webhookSecret`, `latestCrawlRun`). Call `GET /api/sites/{siteId}` for full site details.",
@@ -13914,7 +14715,7 @@
         ]
       },
       "post": {
-        "description": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl.",
+        "description": "Registers a new source site, locale map, and domain onboarding metadata, then enqueues the first crawl. `targetLangs` must be non-empty and use supported languages. `localeAliases` keys must match normalized `targetLangs`; values are trimmed and lowercased, and `null` or blank clears an alias.",
         "operationId": "sites.create",
         "requestBody": {
           "content": {
@@ -14145,6 +14946,7 @@
         ]
       },
       "patch": {
+        "description": "Updates site settings. When `targetLangs` is present it must be non-empty and use supported languages. `localeAliases` keys must match the effective target language set: submitted `targetLangs` when present, otherwise the existing site locales. Alias values are trimmed and lowercased, and `null` or blank clears an alias.",
         "operationId": "sites.update",
         "parameters": [
           {
@@ -14515,7 +15317,7 @@
             }
           },
           {
-            "description": "Target locale to inspect (for example `fr`).",
+            "description": "Supported configured target language to inspect (for example `fr`).",
             "in": "query",
             "name": "targetLang",
             "required": true,
@@ -14524,7 +15326,7 @@
             }
           },
           {
-            "description": "Optional source locale filter. Defaults to the site's source locale for targetLang.",
+            "description": "Optional supported source language filter. Defaults to the site's source language for targetLang.",
             "in": "query",
             "name": "sourceLang",
             "required": false,
@@ -14905,7 +15707,7 @@
             }
           },
           {
-            "description": "Target locale to inspect (for example `fr`).",
+            "description": "Supported configured target language to inspect (for example `fr`).",
             "in": "query",
             "name": "targetLang",
             "required": true,
@@ -14914,7 +15716,7 @@
             }
           },
           {
-            "description": "Optional source locale filter. Defaults to the site's source locale for targetLang.",
+            "description": "Optional supported source language filter. Defaults to the site's source language for targetLang.",
             "in": "query",
             "name": "sourceLang",
             "required": false,
@@ -15550,7 +16352,7 @@
             }
           },
           {
-            "description": "Locale filter for deployment history (for example `fr`).",
+            "description": "Supported configured target language filter for deployment history (for example `fr`).",
             "in": "query",
             "name": "targetLang",
             "required": true,
@@ -16570,6 +17372,7 @@
             }
           },
           {
+            "description": "Target language tag. Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` and configured for the site when the endpoint is site-scoped.",
             "in": "path",
             "name": "targetLang",
             "required": true,
@@ -16680,6 +17483,7 @@
             }
           },
           {
+            "description": "Target language tag. Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` and configured for the site when the endpoint is site-scoped.",
             "in": "path",
             "name": "targetLang",
             "required": true,
@@ -18830,7 +19634,7 @@
             }
           },
           {
-            "description": "Locale to mark as active in generated snippets. Defaults to source language.",
+            "description": "Supported source or configured target language to mark as active in generated snippets. Defaults to source language.",
             "in": "query",
             "name": "currentLang",
             "required": false,
@@ -19035,7 +19839,7 @@
             }
           },
           {
-            "description": "Optional configured site locale filter for customer-safe translation run summaries.",
+            "description": "Optional supported configured target language filter for customer-safe translation run summaries.",
             "in": "query",
             "name": "targetLang",
             "required": false,

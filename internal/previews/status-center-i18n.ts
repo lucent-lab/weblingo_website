@@ -59,6 +59,7 @@ export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.error.unknown",
   "try.error.waf_blocked",
   "try.preview.open",
+  "try.preview.openDemoDashboard",
   "try.stage.analyzing_content",
   "try.stage.fetching_page",
   "try.stage.generating_preview",
@@ -114,7 +115,7 @@ export function resolvePreviewStatusCenterMessage(
     return resolvePreviewStatusCenterStageMessage(job.stage, t) ?? t("try.status.processing");
   }
   if (job.status === "ready") {
-    return t("try.status.ready");
+    return job.error ?? t("try.status.ready");
   }
   if (job.status === "expired") {
     return t("try.error.preview_expired");

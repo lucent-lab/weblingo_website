@@ -2,8 +2,15 @@ import {
   isActivePreviewJobPhase,
   parsePreviewRetryHint,
   type ActivePreviewJobPhase,
+  type PreviewJobKind,
   type PreviewRetryHint,
 } from "./preview-job-machine";
+import {
+  resolvePreviewJobPayloadDemoDashboardUrl,
+  resolvePreviewJobPayloadExpiresAt,
+  resolvePreviewJobPayloadStage,
+  resolvePreviewJobPayloadUrl,
+} from "./preview-job-policy";
 import {
   hasExplicitFailure,
   isPreviewErrorCode,
@@ -25,6 +32,7 @@ export type PreviewStatusDecision =
       status: ActivePreviewJobPhase;
       stage: PreviewStage | null;
       previewUrl?: string;
+      expiresAt?: number | null;
       retryHint: PreviewRetryHint | null;
       remoteStatusVerified: boolean;
     }
@@ -32,6 +40,8 @@ export type PreviewStatusDecision =
       kind: "terminal";
       status: "ready" | "failed" | "expired";
       previewUrl?: string | null;
+      demoDashboardUrl?: string | null;
+      expiresAt?: number | null;
       error?: string | null;
       errorCode?: PreviewErrorCode | null;
       errorStage?: PreviewStage | null;
@@ -49,12 +59,60 @@ type ResolvePreviewStatusDecisionInput = {
   defaultErrorMessage: string;
   resolveErrorMessage?: PreviewErrorMessageResolver;
   mapNotFoundToErrorCode?: boolean;
+  payloadKind?: PreviewJobKind;
 };
+
+type PayloadLocationPatch = {
+  previewUrl?: string | null;
+  demoDashboardUrl?: string | null;
+  expiresAt?: number;
+};
+
+const PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES = new Set([
+  "checkout_pending",
+  "activation_pending",
+  "converted",
+]);
 
 function readDetails(payload: Record<string, unknown> | null): Record<string, unknown> | null {
   return payload && typeof payload.details === "object" && payload.details !== null
     ? (payload.details as Record<string, unknown>)
     : null;
+}
+
+function isProspectShowcaseTerminalStatus(payloadKind: PreviewJobKind, status: unknown): boolean {
+  return (
+    payloadKind === "prospect_showcase" &&
+    typeof status === "string" &&
+    PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES.has(status)
+  );
+}
+
+function readPayloadMessage(payload: Record<string, unknown> | null): string | null {
+  return typeof payload?.message === "string" ? payload.message : null;
+}
+
+function buildPayloadLocationPatch(
+  payloadKind: PreviewJobKind,
+  payload: Record<string, unknown> | null,
+  options: { clearMissingLinks?: boolean } = {},
+): PayloadLocationPatch {
+  const previewUrl = resolvePreviewJobPayloadUrl(payloadKind, payload);
+  const demoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
+  const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+  return {
+    ...(previewUrl === null
+      ? options.clearMissingLinks === true
+        ? { previewUrl: null }
+        : {}
+      : { previewUrl }),
+    ...(demoDashboardUrl === null
+      ? options.clearMissingLinks === true
+        ? { demoDashboardUrl: null }
+        : {}
+      : { demoDashboardUrl }),
+    ...(expiresAt === null ? {} : { expiresAt }),
+  };
 }
 
 export function resolvePreviewErrorPayload(
@@ -90,12 +148,15 @@ export function resolvePreviewStatusDecision({
   defaultErrorMessage,
   resolveErrorMessage,
   mapNotFoundToErrorCode = false,
+  payloadKind = "preview",
 }: ResolvePreviewStatusDecisionInput): PreviewStatusDecision {
   if (!responseOk) {
     if (responseStatus === 410) {
       return {
         kind: "terminal",
         status: "expired",
+        previewUrl: null,
+        ...(payloadKind === "prospect_showcase" ? {} : { demoDashboardUrl: null }),
         error: null,
         errorCode: "preview_expired",
         errorStage: null,
@@ -106,6 +167,8 @@ export function resolvePreviewStatusDecision({
       return {
         kind: "terminal",
         status: "failed",
+        previewUrl: null,
+        demoDashboardUrl: null,
         error: null,
         errorCode: "preview_not_found",
         errorStage: null,
@@ -127,6 +190,8 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: resolved.code === "preview_expired" ? "expired" : "failed",
+      previewUrl: null,
+      demoDashboardUrl: null,
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,
@@ -143,12 +208,25 @@ export function resolvePreviewStatusDecision({
     };
   }
 
-  if (payload.status === "ready") {
+  if (payloadKind === "prospect_showcase" && payload.status === "payment_failed") {
+    const resolved = resolvePreviewErrorPayload(payload, defaultErrorMessage, resolveErrorMessage);
+    return {
+      kind: "terminal",
+      status: "failed",
+      ...buildPayloadLocationPatch(payloadKind, payload, { clearMissingLinks: true }),
+      error: resolved.message,
+      errorCode: resolved.code,
+      errorStage: resolved.stage,
+    };
+  }
+
+  const isProspectShowcaseTerminal = isProspectShowcaseTerminalStatus(payloadKind, payload.status);
+  if (payload.status === "ready" || isProspectShowcaseTerminal) {
     return {
       kind: "terminal",
       status: "ready",
-      previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : null,
-      error: null,
+      ...buildPayloadLocationPatch(payloadKind, payload),
+      error: isProspectShowcaseTerminal ? readPayloadMessage(payload) : null,
       errorCode: null,
       errorStage: null,
     };
@@ -159,17 +237,20 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: resolved.code === "preview_expired" ? "expired" : "failed",
+      ...buildPayloadLocationPatch(payloadKind, payload, { clearMissingLinks: true }),
       error: resolved.message,
       errorCode: resolved.code,
       errorStage: resolved.stage,
     };
   }
 
+  const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
   return {
     kind: "active",
     status: isActivePreviewJobPhase(payload.status) ? payload.status : "processing",
-    stage: isPreviewStage(payload.stage) ? payload.stage : null,
-    previewUrl: typeof payload.previewUrl === "string" ? payload.previewUrl : undefined,
+    stage: resolvePreviewJobPayloadStage(payload.stage),
+    previewUrl: resolvePreviewJobPayloadUrl(payloadKind, payload) ?? undefined,
+    ...(expiresAt === null ? {} : { expiresAt }),
     retryHint: parsePreviewRetryHint(payload.retryHint),
     remoteStatusVerified: true,
   };

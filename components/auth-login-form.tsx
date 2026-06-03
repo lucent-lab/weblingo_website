@@ -18,7 +18,7 @@ type AuthFormState = { error: string | null; notice: string | null };
 const initialAuthState: AuthFormState = { error: null, notice: null };
 type AuthIntent = "login" | "signup";
 
-export function AuthLoginForm() {
+export function AuthLoginForm({ redirectTo }: { redirectTo?: string | null } = {}) {
   const [loginState, loginAction, loginPending] = useActionState<AuthFormState, FormData>(
     login,
     initialAuthState,
@@ -56,6 +56,7 @@ export function AuthLoginForm() {
           }
         }}
       >
+        {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
         <Card>
           <CardHeader>
             <CardTitle>Sign in to WebLingo</CardTitle>

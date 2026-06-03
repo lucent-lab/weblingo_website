@@ -102,8 +102,11 @@ const messages = {
   "try.pending.emailSaved": "We'll email you when it's ready.",
   "try.pending.emailError": "Could not save email. Try again.",
   "try.preview.linkLabel": "Preview link",
+  "try.preview.showcaseLinkLabel": "Showcase link",
   "try.preview.open": "Open preview",
   "try.preview.openOverlay": "Open overlay preview",
+  "try.preview.viewShowcase": "View showcase",
+  "try.preview.openDemoDashboard": "Open demo dashboard",
   "try.preview.copy": "Copy link",
   "try.preview.copied": "Copied",
   "try.error.default": "Preview failed.",
@@ -271,7 +274,7 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "99999999-9999-9999-9999-999999999999",
+          prospectShowcaseRef: "99999999-9999-9999-9999-999999999999",
           statusToken: "status-token",
           status: "processing",
           stage: "translating",
@@ -323,7 +326,7 @@ describe("TryForm preview status", () => {
     const eventSource = MockEventSource.instances[0];
     expect(eventSource).toBeTruthy();
     eventSource?.emit("complete", {
-      previewUrl: "https://preview.example.com/p/9999",
+      showcaseUrl: "https://preview.example.com/p/9999",
     });
 
     await waitFor(() => {
@@ -337,7 +340,7 @@ describe("TryForm preview status", () => {
     });
 
     eventSource?.emit("complete", {
-      previewUrl: "https://preview.example.com/p/9999",
+      showcaseUrl: "https://preview.example.com/p/9999",
     });
     await Promise.resolve();
     expect(
@@ -348,7 +351,7 @@ describe("TryForm preview status", () => {
   it("renders visible funnel labels and sends the email with the preview request", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({
-        previewId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        prospectShowcaseRef: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
         statusToken: "email-token",
         status: "processing",
         stage: "translating",
@@ -395,6 +398,17 @@ describe("TryForm preview status", () => {
         email: "owner@example.com",
       });
     });
+    await waitFor(() => {
+      expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(
+        buildPreviewStatusCenterRequestKey({
+          kind: "prospect_showcase",
+          sourceUrl: "https://launch.example.com/public-page",
+          sourceLang: "en",
+          targetLang: "fr",
+          email: "owner@example.com",
+        }),
+      );
+    });
   });
 
   it("captures preview terminal failures from the create response", async () => {
@@ -402,7 +416,7 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+          prospectShowcaseRef: "ffffffff-ffff-ffff-ffff-ffffffffffff",
           statusToken: "status-token",
           status: "failed",
           errorCode: "render_failed",
@@ -501,10 +515,10 @@ describe("TryForm preview status", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse({
-          previewId: "abababab-abab-abab-abab-abababababab",
+          prospectShowcaseRef: "abababab-abab-abab-abab-abababababab",
           statusToken: "status-token",
           status: "ready",
-          previewUrl: "https://preview.example.com/p/abab",
+          showcaseUrl: "https://preview.example.com/p/abab",
         }),
       ),
     );
@@ -521,7 +535,7 @@ describe("TryForm preview status", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
-    const openButton = await screen.findByRole("link", { name: "Open overlay preview" });
+    const openButton = await screen.findByRole("link", { name: "View showcase" });
     openButton.addEventListener("click", (event) => event.preventDefault(), { once: true });
     fireEvent.click(openButton);
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
@@ -577,12 +591,50 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("clears a stale ready result when a retry create request fails", async () => {
+    upsertDefaultJob("pending", {
+      previewId: "bcbc2222-2222-2222-2222-222222222222",
+      previewUrl: "https://preview.example.com/p/ready",
+    });
+    markPreviewStatusCenterJobTerminal("bcbc2222-2222-2222-2222-222222222222", "ready", {
+      previewUrl: "https://preview.example.com/p/ready",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            error: "Fresh request failed.",
+          },
+          500,
+        ),
+      ),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "View showcase" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Fresh request failed.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+    });
+    expect(screen.queryByText("Ready")).toBeNull();
+    expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
+  });
+
   it("maps preview phases to deterministic modes", () => {
     expect(resolveTryFormMode(false, null)).toBe("idle");
     expect(resolveTryFormMode(true, null)).toBe("creating");
 
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -606,6 +658,7 @@ describe("TryForm preview status", () => {
     ).toBe("running_pending");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -629,6 +682,7 @@ describe("TryForm preview status", () => {
     ).toBe("running_processing");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -652,6 +706,7 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_ready");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -675,6 +730,7 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_failed");
     expect(
       resolveTryFormMode(false, {
+        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -948,7 +1004,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("Ready")).toBeTruthy();
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
-      expect(screen.getByRole("link", { name: "Open overlay preview" }).getAttribute("href")).toBe(
+      expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
         "https://preview.example.com/p/ready",
       );
     });
@@ -993,7 +1049,7 @@ describe("TryForm preview status", () => {
     });
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return createPromise;
       }
       return jsonResponse({ status: "processing" });
@@ -1014,7 +1070,7 @@ describe("TryForm preview status", () => {
 
     resolveCreate(
       jsonResponse({
-        previewId: "ffff6666-6666-6666-6666-666666666666",
+        prospectShowcaseRef: "ffff6666-6666-6666-6666-666666666666",
         statusToken: "new-token",
         status: "pending",
       }),
@@ -1078,6 +1134,7 @@ describe("TryForm preview status", () => {
 
       const expected = resolvePreviewStatusCenterMessage(
         {
+          kind: "preview",
           previewId: `phase-${phase.status}`,
           requestKey,
           statusToken: `token-${phase.status}`,
@@ -1115,9 +1172,9 @@ describe("TryForm preview status", () => {
   it("persists preview jobs in v2 storage and marks ready from SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1144,7 +1201,7 @@ describe("TryForm preview status", () => {
 
     MockEventSource.instances[0].emit("status", {
       status: "ready",
-      previewUrl: "https://preview.test/p/abc",
+      showcaseUrl: "https://preview.test/p/abc",
     });
 
     await waitFor(() => {
@@ -1153,12 +1210,293 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("persists and renders a demo dashboard link when SSE completes without a showcase URL", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-dashboard-only",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("complete", {
+      status: "ready",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+    });
+    expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=dashboard-token",
+    );
+  });
+
+  it("renders a demo dashboard continuation link when SSE reports payment failure", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-payment-failed",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=payment-retry",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=payment-retry",
+    );
+  });
+
+  it("renders a showcase link when SSE payment failure includes a showcase url", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-payment-failed-showcase",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      showcaseUrl: "https://showcase.example.com/payment-failed/fr",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
+      "https://showcase.example.com/payment-failed/fr",
+    );
+  });
+
+  it("does not mark prospect showcase complete frames with payment failure as ready", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-complete-payment-failed",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("complete", {
+      status: "payment_failed",
+      message: "Payment failed. Retry checkout to continue activation.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText("Ready")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-complete-payment-failed",
+    );
+    expect(job).toMatchObject({
+      status: "failed",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+  });
+
+  it("keeps the demo dashboard link when prospect showcase creation fails immediately", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-immediate-failed",
+          statusToken: "status-token",
+          status: "failed",
+          error: "Payment failed. Retry checkout to continue activation.",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-retry",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Payment failed. Retry checkout to continue activation."),
+      ).toBeTruthy();
+    });
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=immediate-retry",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-immediate-failed",
+    );
+    expect(job?.demoDashboardUrl).toBe("https://weblingo.app/dashboard/demo#token=immediate-retry");
+  });
+
+  it("stores prospect showcase immediate terminal guidance in the status center", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-immediate-checkout",
+          statusToken: "status-token",
+          status: "checkout_pending",
+          message: "Complete payment to publish this demo on your domain.",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Complete payment to publish this demo on your domain."),
+      ).toBeTruthy();
+    });
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+    );
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (entry) => entry.previewId === "prospect-immediate-checkout",
+    );
+    expect(job).toMatchObject({
+      status: "ready",
+      error: "Complete payment to publish this demo on your domain.",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-checkout",
+    });
+  });
+
+  it("persists expiry timestamps from SSE status updates", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-expiring-status",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("status", {
+      status: "processing",
+      stage: "translating",
+      expiresAt: "2026-06-02T10:00:00.000Z",
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "prospect-expiring-status",
+      );
+      expect(job?.expiresAt).toBe(Date.parse("2026-06-02T10:00:00.000Z"));
+    });
+  });
+
   it("delays status polling from provider-capacity retry hints received over SSE", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1200,9 +1538,9 @@ describe("TryForm preview status", () => {
   it("resumes normal status polling when SSE leaves provider-capacity wait", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "11111111-1111-1111-1111-111111111111",
+          prospectShowcaseRef: "11111111-1111-1111-1111-111111111111",
           statusToken: "status-token",
           status: "pending",
         });
@@ -1298,6 +1636,127 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("restore.example.com • English -> French")).toBeTruthy();
     });
     expect(MockEventSource.instances).toHaveLength(0);
+  });
+
+  it("restores email-scoped prospect showcase jobs with their submitted email", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      kind: "prospect_showcase",
+      sourceUrl: "https://restore.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          kind: "prospect_showcase",
+          previewId: "prospect-restore-2222-2222-2222-222222222222",
+          requestKey,
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "ready",
+          stage: null,
+          previewUrl: "https://showcase.example.com",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo",
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+        fieldLayout="funnel"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("https://restore.example.com")).toBeTruthy();
+      expect(screen.getByDisplayValue("owner@example.com")).toBeTruthy();
+      expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(requestKey);
+    });
+  });
+
+  it("keeps the legacy email field editable after restoring a prospect showcase job", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        prospectShowcaseRef: "prospect-next-3333",
+        statusToken: "next-token",
+        status: "pending",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      kind: "prospect_showcase",
+      sourceUrl: "https://restore.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          kind: "prospect_showcase",
+          previewId: "prospect-legacy-2222-2222-2222-222222222222",
+          requestKey,
+          statusToken: "restore-token",
+          sourceUrl: "https://restore.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "ready",
+          stage: null,
+          previewUrl: "https://showcase.example.com",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo",
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    const emailInput = await screen.findByDisplayValue("owner@example.com");
+    fireEvent.change(emailInput, { target: { value: "next@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const [, requestInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(String(requestInit.body))).toMatchObject({
+        sourceUrl: "https://restore.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "next@example.com",
+      });
+    });
   });
 
   it("checks restored provider-capacity waits on mount", async () => {
@@ -1441,7 +1900,7 @@ describe("TryForm preview status", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        if (String(input) !== "/api/previews") {
+        if (String(input) !== "/api/prospect-showcases") {
           return Promise.resolve(jsonResponse({ status: "processing" }));
         }
 
@@ -1634,6 +2093,42 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("does not show the legacy pending-email action for prospect showcase jobs", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "prospect-email-5555-5555-5555-555555555555",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://summary.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "summary-token",
+      sourceUrl: "https://summary.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+      stage: "translating",
+    });
+
+    render(
+      <TryForm
+        locale="en"
+        messages={messages}
+        supportedLanguages={supportedLanguages}
+        showEmailField
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("summary.example.com • English -> French")).toBeTruthy();
+    });
+    expect(screen.queryByText("Get notified when your preview is ready")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Email me" })).toBeNull();
+  });
+
   it("shows the capacity-specific processing hint when browser slots are full", async () => {
     upsertPreviewStatusCenterJob({
       previewId: "capacity-6666-6666-6666-666666666666",
@@ -1708,17 +2203,20 @@ describe("TryForm preview status", () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "33333333-3333-3333-3333-333333333333",
+          prospectShowcaseRef: "33333333-3333-3333-3333-333333333333",
           statusToken: "poll-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token"
+      ) {
         return jsonResponse({
           status: "ready",
-          previewUrl: "https://preview.test/p/poll",
+          showcaseUrl: "https://preview.test/p/poll",
         });
       }
       return jsonResponse({ status: "processing" });
@@ -1733,7 +2231,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token",
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token",
       );
       expect(screen.getByText("Ready")).toBeTruthy();
     });
@@ -1743,14 +2241,17 @@ describe("TryForm preview status", () => {
     vi.stubGlobal("EventSource", undefined);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "33333333-3333-3333-3333-333333333333",
+          prospectShowcaseRef: "33333333-3333-3333-3333-333333333333",
           statusToken: "poll-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token"
+      ) {
         return jsonResponse({ error: "Not found" }, 404);
       }
       return jsonResponse({ status: "processing" });
@@ -1765,7 +2266,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/33333333-3333-3333-3333-333333333333?token=poll-token",
+        "/api/prospect-showcases/33333333-3333-3333-3333-333333333333/status?token=poll-token",
       );
       expect(screen.getByText("Preview not found")).toBeTruthy();
     });
@@ -1774,14 +2275,17 @@ describe("TryForm preview status", () => {
   it("closes SSE and uses a single status check when stream errors", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "44444444-4444-4444-4444-444444444444",
+          prospectShowcaseRef: "44444444-4444-4444-4444-444444444444",
           statusToken: "sse-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/44444444-4444-4444-4444-444444444444/status?token=sse-token"
+      ) {
         return jsonResponse({ status: "processing" });
       }
       return jsonResponse({ status: "processing" });
@@ -1803,7 +2307,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/44444444-4444-4444-4444-444444444444?token=sse-token",
+        "/api/prospect-showcases/44444444-4444-4444-4444-444444444444/status?token=sse-token",
       );
     });
     expect(stream.closed).toBe(true);
@@ -1813,14 +2317,17 @@ describe("TryForm preview status", () => {
   it("restores running UI when a timed-out preview status check remains active", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "timeout-active-8888-8888-8888-888888888888",
+          prospectShowcaseRef: "timeout-active-8888-8888-8888-888888888888",
           statusToken: "timeout-token",
           status: "pending",
         });
       }
-      if (url === "/api/previews/timeout-active-8888-8888-8888-888888888888?token=timeout-token") {
+      if (
+        url ===
+        "/api/prospect-showcases/timeout-active-8888-8888-8888-888888888888/status?token=timeout-token"
+      ) {
         return jsonResponse({ status: "waiting_provider_capacity", stage: "translating" });
       }
       return jsonResponse({ status: "processing" });
@@ -1856,9 +2363,9 @@ describe("TryForm preview status", () => {
   it("uses stage copy from the shared resolver", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "55555555-5555-5555-5555-555555555555",
+          prospectShowcaseRef: "55555555-5555-5555-5555-555555555555",
           statusToken: "stage-token",
           status: "pending",
         });
@@ -1921,9 +2428,9 @@ describe("TryForm preview status", () => {
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/previews") {
+      if (url === "/api/prospect-showcases") {
         return jsonResponse({
-          previewId: "77777777-7777-7777-7777-777777777777",
+          prospectShowcaseRef: "77777777-7777-7777-7777-777777777777",
           statusToken: "next-token",
           status: "pending",
         });
@@ -1945,7 +2452,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews",
+        "/api/prospect-showcases",
         expect.objectContaining({ method: "POST" }),
       );
     });

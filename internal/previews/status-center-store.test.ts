@@ -28,6 +28,7 @@ import {
 
 function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenterJob>[0]> = {}) {
   return {
+    kind: "preview" as const,
     previewId: "11111111-1111-1111-1111-111111111111",
     requestKey: buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://example.com",
@@ -126,6 +127,49 @@ describe("status-center-store", () => {
 
     removePreviewStatusCenterJob("11111111-1111-1111-1111-111111111111");
     expect(getPreviewStatusCenterSnapshot().jobs).toHaveLength(0);
+  });
+
+  it("expires ready preview jobs with stale expiry and clears terminal action URLs", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        previewId: "expired-ready-1111-1111-1111-111111111111",
+        status: "ready",
+        previewUrl: "https://preview.example.com/fr",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        expiresAt: Date.now() - 1_000,
+      }),
+    );
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: null,
+      errorCode: "preview_expired",
+    });
+  });
+
+  it("expires prospect showcase jobs with stale expiry and preserves dashboard handoffs", () => {
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        kind: "prospect_showcase",
+        previewId: "expired-showcase-1111-1111-1111-111111111111",
+        status: "ready",
+        previewUrl: "https://showcase.example.com/fr",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        expiresAt: Date.now() - 1_000,
+      }),
+    );
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0]).toMatchObject({
+      status: "expired",
+      previewUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+      errorCode: "preview_expired",
+    });
   });
 
   it("tracks and resets retry state for active jobs", () => {
@@ -586,6 +630,7 @@ describe("status-center-store", () => {
     const parsed = parsePreviewStatusCenterRequestKey(requestKey);
 
     expect(parsed).toEqual({
+      kind: "preview",
       sourceUrl: "https://example.com/a|b?mode=test",
       sourceLang: "en",
       targetLang: "fr",
@@ -599,10 +644,61 @@ describe("status-center-store", () => {
     );
 
     expect(parsed).toEqual({
+      kind: "preview",
       sourceUrl: "https://legacy.example.com",
       sourceLang: "en",
       targetLang: "fr",
       email: "old@example.com",
     });
+  });
+
+  it("keeps prospect-showcase request keys distinct from preview request keys", () => {
+    const previewRequestKey = buildPreviewStatusCenterRequestKey({
+      kind: "preview",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+    const prospectRequestKey = buildPreviewStatusCenterRequestKey({
+      kind: "prospect_showcase",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+
+    expect(previewRequestKey).not.toBe(prospectRequestKey);
+    expect(parsePreviewStatusCenterRequestKey(prospectRequestKey)).toMatchObject({
+      kind: "prospect_showcase",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+    });
+
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        kind: "preview",
+        previewId: "preview-1111-1111-1111-111111111111",
+        requestKey: previewRequestKey,
+        statusToken: "preview-token",
+      }),
+    );
+    upsertPreviewStatusCenterJob(
+      buildJob({
+        kind: "prospect_showcase",
+        previewId: "prospect-1111-1111-1111-111111111111",
+        requestKey: prospectRequestKey,
+        statusToken: "prospect-token",
+      }),
+    );
+
+    expect(selectLatestJobByRequestKey(previewRequestKey)?.previewId).toBe(
+      "preview-1111-1111-1111-111111111111",
+    );
+    expect(selectLatestJobByRequestKey(prospectRequestKey)?.previewId).toBe(
+      "prospect-1111-1111-1111-111111111111",
+    );
+    expect(
+      selectRestorablePreviewStatusCenterJob({ currentRequestKey: prospectRequestKey })?.previewId,
+    ).toBe("prospect-1111-1111-1111-111111111111");
   });
 });

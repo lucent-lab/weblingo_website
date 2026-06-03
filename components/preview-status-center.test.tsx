@@ -33,6 +33,7 @@ const messages = {
   "try.error.preview_not_found": "Preview not found",
   "try.error.unknown": "Unknown error",
   "try.preview.open": "Open preview",
+  "try.preview.openDemoDashboard": "Open demo dashboard",
   "try.stage.fetching_page": "Fetching page",
   "try.stage.analyzing_content": "Analyzing content",
   "try.stage.translating": "Translating",
@@ -150,6 +151,151 @@ describe("PreviewStatusCenter", () => {
     await waitFor(() => {
       expect(screen.queryByText("Ready")).toBeNull();
     });
+  });
+
+  it("opens demo dashboards for ready jobs without preview urls", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "55555555-5555-5555-5555-555555555555",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://demo-only.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "demo-ready-token",
+      sourceUrl: "https://demo-only.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+    });
+    markPreviewStatusCenterJobTerminal("55555555-5555-5555-5555-555555555555", "ready", {
+      previewUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo-token",
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    const demoDashboardLink = await screen.findByRole("link", {
+      name: "Open demo dashboard",
+    });
+    expect(demoDashboardLink.getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=demo-token",
+    );
+    expect(screen.queryByRole("link", { name: "Open preview" })).toBeNull();
+
+    demoDashboardLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(demoDashboardLink);
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+      ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+      expect.objectContaining({
+        preview_id: "55555555-5555-5555-5555-555555555555",
+        status: "ready",
+      }),
+    );
+  });
+
+  it("opens demo dashboards for failed payment jobs", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "66666666-6666-6666-6666-666666666666",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://payment-failed.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "payment-failed-token",
+      sourceUrl: "https://payment-failed.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+    });
+    markPreviewStatusCenterJobTerminal("66666666-6666-6666-6666-666666666666", "failed", {
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=payment-retry",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    const demoDashboardLink = await screen.findByRole("link", {
+      name: "Open demo dashboard",
+    });
+    expect(demoDashboardLink.getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=payment-retry",
+    );
+
+    demoDashboardLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(demoDashboardLink);
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith(
+      ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
+      expect.objectContaining({
+        preview_id: "66666666-6666-6666-6666-666666666666",
+        status: "failed",
+      }),
+    );
+  });
+
+  it("keeps demo dashboard actions visible for expired prospect showcases", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "88888888-8888-8888-8888-888888888888",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://expired-demo.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "expired-demo-token",
+      sourceUrl: "https://expired-demo.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "ready",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=expired-demo",
+      expiresAt: Date.now() - 1_000,
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    expect(await screen.findByText("Preview expired")).toBeTruthy();
+    const demoDashboardLink = screen.getByRole("link", {
+      name: "Open demo dashboard",
+    });
+    expect(demoDashboardLink.getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=expired-demo",
+    );
+    expect(screen.queryByRole("link", { name: "Open preview" })).toBeNull();
+  });
+
+  it("opens showcase links for failed jobs when a preview url is available", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "77777777-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://failed-showcase.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "failed-showcase-token",
+      sourceUrl: "https://failed-showcase.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "pending",
+    });
+    markPreviewStatusCenterJobTerminal("77777777-7777-7777-7777-777777777777", "failed", {
+      previewUrl: "https://showcase.example.com/failed/fr",
+      error: "Payment failed. Retry checkout to continue activation.",
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    const showcaseLink = await screen.findByRole("link", { name: "Open preview" });
+    expect(showcaseLink.getAttribute("href")).toBe("https://showcase.example.com/failed/fr");
   });
 
   it("renders a capacity hint for active jobs waiting on browser slots", async () => {

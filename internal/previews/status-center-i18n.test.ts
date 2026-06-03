@@ -16,6 +16,7 @@ const t = (key: string) => messages[key as keyof typeof messages] ?? key;
 
 function buildJob(input: Partial<PreviewStatusCenterJob>): PreviewStatusCenterJob {
   return {
+    kind: "preview",
     previewId: "capacity-1111-1111-1111-111111111111",
     requestKey: "v2:https%3A%2F%2Fexample.com|en|fr|",
     statusToken: "status-token",
@@ -54,6 +55,20 @@ describe("resolvePreviewStatusCenterMessage", () => {
     expect(resolvePreviewStatusCenterMessage(buildJob({ remoteStatusVerified: true }), t)).toBe(
       "Waiting for translation capacity",
     );
+  });
+
+  it("uses ready job messages when a terminal prospect status carries one", () => {
+    expect(
+      resolvePreviewStatusCenterMessage(
+        buildJob({
+          kind: "prospect_showcase",
+          status: "ready",
+          error: "Complete payment to continue activation.",
+          remoteStatusVerified: true,
+        }),
+        t,
+      ),
+    ).toBe("Complete payment to continue activation.");
   });
 
   it("shows provider-capacity hints for hydrated provider-capacity jobs before status is verified", () => {

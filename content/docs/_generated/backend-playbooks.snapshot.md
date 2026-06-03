@@ -16,6 +16,7 @@ Human workflow playbooks built on top of generated operation contracts. Payload 
    - `operationId`: `accounts.me`
 3. Load supported locale options for onboarding forms:
    - `operationId`: `meta.languages.list`
+   - Use these exact tags for language-bearing create/update/preview requests; supported casing aliases canonicalize, unsupported tags fail fast.
 
 ## Playbook: Site Portfolio Management
 
@@ -200,6 +201,21 @@ Local/dev TXT verification flow:
    - `operationId`: `sites.locales.translationSummary.put`
 7. Read translation summary rollups:
    - `operationId`: `sites.translationSummaries.list`
+
+## Playbook: Prospect Showcase Conversion
+
+1. Create a public prospect showcase request from the try form:
+   - `operationId`: `prospectShowcases.create`
+2. Poll the prospect showcase status until the demo is ready or failed:
+   - `operationId`: `prospectShowcases.status`
+3. Subscribe to live prospect showcase status updates while the demo is provisioning:
+   - `operationId`: `prospectShowcases.stream`
+4. Request a fresh access link from the expired-link recovery screen:
+   - `operationId`: `prospectShowcases.accessLinkResend`
+5. Open the demo workspace with the emailed or in-flow claim token:
+   - `operationId`: `prospectShowcases.claim`
+6. Convert the demo into a customer-owned starter site after the user confirms ownership:
+   - `operationId`: `prospectShowcases.convert`
 
 ## Playbook 6: Operations and Incident Response
 
