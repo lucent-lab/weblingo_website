@@ -502,7 +502,7 @@ function expireTerminalJob(job: PreviewStatusCenterJob, now: number): PreviewSta
     status: "expired",
     stage: null,
     previewUrl: null,
-    demoDashboardUrl: null,
+    demoDashboardUrl: job.kind === "prospect_showcase" ? job.demoDashboardUrl : null,
     error: job.error,
     errorCode: "preview_expired",
     errorStage: null,

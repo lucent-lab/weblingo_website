@@ -56,6 +56,11 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
       {jobs.map((job) => {
         const terminal = isPreviewStatusCenterJobTerminal(job.status);
         const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
+        const showDemoDashboardAction =
+          Boolean(job.demoDashboardUrl) &&
+          (job.status === "ready" ||
+            job.status === "failed" ||
+            (job.kind === "prospect_showcase" && job.status === "expired"));
         return (
           <section
             key={job.previewId}
@@ -116,7 +121,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
                 </Button>
               ) : null}
 
-              {(job.status === "ready" || job.status === "failed") && job.demoDashboardUrl ? (
+              {showDemoDashboardAction && job.demoDashboardUrl ? (
                 <Button asChild size="sm" variant="secondary">
                   <a
                     href={job.demoDashboardUrl}

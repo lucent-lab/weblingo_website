@@ -129,13 +129,12 @@ describe("status-center-store", () => {
     expect(getPreviewStatusCenterSnapshot().jobs).toHaveLength(0);
   });
 
-  it("expires ready jobs with stale expiry and clears terminal action URLs", () => {
+  it("expires ready preview jobs with stale expiry and clears terminal action URLs", () => {
     upsertPreviewStatusCenterJob(
       buildJob({
-        kind: "prospect_showcase",
         previewId: "expired-ready-1111-1111-1111-111111111111",
         status: "ready",
-        previewUrl: "https://showcase.example.com/fr",
+        previewUrl: "https://preview.example.com/fr",
         demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
         expiresAt: Date.now() - 1_000,
       }),
@@ -151,14 +150,14 @@ describe("status-center-store", () => {
     });
   });
 
-  it("expires failed jobs with stale expiry and clears terminal action URLs", () => {
+  it("expires prospect showcase jobs with stale expiry and preserves dashboard handoffs", () => {
     upsertPreviewStatusCenterJob(
       buildJob({
         kind: "prospect_showcase",
-        previewId: "expired-failed-1111-1111-1111-111111111111",
-        status: "failed",
+        previewId: "expired-showcase-1111-1111-1111-111111111111",
+        status: "ready",
+        previewUrl: "https://showcase.example.com/fr",
         demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
-        error: "Payment failed. Retry checkout to continue activation.",
         expiresAt: Date.now() - 1_000,
       }),
     );
@@ -168,7 +167,7 @@ describe("status-center-store", () => {
     expect(snapshot.jobs[0]).toMatchObject({
       status: "expired",
       previewUrl: null,
-      demoDashboardUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
       errorCode: "preview_expired",
     });
   });

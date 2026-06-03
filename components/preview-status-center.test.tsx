@@ -238,6 +238,38 @@ describe("PreviewStatusCenter", () => {
     );
   });
 
+  it("keeps demo dashboard actions visible for expired prospect showcases", async () => {
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "88888888-8888-8888-8888-888888888888",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://expired-demo.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "expired-demo-token",
+      sourceUrl: "https://expired-demo.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "ready",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=expired-demo",
+      expiresAt: Date.now() - 1_000,
+    });
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    expect(await screen.findByText("Preview expired")).toBeTruthy();
+    const demoDashboardLink = screen.getByRole("link", {
+      name: "Open demo dashboard",
+    });
+    expect(demoDashboardLink.getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo#token=expired-demo",
+    );
+    expect(screen.queryByRole("link", { name: "Open preview" })).toBeNull();
+  });
+
   it("opens showcase links for failed jobs when a preview url is available", async () => {
     upsertPreviewStatusCenterJob({
       kind: "prospect_showcase",

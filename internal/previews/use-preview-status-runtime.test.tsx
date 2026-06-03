@@ -123,7 +123,7 @@ describe("usePreviewStatusRuntime", () => {
     expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
       status: "expired",
       previewUrl: null,
-      demoDashboardUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
       errorCode: "preview_expired",
     });
   });
@@ -167,7 +167,7 @@ describe("usePreviewStatusRuntime", () => {
     expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
       status: "expired",
       previewUrl: null,
-      demoDashboardUrl: null,
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo",
       errorCode: "preview_expired",
     });
   });
