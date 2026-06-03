@@ -17,6 +17,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export async function POST(request: NextRequest) {
   const configResult = getPreviewProxyConfig("json");
   if (!configResult.ok) {
@@ -34,6 +38,9 @@ export async function POST(request: NextRequest) {
   const email = typeof bodyResult.payload.email === "string" ? bodyResult.payload.email.trim() : "";
   if (!email) {
     return createPreviewProxyResponse("json", "Missing email", 400);
+  }
+  if (!isValidEmail(email)) {
+    return createPreviewProxyResponse("json", "Invalid email", 400);
   }
 
   const rateLimitResponse = await enforcePreviewRateLimit({

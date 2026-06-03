@@ -342,6 +342,25 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test("POST /api/prospect-showcases/access-link/resend rejects malformed emails locally", async () => {
+    const { POST } = await import("./access-link/resend/route");
+
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/access-link/resend", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ email: "not-an-email" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "Invalid email" });
+    expect(fetchWithTimeout).not.toHaveBeenCalled();
+  });
+
   test("POST /api/prospect-showcases/:ref/convert sends dashboard token as bearer auth", async () => {
     const { POST } = await import("./[ref]/convert/route");
     allowRateLimit();

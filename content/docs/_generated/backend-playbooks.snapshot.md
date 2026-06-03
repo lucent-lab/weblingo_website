@@ -208,11 +208,13 @@ Local/dev TXT verification flow:
    - `operationId`: `prospectShowcases.create`
 2. Poll the prospect showcase status until the demo is ready or failed:
    - `operationId`: `prospectShowcases.status`
-3. Request a fresh access link from the expired-link recovery screen:
+3. Subscribe to live prospect showcase status updates while the demo is provisioning:
+   - `operationId`: `prospectShowcases.stream`
+4. Request a fresh access link from the expired-link recovery screen:
    - `operationId`: `prospectShowcases.accessLinkResend`
-4. Open the demo workspace with the emailed or in-flow claim token:
+5. Open the demo workspace with the emailed or in-flow claim token:
    - `operationId`: `prospectShowcases.claim`
-5. Convert the demo into a customer-owned starter site after the user confirms ownership:
+6. Convert the demo into a customer-owned starter site after the user confirms ownership:
    - `operationId`: `prospectShowcases.convert`
 
 ## Playbook 6: Operations and Incident Response

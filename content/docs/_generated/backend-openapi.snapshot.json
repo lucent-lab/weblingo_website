@@ -14335,7 +14335,7 @@
         ],
         "summary": "Convert a prospect showcase into a new locked customer account",
         "tags": [
-          "ProspectShowcases"
+          "Prospect Showcases"
         ]
       }
     },
@@ -14416,7 +14416,77 @@
         ],
         "summary": "Get prospect showcase status",
         "tags": [
-          "ProspectShowcases"
+          "Prospect Showcases"
+        ]
+      }
+    },
+    "/prospect-showcases/{prospectShowcaseRef}/stream": {
+      "get": {
+        "description": "Streams prospect showcase progress as Server-Sent Events using `text/event-stream`. Events carry the same public status fields returned by `GET /prospect-showcases/{prospectShowcaseRef}/status`.",
+        "operationId": "prospectShowcases.stream",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prospectShowcaseRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "previewStatusToken": []
+          }
+        ],
+        "summary": "Stream prospect showcase status updates",
+        "tags": [
+          "Prospect Showcases"
         ]
       }
     },
@@ -14554,7 +14624,7 @@
         "security": [],
         "summary": "Exchange a prospect showcase access token for a scoped demo dashboard token",
         "tags": [
-          "ProspectShowcases"
+          "Prospect Showcases"
         ]
       }
     },

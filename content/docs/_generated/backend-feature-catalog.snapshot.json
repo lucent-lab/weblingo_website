@@ -584,7 +584,7 @@
       "routeIds": [
         "prospectShowcases.accessLinkResend"
       ],
-      "stability": "GA",
+      "stability": "Beta",
       "summary": "Accepts a public expired-link recovery request and always returns generic copy. If the submitted email matches an eligible prospect showcase, WebLingo queues a fresh access link to the original submitted email.",
       "userFacing": true
     },
@@ -610,7 +610,7 @@
       "routeIds": [
         "prospectShowcases.claim"
       ],
-      "stability": "GA",
+      "stability": "Beta",
       "summary": "Exchange a prospect showcase access token for a scoped demo dashboard token",
       "userFacing": true
     },
@@ -636,7 +636,7 @@
       "routeIds": [
         "prospectShowcases.convert"
       ],
-      "stability": "GA",
+      "stability": "Beta",
       "summary": "Convert a prospect showcase into a new locked customer account",
       "userFacing": true
     },
@@ -662,7 +662,7 @@
       "routeIds": [
         "prospectShowcases.create"
       ],
-      "stability": "GA",
+      "stability": "Beta",
       "summary": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
       "userFacing": true
     },
@@ -688,8 +688,34 @@
       "routeIds": [
         "prospectShowcases.status"
       ],
-      "stability": "GA",
+      "stability": "Beta",
       "summary": "Get prospect showcase status",
+      "userFacing": true
+    },
+    {
+      "endpoint": {
+        "auth": "previewStatusToken",
+        "method": "GET",
+        "operationId": "prospectShowcases.stream",
+        "path": "/prospect-showcases/:prospectShowcaseRef/stream"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "prospectShowcases",
+      "id": "api.prospectShowcases.stream",
+      "name": "Stream prospect showcase status updates",
+      "playbooks": [
+        {
+          "anchor": "playbook-prospect-showcase-conversion",
+          "id": "playbook-prospect-showcase-conversion",
+          "title": "Playbook: Prospect Showcase Conversion"
+        }
+      ],
+      "routeIds": [
+        "prospectShowcases.stream"
+      ],
+      "stability": "Beta",
+      "summary": "Streams prospect showcase progress as Server-Sent Events using `text/event-stream`. Events carry the same public status fields returned by `GET /prospect-showcases/{prospectShowcaseRef}/status`.",
       "userFacing": true
     },
     {
