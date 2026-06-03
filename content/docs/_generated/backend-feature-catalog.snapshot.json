@@ -2897,6 +2897,11 @@
             "name": "claim_token_id",
             "optional": false,
             "type": "ShowcaseClaimTokenId"
+          },
+          {
+            "name": "delivery_attempt_id",
+            "optional": true,
+            "type": "string"
           }
         ],
         "interfaceName": "ProspectShowcaseAccessLinkEmailQueuePayload",

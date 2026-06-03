@@ -231,6 +231,7 @@
   "dashboard.demo.conversion.nextAction.retryPayment": "有効化を続けるには支払いの復旧が必要です。",
   "dashboard.demo.conversion.nextAction.openDashboard": "サイトを管理するには顧客ワークスペースを開いてください。",
   "dashboard.demo.conversion.nextAction.unknown": "バックエンドアクションを続行してください: {action}",
+  "dashboard.demo.conversion.action.openInvite": "セットアップを続ける",
   "dashboard.demo.conversion.action.completePayment": "支払いを完了",
   "dashboard.demo.conversion.action.retryPayment": "支払いを再試行",
   "dashboard.demo.conversion.action.openDashboard": "顧客ワークスペースを開く",

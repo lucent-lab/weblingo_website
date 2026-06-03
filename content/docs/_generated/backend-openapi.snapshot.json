@@ -5965,6 +5965,10 @@
             ],
             "type": "string"
           },
+          "inviteLink": {
+            "description": "Supabase invite/setup link for the newly created customer account.",
+            "type": "string"
+          },
           "locked": {
             "type": "boolean"
           },

@@ -259,6 +259,7 @@
   "dashboard.demo.conversion.nextAction.retryPayment": "Payment recovery is required before activation can continue.",
   "dashboard.demo.conversion.nextAction.openDashboard": "Open the customer workspace to manage the site.",
   "dashboard.demo.conversion.nextAction.unknown": "Continue with backend action: {action}",
+  "dashboard.demo.conversion.action.openInvite": "Continue setup",
   "dashboard.demo.conversion.action.completePayment": "Finish payment",
   "dashboard.demo.conversion.action.retryPayment": "Retry payment",
   "dashboard.demo.conversion.action.openDashboard": "Open customer workspace",

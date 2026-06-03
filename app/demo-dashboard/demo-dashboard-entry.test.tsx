@@ -28,6 +28,7 @@ function claimPayload(ref: string, expiresAt = new Date(Date.now() + 60_000).toI
 function conversionPayload(
   status: "checkout_pending" | "activation_pending" | "payment_failed" | "converted",
   nextAction?: string,
+  inviteLink?: string,
 ) {
   const nextActionByStatus = {
     checkout_pending: "complete_payment",
@@ -44,6 +45,7 @@ function conversionPayload(
     accountId: "acct-customer",
     siteId: "site-customer",
     nextAction: nextAction ?? nextActionByStatus[status],
+    ...(inviteLink ? { inviteLink } : {}),
   };
 }
 
@@ -585,6 +587,30 @@ describe("DemoDashboardEntry", () => {
     expect(screen.getByText(/Continue with backend action: contact_sales/)).toBeTruthy();
     const workspaceLink = screen.getByRole("link", { name: /Open customer workspace/ });
     expect(workspaceLink.getAttribute("href")).toBe("/dashboard/sites/site-customer");
+  });
+
+  it("uses the conversion invite link for customer setup when provided", async () => {
+    const inviteLink = "https://supabase.local/invite/user-convert";
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases/claim") {
+        return Promise.resolve(jsonResponse(claimPayload("ps-invite")));
+      }
+      return Promise.resolve(
+        jsonResponse(conversionPayload("checkout_pending", undefined, inviteLink)),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="demo-token" messages={messages} />);
+    await screen.findByText("ps-invite");
+    fireEvent.change(screen.getByPlaceholderText("you@company.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publish on my domain" }));
+
+    expect(await screen.findByText("Payment required")).toBeTruthy();
+    const inviteAction = screen.getByRole("link", { name: /Continue setup/ });
+    expect(inviteAction.getAttribute("href")).toBe(inviteLink);
   });
 
   it("clears stale stored access tokens when the stored claim is expired", async () => {

@@ -53,6 +53,7 @@ type DemoConversionPayload = {
   accountId: string;
   siteId: string;
   nextAction: string;
+  inviteLink?: string;
 };
 
 const emailSchema = z.email();
@@ -112,6 +113,9 @@ function parseConversionPayload(value: unknown): DemoConversionPayload | null {
     accountId: value.accountId,
     siteId: value.siteId,
     nextAction: value.nextAction,
+    ...(typeof value.inviteLink === "string" && value.inviteLink.trim()
+      ? { inviteLink: value.inviteLink }
+      : {}),
   };
 }
 
@@ -408,6 +412,9 @@ function getConversionAction(
   t: Translator,
   payload: DemoConversionPayload,
 ): { href: string; label: string } | null {
+  if (payload.inviteLink) {
+    return { href: payload.inviteLink, label: t("dashboard.demo.conversion.action.openInvite") };
+  }
   const href = buildCustomerWorkspaceHref(payload.siteId);
   if (!href) {
     return null;
