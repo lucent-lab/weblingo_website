@@ -1248,6 +1248,49 @@ describe("TryForm preview status", () => {
     );
   });
 
+  it("does not mark a prospect showcase ready from a complete frame without a ready payload", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "prospect-complete-not-ready",
+          statusToken: "status-token",
+          status: "pending",
+        });
+      }
+      return jsonResponse({
+        status: "processing",
+        stage: "building_showcase",
+        message: "Building translated showcase.",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    MockEventSource.instances[0].emit("complete", {
+      status: "processing",
+      stage: "building_showcase",
+      message: "Building translated showcase.",
+    });
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "prospect-complete-not-ready",
+      );
+      expect(job?.status).toBe("processing");
+      expect(job?.stage).toBe("generating_preview");
+    });
+  });
+
   it("renders a demo dashboard continuation link when SSE reports payment failure", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -1413,7 +1456,7 @@ describe("TryForm preview status", () => {
     expect(job?.demoDashboardUrl).toBe("https://weblingo.app/dashboard/demo#token=immediate-retry");
   });
 
-  it("stores prospect showcase immediate terminal guidance in the status center", async () => {
+  it("does not mark prospect showcase checkout guidance as ready", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === "/api/prospect-showcases") {
         return jsonResponse({
@@ -1435,20 +1478,13 @@ describe("TryForm preview status", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Complete payment to publish this demo on your domain."),
-      ).toBeTruthy();
+      expect(MockEventSource.instances).toHaveLength(1);
     });
-    expect(MockEventSource.instances).toHaveLength(0);
-    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=immediate-checkout",
-    );
     const job = getPreviewStatusCenterJobsSnapshot().find(
       (entry) => entry.previewId === "prospect-immediate-checkout",
     );
     expect(job).toMatchObject({
-      status: "ready",
-      error: "Complete payment to publish this demo on your domain.",
+      status: "pending",
       demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=immediate-checkout",
     });
   });

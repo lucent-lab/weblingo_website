@@ -68,28 +68,10 @@ type PayloadLocationPatch = {
   expiresAt?: number;
 };
 
-const PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES = new Set([
-  "checkout_pending",
-  "activation_pending",
-  "converted",
-]);
-
 function readDetails(payload: Record<string, unknown> | null): Record<string, unknown> | null {
   return payload && typeof payload.details === "object" && payload.details !== null
     ? (payload.details as Record<string, unknown>)
     : null;
-}
-
-function isProspectShowcaseTerminalStatus(payloadKind: PreviewJobKind, status: unknown): boolean {
-  return (
-    payloadKind === "prospect_showcase" &&
-    typeof status === "string" &&
-    PROSPECT_SHOWCASE_READY_TERMINAL_STATUSES.has(status)
-  );
-}
-
-function readPayloadMessage(payload: Record<string, unknown> | null): string | null {
-  return typeof payload?.message === "string" ? payload.message : null;
 }
 
 function buildPayloadLocationPatch(
@@ -220,13 +202,12 @@ export function resolvePreviewStatusDecision({
     };
   }
 
-  const isProspectShowcaseTerminal = isProspectShowcaseTerminalStatus(payloadKind, payload.status);
-  if (payload.status === "ready" || isProspectShowcaseTerminal) {
+  if (payload.status === "ready") {
     return {
       kind: "terminal",
       status: "ready",
       ...buildPayloadLocationPatch(payloadKind, payload),
-      error: isProspectShowcaseTerminal ? readPayloadMessage(payload) : null,
+      error: null,
       errorCode: null,
       errorStage: null,
     };

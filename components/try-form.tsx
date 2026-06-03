@@ -1092,6 +1092,16 @@ export function TryForm({
           demoDashboardUrl: payloadDemoDashboardUrl ?? undefined,
           expiresAt: payloadExpiresAt ?? undefined,
         });
+      } else if (kind === "prospect_showcase") {
+        syncStatusCenterActiveState(
+          previewId,
+          "processing",
+          resolvePreviewJobPayloadStage(payload?.stage),
+          parsePreviewRetryHint(payload?.retryHint),
+          true,
+          payloadExpiresAt ?? undefined,
+        );
+        void handleCheckStatus(previewId, statusToken, kind);
       } else {
         syncStatusCenterTerminalState(previewId, "ready", {
           expiresAt: payloadExpiresAt ?? undefined,

@@ -4,7 +4,7 @@ import { resolvePreviewStatusDecision } from "./preview-status-decision";
 
 describe("resolvePreviewStatusDecision", () => {
   it.each(["checkout_pending", "activation_pending", "converted"])(
-    "terminalizes prospect showcase conversion status %s",
+    "keeps prospect showcase conversion status %s active",
     (status) => {
       expect(
         resolvePreviewStatusDecision({
@@ -19,19 +19,17 @@ describe("resolvePreviewStatusDecision", () => {
           defaultErrorMessage: "Unable to check preview status.",
           payloadKind: "prospect_showcase",
         }),
-      ).toEqual({
-        kind: "terminal",
-        status: "ready",
+      ).toMatchObject({
+        kind: "active",
+        status: "processing",
         previewUrl: "https://t2.weblingo.app/ps-demo/fr",
-        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
-        error: "Conversion state message.",
-        errorCode: null,
-        errorStage: null,
+        stage: null,
+        remoteStatusVerified: true,
       });
     },
   );
 
-  it("omits prospect showcase terminal links that are absent from the payload", () => {
+  it("keeps prospect showcase conversion statuses active when links are absent", () => {
     const decision = resolvePreviewStatusDecision({
       responseOk: true,
       responseStatus: 200,
@@ -46,12 +44,12 @@ describe("resolvePreviewStatusDecision", () => {
     });
 
     expect(decision).toMatchObject({
-      kind: "terminal",
-      status: "ready",
-      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
+      kind: "active",
+      status: "processing",
       expiresAt: Date.parse("2026-06-02T10:00:00.000Z"),
+      remoteStatusVerified: true,
     });
-    expect(decision).not.toHaveProperty("previewUrl");
+    expect(decision).toHaveProperty("previewUrl", undefined);
   });
 
   it("terminalizes prospect showcase payment_failed as failed", () => {
