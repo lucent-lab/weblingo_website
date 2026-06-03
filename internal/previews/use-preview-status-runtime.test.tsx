@@ -313,6 +313,53 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("preserves prospect showcase demo dashboard links when status polling expires remotely", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Expired" }), {
+            status: 410,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    upsertPreviewStatusCenterJob({
+      kind: "prospect_showcase",
+      previewId: "remote-expired-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        kind: "prospect_showcase",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      previewUrl: "https://showcase.example.com/fr",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (entry) => entry.previewId === "remote-expired-7777-7777-7777-777777777777",
+      );
+      expect(job).toMatchObject({
+        status: "expired",
+        previewUrl: null,
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
+        errorCode: "preview_expired",
+      });
+    });
+  });
+
   it("clears stale action links when status polling terminalizes without links", async () => {
     vi.stubGlobal(
       "fetch",

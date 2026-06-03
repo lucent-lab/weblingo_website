@@ -103,6 +103,26 @@ describe("resolvePreviewStatusDecision", () => {
     });
   });
 
+  it("preserves prospect showcase demo dashboard links on remote expiry", () => {
+    const decision = resolvePreviewStatusDecision({
+      responseOk: false,
+      responseStatus: 410,
+      payload: null,
+      defaultErrorMessage: "Unable to check preview status.",
+      payloadKind: "prospect_showcase",
+    });
+
+    expect(decision).toEqual({
+      kind: "terminal",
+      status: "expired",
+      previewUrl: null,
+      error: null,
+      errorCode: "preview_expired",
+      errorStage: null,
+    });
+    expect(decision).not.toHaveProperty("demoDashboardUrl");
+  });
+
   it("preserves explicit failure links from prospect showcase payloads", () => {
     expect(
       resolvePreviewStatusDecision({

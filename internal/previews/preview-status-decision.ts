@@ -156,7 +156,7 @@ export function resolvePreviewStatusDecision({
         kind: "terminal",
         status: "expired",
         previewUrl: null,
-        demoDashboardUrl: null,
+        ...(payloadKind === "prospect_showcase" ? {} : { demoDashboardUrl: null }),
         error: null,
         errorCode: "preview_expired",
         errorStage: null,
