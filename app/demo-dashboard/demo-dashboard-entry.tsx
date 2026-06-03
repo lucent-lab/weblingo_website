@@ -170,7 +170,11 @@ function readStoredDemoClaimPayload(): DemoClaimPayload | null {
       return null;
     }
     const parsed = parseClaimPayload(JSON.parse(raw));
-    if (!parsed || !isFreshClaimPayload(parsed)) {
+    if (!parsed) {
+      clearStoredDemoClaimPayload();
+      return null;
+    }
+    if (!isFreshClaimPayload(parsed) && !readStoredDemoConversionPayload(parsed)) {
       clearStoredDemoClaimPayload();
       return null;
     }
@@ -725,7 +729,7 @@ function DemoDashboardSession({
     if (!payload) {
       return;
     }
-    if (conversionState.status === "submitting") {
+    if (conversionState.status === "submitting" || conversionState.status === "result") {
       return;
     }
     const expiresAtMs = Date.parse(payload.expiresAt);

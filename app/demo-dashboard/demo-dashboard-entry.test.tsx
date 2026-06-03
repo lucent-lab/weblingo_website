@@ -261,10 +261,11 @@ describe("DemoDashboardEntry", () => {
     );
   });
 
-  it("expires a restored conversion result when its access window elapses", async () => {
+  it("keeps a restored conversion result when its demo access window elapses", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
     const claim = claimPayload("ps-payment", "2026-06-02T12:00:00.000Z");
+    const inviteLink = "https://supabase.local/invite/user-convert";
     window.sessionStorage.setItem("weblingo:demo-dashboard:claim:v1", JSON.stringify(claim));
     window.sessionStorage.setItem(
       "weblingo:demo-dashboard:conversion:v1",
@@ -272,7 +273,7 @@ describe("DemoDashboardEntry", () => {
         claimToken: claim.token,
         conversionToken: claim.conversionToken,
         prospectShowcaseRef: claim.prospectShowcaseRef,
-        payload: conversionPayload("checkout_pending"),
+        payload: conversionPayload("checkout_pending", undefined, inviteLink),
       }),
     );
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
@@ -284,17 +285,20 @@ describe("DemoDashboardEntry", () => {
       await Promise.resolve();
     });
     expect(screen.getByText("Payment required")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Finish payment/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Continue setup/ }).getAttribute("href")).toBe(
+      inviteLink,
+    );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
 
-    expect(screen.getByText("Demo access has expired.")).toBeTruthy();
-    expect(screen.queryByText("Payment required")).toBeNull();
-    expect(screen.queryByRole("link", { name: /Finish payment/ })).toBeNull();
-    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
-    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeNull();
+    expect(screen.getByText("Payment required")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Continue setup/ }).getAttribute("href")).toBe(
+      inviteLink,
+    );
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeTruthy();
+    expect(window.sessionStorage.getItem("weblingo:demo-dashboard:conversion:v1")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -613,11 +617,11 @@ describe("DemoDashboardEntry", () => {
     expect(inviteAction.getAttribute("href")).toBe(inviteLink);
   });
 
-  it("clears stale stored access tokens when the stored claim is expired", async () => {
+  it("restores a conversion handoff after the stored demo claim expires", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T12:00:01.000Z"));
-    const claim = claimPayload("ps-expired", "2026-06-02T12:00:00.000Z");
-    window.sessionStorage.setItem("weblingo:demo-dashboard:access-token:v1", "stale-token");
+    const claim = claimPayload("ps-expired-converted", "2026-06-02T12:00:00.000Z");
+    const inviteLink = "https://supabase.local/invite/user-convert";
     window.sessionStorage.setItem("weblingo:demo-dashboard:claim:v1", JSON.stringify(claim));
     window.sessionStorage.setItem(
       "weblingo:demo-dashboard:conversion:v1",
@@ -625,9 +629,31 @@ describe("DemoDashboardEntry", () => {
         claimToken: claim.token,
         conversionToken: claim.conversionToken,
         prospectShowcaseRef: claim.prospectShowcaseRef,
-        payload: conversionPayload("checkout_pending"),
+        payload: conversionPayload("checkout_pending", undefined, inviteLink),
       }),
     );
+    const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-replayed")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry accessToken="" messages={messages} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Payment required")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Continue setup/ }).getAttribute("href")).toBe(
+      inviteLink,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clears stale stored access tokens when the stored claim is expired", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T12:00:01.000Z"));
+    const claim = claimPayload("ps-expired", "2026-06-02T12:00:00.000Z");
+    window.sessionStorage.setItem("weblingo:demo-dashboard:access-token:v1", "stale-token");
+    window.sessionStorage.setItem("weblingo:demo-dashboard:claim:v1", JSON.stringify(claim));
     const fetchMock = vi.fn(async () => jsonResponse(claimPayload("ps-replayed")));
     vi.stubGlobal("fetch", fetchMock);
 
