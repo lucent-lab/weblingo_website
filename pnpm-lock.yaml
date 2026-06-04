@@ -45,8 +45,8 @@ importers:
         specifier: ^2.105.4
         version: 2.105.4
       '@upstash/redis':
-        specifier: ^1.37.0
-        version: 1.37.0
+        specifier: ^1.38.0
+        version: 1.38.0
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -1586,8 +1586,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@upstash/redis@1.37.0':
-    resolution: {integrity: sha512-LqOJ3+XWPLSZ2rGSed5DYG3ixybxb8EhZu3yQqF7MdZX1wLBG/FRcI6xcUZXHy/SS7mmXWyadrud0HJHkOc+uw==}
+  '@upstash/redis@1.38.0':
+    resolution: {integrity: sha512-wu+dZBptlLy0+MCUEoHmzrY/TnmgDey3+c7EbIGwrLqAvkP8yi5MWZHYGIFtAygmL4Bkz2TdFu+eU0vFPncIcg==}
 
   '@vitest/expect@4.1.8':
     resolution: {integrity: sha512-h3nDO677RDLEGlBxyQ5CW8RlMThSKSRLUePLOx09gNIWRL40edgA1GCZSZgf1W55MFAG6/Sw14KeaAnqv0NKdQ==}
@@ -5413,7 +5413,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@upstash/redis@1.37.0':
+  '@upstash/redis@1.38.0':
     dependencies:
       uncrypto: 0.1.3
 
