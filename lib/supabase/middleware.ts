@@ -2,7 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
-import { DASHBOARD_DEMO_SESSION_COOKIE } from "@internal/dashboard/demo-session-constants";
+import {
+  DASHBOARD_DEMO_SCOPE_HEADER,
+  DASHBOARD_DEMO_SESSION_COOKIE,
+} from "@internal/dashboard/demo-session-constants";
 import { i18nConfig, type Locale } from "@internal/i18n";
 import { getSupabasePublicEnv } from "./env";
 
@@ -116,6 +119,10 @@ export async function updateSession(request: NextRequest) {
   // If this is not done, you may be causing the browser and server to go out
   // of sync and terminate the user's session prematurely!
 
+  if (hasDemoDashboardSession) {
+    return buildDemoDashboardSessionResponse(request, supabaseResponse);
+  }
+
   return supabaseResponse;
 }
 
@@ -146,6 +153,16 @@ function buildPublicDemoDashboardRewrite(
 
   const response = NextResponse.rewrite(url);
   for (const cookie of supabaseResponse?.cookies.getAll() ?? []) {
+    response.cookies.set(cookie);
+  }
+  return response;
+}
+
+function buildDemoDashboardSessionResponse(request: NextRequest, supabaseResponse: NextResponse) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(DASHBOARD_DEMO_SCOPE_HEADER, "1");
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  for (const cookie of supabaseResponse.cookies.getAll()) {
     response.cookies.set(cookie);
   }
   return response;

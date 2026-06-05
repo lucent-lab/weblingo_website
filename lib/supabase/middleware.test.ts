@@ -126,6 +126,7 @@ describe("updateSession", () => {
 
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
   it("lets opaque demo dashboard sessions reach focused site subroutes", async () => {
@@ -137,6 +138,7 @@ describe("updateSession", () => {
 
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
   it("lets opaque demo dashboard sessions reach the dashboard redirect entry", async () => {
@@ -148,6 +150,7 @@ describe("updateSession", () => {
 
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
   it("does not let demo dashboard cookies relax other global dashboard routes", async () => {
@@ -160,6 +163,24 @@ describe("updateSession", () => {
     expect(response.headers.get("location")).toBe(
       "https://weblingo.app/auth/login?next=%2Fdashboard%2Fdeveloper-tools",
     );
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
+  it("does not mark other global dashboard routes as demo scoped for signed-in users", async () => {
+    createServerClientMock.mockImplementation((() => ({
+      auth: {
+        getClaims: vi.fn(async () => ({ data: { claims: { sub: "user-1" } } })),
+      },
+    })) as never);
+
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/dashboard/developer-tools", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
   it("does not let demo dashboard cookies reach site creation", async () => {

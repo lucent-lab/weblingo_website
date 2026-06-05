@@ -55,6 +55,10 @@ type DashboardLayoutProps = {
 };
 
 type LayoutSitesReader = (auth: WebhooksAuthContext) => Promise<SiteSummary[]>;
+type LayoutDemoScopeAuth = {
+  accessMode?: DashboardAuth["accessMode"];
+  demoSession?: { siteId: string } | null;
+};
 
 export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
   return isAgency ? listSitesCached : listSitesFresh;
@@ -359,7 +363,7 @@ async function SitesNavAsync({
   let sites: SiteSummary[] = [];
   try {
     if (auth.webhooksAuth) {
-      sites = await listSites(auth.webhooksAuth);
+      sites = filterLayoutSitesForAuth(auth, await listSites(auth.webhooksAuth));
     }
   } catch (error) {
     console.warn("[dashboard] listSites failed:", error);
@@ -378,7 +382,7 @@ export function resolveLayoutSiteNavEntries({
   auth,
   sites,
 }: {
-  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0] & LayoutDemoScopeAuth;
   sites: SiteSummary[];
 }): SiteNavEntry[] {
   return resolveLayoutSiteNavPresentation({ auth, sites, emptyLabel: "" }).sites;
@@ -389,7 +393,7 @@ export function resolveLayoutSiteNavEmptyLabel({
   sites,
   emptyLabel,
 }: {
-  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0] & LayoutDemoScopeAuth;
   sites: SiteSummary[];
   emptyLabel: string;
 }): string {
@@ -401,11 +405,14 @@ export function resolveLayoutSiteNavPresentation({
   sites,
   emptyLabel,
 }: {
-  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0];
+  auth: Parameters<typeof resolveDashboardWebsiteWorkspaceState>[0] & LayoutDemoScopeAuth;
   sites: SiteSummary[];
   emptyLabel: string;
 }): { emptyLabel: string; sites: SiteNavEntry[] } {
-  const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
+  const workspace = resolveDashboardWebsiteWorkspaceState(
+    auth,
+    filterLayoutSitesForAuth(auth, sites),
+  );
   return {
     emptyLabel:
       workspace.kind === "duplicate_current_websites" ? "Website records need review." : emptyLabel,
@@ -415,6 +422,14 @@ export function resolveLayoutSiteNavPresentation({
       status: site.status,
     })),
   };
+}
+
+export function filterLayoutSitesForAuth(
+  auth: LayoutDemoScopeAuth,
+  sites: SiteSummary[],
+): SiteSummary[] {
+  const demoSiteId = getDashboardDemoSiteId(auth);
+  return demoSiteId ? sites.filter((site) => site.id === demoSiteId) : sites;
 }
 
 // Skeleton fallback for sidebar sites while loading
@@ -460,7 +475,7 @@ async function SitesUsageSummaryAsync({
 
   let sites: SiteSummary[];
   try {
-    sites = await listSites(auth.webhooksAuth);
+    sites = filterLayoutSitesForAuth(auth, await listSites(auth.webhooksAuth));
   } catch (error) {
     console.warn("[dashboard] usage badge fetch failed:", error);
     return <SitesUsageFallback label={sitesLabel} />;

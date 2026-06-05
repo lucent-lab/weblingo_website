@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { Session, User } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
@@ -25,6 +26,7 @@ import {
   readDashboardDemoSession,
   type DashboardDemoSession,
 } from "./demo-session";
+import { DASHBOARD_DEMO_SCOPE_HEADER } from "./demo-session-constants";
 
 export type WebhooksAuthContext = {
   token: string;
@@ -369,6 +371,11 @@ async function buildDashboardDemoAuth(): Promise<DashboardAuth | null> {
   };
 }
 
+async function isDashboardDemoScopeRequest(): Promise<boolean> {
+  const requestHeaders = await headers();
+  return requestHeaders.get(DASHBOARD_DEMO_SCOPE_HEADER) === "1";
+}
+
 async function getBootstrap({
   supabaseAccessToken,
   subjectAccountId,
@@ -453,9 +460,11 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     return buildDashboardE2eMockAuth();
   }
 
-  const demoAuth = await buildDashboardDemoAuth();
-  if (demoAuth) {
-    return demoAuth;
+  if (await isDashboardDemoScopeRequest()) {
+    const demoAuth = await buildDashboardDemoAuth();
+    if (demoAuth) {
+      return demoAuth;
+    }
   }
 
   const supabase = await createClient();

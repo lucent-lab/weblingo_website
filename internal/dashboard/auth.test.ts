@@ -23,9 +23,13 @@ const cookiesStore = {
   get: vi.fn(),
   delete: vi.fn(),
 };
+const headersStore = {
+  get: vi.fn(),
+};
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => cookiesStore),
+  headers: vi.fn(async () => headersStore),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -167,12 +171,20 @@ beforeEach(() => {
   redisMock.set.mockReset();
   cookiesStore.get.mockReset();
   cookiesStore.delete.mockReset();
+  headersStore.get.mockReset();
 
   cookiesStore.get.mockReturnValue(undefined);
+  headersStore.get.mockReturnValue(null);
   redisMock.get.mockResolvedValue(null);
   redisMock.set.mockResolvedValue("OK");
   redisMock.del.mockResolvedValue(1);
 });
+
+function enableDemoDashboardScopeRequest() {
+  headersStore.get.mockImplementation((name: string) =>
+    name === "x-weblingo-dashboard-demo-scope" ? "1" : null,
+  );
+}
 
 describe("getActiveAgencyCustomers", () => {
   it("returns only active agency customers", async () => {
@@ -221,6 +233,7 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
       },
     });
+    enableDemoDashboardScopeRequest();
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
@@ -259,6 +272,7 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
       },
     });
+    enableDemoDashboardScopeRequest();
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
@@ -277,6 +291,40 @@ describe("getDashboardAuth", () => {
     expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
   });
 
+  it("keeps Supabase auth on unmarked dashboard requests even when a demo cookie exists", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const webhooks = await import("./webhooks");
+    const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
+    const fetchDashboardBootstrap = webhooks.fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+    const actorBootstrap = makeActorBootstrap();
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
+      },
+    });
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
+    fetchAccountMe.mockResolvedValue(makeDemoAccount());
+    fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.accessMode).toBe("supabase");
+    expect(auth.webhooksAuth?.token).toBe("actor-token");
+    expect(auth.subjectAccountId).toBe("acct-agency");
+    expect(fetchAccountMe).not.toHaveBeenCalled();
+    expect(fetchDashboardBootstrap).toHaveBeenCalledWith("session-token", {
+      includeAgencyCustomers: true,
+    });
+  });
+
   it("uses the Supabase session when a demo cookie does not resolve to valid demo auth", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
@@ -292,6 +340,7 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
       },
     });
+    enableDemoDashboardScopeRequest();
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
@@ -324,6 +373,7 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
       },
     });
+    enableDemoDashboardScopeRequest();
     cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
     redisMock.get.mockResolvedValue(
       makeStoredDemoSession({ expiresAt: "2026-01-01T00:00:00.000Z" }),

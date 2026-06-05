@@ -154,10 +154,35 @@ describe("DashboardLayout", () => {
       },
     ]);
   });
+
+  it("limits demo shell site navigation to the claimed site", async () => {
+    const { filterLayoutSitesForAuth, resolveLayoutSiteNavEntries } = await import("./layout");
+    const auth = makeAuth("starter", { accessMode: "demo", demoSiteId: "site-claimed" });
+    const sites = [makeSite("site-other"), makeSite("site-claimed")];
+
+    expect(filterLayoutSitesForAuth(auth, sites).map((site) => site.id)).toEqual(["site-claimed"]);
+    expect(
+      resolveLayoutSiteNavEntries({
+        auth,
+        sites,
+      }),
+    ).toEqual([
+      {
+        id: "site-claimed",
+        label: "site-claimed.example.com",
+        status: "active",
+      },
+    ]);
+  });
 });
 
-function makeAuth(planType = "starter") {
+function makeAuth(
+  planType = "starter",
+  options: { accessMode?: "supabase" | "demo"; demoSiteId?: string } = {},
+) {
   return {
+    accessMode: options.accessMode ?? "supabase",
+    demoSession: options.demoSiteId ? { siteId: options.demoSiteId } : null,
     actorAccount: { planType },
     account: { featureFlags: { maxSites: planType === "agency" ? null : 1 } },
     mutationsAllowed: true,
