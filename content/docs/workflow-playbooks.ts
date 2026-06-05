@@ -40,6 +40,51 @@ function toShortTitle(title: string): string {
   return withoutPrefix || trimmed;
 }
 
+function uniqueInOriginalOrder(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function stripDeprecatedPreviewReferences(playbook: ParsedPlaybook): ParsedPlaybook {
+  const filteredStepDetails = playbook.stepDetails
+    .map((step) => {
+      const originalReferenceCount = step.operationIds.length + step.surfacePaths.length;
+      const operationIds = step.operationIds.filter(
+        (operationId) => !isDeprecatedPreviewOperationId(operationId),
+      );
+      const surfacePaths = step.surfacePaths.filter(
+        (surfacePath) => !isDeprecatedPreviewSurfacePath(surfacePath),
+      );
+      return {
+        ...step,
+        operationIds,
+        surfacePaths,
+        originalReferenceCount,
+      };
+    })
+    .filter((step) => {
+      return (
+        step.originalReferenceCount === 0 || step.operationIds.length + step.surfacePaths.length > 0
+      );
+    });
+  const stepDetails = filteredStepDetails.map((step) => ({
+    text: step.text,
+    operationIds: step.operationIds,
+    surfacePaths: step.surfacePaths,
+  }));
+
+  return {
+    ...playbook,
+    steps: stepDetails.map((step) => step.text),
+    stepDetails,
+    operationIds: uniqueInOriginalOrder(
+      playbook.operationIds.filter((operationId) => !isDeprecatedPreviewOperationId(operationId)),
+    ),
+    surfacePaths: uniqueInOriginalOrder(
+      playbook.surfacePaths.filter((surfacePath) => !isDeprecatedPreviewSurfacePath(surfacePath)),
+    ),
+  };
+}
+
 function withStableSlugs(playbooks: ParsedPlaybook[]): WorkflowPlaybook[] {
   const used = new Map<string, number>();
   return playbooks.map((playbook) => {
@@ -58,18 +103,14 @@ function withStableSlugs(playbooks: ParsedPlaybook[]): WorkflowPlaybook[] {
 }
 
 export function getWorkflowPlaybooks(): WorkflowPlaybook[] {
-  const playbooks = parsePlaybooksMarkdown(readPlaybooksSnapshotOrThrow());
+  const playbooks = parsePlaybooksMarkdown(readPlaybooksSnapshotOrThrow()).map(
+    stripDeprecatedPreviewReferences,
+  );
   const userFacingOperationIds = getUserFacingApiOperationIds(
     featureCatalog as unknown as FeatureCatalog,
   );
 
   const filtered = playbooks.filter((playbook) => {
-    if (
-      playbook.surfacePaths.some(isDeprecatedPreviewSurfacePath) ||
-      playbook.operationIds.some(isDeprecatedPreviewOperationId)
-    ) {
-      return false;
-    }
     if (playbook.operationIds.some((operationId) => userFacingOperationIds.has(operationId))) {
       return true;
     }

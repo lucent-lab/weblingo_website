@@ -57,6 +57,11 @@ describe("docs feature coverage", () => {
 
   it("builds user-facing workflow pages from synced playbooks", () => {
     expect(workflowPlaybooks.length).toBeGreaterThan(0);
+    const workflowOperationIds = new Set(
+      workflowPlaybooks.flatMap((playbook) => playbook.operationIds),
+    );
+    expect(workflowOperationIds).toContain("digests.subscription.upsert");
+    expect(workflowOperationIds).toContain("sites.locales.translationSummary.put");
     for (const playbook of workflowPlaybooks) {
       expect(playbook.slug.length).toBeGreaterThan(0);
       expect(playbook.stepDetails.length).toBeGreaterThan(0);
