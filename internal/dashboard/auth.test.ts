@@ -244,7 +244,7 @@ describe("getDashboardAuth", () => {
     expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
   });
 
-  it("prefers an existing Supabase session over demo scoped auth", async () => {
+  it("prefers demo scoped auth over an existing Supabase session after claim", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
@@ -262,7 +262,40 @@ describe("getDashboardAuth", () => {
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
+    redisMock.get.mockResolvedValue(makeStoredDemoSession());
     fetchAccountMe.mockResolvedValue(makeDemoAccount());
+    fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.accessMode).toBe("demo");
+    expect(auth.webhooksAuth?.token).toBe("dashboard-demo-token");
+    expect(auth.subjectAccountId).toBe("acct-demo");
+    expect(fetchAccountMe).toHaveBeenCalledWith({ token: "dashboard-demo-token" });
+    expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
+  });
+
+  it("uses the Supabase session when a demo cookie does not resolve to valid demo auth", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const webhooks = await import("./webhooks");
+    const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
+    const fetchDashboardBootstrap = webhooks.fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+    const actorBootstrap = makeActorBootstrap();
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
+      },
+    });
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
+    redisMock.get.mockResolvedValue(null);
     fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
 
     vi.resetModules();
