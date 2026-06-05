@@ -173,13 +173,13 @@ describe("PreviewStatusCenter", () => {
       demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=demo-token",
     });
 
-    render(<PreviewStatusCenter messages={messages} />);
+    render(<PreviewStatusCenter locale="fr" messages={messages} />);
 
     const demoDashboardLink = await screen.findByRole("link", {
       name: "Open demo dashboard",
     });
     expect(demoDashboardLink.getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=demo-token",
+      "https://weblingo.app/dashboard/demo?locale=fr#token=demo-token",
     );
     expect(screen.queryByRole("link", { name: "Open preview" })).toBeNull();
 

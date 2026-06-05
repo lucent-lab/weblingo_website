@@ -35,6 +35,8 @@ const initialState: ProspectDemoConversionActionState = {
   message: "",
 };
 
+const RESUBMIT_NEXT_ACTIONS = new Set(["complete_payment", "retry_payment", "wait_for_activation"]);
+
 export function ProspectDemoConversionCard({
   copy,
   siteId,
@@ -135,17 +137,25 @@ function resolveFollowUpAction({
       external: true,
     };
   }
-  if (meta.nextAction === "complete_payment" || meta.nextAction === "retry_payment") {
+  if (RESUBMIT_NEXT_ACTIONS.has(meta.nextAction)) {
     return {
       kind: "submit",
       email: meta.email,
       label: copy.nextActions[meta.nextAction] ?? copy.nextActions.default,
     };
   }
+  const dashboardPath = `/dashboard/sites/${encodeURIComponent(siteId)}`;
+  if (meta.nextAction === "open_dashboard") {
+    return {
+      kind: "link",
+      href: `/auth/login?next=${encodeURIComponent(dashboardPath)}`,
+      label: copy.nextActions[meta.nextAction] ?? copy.nextActions.default,
+      external: false,
+    };
+  }
   return {
-    kind: "link",
-    href: `/dashboard/sites/${encodeURIComponent(siteId)}`,
+    kind: "submit",
+    email: meta.email,
     label: copy.nextActions[meta.nextAction] ?? copy.nextActions.default,
-    external: false,
   };
 }

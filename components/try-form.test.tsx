@@ -165,10 +165,10 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function renderTryForm() {
+function renderTryForm(locale = "en") {
   render(
     <TryForm
-      locale="en"
+      locale={locale}
       messages={messages}
       supportedLanguages={supportedLanguages}
       showEmailField={false}
@@ -1217,7 +1217,7 @@ describe("TryForm preview status", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderTryForm();
+    renderTryForm("fr");
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
@@ -1237,7 +1237,7 @@ describe("TryForm preview status", () => {
     });
     expect(screen.queryByRole("link", { name: "View showcase" })).toBeNull();
     expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=dashboard-token",
+      "https://weblingo.app/dashboard/demo?locale=fr#token=dashboard-token",
     );
   });
 
@@ -1320,7 +1320,7 @@ describe("TryForm preview status", () => {
       ).toBeTruthy();
     });
     expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=payment-retry",
+      "https://weblingo.app/dashboard/demo?locale=en#token=payment-retry",
     );
   });
 
@@ -1401,7 +1401,7 @@ describe("TryForm preview status", () => {
     });
     expect(screen.queryByText("Ready")).toBeNull();
     expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=complete-payment-retry",
+      "https://weblingo.app/dashboard/demo?locale=en#token=complete-payment-retry",
     );
     const job = getPreviewStatusCenterJobsSnapshot().find(
       (entry) => entry.previewId === "prospect-complete-payment-failed",
@@ -1441,7 +1441,7 @@ describe("TryForm preview status", () => {
     });
     expect(MockEventSource.instances).toHaveLength(0);
     expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
-      "https://weblingo.app/dashboard/demo#token=immediate-retry",
+      "https://weblingo.app/dashboard/demo?locale=en#token=immediate-retry",
     );
     const job = getPreviewStatusCenterJobsSnapshot().find(
       (entry) => entry.previewId === "prospect-immediate-failed",

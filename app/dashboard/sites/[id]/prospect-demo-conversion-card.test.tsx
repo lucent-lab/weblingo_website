@@ -89,4 +89,65 @@ describe("ProspectDemoConversionCard", () => {
     expect(retryFormData?.get("siteId")).toBe("site-demo");
     expect(retryFormData?.get("email")).toBe("owner@example.com");
   });
+
+  it("refreshes activation status through the backend when no invite link is available", async () => {
+    convertProspectDemoAction.mockResolvedValue({
+      ok: true,
+      messageKey: "activationPending",
+      message: "Activation is pending.",
+      meta: {
+        status: "activation_pending",
+        activationStatus: "activation_pending",
+        locked: true,
+        lockedReason: "activation_pending",
+        nextAction: "wait_for_activation",
+        email: "owner@example.com",
+      },
+    });
+
+    render(<ProspectDemoConversionCard copy={copy} siteId="site-demo" />);
+
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await screen.findByText("Activation is pending.");
+    expect(screen.queryByRole("link", { name: "Refresh activation status" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh activation status" }));
+
+    await waitFor(() => {
+      expect(convertProspectDemoAction).toHaveBeenCalledTimes(2);
+    });
+    const refreshFormData = convertProspectDemoAction.mock.calls[1]?.[1] as FormData | undefined;
+    expect(refreshFormData?.get("siteId")).toBe("site-demo");
+    expect(refreshFormData?.get("email")).toBe("owner@example.com");
+  });
+
+  it("uses real login for converted outcomes without reopening demo scope", async () => {
+    convertProspectDemoAction.mockResolvedValue({
+      ok: true,
+      messageKey: "demoActivated",
+      message: "Demo activated.",
+      meta: {
+        status: "converted",
+        activationStatus: "active",
+        locked: false,
+        lockedReason: "none",
+        nextAction: "open_dashboard",
+        email: "owner@example.com",
+      },
+    });
+
+    render(<ProspectDemoConversionCard copy={copy} siteId="site-demo" />);
+
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await screen.findByText("Demo activated.");
+    const link = screen.getByRole("link", { name: "Open dashboard" });
+    expect(link.getAttribute("href")).toBe("/auth/login?next=%2Fdashboard%2Fsites%2Fsite-demo");
+  });
 });

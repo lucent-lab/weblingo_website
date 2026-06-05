@@ -29,6 +29,7 @@ import {
   resolvePreviewErrorPayload,
   resolvePreviewStatusDecision,
 } from "@internal/previews/preview-status-decision";
+import { withDemoDashboardLocale } from "@internal/previews/demo-dashboard-url";
 import {
   isActivePreviewJobPhase,
   parsePreviewRetryHint,
@@ -1891,7 +1892,7 @@ export function TryForm({
             {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
               <Button asChild size="sm" variant="secondary" className="w-fit">
                 <a
-                  href={trackedJob.demoDashboardUrl}
+                  href={withDemoDashboardLocale(trackedJob.demoDashboardUrl, locale)}
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => {
@@ -1951,7 +1952,11 @@ export function TryForm({
                   ) : null}
                   {trackedJob.demoDashboardUrl ? (
                     <Button asChild size="sm" className="justify-center">
-                      <a href={trackedJob.demoDashboardUrl} target="_blank" rel="noreferrer">
+                      <a
+                        href={withDemoDashboardLocale(trackedJob.demoDashboardUrl, locale)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         {t("try.preview.openDemoDashboard")}
                       </a>
                     </Button>

@@ -13,6 +13,7 @@ import {
   resolvePreviewStatusCenterMessage,
   resolvePreviewStatusCenterTextClass,
 } from "@internal/previews/status-center-i18n";
+import { withDemoDashboardLocale } from "@internal/previews/demo-dashboard-url";
 import {
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
@@ -24,6 +25,7 @@ import {
 
 type PreviewStatusCenterProps = {
   messages: ClientMessages;
+  locale?: string;
 };
 
 function resolveHost(url: string): string {
@@ -34,7 +36,7 @@ function resolveHost(url: string): string {
   }
 }
 
-export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
+export function PreviewStatusCenter({ locale, messages }: PreviewStatusCenterProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
 
   const jobsSnapshot = useSyncExternalStore(
@@ -122,7 +124,11 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
               {showDemoDashboardAction && job.demoDashboardUrl ? (
                 <Button asChild size="sm" variant="secondary">
                   <a
-                    href={job.demoDashboardUrl}
+                    href={
+                      locale
+                        ? withDemoDashboardLocale(job.demoDashboardUrl, locale)
+                        : job.demoDashboardUrl
+                    }
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => {
