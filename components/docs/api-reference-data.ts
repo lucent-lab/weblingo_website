@@ -1,3 +1,5 @@
+import { isDeprecatedPreviewOperationId } from "./deprecated-preview-filters";
+
 export type OpenApiTag = {
   name?: string;
   [key: string]: unknown;
@@ -230,4 +232,3 @@ export function parsePlaybooksMarkdown(markdown: string): ParsedPlaybook[] {
     surfacePaths: Array.from(new Set(playbook.surfacePaths)),
   }));
 }
-import { isDeprecatedPreviewOperationId } from "./deprecated-preview-filters";

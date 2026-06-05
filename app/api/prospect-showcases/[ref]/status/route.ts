@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  buildPreviewIpRateLimitKey,
-  buildPreviewUpstreamResponseHeaders,
-  createPreviewFetchErrorResponse,
-  enforcePreviewRateLimit,
-  getPreviewProxyConfig,
-  readPreviewStatusToken,
+  buildProspectShowcaseIpRateLimitKey,
+  buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseFetchErrorResponse,
+  enforceProspectShowcaseRateLimit,
+  getProspectShowcaseProxyConfig,
+  readProspectShowcaseStatusToken,
   validateProspectShowcaseRef,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
 
-  const configResult = getPreviewProxyConfig("json");
+  const configResult = getProspectShowcaseProxyConfig("json");
   if (!configResult.ok) {
     return configResult.response;
   }
@@ -27,13 +27,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return invalidRefResponse;
   }
 
-  const tokenResult = readPreviewStatusToken(request, "json");
+  const tokenResult = readProspectShowcaseStatusToken(request, "json");
   if (!tokenResult.ok) {
     return tokenResult.response;
   }
 
-  const rateLimitResponse = await enforcePreviewRateLimit({
-    key: buildPreviewIpRateLimitKey(request, "prospect-status"),
+  const rateLimitResponse = await enforceProspectShowcaseRateLimit({
+    key: buildProspectShowcaseIpRateLimitKey(request, "prospect-status"),
     limit: config.statusMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "json",
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       {
         method: "GET",
         headers: {
-          "x-preview-token": config.previewToken,
+          "x-preview-token": config.tryNowToken,
           "x-preview-status-token": tokenResult.statusToken,
         },
         cache: "no-store",
@@ -61,9 +61,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const text = await upstream.text();
     return new NextResponse(text || undefined, {
       status: upstream.status,
-      headers: buildPreviewUpstreamResponseHeaders(upstream, "application/json"),
+      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
     });
   } catch (error) {
-    return createPreviewFetchErrorResponse(error, "json");
+    return createProspectShowcaseFetchErrorResponse(error, "json");
   }
 }

@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import {
-  buildPreviewIpRateLimitKey,
-  buildPreviewUpstreamResponseHeaders,
-  createPreviewFetchErrorResponse,
-  enforcePreviewRateLimit,
-  getPreviewProxyConfig,
-  readPreviewStatusToken,
+  buildProspectShowcaseIpRateLimitKey,
+  buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseFetchErrorResponse,
+  enforceProspectShowcaseRateLimit,
+  getProspectShowcaseProxyConfig,
+  readProspectShowcaseStatusToken,
   validateProspectShowcaseRef,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
 
-  const configResult = getPreviewProxyConfig("text");
+  const configResult = getProspectShowcaseProxyConfig("text");
   if (!configResult.ok) {
     return configResult.response;
   }
@@ -27,13 +27,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return invalidRefResponse;
   }
 
-  const tokenResult = readPreviewStatusToken(request, "text");
+  const tokenResult = readProspectShowcaseStatusToken(request, "text");
   if (!tokenResult.ok) {
     return tokenResult.response;
   }
 
-  const rateLimitResponse = await enforcePreviewRateLimit({
-    key: buildPreviewIpRateLimitKey(request, "prospect-stream"),
+  const rateLimitResponse = await enforceProspectShowcaseRateLimit({
+    key: buildProspectShowcaseIpRateLimitKey(request, "prospect-stream"),
     limit: config.streamMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "text",
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         redirect: "manual",
         headers: {
           Accept: "text/event-stream",
-          "x-preview-token": config.previewToken,
+          "x-preview-token": config.tryNowToken,
           "x-preview-status-token": tokenResult.statusToken,
         },
         cache: "no-store",
@@ -61,14 +61,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { timeoutMs: config.upstreamStreamConnectTimeoutMs, signal: request.signal },
     );
   } catch (error) {
-    return createPreviewFetchErrorResponse(error, "text");
+    return createProspectShowcaseFetchErrorResponse(error, "text");
   }
 
   if (!upstream.ok) {
     const text = await upstream.text();
     return new Response(text || "Demo stream unavailable.", {
       status: upstream.status,
-      headers: buildPreviewUpstreamResponseHeaders(upstream, "text/plain"),
+      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "text/plain"),
     });
   }
 

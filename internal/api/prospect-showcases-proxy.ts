@@ -12,11 +12,11 @@ import { rateLimitFixedWindow } from "@internal/core/rate-limit";
 import { redis } from "@internal/core/redis";
 import { getClientIp } from "@internal/core/request-ip";
 
-export type PreviewProxyResponseKind = "json" | "text";
+export type ProspectShowcaseProxyResponseKind = "json" | "text";
 
-export type PreviewProxyConfig = {
+export type ProspectShowcaseProxyConfig = {
   apiBase: string;
-  previewToken: string;
+  tryNowToken: string;
   rateLimitWindowMs: number;
   createMaxPerWindow: number;
   createMaxPerSourceHostPerWindow: number;
@@ -28,20 +28,22 @@ export type PreviewProxyConfig = {
   upstreamStreamConnectTimeoutMs: number;
 };
 
-type PreviewProxyConfigResult =
-  | { ok: true; config: PreviewProxyConfig }
+type ProspectShowcaseProxyConfigResult =
+  | { ok: true; config: ProspectShowcaseProxyConfig }
   | { ok: false; response: Response };
 
-type PreviewRateLimitOptions = {
+type ProspectShowcaseRateLimitOptions = {
   key: string;
   limit: number;
   windowMs: number;
-  responseKind: PreviewProxyResponseKind;
+  responseKind: ProspectShowcaseProxyResponseKind;
   limitedMessage: string;
   backendFailureLogMessage: string;
 };
 
-type PreviewBodyResult = { ok: true; payload: unknown } | { ok: false; response: Response };
+type ProspectShowcaseBodyResult =
+  | { ok: true; payload: unknown }
+  | { ok: false; response: Response };
 
 const UPSTREAM_RESPONSE_HEADERS_TO_COPY = [
   "Cache-Control",
@@ -50,8 +52,8 @@ const UPSTREAM_RESPONSE_HEADERS_TO_COPY = [
   "Retry-After",
 ] as const;
 
-export function createPreviewProxyResponse(
-  kind: PreviewProxyResponseKind,
+export function createProspectShowcaseProxyResponse(
+  kind: ProspectShowcaseProxyResponseKind,
   message: string,
   status: number,
   headers?: HeadersInit,
@@ -68,7 +70,7 @@ export function createPreviewProxyResponse(
   });
 }
 
-export function buildPreviewUpstreamResponseHeaders(
+export function buildProspectShowcaseUpstreamResponseHeaders(
   upstream: Response,
   fallbackContentType: string,
 ): Headers {
@@ -83,15 +85,19 @@ export function buildPreviewUpstreamResponseHeaders(
   return headers;
 }
 
-export function getPreviewProxyConfig(
-  responseKind: PreviewProxyResponseKind,
-): PreviewProxyConfigResult {
+export function getProspectShowcaseProxyConfig(
+  responseKind: ProspectShowcaseProxyResponseKind,
+): ProspectShowcaseProxyConfigResult {
   const apiBase = envServer.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
-  const previewToken = envServer.TRY_NOW_TOKEN;
-  if (!apiBase || !previewToken) {
+  const tryNowToken = envServer.TRY_NOW_TOKEN;
+  if (!apiBase || !tryNowToken) {
     return {
       ok: false,
-      response: createPreviewProxyResponse(responseKind, "Preview service is not configured.", 500),
+      response: createProspectShowcaseProxyResponse(
+        responseKind,
+        "Preview service is not configured.",
+        500,
+      ),
     };
   }
 
@@ -99,7 +105,7 @@ export function getPreviewProxyConfig(
     ok: true,
     config: {
       apiBase,
-      previewToken,
+      tryNowToken,
       rateLimitWindowMs: Number(envServer.WEBSITE_PREVIEW_RATE_LIMIT_WINDOW_MS),
       createMaxPerWindow: Number(envServer.WEBSITE_PREVIEW_CREATE_MAX_PER_WINDOW),
       createMaxPerSourceHostPerWindow: Number(
@@ -117,56 +123,50 @@ export function getPreviewProxyConfig(
   };
 }
 
-export function isPreviewUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
 export function isProspectShowcaseRef(value: string): boolean {
   return /^[A-Za-z0-9_-]{10,80}$/.test(value);
 }
 
-export function validatePreviewId(
-  id: string,
-  responseKind: PreviewProxyResponseKind,
-): Response | null {
-  if (!id || !isPreviewUuid(id)) {
-    return createPreviewProxyResponse(responseKind, "Invalid preview id", 400);
-  }
-  return null;
-}
-
 export function validateProspectShowcaseRef(
   ref: string,
-  responseKind: PreviewProxyResponseKind,
+  responseKind: ProspectShowcaseProxyResponseKind,
 ): Response | null {
   if (!ref || !isProspectShowcaseRef(ref)) {
-    return createPreviewProxyResponse(responseKind, "Invalid prospect showcase reference", 400);
+    return createProspectShowcaseProxyResponse(
+      responseKind,
+      "Invalid prospect showcase reference",
+      400,
+    );
   }
   return null;
 }
 
-export function readPreviewStatusToken(
+export function readProspectShowcaseStatusToken(
   request: NextRequest,
-  responseKind: PreviewProxyResponseKind,
+  responseKind: ProspectShowcaseProxyResponseKind,
 ): { ok: true; statusToken: string } | { ok: false; response: Response } {
   const statusToken = request.nextUrl.searchParams.get("token")?.trim() ?? "";
   if (!statusToken) {
     return {
       ok: false,
-      response: createPreviewProxyResponse(responseKind, "Missing preview status token", 400),
+      response: createProspectShowcaseProxyResponse(
+        responseKind,
+        "Missing preview status token",
+        400,
+      ),
     };
   }
   return { ok: true, statusToken };
 }
 
-export async function enforcePreviewRateLimit({
+export async function enforceProspectShowcaseRateLimit({
   key,
   limit,
   windowMs,
   responseKind,
   limitedMessage,
   backendFailureLogMessage,
-}: PreviewRateLimitOptions): Promise<Response | null> {
+}: ProspectShowcaseRateLimitOptions): Promise<Response | null> {
   try {
     const rateLimit = await rateLimitFixedWindow(redis, {
       key,
@@ -175,7 +175,7 @@ export async function enforcePreviewRateLimit({
     });
     if (!rateLimit.allowed) {
       const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000));
-      return createPreviewProxyResponse(responseKind, limitedMessage, 429, {
+      return createProspectShowcaseProxyResponse(responseKind, limitedMessage, 429, {
         "Retry-After": String(retryAfterSeconds),
       });
     }
@@ -192,7 +192,7 @@ export async function enforcePreviewRateLimit({
         0,
       ),
     );
-    return createPreviewProxyResponse(
+    return createProspectShowcaseProxyResponse(
       responseKind,
       "Service temporarily unavailable. Please try again shortly.",
       503,
@@ -200,18 +200,18 @@ export async function enforcePreviewRateLimit({
   }
 }
 
-export function buildPreviewIpRateLimitKey(request: NextRequest, scope: string): string {
+export function buildProspectShowcaseIpRateLimitKey(request: NextRequest, scope: string): string {
   return `rl:v1:preview:${scope}:ip:${encodeURIComponent(getClientIp(request))}`;
 }
 
-export function buildPreviewHostRateLimitKey(sourceHost: string): string {
+export function buildProspectShowcaseHostRateLimitKey(sourceHost: string): string {
   return `rl:v1:preview:create:host:${encodeURIComponent(sourceHost)}`;
 }
 
-export async function readPreviewJsonBodyLimited(
+export async function readProspectShowcaseJsonBodyLimited(
   request: NextRequest,
   maxBytes: number,
-): Promise<PreviewBodyResult> {
+): Promise<ProspectShowcaseBodyResult> {
   try {
     return {
       ok: true,
@@ -237,12 +237,12 @@ export async function readPreviewJsonBodyLimited(
   }
 }
 
-export function createPreviewFetchErrorResponse(
+export function createProspectShowcaseFetchErrorResponse(
   error: unknown,
-  responseKind: PreviewProxyResponseKind,
+  responseKind: ProspectShowcaseProxyResponseKind,
 ): Response {
   if (error instanceof FetchTimeoutError) {
-    return createPreviewProxyResponse(responseKind, "Preview service timed out", 504);
+    return createProspectShowcaseProxyResponse(responseKind, "Preview service timed out", 504);
   }
-  return createPreviewProxyResponse(responseKind, "Unable to reach preview service.", 502);
+  return createProspectShowcaseProxyResponse(responseKind, "Unable to reach preview service.", 502);
 }

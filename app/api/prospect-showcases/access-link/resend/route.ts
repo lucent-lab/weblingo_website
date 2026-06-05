@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  buildPreviewIpRateLimitKey,
-  buildPreviewUpstreamResponseHeaders,
-  createPreviewFetchErrorResponse,
-  createPreviewProxyResponse,
-  enforcePreviewRateLimit,
-  getPreviewProxyConfig,
-  readPreviewJsonBodyLimited,
+  buildProspectShowcaseIpRateLimitKey,
+  buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseFetchErrorResponse,
+  createProspectShowcaseProxyResponse,
+  enforceProspectShowcaseRateLimit,
+  getProspectShowcaseProxyConfig,
+  readProspectShowcaseJsonBodyLimited,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
 
@@ -22,29 +22,29 @@ function isValidEmail(value: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
-  const configResult = getPreviewProxyConfig("json");
+  const configResult = getProspectShowcaseProxyConfig("json");
   if (!configResult.ok) {
     return configResult.response;
   }
   const { config } = configResult;
 
-  const bodyResult = await readPreviewJsonBodyLimited(request, 1_024);
+  const bodyResult = await readProspectShowcaseJsonBodyLimited(request, 1_024);
   if (!bodyResult.ok) {
     return bodyResult.response;
   }
   if (!isRecord(bodyResult.payload)) {
-    return createPreviewProxyResponse("json", "Invalid request body", 400);
+    return createProspectShowcaseProxyResponse("json", "Invalid request body", 400);
   }
   const email = typeof bodyResult.payload.email === "string" ? bodyResult.payload.email.trim() : "";
   if (!email) {
-    return createPreviewProxyResponse("json", "Missing email", 400);
+    return createProspectShowcaseProxyResponse("json", "Missing email", 400);
   }
   if (!isValidEmail(email)) {
-    return createPreviewProxyResponse("json", "Invalid email", 400);
+    return createProspectShowcaseProxyResponse("json", "Invalid email", 400);
   }
 
-  const rateLimitResponse = await enforcePreviewRateLimit({
-    key: buildPreviewIpRateLimitKey(request, "prospect-access-link-resend"),
+  const rateLimitResponse = await enforceProspectShowcaseRateLimit({
+    key: buildProspectShowcaseIpRateLimitKey(request, "prospect-access-link-resend"),
     limit: config.createMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "json",
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-preview-token": config.previewToken,
+          "x-preview-token": config.tryNowToken,
           Accept: "application/json",
         },
         body: JSON.stringify({ email }),
@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     const text = await upstream.text();
     return new NextResponse(text || undefined, {
       status: upstream.status,
-      headers: buildPreviewUpstreamResponseHeaders(upstream, "application/json"),
+      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
     });
   } catch (error) {
-    return createPreviewFetchErrorResponse(error, "json");
+    return createProspectShowcaseFetchErrorResponse(error, "json");
   }
 }

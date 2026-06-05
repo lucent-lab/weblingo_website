@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  buildPreviewIpRateLimitKey,
-  buildPreviewUpstreamResponseHeaders,
-  createPreviewFetchErrorResponse,
-  createPreviewProxyResponse,
-  enforcePreviewRateLimit,
-  getPreviewProxyConfig,
-  readPreviewJsonBodyLimited,
+  buildProspectShowcaseIpRateLimitKey,
+  buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseFetchErrorResponse,
+  createProspectShowcaseProxyResponse,
+  enforceProspectShowcaseRateLimit,
+  getProspectShowcaseProxyConfig,
+  readProspectShowcaseJsonBodyLimited,
   validateProspectShowcaseRef,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
@@ -21,7 +21,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function POST(request: NextRequest, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
 
-  const configResult = getPreviewProxyConfig("json");
+  const configResult = getProspectShowcaseProxyConfig("json");
   if (!configResult.ok) {
     return configResult.response;
   }
@@ -32,12 +32,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return invalidRefResponse;
   }
 
-  const bodyResult = await readPreviewJsonBodyLimited(request, 2_048);
+  const bodyResult = await readProspectShowcaseJsonBodyLimited(request, 2_048);
   if (!bodyResult.ok) {
     return bodyResult.response;
   }
   if (!isRecord(bodyResult.payload)) {
-    return createPreviewProxyResponse("json", "Invalid request body", 400);
+    return createProspectShowcaseProxyResponse("json", "Invalid request body", 400);
   }
   const dashboardToken =
     typeof bodyResult.payload.dashboardToken === "string"
@@ -49,11 +49,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       : "";
   const email = typeof bodyResult.payload.email === "string" ? bodyResult.payload.email.trim() : "";
   if (!dashboardToken || !conversionToken || !email) {
-    return createPreviewProxyResponse("json", "Missing conversion fields", 400);
+    return createProspectShowcaseProxyResponse("json", "Missing conversion fields", 400);
   }
 
-  const rateLimitResponse = await enforcePreviewRateLimit({
-    key: buildPreviewIpRateLimitKey(request, "prospect-convert"),
+  const rateLimitResponse = await enforceProspectShowcaseRateLimit({
+    key: buildProspectShowcaseIpRateLimitKey(request, "prospect-convert"),
     limit: config.createMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "json",
@@ -83,9 +83,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const text = await upstream.text();
     return new NextResponse(text || undefined, {
       status: upstream.status,
-      headers: buildPreviewUpstreamResponseHeaders(upstream, "application/json"),
+      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
     });
   } catch (error) {
-    return createPreviewFetchErrorResponse(error, "json");
+    return createProspectShowcaseFetchErrorResponse(error, "json");
   }
 }
