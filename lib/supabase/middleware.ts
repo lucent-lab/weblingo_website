@@ -139,12 +139,21 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname,
     request.nextUrl.search,
   );
+  const hasDashboardDemoCookie = request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
   const hasDemoDashboardSession =
-    isDemoDashboardSessionPath(request.nextUrl.pathname) &&
-    request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
+    isDemoDashboardSessionPath(request.nextUrl.pathname) && hasDashboardDemoCookie;
 
   if (publicDemoDashboardLocale !== undefined) {
     return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale, supabaseResponse);
+  }
+
+  if (
+    !user &&
+    hasDashboardDemoCookie &&
+    !hasDemoDashboardSession &&
+    isDashboardBrowserPath(request.nextUrl.pathname)
+  ) {
+    return buildDemoDashboardFallbackRedirect(request);
   }
 
   if (
@@ -182,6 +191,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
+}
+
+function isDashboardBrowserPath(pathname: string): boolean {
+  return normalizeDashboardPathname(pathname) !== null;
 }
 
 function getPublicDemoDashboardLocale(pathname: string): Locale | null | undefined {
@@ -228,4 +241,15 @@ function buildDemoDashboardSessionResponse(request: NextRequest, supabaseRespons
     response.cookies.set(cookie);
   }
   return response;
+}
+
+function buildDemoDashboardFallbackRedirect(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/dashboard";
+  url.search = "";
+  const locale = resolveDashboardLocale(request.nextUrl.pathname, request.nextUrl.search);
+  if (locale) {
+    url.searchParams.set("locale", locale);
+  }
+  return NextResponse.redirect(url);
 }

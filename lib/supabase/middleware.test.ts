@@ -205,16 +205,14 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
-  it("does not let demo dashboard cookies relax other global dashboard routes", async () => {
+  it("redirects demo dashboard cookies on locked global dashboard routes back through the demo entry", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/dashboard/developer-tools", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
       }),
     );
 
-    expect(response.headers.get("location")).toBe(
-      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fdeveloper-tools",
-    );
+    expect(response.headers.get("location")).toBe("https://weblingo.app/dashboard");
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
@@ -263,28 +261,26 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
-  it("does not let demo dashboard cookies reach site creation", async () => {
+  it("redirects demo dashboard cookies away from site creation", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/dashboard/sites/new", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
       }),
     );
 
-    expect(response.headers.get("location")).toBe(
-      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fnew",
-    );
+    expect(response.headers.get("location")).toBe("https://weblingo.app/dashboard");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
-  it("does not let demo dashboard cookies reach locale-prefixed site creation", async () => {
+  it("redirects demo dashboard cookies away from locale-prefixed site creation", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/fr/dashboard/sites/new", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
       }),
     );
 
-    expect(response.headers.get("location")).toBe(
-      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fnew%3Flocale%3Dfr",
-    );
+    expect(response.headers.get("location")).toBe("https://weblingo.app/dashboard?locale=fr");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
   it("does not let demo dashboard cookies relax non-dashboard redirects", async () => {
