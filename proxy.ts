@@ -22,5 +22,8 @@ export const config = {
     {
       source: "/dashboard/:path*",
     },
+    {
+      source: "/api/dashboard/:path*",
+    },
   ],
 };

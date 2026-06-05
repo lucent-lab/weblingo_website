@@ -141,6 +141,18 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
+  it("lets opaque demo dashboard sessions reach site-scoped dashboard APIs", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/api/dashboard/sites/site-demo/status", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
+  });
+
   it("lets opaque demo dashboard sessions reach the dashboard redirect entry", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/dashboard", {
@@ -180,6 +192,34 @@ describe("updateSession", () => {
     );
 
     expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
+  it("does not mark global dashboard APIs as demo scoped for signed-in users", async () => {
+    createServerClientMock.mockImplementation((() => ({
+      auth: {
+        getClaims: vi.fn(async () => ({ data: { claims: { sub: "user-1" } } })),
+      },
+    })) as never);
+
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/api/dashboard/ops/accounts", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
+  it("does not let demo dashboard cookies reach site-scoped dashboard APIs without a site id", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/api/dashboard/sites", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBe("https://weblingo.app/auth/login");
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 

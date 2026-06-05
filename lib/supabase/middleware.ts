@@ -30,6 +30,11 @@ function isDemoDashboardSessionPath(pathname: string): boolean {
     return true;
   }
   const parts = pathname.split("/").filter(Boolean);
+  if (parts[0] === "api") {
+    return (
+      parts.length >= 4 && parts[1] === "dashboard" && parts[2] === "sites" && parts[3] !== "new"
+    );
+  }
   return (
     parts.length >= 3 && parts[0] === "dashboard" && parts[1] === "sites" && parts[2] !== "new"
   );
