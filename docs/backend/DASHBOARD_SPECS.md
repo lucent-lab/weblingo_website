@@ -363,19 +363,24 @@ Runtime Requests dashboard mapping:
 - Returns one record per configured locale: `{ deployments: [{ targetLang, status, deploymentId?, activatedAt?, routePrefix?, artifactManifest?, activeDeploymentId?, domain?, domainStatus?, serveEnabled, servingStatus, translationRun? }] }`.
 - `activeDeploymentId` is read from KV key `dep:{site_id}:{lang}` (no service key needed on the dashboard).
 
-### Try-now previews
+### Try-now prospect showcases
 
-`POST /api/previews`
+`POST /api/prospect-showcases`
 
 - Headers: `x-preview-token: <TRY_NOW_TOKEN>` **or** `Authorization: Bearer <dashboard JWT>`.
-- Body: `{ sourceUrl, sourceLang, targetLang }`.
-- Behavior: fetches the page, translates in-process (deterministic provider unless `OPENAI_API_KEY` is set), renders HTML, stores in R2 with TTL.
-- Response `202`: `{ previewId, status, previewUrl, expiresAt }`.
+- Body: `{ sourceUrl, sourceLang, targetLang, email? }`.
+- Behavior: creates a prospect showcase through the same translated-showcase pipeline used for real websites, differing only by prospect/demo entitlements.
+- Response `202`: `{ prospectShowcaseRef, statusToken, status, showcaseUrl?, demoDashboardUrl?, expiresAt? }`.
 
-`GET /api/previews/:previewId`
+`GET /api/prospect-showcases/:ref/status`
 
-- Response: `{ previewId, status, previewUrl|null, expiresAt, error|null }`.
-- Note: the OpenAPI schema does not require auth for this read; treat preview IDs as unguessable and short-lived.
+- Requires `?token=<statusToken>`.
+- Response: `{ prospectShowcaseRef, status, showcaseUrl|null, demoDashboardUrl?, expiresAt?, error|null }`.
+
+`GET /api/prospect-showcases/:ref/stream`
+
+- Requires `?token=<statusToken>`.
+- Streams status/progress/complete events for the active browser tab.
 
 ### Glossary management
 
@@ -432,8 +437,8 @@ Legend:
 | `dashboard.bootstrap`                  | GA        | live   | dashboard | One-call auth + entitlements + account context bootstrap.                                                                                    |
 | `digests.subscription.upsert`          | Beta      | live   | dashboard | Site details “Automation and notifications” card.                                                                                            |
 | `meta.languages.list`                  | GA        | live   | dashboard | Onboarding/admin language pickers.                                                                                                           |
-| `previews.create`                      | Beta      | live   | dashboard | Try-now preview form and dashboard preview flows.                                                                                            |
-| `previews.status`                      | Beta      | live   | dashboard | Preview polling/SSE status tracking.                                                                                                         |
+| `prospectShowcases.create`             | Beta      | live   | dashboard | Try-now prospect showcase form and demo-dashboard handoff.                                                                                   |
+| `prospectShowcases.status`             | Beta      | live   | dashboard | Prospect showcase polling/SSE status tracking.                                                                                               |
 | `sites.list`                           | GA        | live   | dashboard | Site discovery surfaces; normal customers resolve zero or one current website, while agency/admin contexts can retain portfolio-style lists. |
 | `sites.create`                         | GA        | live   | dashboard | Onboarding create site action when no normal-customer site exists or when agency/admin policy allows another site.                           |
 | `sites.get`                            | GA        | live   | dashboard | Site detail loading and admin context.                                                                                                       |
@@ -465,10 +470,10 @@ Legend:
 
 ### User-facing serve/runtime capabilities
 
-| Capability                                  | Stability | Status | Scope     | Website surface / notes                                                                   |
-| ------------------------------------------- | --------- | ------ | --------- | ----------------------------------------------------------------------------------------- |
-| `GET /{path}` localized serving             | GA        | live   | docs-only | Customer-facing runtime surface; configured via dashboard, consumed outside dashboard UI. |
-| `GET /_preview/{previewId}` preview serving | Beta      | live   | docs-only | Preview rendering surface opened from preview flows.                                      |
+| Capability                      | Stability | Status | Scope     | Website surface / notes                                                                   |
+| ------------------------------- | --------- | ------ | --------- | ----------------------------------------------------------------------------------------- |
+| `GET /{path}` localized serving | GA        | live   | docs-only | Customer-facing runtime surface; configured via dashboard, consumed outside dashboard UI. |
+| Prospect showcase serving       | Beta      | live   | docs-only | Rendered showcase URLs returned by prospect-showcase flows.                               |
 
 ### User-facing feature-flag capabilities
 

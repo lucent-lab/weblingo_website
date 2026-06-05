@@ -17,7 +17,6 @@ describe("resolvePreviewStatusDecision", () => {
             demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
           },
           defaultErrorMessage: "Unable to check preview status.",
-          payloadKind: "prospect_showcase",
         }),
       ).toMatchObject({
         kind: "active",
@@ -40,7 +39,6 @@ describe("resolvePreviewStatusDecision", () => {
         expiresAt: "2026-06-02T10:00:00.000Z",
       },
       defaultErrorMessage: "Unable to check preview status.",
-      payloadKind: "prospect_showcase",
     });
 
     expect(decision).toMatchObject({
@@ -64,7 +62,6 @@ describe("resolvePreviewStatusDecision", () => {
           expiresAt: "2026-06-02T10:00:00.000Z",
         },
         defaultErrorMessage: "Unable to check preview status.",
-        payloadKind: "prospect_showcase",
       }),
     ).toEqual({
       kind: "terminal",
@@ -88,7 +85,6 @@ describe("resolvePreviewStatusDecision", () => {
           message: "Payment failed. Retry checkout to continue activation.",
         },
         defaultErrorMessage: "Unable to check preview status.",
-        payloadKind: "prospect_showcase",
       }),
     ).toEqual({
       kind: "terminal",
@@ -107,7 +103,6 @@ describe("resolvePreviewStatusDecision", () => {
       responseStatus: 410,
       payload: null,
       defaultErrorMessage: "Unable to check preview status.",
-      payloadKind: "prospect_showcase",
     });
 
     expect(decision).toEqual({
@@ -133,7 +128,6 @@ describe("resolvePreviewStatusDecision", () => {
           demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=dashboard-token",
         },
         defaultErrorMessage: "Unable to check preview status.",
-        payloadKind: "prospect_showcase",
       }),
     ).toEqual({
       kind: "terminal",
@@ -146,14 +140,13 @@ describe("resolvePreviewStatusDecision", () => {
     });
   });
 
-  it("keeps generic preview unknown statuses active", () => {
+  it("keeps unknown active statuses processing while preserving verification state", () => {
     expect(
       resolvePreviewStatusDecision({
         responseOk: true,
         responseStatus: 200,
         payload: { status: "checkout_pending" },
         defaultErrorMessage: "Unable to check preview status.",
-        payloadKind: "preview",
       }),
     ).toMatchObject({
       kind: "active",

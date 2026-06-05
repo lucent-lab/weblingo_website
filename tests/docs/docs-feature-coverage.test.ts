@@ -45,7 +45,8 @@ describe("docs feature coverage", () => {
     expect(apiReferenceMarkdown).toContain("../workflows");
     expect(apiReferenceMarkdown).toContain("`sites.locales.serve`");
     expect(apiReferenceMarkdown).toContain("/{path}");
-    expect(apiReferenceMarkdown).toContain("/_preview/{previewId}");
+    expect(apiReferenceMarkdown).toContain("/api/prospect-showcases");
+    expect(apiReferenceMarkdown).not.toContain("/_preview/{previewId}");
   });
 
   it("builds user-facing workflow pages from synced playbooks", () => {
@@ -54,6 +55,11 @@ describe("docs feature coverage", () => {
       expect(playbook.slug.length).toBeGreaterThan(0);
       expect(playbook.stepDetails.length).toBeGreaterThan(0);
       expect(playbook.operationIds.length + playbook.surfacePaths.length).toBeGreaterThan(0);
+      expect(playbook.surfacePaths).not.toContain("/_preview/{previewId}");
+      expect(playbook.operationIds).not.toContain("previews.create");
+      expect(playbook.operationIds).not.toContain("previews.status");
+      expect(playbook.operationIds).not.toContain("previews.feedback");
+      expect(playbook.operationIds).not.toContain("previews.updateEmail");
     }
   });
 
@@ -63,6 +69,16 @@ describe("docs feature coverage", () => {
       (operationId) => !renderedOperationIds.has(operationId),
     );
     expect(missing).toEqual([]);
+  });
+
+  it("does not expose deprecated preview API operationIds in redoc spec", () => {
+    expect(renderedOperationIds).not.toContain("previews.create");
+    expect(renderedOperationIds).not.toContain("previews.status");
+    expect(renderedOperationIds).not.toContain("previews.feedback");
+    expect(renderedOperationIds).not.toContain("previews.updateEmail");
+    expect(renderedOperationIds).toContain("prospectShowcases.create");
+    expect(renderedOperationIds).toContain("prospectShowcases.status");
+    expect(renderedOperationIds).toContain("prospectShowcases.stream");
   });
 
   it("does not expose internal API operationIds in redoc spec", () => {

@@ -401,7 +401,6 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(
         buildPreviewStatusCenterRequestKey({
-          kind: "prospect_showcase",
           sourceUrl: "https://launch.example.com/public-page",
           sourceLang: "en",
           targetLang: "fr",
@@ -634,7 +633,6 @@ describe("TryForm preview status", () => {
 
     expect(
       resolveTryFormMode(false, {
-        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -658,7 +656,6 @@ describe("TryForm preview status", () => {
     ).toBe("running_pending");
     expect(
       resolveTryFormMode(false, {
-        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -682,7 +679,6 @@ describe("TryForm preview status", () => {
     ).toBe("running_processing");
     expect(
       resolveTryFormMode(false, {
-        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -706,7 +702,6 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_ready");
     expect(
       resolveTryFormMode(false, {
-        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -730,7 +725,6 @@ describe("TryForm preview status", () => {
     ).toBe("terminal_failed");
     expect(
       resolveTryFormMode(false, {
-        kind: "preview",
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
@@ -853,7 +847,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/not-found-2222-2222-2222-222222222222?token=restore-token",
+        "/api/prospect-showcases/not-found-2222-2222-2222-222222222222/status?token=restore-token",
       );
       expect(screen.getByText("Preview not found")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
@@ -930,7 +924,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/fresh-5555-5555-5555-555555555555?token=fresh-token",
+        "/api/prospect-showcases/fresh-5555-5555-5555-555555555555/status?token=fresh-token",
       );
       expect(screen.getByText("fresh.example.com • English -> French")).toBeTruthy();
       expect(screen.queryByText("stale.example.com • English -> French")).toBeNull();
@@ -973,7 +967,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/transient-3333-3333-3333-333333333333?token=restore-token",
+        "/api/prospect-showcases/transient-3333-3333-3333-333333333333/status?token=restore-token",
       );
       expect(screen.getByText("Checking preview status...")).toBeTruthy();
       expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
@@ -1134,7 +1128,6 @@ describe("TryForm preview status", () => {
 
       const expected = resolvePreviewStatusCenterMessage(
         {
-          kind: "preview",
           previewId: `phase-${phase.status}`,
           requestKey,
           statusToken: `token-${phase.status}`,
@@ -1639,7 +1632,11 @@ describe("TryForm preview status", () => {
       JSON.stringify([
         {
           previewId: "22222222-2222-2222-2222-222222222222",
-          requestKey: "https://restore.example.com|en|fr|",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://restore.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
           statusToken: "restore-token",
           sourceUrl: "https://restore.example.com",
           sourceLang: "en",
@@ -1676,7 +1673,6 @@ describe("TryForm preview status", () => {
 
   it("restores email-scoped prospect showcase jobs with their submitted email", async () => {
     const requestKey = buildPreviewStatusCenterRequestKey({
-      kind: "prospect_showcase",
       sourceUrl: "https://restore.example.com",
       sourceLang: "en",
       targetLang: "fr",
@@ -1687,7 +1683,6 @@ describe("TryForm preview status", () => {
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
         {
-          kind: "prospect_showcase",
           previewId: "prospect-restore-2222-2222-2222-222222222222",
           requestKey,
           statusToken: "restore-token",
@@ -1737,7 +1732,6 @@ describe("TryForm preview status", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const requestKey = buildPreviewStatusCenterRequestKey({
-      kind: "prospect_showcase",
       sourceUrl: "https://restore.example.com",
       sourceLang: "en",
       targetLang: "fr",
@@ -1748,7 +1742,6 @@ describe("TryForm preview status", () => {
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
         {
-          kind: "prospect_showcase",
           previewId: "prospect-legacy-2222-2222-2222-222222222222",
           requestKey,
           statusToken: "restore-token",
@@ -1821,7 +1814,7 @@ describe("TryForm preview status", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/waiting-7777-7777-7777-777777777777?token=waiting-token",
+        "/api/prospect-showcases/waiting-7777-7777-7777-777777777777/status?token=waiting-token",
       );
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.getByText("waiting.example.com • English -> French")).toBeTruthy();
@@ -1858,7 +1851,7 @@ describe("TryForm preview status", () => {
         (entry) => entry.previewId === "waiting-transient-7777-7777-7777-777777777777",
       );
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/waiting-transient-7777-7777-7777-777777777777?token=waiting-token",
+        "/api/prospect-showcases/waiting-transient-7777-7777-7777-777777777777/status?token=waiting-token",
       );
       expect(job?.status).toBe("waiting_provider_capacity");
       expect(job?.retryHint).toEqual({
@@ -1884,7 +1877,11 @@ describe("TryForm preview status", () => {
       JSON.stringify([
         {
           previewId: "restored-analytics-2222-2222-2222-222222222222",
-          requestKey: "https://restore.example.com|en|fr|",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://restore.example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+          }),
           statusToken: "restore-token",
           sourceUrl: "https://restore.example.com",
           sourceLang: "en",
@@ -2072,69 +2069,11 @@ describe("TryForm preview status", () => {
     expect(screen.getAllByText("Ready").length).toBeGreaterThan(0);
   });
 
-  it("submits a pending preview email while the preview is running", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    upsertPreviewStatusCenterJob({
-      previewId: "pending-email-5555-5555-5555-555555555555",
-      requestKey: buildPreviewStatusCenterRequestKey({
-        sourceUrl: "https://summary.example.com",
-        sourceLang: "en",
-        targetLang: "fr",
-      }),
-      statusToken: "summary-token",
-      sourceUrl: "https://summary.example.com",
-      sourceLang: "en",
-      targetLang: "fr",
-      status: "pending",
-      stage: "translating",
-    });
-
-    render(
-      <TryForm
-        locale="en"
-        messages={messages}
-        supportedLanguages={supportedLanguages}
-        showEmailField
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Get notified when your preview is ready")).toBeTruthy();
-    });
-
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "owner@example.com" },
-    });
-
-    expect(
-      captureAnalyticsEvent.mock.calls.filter(
-        ([event]) => event === ANALYTICS_EVENTS.tryFormStarted,
-      ),
-    ).toHaveLength(0);
-
-    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/previews/pending-email-5555-5555-5555-555555555555?token=summary-token",
-        expect.objectContaining({
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: "owner@example.com" }),
-        }),
-      );
-      expect(screen.getByText("We'll email you when it's ready.")).toBeTruthy();
-    });
-  });
-
-  it("does not show the legacy pending-email action for prospect showcase jobs", async () => {
+  it("does not show the pending-email action for prospect showcase jobs", async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
     vi.stubGlobal("fetch", fetchMock);
 
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "prospect-email-5555-5555-5555-555555555555",
       requestKey: buildPreviewStatusCenterRequestKey({
         sourceUrl: "https://summary.example.com",

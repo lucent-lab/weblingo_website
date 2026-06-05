@@ -7,7 +7,7 @@ This document outlines performance optimizations identified for the WebLingo web
 ## Table of Contents
 
 1. [Lazy Environment Validation](#1-lazy-environment-validation)
-2. [Edge Runtime for Preview Proxy Routes](#2-edge-runtime-for-preview-proxy-routes)
+2. [Prospect Showcase Proxy Route Runtime](#2-prospect-showcase-proxy-route-runtime)
 3. [Parallel Auth Bootstrap](#3-parallel-auth-bootstrap)
 4. [Web Crypto API for Edge Compatibility](#4-web-crypto-api-for-edge-compatibility)
 5. [Acknowledge First, Process Later (Webhooks)](#5-acknowledge-first-process-later-webhooks)
@@ -75,67 +75,69 @@ All routes that import `@internal/core` (most API routes)
 
 ---
 
-## 2. Edge Runtime for Preview Proxy Routes
+## 2. Prospect Showcase Proxy Route Runtime
 
 ### Context
 
-Three preview routes act as pure proxies to the Cloudflare webhooks-worker:
+The website exposes the prospect-showcase proxy route family:
 
-- `app/api/previews/route.ts`
-- `app/api/previews/[id]/route.ts`
-- `app/api/previews/[id]/stream/route.ts`
+- `app/api/prospect-showcases/route.ts`
+- `app/api/prospect-showcases/[ref]/status/route.ts`
+- `app/api/prospect-showcases/[ref]/stream/route.ts`
+- `app/api/prospect-showcases/claim/route.ts`
+- `app/api/prospect-showcases/[ref]/convert/route.ts`
+- `app/api/prospect-showcases/access-link/resend/route.ts`
 
-Note: these are Next.js proxy routes in the frontend repo, not webhooks-worker API endpoints.
+These are Next.js proxy routes in the frontend repo, not webhooks-worker API endpoints.
 
-They currently run on Node.js runtime (`export const runtime = "nodejs"`), which has cold starts of 100-500ms. However, these routes only use Edge-compatible APIs:
+They currently run on Node.js runtime (`export const runtime = "nodejs"`). Unlike the removed standalone preview proxy, these routes enforce Redis-backed rate limits and share server env validation helpers, so they are not pure Edge-compatible proxies as written.
 
 ```typescript
-// Only imports
-import { NextRequest, NextResponse } from "next/server";
-
-// Only uses
-process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE  // Read-only env access
-fetch(...)                                  // Native Web API
-Response.body                               // Web Streams API
+import { rateLimitFixedWindow } from "@internal/core/rate-limit";
+import { redis } from "@internal/core/redis";
+import { envServer } from "@internal/core/env-server";
 ```
 
-They do **not** import `@internal/core`, `@internal/dashboard/auth`, or any Node.js-specific code.
+Moving these routes to Edge requires an Edge-compatible rate-limit/storage path first.
 
 ### What It Provides
 
-- Near-zero cold starts (~5-50ms vs 100-500ms)
-- Runs at edge locations closer to users
-- No code changes required — only config change
+- Clarifies that the old standalone preview Edge recommendation is obsolete.
+- Prevents accidental runtime changes that would bypass rate limits or fail on Node-only dependencies.
+- Leaves room for a future Edge-compatible rate limiter if prospect-showcase proxy latency becomes material.
 
 ### Behavioral Change
 
-**No.** Same functionality, same responses.
+**No code change recommended in this note.** Keep the current Node.js runtime unless the shared rate-limit/env path is made Edge-compatible first.
 
 ### Testing Strategy
 
 1. Existing tests pass unchanged
-2. Manual test: `POST /api/previews` returns preview status
-3. Verify SSE streaming works in Edge (`/api/previews/[id]/stream`)
+2. Manual test: `POST /api/prospect-showcases` returns a `prospectShowcaseRef` and `statusToken`
+3. Verify SSE streaming works from `/api/prospect-showcases/:ref/stream?token=...`
+4. Verify rate limits still apply to create/status/stream calls
 
 ### Affected Endpoints
 
-- `POST /api/previews`
-- `GET /api/previews/[id]`
-- `GET /api/previews/[id]/stream`
+- `POST /api/prospect-showcases`
+- `GET /api/prospect-showcases/:ref/status`
+- `GET /api/prospect-showcases/:ref/stream`
+- `POST /api/prospect-showcases/claim`
+- `POST /api/prospect-showcases/:ref/convert`
+- `POST /api/prospect-showcases/access-link/resend`
 
 ### Risks
 
-**Low.**
+**Medium if changed without dependency work.**
 
-- Edge has 1MB request body limit (preview requests are small JSON)
-- Edge has 30-second execution limit (proxies complete in <1s)
-- Routes are isolated — no problematic dependencies
+- Rate limits could be skipped or broken.
+- Server env validation may fail under Edge constraints.
+- Streaming behavior needs explicit runtime verification.
 
 ### Files to Modify
 
-- `app/api/previews/route.ts` — Change `runtime` to `"edge"`
-- `app/api/previews/[id]/route.ts` — Change `runtime` to `"edge"`
-- `app/api/previews/[id]/stream/route.ts` — Change `runtime` to `"edge"`
+- No direct runtime edit recommended.
+- If revisited, first introduce an Edge-compatible rate-limit backend and route config tests for the prospect-showcase route family.
 
 ---
 

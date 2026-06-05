@@ -2,9 +2,9 @@ import { expect, test, type Page, type Request } from "@playwright/test";
 
 import { stubPosthogAnalyticsProxy } from "../helpers/analytics-proxy";
 
-const PREVIEW_ID = "preview-ui-1111-1111-1111-111111111111";
+const PROSPECT_SHOWCASE_REF = "ps-preview-ui-1111-1111-1111-111111111111";
 const STATUS_TOKEN = "preview-ui-status-token";
-const PREVIEW_URL = "https://preview.weblingo.app/_preview/preview-ui-ready";
+const SHOWCASE_URL = `https://t2.weblingo.app/${PROSPECT_SHOWCASE_REF}/en`;
 const previewFlowRoutes = [
   { name: "try page", path: "/en/try" },
   { name: "home page", path: "/en" },
@@ -143,12 +143,12 @@ for (const previewFlowRoute of previewFlowRoutes) {
         status: 202,
         contentType: "application/json",
         body: JSON.stringify({
-          prospectShowcaseRef: PREVIEW_ID,
+          prospectShowcaseRef: PROSPECT_SHOWCASE_REF,
           statusToken: STATUS_TOKEN,
           status: "pending",
           stage: "accepted",
           showcaseUrl: null,
-          expiresAt: "2026-05-14T00:00:00.000Z",
+          expiresAt: "2099-05-14T00:00:00.000Z",
         }),
       });
     });
@@ -164,7 +164,9 @@ for (const previewFlowRoute of previewFlowRoutes) {
     await expect
       .poll(() => page.evaluate(() => window.__weblingoPreviewEventSources?.[0]?.url ?? null))
       .toBe(
-        `/api/prospect-showcases/${PREVIEW_ID}/stream?token=${encodeURIComponent(STATUS_TOKEN)}`,
+        `/api/prospect-showcases/${PROSPECT_SHOWCASE_REF}/stream?token=${encodeURIComponent(
+          STATUS_TOKEN,
+        )}`,
       );
 
     await dispatchPreviewEvent(page, "progress", {
@@ -175,14 +177,14 @@ for (const previewFlowRoute of previewFlowRoutes) {
 
     await dispatchPreviewEvent(page, "complete", {
       status: "ready",
-      showcaseUrl: PREVIEW_URL,
+      showcaseUrl: SHOWCASE_URL,
     });
     await expect(page.getByText("Ready").first()).toBeVisible();
     await expect(page.getByRole("link", { name: "View showcase" })).toHaveAttribute(
       "href",
-      PREVIEW_URL,
+      SHOWCASE_URL,
     );
-    await expect(page.locator("input[readonly]").last()).toHaveValue(PREVIEW_URL);
+    await expect(page.locator("input[readonly]").last()).toHaveValue(SHOWCASE_URL);
 
     expect(apiRequests).toEqual(["POST /api/prospect-showcases"]);
     expect(createPayloads).toEqual([

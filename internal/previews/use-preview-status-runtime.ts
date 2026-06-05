@@ -114,12 +114,9 @@ export function usePreviewStatusRuntime() {
 
     const pollJob = async (job: PreviewStatusCenterJob) => {
       try {
-        const response = await fetch(
-          buildPreviewJobStatusUrl(job.kind, job.previewId, job.statusToken),
-          {
-            cache: "no-store",
-          },
-        );
+        const response = await fetch(buildPreviewJobStatusUrl(job.previewId, job.statusToken), {
+          cache: "no-store",
+        });
 
         const bodyText = await response.text();
         let payload: Record<string, unknown> | null = null;
@@ -137,7 +134,6 @@ export function usePreviewStatusRuntime() {
           payload,
           defaultErrorMessage: "Unable to check preview status.",
           mapNotFoundToErrorCode: true,
-          payloadKind: job.kind,
         });
         if (decision.kind === "terminal") {
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {

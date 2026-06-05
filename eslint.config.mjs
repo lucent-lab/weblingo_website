@@ -33,6 +33,8 @@ const eslintConfig = defineConfig([
     "build/**",
     ".tmp/**",
     ".playwright-cli/**",
+    "test-results/**",
+    "playwright-report/**",
     "next-env.d.ts",
     "types/database.ts",
   ]),

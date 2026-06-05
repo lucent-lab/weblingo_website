@@ -8,7 +8,7 @@ import {
   enforcePreviewRateLimit,
   getPreviewProxyConfig,
   readPreviewJsonBodyLimited,
-} from "@internal/api/previews-proxy";
+} from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
 
 export const runtime = "nodejs";

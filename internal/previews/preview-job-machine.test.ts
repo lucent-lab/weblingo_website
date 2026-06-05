@@ -9,9 +9,8 @@ import {
 function buildJob(overrides: Partial<PreviewJob> = {}): PreviewJob {
   const now = 1_000;
   return {
-    kind: "preview",
     previewId: "11111111-1111-1111-1111-111111111111",
-    requestKey: "https://example.com|en|fr|",
+    requestKey: "v2:prospect_showcase|https%3A%2F%2Fexample.com|en|fr|",
     statusToken: "status-token",
     sourceUrl: "https://example.com",
     sourceLang: "en",

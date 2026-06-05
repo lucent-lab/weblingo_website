@@ -140,9 +140,9 @@ Key scripts (run via `corepack pnpm <script>`):
 
 ---
 
-### Try-it-now previews & digests
+### Try-it-now prospect showcases & digests
 
-- **Previews:** `POST /api/previews` (webhooks-worker) accepts `sourceUrl`, `sourceLang`, and `targetLang` when authorized via JWT or `x-preview-token` (`TRY_NOW_TOKEN`). The worker snapshots, translates, and stores HTML under `previews/{previewId}/index.html` with TTL (`TRY_NOW_PREVIEW_TTL_SECONDS`), fetch timeout (`TRY_NOW_FETCH_TIMEOUT_MS`), and a streaming body cap (`TRY_NOW_FETCH_MAX_BYTES`, default **1MB**) to block oversized/SSRF payloads. Status lives at `GET /api/previews/:id`; the serve worker renders at `/_preview/{previewId}` with CSP + `noindex`.
+- **Prospect showcases:** `POST /api/prospect-showcases` accepts `sourceUrl`, `sourceLang`, `targetLang`, and optional `email` when authorized via JWT or `x-preview-token` (`TRY_NOW_TOKEN`). The backend runs the translated-showcase pipeline used by real websites, scoped to prospect/demo entitlements, and returns a `prospectShowcaseRef`, `statusToken`, and eventual `showcaseUrl`/`demoDashboardUrl`. Status lives at `GET /api/prospect-showcases/:ref/status?token=...`; active tabs can stream updates from `GET /api/prospect-showcases/:ref/stream?token=...`.
 - **Digests:** `PUT /api/digests/subscription` upserts per-account email/frequency (`daily|weekly|off`). The `digest-worker` cron aggregates recent deployments per account and delivers summaries via `DIGEST_DELIVERY_MODE=log|webhook` (`DIGEST_WEBHOOK_URL` + optional `DIGEST_WEBHOOK_TOKEN`).
 
 ## Environment & bindings

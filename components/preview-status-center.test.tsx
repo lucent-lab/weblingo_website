@@ -155,10 +155,8 @@ describe("PreviewStatusCenter", () => {
 
   it("opens demo dashboards for ready jobs without preview urls", async () => {
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "55555555-5555-5555-5555-555555555555",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://demo-only.example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -198,10 +196,8 @@ describe("PreviewStatusCenter", () => {
 
   it("opens demo dashboards for failed payment jobs", async () => {
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "66666666-6666-6666-6666-666666666666",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://payment-failed.example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -240,10 +236,8 @@ describe("PreviewStatusCenter", () => {
 
   it("keeps demo dashboard actions visible for expired prospect showcases", async () => {
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "88888888-8888-8888-8888-888888888888",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://expired-demo.example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -272,10 +266,8 @@ describe("PreviewStatusCenter", () => {
 
   it("opens showcase links for failed jobs when a preview url is available", async () => {
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "77777777-7777-7777-7777-777777777777",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://failed-showcase.example.com",
         sourceLang: "en",
         targetLang: "fr",

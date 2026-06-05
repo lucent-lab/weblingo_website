@@ -9,8 +9,12 @@ import {
   type FeatureCatalog,
   type ParsedPlaybook,
 } from "@/components/docs/api-reference-data";
+import {
+  isDeprecatedPreviewOperationId,
+  isDeprecatedPreviewSurfacePath,
+} from "@/components/docs/deprecated-preview-filters";
 
-const SERVE_SURFACE_PATHS = new Set(["/{path}", "/_preview/{previewId}"]);
+const SERVE_SURFACE_PATHS = new Set(["/{path}"]);
 
 export type WorkflowPlaybook = ParsedPlaybook & {
   slug: string;
@@ -60,6 +64,12 @@ export function getWorkflowPlaybooks(): WorkflowPlaybook[] {
   );
 
   const filtered = playbooks.filter((playbook) => {
+    if (
+      playbook.surfacePaths.some(isDeprecatedPreviewSurfacePath) ||
+      playbook.operationIds.some(isDeprecatedPreviewOperationId)
+    ) {
+      return false;
+    }
     if (playbook.operationIds.some((operationId) => userFacingOperationIds.has(operationId))) {
       return true;
     }

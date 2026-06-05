@@ -87,10 +87,8 @@ describe("usePreviewStatusRuntime", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "ready-expiry-7777-7777-7777-777777777777",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -132,10 +130,8 @@ describe("usePreviewStatusRuntime", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T11:59:59.000Z"));
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "failed-expiry-7777-7777-7777-777777777777",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -326,10 +322,8 @@ describe("usePreviewStatusRuntime", () => {
     );
 
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "remote-expired-7777-7777-7777-777777777777",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -373,10 +367,8 @@ describe("usePreviewStatusRuntime", () => {
     );
 
     upsertPreviewStatusCenterJob({
-      kind: "prospect_showcase",
       previewId: "missing-7777-7777-7777-777777777777",
       requestKey: buildPreviewStatusCenterRequestKey({
-        kind: "prospect_showcase",
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
