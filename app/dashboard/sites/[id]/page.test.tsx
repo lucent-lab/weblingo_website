@@ -11,7 +11,17 @@ const mocks = vi.hoisted(() => ({
   normalizeLocale: vi.fn((locale: string) => (["en", "fr", "ja"].includes(locale) ? locale : "en")),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string) =>
+      (
+        ({
+          "dashboard.site.demoAccess.title": "Localized scoped demo access",
+          "dashboard.site.demoAccess.description": "Localized read-only demo access.",
+          "dashboard.site.mutationLock.planDescription": "Localized plan lock.",
+          "dashboard.site.mutationLock.billingDescription": "Localized billing lock.",
+        }) as Record<string, string>
+      )[key] ??
+      fallback ??
+      key,
   })),
 }));
 
@@ -298,7 +308,8 @@ describe("SitePage", () => {
     render(tree);
 
     expect(screen.getByTestId("prospect-demo-card").textContent).toContain("site-1");
-    expect(screen.getByText("Scoped demo access")).toBeTruthy();
+    expect(screen.getByText("Localized scoped demo access")).toBeTruthy();
+    expect(screen.getByText("Localized read-only demo access.")).toBeTruthy();
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
   });
 

@@ -247,13 +247,13 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
 
       <MutationLockBanner
         locked={mutationsLocked}
-        title={auth.accessMode === "demo" ? "Scoped demo access" : undefined}
+        title={auth.accessMode === "demo" ? t("dashboard.site.demoAccess.title") : undefined}
         description={
           auth.accessMode === "demo"
-            ? "This demo is read-only until it is activated for your domain."
+            ? t("dashboard.site.demoAccess.description")
             : auth.mutationsAllowed
-              ? "This account cannot make dashboard changes until its plan allows mutations."
-              : "Billing or account status is blocking dashboard mutations for this workspace."
+              ? t("dashboard.site.mutationLock.planDescription")
+              : t("dashboard.site.mutationLock.billingDescription")
         }
       />
 
