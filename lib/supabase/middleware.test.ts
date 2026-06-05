@@ -127,4 +127,14 @@ describe("updateSession", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
+
+  it("does not let demo dashboard cookies relax non-dashboard redirects", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/account", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBe("https://weblingo.app/auth/login");
+  });
 });

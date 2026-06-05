@@ -221,7 +221,9 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
       },
     });
-    cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
     redisMock.get.mockResolvedValue(makeStoredDemoSession());
     fetchAccountMe.mockResolvedValue(makeDemoAccount());
 
@@ -242,13 +244,14 @@ describe("getDashboardAuth", () => {
     expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
   });
 
-  it("prefers valid demo scoped auth over an existing Supabase session", async () => {
+  it("prefers an existing Supabase session over demo scoped auth", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
     const webhooks = await import("./webhooks");
     const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
     const fetchDashboardBootstrap = webhooks.fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+    const actorBootstrap = makeActorBootstrap();
 
     createClient.mockResolvedValue({
       auth: {
@@ -256,19 +259,23 @@ describe("getDashboardAuth", () => {
         getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
       },
     });
-    cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
-    redisMock.get.mockResolvedValue(makeStoredDemoSession());
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
     fetchAccountMe.mockResolvedValue(makeDemoAccount());
+    fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
 
     vi.resetModules();
     const { getDashboardAuth } = await import("./auth");
     const auth = await getDashboardAuth();
 
-    expect(auth.accessMode).toBe("demo");
-    expect(auth.webhooksAuth?.token).toBe("dashboard-demo-token");
-    expect(fetchAccountMe).toHaveBeenCalledWith({ token: "dashboard-demo-token" });
-    expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
-    expect(createClient).not.toHaveBeenCalled();
+    expect(auth.accessMode).toBe("supabase");
+    expect(auth.webhooksAuth?.token).toBe("actor-token");
+    expect(auth.subjectAccountId).toBe("acct-agency");
+    expect(fetchAccountMe).not.toHaveBeenCalled();
+    expect(fetchDashboardBootstrap).toHaveBeenCalledWith("session-token", {
+      includeAgencyCustomers: true,
+    });
   });
 
   it("does not create demo dashboard auth from an expired stored session", async () => {

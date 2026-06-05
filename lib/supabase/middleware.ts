@@ -64,7 +64,12 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
-  const hasDemoDashboardSession = request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
+  const dashboardReturnPath = resolveDashboardReturnPath(
+    request.nextUrl.pathname,
+    request.nextUrl.search,
+  );
+  const hasDemoDashboardSession =
+    dashboardReturnPath !== null && request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
 
   if (publicDemoDashboardLocale !== undefined) {
     return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale, supabaseResponse);
@@ -81,9 +86,8 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     url.search = "";
-    const returnPath = resolveDashboardReturnPath(request.nextUrl.pathname, request.nextUrl.search);
-    if (returnPath) {
-      url.searchParams.set("next", returnPath);
+    if (dashboardReturnPath) {
+      url.searchParams.set("next", dashboardReturnPath);
     }
     return NextResponse.redirect(url);
   }
