@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getDashboardAuth = vi.fn();
 const shouldRecoverDashboardDemoSession = vi.fn();
+const requestHeaders = vi.hoisted(() => ({ value: new Headers() }));
 const redirect = vi.fn((path: string) => {
   throw new Error(`redirect:${path}`);
 });
@@ -9,7 +10,7 @@ const redirect = vi.fn((path: string) => {
 vi.mock("next/navigation", () => ({ redirect }));
 
 vi.mock("next/headers", () => ({
-  headers: vi.fn(async () => new Headers()),
+  headers: vi.fn(async () => requestHeaders.value),
 }));
 
 vi.mock("@internal/dashboard/auth", () => ({
@@ -29,6 +30,7 @@ describe("DashboardLayout", () => {
     getDashboardAuth.mockReset();
     shouldRecoverDashboardDemoSession.mockReset();
     shouldRecoverDashboardDemoSession.mockResolvedValue(false);
+    requestHeaders.value = new Headers();
     redirect.mockClear();
   });
 
@@ -71,9 +73,10 @@ describe("DashboardLayout", () => {
     };
     getDashboardAuth.mockResolvedValueOnce(auth);
     shouldRecoverDashboardDemoSession.mockResolvedValueOnce(true);
+    requestHeaders.value.set("x-weblingo-dashboard-demo-locale", "fr");
 
     await expect(DashboardLayout({ children: <div /> })).rejects.toThrow(
-      "redirect:/dashboard/demo",
+      "redirect:/dashboard/demo?locale=fr",
     );
     expect(shouldRecoverDashboardDemoSession).toHaveBeenCalledWith(auth);
   });

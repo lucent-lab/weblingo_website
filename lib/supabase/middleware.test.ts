@@ -149,6 +149,24 @@ describe("updateSession", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-locale")).toBe(
+      "en",
+    );
+  });
+
+  it("marks explicit demo dashboard locale on scoped dashboard site pages", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/dashboard/sites/site-demo?locale=fr", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-locale")).toBe(
+      "fr",
+    );
   });
 
   it("lets opaque demo dashboard sessions reach focused site subroutes", async () => {

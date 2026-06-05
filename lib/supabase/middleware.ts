@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 import {
+  DASHBOARD_DEMO_LOCALE_HEADER,
   DASHBOARD_DEMO_SCOPE_HEADER,
   DASHBOARD_DEMO_SESSION_COOKIE,
 } from "@internal/dashboard/demo-session-constants";
@@ -82,6 +83,14 @@ function getLocalePrefixedDashboardPathname(pathname: string): Locale | null {
     return maybeLocale as Locale;
   }
   return null;
+}
+
+function resolveDashboardLocale(pathname: string, search: string): Locale | null {
+  const requestedLocale = new URLSearchParams(search).get("locale")?.trim();
+  if (requestedLocale && i18nConfig.locales.includes(requestedLocale as Locale)) {
+    return requestedLocale as Locale;
+  }
+  return getLocalePrefixedDashboardPathname(pathname);
 }
 
 export async function updateSession(request: NextRequest) {
@@ -210,6 +219,10 @@ function buildPublicDemoDashboardRewrite(
 function buildDemoDashboardSessionResponse(request: NextRequest, supabaseResponse: NextResponse) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(DASHBOARD_DEMO_SCOPE_HEADER, "1");
+  const locale = resolveDashboardLocale(request.nextUrl.pathname, request.nextUrl.search);
+  if (locale) {
+    requestHeaders.set(DASHBOARD_DEMO_LOCALE_HEADER, locale);
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   for (const cookie of supabaseResponse.cookies.getAll()) {
     response.cookies.set(cookie);

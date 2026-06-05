@@ -13,6 +13,7 @@ import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/au
 import { listSitesFresh } from "@internal/dashboard/data";
 import { getDashboardDemoSiteId } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import {
   isCustomerDashboardWorkspace,
@@ -34,14 +35,20 @@ const getOverviewData = cache(async (auth: DashboardAuth) => {
 
 type OverviewData = Awaited<ReturnType<typeof getOverviewData>>;
 
-export default async function DashboardPage() {
+type DashboardPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps = {}) {
   const auth = await requireDashboardAuth();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const dashboardLocale = getSingleSearchParam(resolvedSearchParams?.locale);
   if (auth.accessMode === "demo") {
     const demoSiteId = getDashboardDemoSiteId(auth);
     if (!demoSiteId) {
       throw new Error("Demo dashboard session is missing site scope.");
     }
-    redirect(`/dashboard/sites/${demoSiteId}`);
+    redirect(withDashboardLocale(`/dashboard/sites/${demoSiteId}`, dashboardLocale));
   }
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
@@ -123,6 +130,11 @@ export default async function DashboardPage() {
       )}
     </div>
   );
+}
+
+function getSingleSearchParam(value: string | string[] | undefined): string | null {
+  const resolved = Array.isArray(value) ? value[0] : value;
+  return resolved?.trim() || null;
 }
 
 function OverviewActions({

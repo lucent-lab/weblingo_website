@@ -390,11 +390,12 @@ describe("getDashboardAuth", () => {
     expect(fetchAccountMe).not.toHaveBeenCalled();
   });
 
-  it("marks anonymous demo-scoped requests with a stale demo cookie for recovery", async () => {
+  it("marks anonymous demo-scoped requests with a live stored demo session for recovery", async () => {
     enableDemoDashboardScopeRequest();
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
+    redisMock.get.mockResolvedValue(makeStoredDemoSession());
 
     vi.resetModules();
     const { shouldRecoverDashboardDemoSession } = await import("./auth");
@@ -406,6 +407,25 @@ describe("getDashboardAuth", () => {
         session: null,
       }),
     ).resolves.toBe(true);
+  });
+
+  it("does not mark anonymous demo-scoped requests with only a stale demo cookie for recovery", async () => {
+    enableDemoDashboardScopeRequest();
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
+    redisMock.get.mockResolvedValue(null);
+
+    vi.resetModules();
+    const { shouldRecoverDashboardDemoSession } = await import("./auth");
+
+    await expect(
+      shouldRecoverDashboardDemoSession({
+        accessMode: "anonymous",
+        user: null,
+        session: null,
+      }),
+    ).resolves.toBe(false);
   });
 
   it("does not mark normal anonymous requests for demo recovery", async () => {

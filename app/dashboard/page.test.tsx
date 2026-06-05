@@ -119,6 +119,25 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
+  it("preserves an explicit locale when routing a demo dashboard session to the claimed site", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue({
+      ...makeAuth(),
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      mutationsAllowed: false,
+    });
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+
+    await expect(
+      DashboardPage({ searchParams: Promise.resolve({ locale: "fr" }) }),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard/sites/site-demo?locale=fr");
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-demo?locale=fr");
+    expect(mocks.listSitesFresh).not.toHaveBeenCalled();
+    expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
   it("shows onboarding when a normal customer only has inactive website records", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-old", "inactive")]);

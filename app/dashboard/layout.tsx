@@ -36,6 +36,8 @@ import {
 } from "@internal/dashboard/auth";
 import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
 import { listSitesCached, listSitesFresh } from "@internal/dashboard/data";
+import { DASHBOARD_DEMO_LOCALE_HEADER } from "@internal/dashboard/demo-session-constants";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import {
   getDashboardSitesLabel,
   resolveDashboardMaxSitesLimit,
@@ -140,7 +142,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const auth = await getDashboardAuth();
   if (!auth.user || !auth.session) {
     if (await shouldRecoverDashboardDemoSession(auth)) {
-      redirect("/dashboard/demo");
+      redirect(
+        withDashboardLocale("/dashboard/demo", requestHeaders.get(DASHBOARD_DEMO_LOCALE_HEADER)),
+      );
     }
     redirect("/auth/login");
   }
