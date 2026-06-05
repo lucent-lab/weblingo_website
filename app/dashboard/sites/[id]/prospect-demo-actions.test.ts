@@ -65,6 +65,7 @@ describe("convertProspectDemoAction", () => {
 
     expect(result).toMatchObject({
       ok: true,
+      messageKey: "activationInviteCreated",
       message: "Activation invite created.",
       meta: {
         status: "checkout_pending",
@@ -73,6 +74,7 @@ describe("convertProspectDemoAction", () => {
         lockedReason: "payment_required",
         nextAction: "complete_payment",
         inviteLink: "https://supabase.example.test/invite/demo",
+        email: "Owner@Example.com",
       },
     });
     expect(convertProspectShowcaseDemo).toHaveBeenCalledWith(
@@ -96,6 +98,7 @@ describe("convertProspectDemoAction", () => {
 
     expect(result).toEqual({
       ok: false,
+      messageKey: "siteMismatch",
       message: "This demo session can only activate its claimed site.",
     });
     expect(convertProspectShowcaseDemo).not.toHaveBeenCalled();
@@ -112,6 +115,7 @@ describe("convertProspectDemoAction", () => {
 
     expect(result).toEqual({
       ok: false,
+      messageKey: "sessionExpired",
       message: "Demo dashboard access has expired. Open the demo link again.",
     });
     expect(convertProspectShowcaseDemo).not.toHaveBeenCalled();

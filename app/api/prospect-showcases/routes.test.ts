@@ -413,6 +413,88 @@ describe("/api/prospect-showcases proxy routes", () => {
     expect(response.headers.get("pragma")).toBe("no-cache");
   });
 
+  test("POST /api/prospect-showcases/:ref/convert forwards demo bearer auth upstream", async () => {
+    const { POST } = await import("./[ref]/convert/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          prospectShowcaseRef: "ps-convert-ref",
+          status: "checkout_pending",
+          activationStatus: "activation_pending",
+          locked: true,
+          lockedReason: "payment_required",
+          accountId: "acct-demo",
+          siteId: "site-demo",
+          nextAction: "complete_payment",
+          inviteLink: "https://supabase.example.test/invite/demo",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const ref = "ps-convert-ref";
+    const request = buildNextRequest(`http://localhost/api/prospect-showcases/${ref}/convert`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer dashboard-demo-token",
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({
+        email: "Owner@Example.com",
+        conversionToken: "conversion-token",
+      }),
+    });
+
+    const response = await POST(request, { params: Promise.resolve({ ref }) });
+
+    expect(response.status).toBe(200);
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      `https://api.example.com/api/prospect-showcases/${encodeURIComponent(ref)}/convert`,
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer dashboard-demo-token",
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        }),
+        body: JSON.stringify({
+          email: "Owner@Example.com",
+          conversionToken: "conversion-token",
+        }),
+      }),
+      expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
+    );
+  });
+
+  test("POST /api/prospect-showcases/:ref/convert requires demo bearer auth", async () => {
+    const { POST } = await import("./[ref]/convert/route");
+
+    const request = buildNextRequest(
+      "http://localhost/api/prospect-showcases/ps-convert-ref/convert",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-forwarded-for": "1.2.3.4",
+        },
+        body: JSON.stringify({
+          email: "Owner@Example.com",
+          conversionToken: "conversion-token",
+        }),
+      },
+    );
+
+    const response = await POST(request, { params: Promise.resolve({ ref: "ps-convert-ref" }) });
+
+    expect(response.status).toBe(401);
+    expect(fetchWithTimeout).not.toHaveBeenCalled();
+  });
+
   test("POST /api/prospect-showcases/access-link/resend forwards original email upstream", async () => {
     const { POST } = await import("./access-link/resend/route");
     allowRateLimit();

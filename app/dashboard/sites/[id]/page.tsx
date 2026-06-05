@@ -24,7 +24,10 @@ import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
-import { ProspectDemoConversionCard } from "./prospect-demo-conversion-card";
+import {
+  ProspectDemoConversionCard,
+  type ProspectDemoConversionCardCopy,
+} from "./prospect-demo-conversion-card";
 
 type SitePageProps = {
   params: Promise<{ id: string }>;
@@ -194,7 +197,9 @@ export default async function SitePage({ params }: SitePageProps) {
         }
       />
 
-      {demoSession ? <ProspectDemoConversionCard siteId={site.id} /> : null}
+      {demoSession ? (
+        <ProspectDemoConversionCard copy={buildProspectDemoConversionCopy(t)} siteId={site.id} />
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <NextActionCard
@@ -222,6 +227,46 @@ export default async function SitePage({ params }: SitePageProps) {
       </div>
     </div>
   );
+}
+
+function buildProspectDemoConversionCopy(t: Translator): ProspectDemoConversionCardCopy {
+  return {
+    title: t("dashboard.prospectDemoConversion.title"),
+    description: t("dashboard.prospectDemoConversion.description"),
+    emailLabel: t("dashboard.prospectDemoConversion.emailLabel"),
+    emailPlaceholder: t("dashboard.prospectDemoConversion.emailPlaceholder"),
+    submitLabel: t("dashboard.prospectDemoConversion.submitLabel"),
+    pendingLabel: t("dashboard.prospectDemoConversion.pendingLabel"),
+    successTitle: t("dashboard.prospectDemoConversion.successTitle"),
+    errorTitle: t("dashboard.prospectDemoConversion.errorTitle"),
+    openActivationLinkLabel: t("dashboard.prospectDemoConversion.openActivationLinkLabel"),
+    messages: {
+      siteRequired: t("dashboard.prospectDemoConversion.messages.siteRequired"),
+      invalidEmail: t("dashboard.prospectDemoConversion.messages.invalidEmail"),
+      sessionExpired: t("dashboard.prospectDemoConversion.messages.sessionExpired"),
+      siteMismatch: t("dashboard.prospectDemoConversion.messages.siteMismatch"),
+      unexpectedScope: t("dashboard.prospectDemoConversion.messages.unexpectedScope"),
+      activationInviteCreated: t(
+        "dashboard.prospectDemoConversion.messages.activationInviteCreated",
+      ),
+      demoActivated: t("dashboard.prospectDemoConversion.messages.demoActivated"),
+      activationPending: t("dashboard.prospectDemoConversion.messages.activationPending"),
+      paymentFailed: t("dashboard.prospectDemoConversion.messages.paymentFailed"),
+      checkoutPending: t("dashboard.prospectDemoConversion.messages.checkoutPending"),
+      notFound: t("dashboard.prospectDemoConversion.messages.notFound"),
+      conflict: t("dashboard.prospectDemoConversion.messages.conflict"),
+      timeout: t("dashboard.prospectDemoConversion.messages.timeout"),
+      unavailable: t("dashboard.prospectDemoConversion.messages.unavailable"),
+      unknown: t("dashboard.prospectDemoConversion.messages.unknown"),
+    },
+    nextActions: {
+      complete_payment: t("dashboard.prospectDemoConversion.nextActions.completePayment"),
+      retry_payment: t("dashboard.prospectDemoConversion.nextActions.retryPayment"),
+      wait_for_activation: t("dashboard.prospectDemoConversion.nextActions.waitForActivation"),
+      open_dashboard: t("dashboard.prospectDemoConversion.nextActions.openDashboard"),
+      default: t("dashboard.prospectDemoConversion.nextActions.default"),
+    },
+  };
 }
 
 function WorkspaceSummaryCard({

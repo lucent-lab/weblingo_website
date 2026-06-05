@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import messages from "@internal/i18n/messages/en.json";
@@ -100,5 +100,32 @@ describe("DemoDashboardEntry", () => {
 
     await screen.findByText("Missing demo access token.");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("requests a fresh access link from the missing-token error state", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        ok: true,
+        message: "If this demo is eligible, we'll email a fresh access link.",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry messages={messages} navigate={vi.fn()} />);
+
+    await screen.findByText("Missing demo access token.");
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send access link" }));
+
+    await screen.findByText("If this demo is eligible, we'll email a fresh access link.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/prospect-showcases/access-link/resend",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "owner@example.com" }),
+      }),
+    );
   });
 });

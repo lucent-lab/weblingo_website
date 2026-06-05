@@ -460,13 +460,6 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     return buildDashboardE2eMockAuth();
   }
 
-  if (await isDashboardDemoScopeRequest()) {
-    const demoAuth = await buildDashboardDemoAuth();
-    if (demoAuth) {
-      return demoAuth;
-    }
-  }
-
   const supabase = await createClient();
   const [
     {
@@ -478,6 +471,12 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   ] = await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
 
   if (!session || !user) {
+    if (await isDashboardDemoScopeRequest()) {
+      const demoAuth = await buildDashboardDemoAuth();
+      if (demoAuth) {
+        return demoAuth;
+      }
+    }
     return buildAnonymousDashboardAuth();
   }
 

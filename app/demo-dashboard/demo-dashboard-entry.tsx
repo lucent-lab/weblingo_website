@@ -1,16 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { createClientTranslator, type ClientMessages } from "@internal/i18n/client";
 
 type BridgeState =
   | { status: "loading" }
   | { status: "error"; message: string; retryToken: string | null };
+
+type ResendState =
+  | { status: "idle"; message: "" }
+  | { status: "sending"; message: "" }
+  | { status: "sent"; message: string }
+  | { status: "error"; message: string };
 
 type ClaimBridgeResponse = {
   demo: true;
@@ -138,6 +146,7 @@ function DemoDashboardBridge({
 }) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
   const [state, setState] = useState<BridgeState>({ status: "loading" });
+  const [resendState, setResendState] = useState<ResendState>({ status: "idle", message: "" });
 
   const claimAndEnterDashboard = useCallback(
     async (rawToken: string, isCanceled: () => boolean = () => false) => {
@@ -194,6 +203,48 @@ function DemoDashboardBridge({
     [navigate, t],
   );
 
+  const resendAccessLink = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget);
+      const email = formData.get("email")?.toString().trim() ?? "";
+      if (!email) {
+        setResendState({
+          status: "error",
+          message: t("dashboard.demo.resend.missingEmail"),
+        });
+        return;
+      }
+      setResendState({ status: "sending", message: "" });
+      try {
+        const response = await fetch("/api/prospect-showcases/access-link/resend", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+          cache: "no-store",
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          setResendState({
+            status: "error",
+            message: parseErrorMessage(body, t("dashboard.demo.resend.error")),
+          });
+          return;
+        }
+        setResendState({
+          status: "sent",
+          message: parseErrorMessage(body, t("dashboard.demo.resend.success")),
+        });
+      } catch {
+        setResendState({
+          status: "error",
+          message: t("dashboard.demo.resend.error"),
+        });
+      }
+    },
+    [t],
+  );
+
   useEffect(() => {
     let canceled = false;
     const token = accessToken || readDemoAccessTokenFromLocation();
@@ -232,7 +283,7 @@ function DemoDashboardBridge({
             <CardDescription>{state.message}</CardDescription>
           </CardHeader>
           {state.retryToken ? (
-            <CardContent>
+            <CardContent className="space-y-4">
               <Button
                 type="button"
                 variant="outline"
@@ -240,10 +291,64 @@ function DemoDashboardBridge({
               >
                 {t("dashboard.demo.error.retry")}
               </Button>
+              <DemoAccessLinkResendForm
+                onSubmit={resendAccessLink}
+                resendState={resendState}
+                messages={messages}
+              />
             </CardContent>
-          ) : null}
+          ) : (
+            <CardContent>
+              <DemoAccessLinkResendForm
+                onSubmit={resendAccessLink}
+                resendState={resendState}
+                messages={messages}
+              />
+            </CardContent>
+          )}
         </Card>
       </div>
     </main>
+  );
+}
+
+function DemoAccessLinkResendForm({
+  messages,
+  onSubmit,
+  resendState,
+}: {
+  messages: ClientMessages;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  resendState: ResendState;
+}) {
+  const t = useMemo(() => createClientTranslator(messages), [messages]);
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <Field label={t("dashboard.demo.resend.emailLabel")} htmlFor="demo-access-link-email">
+        <Input
+          id="demo-access-link-email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder={t("dashboard.demo.resend.emailPlaceholder")}
+          required
+          disabled={resendState.status === "sending"}
+        />
+      </Field>
+      <Button type="submit" variant="secondary" disabled={resendState.status === "sending"}>
+        {resendState.status === "sending"
+          ? t("dashboard.demo.resend.sending")
+          : t("dashboard.demo.resend.submit")}
+      </Button>
+      {resendState.message ? (
+        <p
+          className={
+            resendState.status === "sent" ? "text-sm text-emerald-700" : "text-sm text-destructive"
+          }
+        >
+          {resendState.message}
+        </p>
+      ) : null}
+    </form>
   );
 }

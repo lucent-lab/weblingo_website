@@ -257,7 +257,7 @@ describe("getDashboardAuth", () => {
     expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
   });
 
-  it("prefers demo scoped auth over an existing Supabase session after claim", async () => {
+  it("prefers Supabase auth over a demo cookie when a real session exists", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn
     >;
@@ -276,19 +276,20 @@ describe("getDashboardAuth", () => {
     cookiesStore.get.mockImplementation((name: string) =>
       name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
     );
-    redisMock.get.mockResolvedValue(makeStoredDemoSession());
-    fetchAccountMe.mockResolvedValue(makeDemoAccount());
+    redisMock.get.mockResolvedValue(null);
     fetchDashboardBootstrap.mockResolvedValue(actorBootstrap);
 
     vi.resetModules();
     const { getDashboardAuth } = await import("./auth");
     const auth = await getDashboardAuth();
 
-    expect(auth.accessMode).toBe("demo");
-    expect(auth.webhooksAuth?.token).toBe("dashboard-demo-token");
-    expect(auth.subjectAccountId).toBe("acct-demo");
-    expect(fetchAccountMe).toHaveBeenCalledWith({ token: "dashboard-demo-token" });
-    expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
+    expect(auth.accessMode).toBe("supabase");
+    expect(auth.webhooksAuth?.token).toBe("actor-token");
+    expect(auth.subjectAccountId).toBe("acct-agency");
+    expect(fetchAccountMe).not.toHaveBeenCalled();
+    expect(fetchDashboardBootstrap).toHaveBeenCalledWith("session-token", {
+      includeAgencyCustomers: true,
+    });
   });
 
   it("keeps Supabase auth on unmarked dashboard requests even when a demo cookie exists", async () => {
