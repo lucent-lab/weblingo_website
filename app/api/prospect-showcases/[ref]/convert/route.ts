@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return invalidRefResponse;
   }
 
-  const bodyResult = await readProspectShowcaseJsonBodyLimited(request, 1_024);
+  const bodyResult = await readProspectShowcaseJsonBodyLimited(request, config.maxBodyBytes);
   if (!bodyResult.ok) {
     return bodyResult.response;
   }
