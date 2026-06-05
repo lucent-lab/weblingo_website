@@ -19,25 +19,49 @@ publicDemoDashboardPaths.add("/dashboard/demo");
 publicDemoDashboardPaths.add("/dashboard/demo/");
 
 function resolveDashboardReturnPath(pathname: string, search: string): string | null {
-  if (pathname !== "/dashboard" && !pathname.startsWith("/dashboard/")) {
+  if (!normalizeDashboardPathname(pathname)) {
     return null;
   }
   return `${pathname}${search}`;
 }
 
 function isDemoDashboardSessionPath(pathname: string): boolean {
-  if (pathname === "/dashboard" || pathname === "/dashboard/") {
-    return true;
-  }
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "api") {
     return (
       parts.length >= 4 && parts[1] === "dashboard" && parts[2] === "sites" && parts[3] !== "new"
     );
   }
+  const dashboardPathname = normalizeDashboardPathname(pathname);
+  if (!dashboardPathname) {
+    return false;
+  }
+  if (dashboardPathname === "/dashboard" || dashboardPathname === "/dashboard/") {
+    return true;
+  }
+  const dashboardParts = dashboardPathname.split("/").filter(Boolean);
   return (
-    parts.length >= 3 && parts[0] === "dashboard" && parts[1] === "sites" && parts[2] !== "new"
+    dashboardParts.length >= 3 &&
+    dashboardParts[0] === "dashboard" &&
+    dashboardParts[1] === "sites" &&
+    dashboardParts[2] !== "new"
   );
+}
+
+function normalizeDashboardPathname(pathname: string): string | null {
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    return pathname;
+  }
+  const parts = pathname.split("/").filter(Boolean);
+  const maybeLocale = parts[0];
+  if (
+    maybeLocale &&
+    i18nConfig.locales.includes(maybeLocale as Locale) &&
+    parts[1] === "dashboard"
+  ) {
+    return `/${parts.slice(1).join("/")}${pathname.endsWith("/") ? "/" : ""}`;
+  }
+  return null;
 }
 
 export async function updateSession(request: NextRequest) {

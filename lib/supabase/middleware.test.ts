@@ -117,9 +117,31 @@ describe("updateSession", () => {
     );
   });
 
+  it("preserves locale-prefixed dashboard return paths when redirecting anonymous users to login", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/en/dashboard/sites/site-customer?tab=billing"),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://weblingo.app/auth/login?next=%2Fen%2Fdashboard%2Fsites%2Fsite-customer%3Ftab%3Dbilling",
+    );
+  });
+
   it("lets opaque demo dashboard sessions reach dashboard auth validation", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/dashboard/sites/site-demo", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
+  });
+
+  it("lets opaque demo dashboard sessions reach locale-prefixed dashboard site pages", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/en/dashboard/sites/site-demo", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
       }),
     );
@@ -232,6 +254,18 @@ describe("updateSession", () => {
 
     expect(response.headers.get("location")).toBe(
       "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fnew",
+    );
+  });
+
+  it("does not let demo dashboard cookies reach locale-prefixed site creation", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/fr/dashboard/sites/new", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://weblingo.app/auth/login?next=%2Ffr%2Fdashboard%2Fsites%2Fnew",
     );
   });
 
