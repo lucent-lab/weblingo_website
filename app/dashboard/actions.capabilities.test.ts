@@ -3,13 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 
-const withWebhooksAuth = vi.fn();
-vi.mock("./_lib/webhooks-token", () => ({ withWebhooksAuth }));
-
 const triggerCrawlTranslate = vi.fn();
 const upsertDigestSubscription = vi.fn();
 const setTranslationSummaryPreference = vi.fn();
 const listTranslationSummaries = vi.fn();
+const listRuntimeRequestObservations = vi.fn();
 const fetchSwitcherSnippets = vi.fn();
 const fetchSite = vi.fn();
 const updateSite = vi.fn();
@@ -50,6 +48,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   cancelTranslationRun,
   fetchSite,
   fetchSwitcherSnippets,
+  listRuntimeRequestObservations,
   listTranslationSummaries,
   provisionDomain,
   refreshDomain,
@@ -102,9 +101,6 @@ vi.mock("@internal/dashboard/site-settings", () => ({
 describe("dashboard capability actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    withWebhooksAuth.mockImplementation(async (callback: (auth: { token: string }) => unknown) =>
-      callback({ token: "webhooks-token" }),
-    );
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },
       webhooksAuth: { token: "webhooks-token", subjectAccountId: "acct-1" },
@@ -888,7 +884,20 @@ describe("dashboard capability actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-1");
   });
 
-  it("loads summaries and switcher snippets via read-focused actions", async () => {
+  it("loads read-focused site data through scoped dashboard auth", async () => {
+    listRuntimeRequestObservations.mockResolvedValue({
+      groups: [
+        {
+          groupingPathHash: "path-hash",
+          method: "GET",
+          shapeSignature: "shape",
+          lifecycle: "open",
+          lastSeenAt: "2026-02-15T00:00:00.000Z",
+          count: 2,
+          examples: [],
+        },
+      ],
+    });
     listTranslationSummaries.mockResolvedValue([
       {
         id: "sum-1",
@@ -910,8 +919,27 @@ describe("dashboard capability actions", () => {
       snippets: [{ templateId: "inline", html: "<nav>...</nav>" }],
     });
 
-    const { fetchSwitcherSnippetsAction, listTranslationSummariesAction } =
-      await import("./actions");
+    const {
+      fetchSwitcherSnippetsAction,
+      listRuntimeRequestObservationsAction,
+      listTranslationSummariesAction,
+    } = await import("./actions");
+
+    const observationsFormData = new FormData();
+    observationsFormData.set("siteId", "site-1");
+    const observationsResult = await listRuntimeRequestObservationsAction(
+      undefined,
+      observationsFormData,
+    );
+    expect(observationsResult).toMatchObject({
+      ok: true,
+      message: "Runtime request observations loaded.",
+    });
+    expect(listRuntimeRequestObservations).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      "site-1",
+      { lifecycle: "all", limit: 50, sort: "last_seen_desc" },
+    );
 
     const summaryFormData = new FormData();
     summaryFormData.set("siteId", "site-1");
@@ -920,6 +948,10 @@ describe("dashboard capability actions", () => {
       ok: true,
       message: "Loaded 1 translation summary record(s).",
     });
+    expect(listTranslationSummaries).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      "site-1",
+    );
 
     const snippetFormData = new FormData();
     snippetFormData.set("siteId", "site-1");
@@ -938,6 +970,60 @@ describe("dashboard capability actions", () => {
         currentLang: "fr",
       },
     );
+  });
+
+  it("blocks demo read-focused actions for a posted site outside the demo scope", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "starter", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => false),
+    });
+
+    const {
+      fetchSwitcherSnippetsAction,
+      listRuntimeRequestObservationsAction,
+      listTranslationSummariesAction,
+    } = await import("./actions");
+
+    const observationsFormData = new FormData();
+    observationsFormData.set("siteId", "site-other");
+    const observationsResult = await listRuntimeRequestObservationsAction(
+      undefined,
+      observationsFormData,
+    );
+
+    const summaryFormData = new FormData();
+    summaryFormData.set("siteId", "site-other");
+    const summaryResult = await listTranslationSummariesAction(undefined, summaryFormData);
+
+    const snippetFormData = new FormData();
+    snippetFormData.set("siteId", "site-other");
+    snippetFormData.set("path", "/pricing");
+    const snippetResult = await fetchSwitcherSnippetsAction(undefined, snippetFormData);
+
+    expect(observationsResult).toEqual({
+      ok: false,
+      message: "The requested dashboard data could not be found.",
+      meta: undefined,
+    });
+    expect(summaryResult).toEqual({
+      ok: false,
+      message: "The requested dashboard data could not be found.",
+      meta: undefined,
+    });
+    expect(snippetResult).toEqual({
+      ok: false,
+      message: "The requested dashboard data could not be found.",
+      meta: undefined,
+    });
+    expect(listRuntimeRequestObservations).not.toHaveBeenCalled();
+    expect(listTranslationSummaries).not.toHaveBeenCalled();
+    expect(fetchSwitcherSnippets).not.toHaveBeenCalled();
   });
 
   it("creates a managed demo with locale aliases and invalidates actor bootstrap auth", async () => {

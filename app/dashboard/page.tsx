@@ -11,6 +11,7 @@ import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesFresh } from "@internal/dashboard/data";
+import { getDashboardDemoSiteId } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { resolveDashboardOnboardingState } from "@internal/dashboard/onboarding-state";
 import {
@@ -35,6 +36,13 @@ type OverviewData = Awaited<ReturnType<typeof getOverviewData>>;
 
 export default async function DashboardPage() {
   const auth = await requireDashboardAuth();
+  if (auth.accessMode === "demo") {
+    const demoSiteId = getDashboardDemoSiteId(auth);
+    if (!demoSiteId) {
+      throw new Error("Demo dashboard session is missing site scope.");
+    }
+    redirect(`/dashboard/sites/${demoSiteId}`);
+  }
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const onboardingState = resolveDashboardOnboardingState(auth, t);

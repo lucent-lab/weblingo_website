@@ -50,6 +50,7 @@ import {
   type DashboardAuth,
   type WebhooksAuthContext,
 } from "@internal/dashboard/auth";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { readDashboardErrorCode } from "@internal/dashboard/error-state";
 import {
   buildSiteSettingsUpdatePayload,
@@ -61,8 +62,6 @@ import {
 } from "@internal/dashboard/site-settings";
 import type { WebLingoFeature } from "@internal/dashboard/entitlements";
 
-import { withWebhooksAuth } from "./_lib/webhooks-token";
-
 export type ActionResponse = {
   ok: boolean;
   message: string;
@@ -71,6 +70,10 @@ export type ActionResponse = {
 
 type DashboardMutationAuth = DashboardAuth & {
   account: NonNullable<DashboardAuth["account"]>;
+  webhooksAuth: WebhooksAuthContext;
+};
+
+type DashboardReadAuth = DashboardAuth & {
   webhooksAuth: WebhooksAuthContext;
 };
 
@@ -224,6 +227,22 @@ async function requireDashboardMutationAuth(
     return { ok: false, response: failed(gate.permissionError) };
   }
   return { ok: true, auth: auth as DashboardMutationAuth };
+}
+
+async function requireScopedDashboardReadAuth(
+  siteId: string,
+): Promise<{ ok: true; auth: DashboardReadAuth } | { ok: false; response: ActionResponse }> {
+  const auth = await requireDashboardAuth();
+  if (!auth.webhooksAuth) {
+    return { ok: false, response: failed("Unable to authenticate dashboard request.") };
+  }
+  if (!isDashboardAuthScopedToSite(auth, siteId)) {
+    return {
+      ok: false,
+      response: failed("The requested dashboard data could not be found."),
+    };
+  }
+  return { ok: true, auth: auth as DashboardReadAuth };
 }
 
 async function invalidateDashboardCaches(
@@ -1295,12 +1314,12 @@ export async function listRuntimeRequestObservationsAction(
   }
 
   try {
-    const auth = await requireDashboardAuth();
-    if (!auth.webhooksAuth) {
-      return failed("Unable to authenticate dashboard request.");
+    const readAuth = await requireScopedDashboardReadAuth(siteId);
+    if (!readAuth.ok) {
+      return readAuth.response;
     }
 
-    const response = await listRuntimeRequestObservations(auth.webhooksAuth, siteId, {
+    const response = await listRuntimeRequestObservations(readAuth.auth.webhooksAuth, siteId, {
       limit: 50,
       lifecycle: "all",
       sort: "last_seen_desc",
@@ -1655,9 +1674,11 @@ export async function listTranslationSummariesAction(
   }
 
   try {
-    const summaries = await withWebhooksAuth(async (auth) =>
-      listTranslationSummaries(auth, siteId),
-    );
+    const readAuth = await requireScopedDashboardReadAuth(siteId);
+    if (!readAuth.ok) {
+      return readAuth.response;
+    }
+    const summaries = await listTranslationSummaries(readAuth.auth.webhooksAuth, siteId);
     return succeeded(`Loaded ${summaries.length} translation summary record(s).`, {
       summaries,
       summaryCount: summaries.length,
@@ -1686,12 +1707,14 @@ export async function fetchSwitcherSnippetsAction(
   }
 
   try {
-    const snippets = await withWebhooksAuth(async (auth) =>
-      fetchSwitcherSnippets(auth, siteId, {
-        ...(relativePath ? { path: relativePath } : {}),
-        ...(currentLang ? { currentLang } : {}),
-      }),
-    );
+    const readAuth = await requireScopedDashboardReadAuth(siteId);
+    if (!readAuth.ok) {
+      return readAuth.response;
+    }
+    const snippets = await fetchSwitcherSnippets(readAuth.auth.webhooksAuth, siteId, {
+      ...(relativePath ? { path: relativePath } : {}),
+      ...(currentLang ? { currentLang } : {}),
+    });
     return succeeded(
       `Loaded ${snippets.snippets.length} switcher snippet template(s) for ${snippets.path}.`,
       {

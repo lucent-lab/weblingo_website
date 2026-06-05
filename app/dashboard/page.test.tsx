@@ -102,6 +102,23 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
+  it("routes a demo dashboard session directly to the claimed site without listing sites", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue({
+      ...makeAuth(),
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      mutationsAllowed: false,
+    });
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+
+    await expect(DashboardPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard/sites/site-demo");
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-demo");
+    expect(mocks.listSitesFresh).not.toHaveBeenCalled();
+    expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
   it("shows onboarding when a normal customer only has inactive website records", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-old", "inactive")]);

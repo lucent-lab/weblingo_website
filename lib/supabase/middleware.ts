@@ -23,6 +23,9 @@ function resolveDashboardReturnPath(pathname: string, search: string): string | 
 }
 
 function isDemoDashboardSessionPath(pathname: string): boolean {
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    return true;
+  }
   const parts = pathname.split("/").filter(Boolean);
   return (
     parts.length >= 3 && parts[0] === "dashboard" && parts[1] === "sites" && parts[2] !== "new"

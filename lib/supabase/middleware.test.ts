@@ -139,7 +139,18 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
-  it("does not let demo dashboard cookies relax global dashboard routes", async () => {
+  it("lets opaque demo dashboard sessions reach the dashboard redirect entry", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/dashboard", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("does not let demo dashboard cookies relax other global dashboard routes", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/dashboard/developer-tools", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
