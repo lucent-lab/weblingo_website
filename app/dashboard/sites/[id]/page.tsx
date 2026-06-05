@@ -22,14 +22,9 @@ import { getSiteCustomerOverviewCached } from "@internal/dashboard/data";
 import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
-import {
-  normalizeLocale,
-  resolveLocaleTranslator,
-  resolvePreferredLocale,
-  type Locale,
-  type Translator,
-} from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
+import { localizeDashboardRouteHref, resolveDashboardRouteLocale } from "./focused-route-utils";
 import {
   ProspectDemoConversionCard,
   type ProspectDemoConversionCardCopy,
@@ -56,10 +51,12 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   const demoSession = auth.accessMode === "demo" ? auth.demoSession : null;
   const authToken = auth.webhooksAuth!;
   const requestHeaders = await headers();
-  const locale = resolveDashboardSitePageLocale(
+  const routeLocale = resolveDashboardRouteLocale(
     searchParams ? await searchParams : undefined,
     requestHeaders.get("accept-language"),
   );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
@@ -106,7 +103,10 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
           technicalDetails={errorView.technicalDetails}
           actions={
             <>
-              <DashboardRetryButton href={`/dashboard/sites/${id}`} label="Retry overview" />
+              <DashboardRetryButton
+                href={localizeDashboardRouteHref(`/dashboard/sites/${id}`, dashboardLocale)!}
+                label="Retry overview"
+              />
               <Button asChild variant="outline">
                 <Link href="/dashboard">Dashboard home</Link>
               </Button>
@@ -138,6 +138,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
     pricingPath,
     siteId: site.id,
   });
+  const localizedNextActionHref = localizeDashboardRouteHref(nextActionHref, dashboardLocale);
   const nextActionLabel = overview.nextAction.cta
     ? formatCustomerCopy(t, overview.nextAction.cta.labelKey, {
         fallback: fallbackCtaLabel(overview.nextAction.cta),
@@ -170,25 +171,73 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/pages`}>Pages</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(`/dashboard/sites/${site.id}/pages`, dashboardLocale)!
+              }
+            >
+              Pages
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/source-selection`}>Source selection</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(
+                  `/dashboard/sites/${site.id}/source-selection`,
+                  dashboardLocale,
+                )!
+              }
+            >
+              Source selection
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/domains`}>Domains</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(`/dashboard/sites/${site.id}/domains`, dashboardLocale)!
+              }
+            >
+              Domains
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/quality`}>Quality</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(`/dashboard/sites/${site.id}/quality`, dashboardLocale)!
+              }
+            >
+              Quality
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/developer-tools`}>Developer tools</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(
+                  `/dashboard/sites/${site.id}/developer-tools`,
+                  dashboardLocale,
+                )!
+              }
+            >
+              Developer tools
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/history`}>History</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(`/dashboard/sites/${site.id}/history`, dashboardLocale)!
+              }
+            >
+              History
+            </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/dashboard/sites/${site.id}/settings`}>Settings</Link>
+            <Link
+              href={
+                localizeDashboardRouteHref(`/dashboard/sites/${site.id}/settings`, dashboardLocale)!
+              }
+            >
+              Settings
+            </Link>
           </Button>
           <Button asChild variant="link">
             <Link href="/dashboard">Back to dashboard</Link>
@@ -209,12 +258,16 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
       />
 
       {demoSession ? (
-        <ProspectDemoConversionCard copy={buildProspectDemoConversionCopy(t)} siteId={site.id} />
+        <ProspectDemoConversionCard
+          dashboardLocale={dashboardLocale}
+          copy={buildProspectDemoConversionCopy(t)}
+          siteId={site.id}
+        />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <NextActionCard
-          ctaHref={nextActionHref}
+          ctaHref={localizedNextActionHref}
           ctaLabel={nextActionLabel}
           description={nextActionDescription}
           severity={overview.nextAction.severity}
@@ -227,7 +280,7 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         <div className="space-y-4">
           <LanguagesCard languages={overview.languages} t={t} />
           <DomainsCard domains={overview.domains} t={t} />
-          <PagesSummaryCard overview={overview} t={t} />
+          <PagesSummaryCard dashboardLocale={dashboardLocale} overview={overview} t={t} />
         </div>
         <div className="space-y-4">
           <BlockersCard blockers={overview.blockers} t={t} />
@@ -278,20 +331,6 @@ function buildProspectDemoConversionCopy(t: Translator): ProspectDemoConversionC
       default: t("dashboard.prospectDemoConversion.nextActions.default"),
     },
   };
-}
-
-function resolveDashboardSitePageLocale(
-  searchParams: Record<string, string | string[] | undefined> | undefined,
-  acceptLanguage: string | null,
-): Locale {
-  const requestedLocale = getSingleSearchParam(searchParams?.locale);
-  return requestedLocale
-    ? normalizeLocale(requestedLocale)
-    : resolvePreferredLocale(acceptLanguage);
-}
-
-function getSingleSearchParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 function WorkspaceSummaryCard({
@@ -417,9 +456,11 @@ function DomainsCard({ domains, t }: { domains: CustomerDomain[]; t: Translator 
 }
 
 function PagesSummaryCard({
+  dashboardLocale,
   overview,
   t,
 }: {
+  dashboardLocale: string | null;
   overview: SiteCustomerOverviewResponse;
   t: Translator;
 }) {
@@ -432,7 +473,14 @@ function PagesSummaryCard({
           <CardDescription>Capped inventory and crawl summary.</CardDescription>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link href={`/dashboard/sites/${overview.site.id}/pages`}>
+          <Link
+            href={
+              localizeDashboardRouteHref(
+                `/dashboard/sites/${overview.site.id}/pages`,
+                dashboardLocale,
+              )!
+            }
+          >
             Open pages
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

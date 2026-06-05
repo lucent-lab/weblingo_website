@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import { createClientTranslator, type ClientMessages } from "@internal/i18n/client";
 
 type BridgeState =
@@ -57,15 +58,6 @@ function parseClaimBridgeResponse(value: unknown): ClaimBridgeResponse | null {
     demo: true,
     redirectUrl: value.redirectUrl,
   };
-}
-
-function withDashboardLocale(redirectUrl: string, dashboardLocale: string | null): string {
-  if (!dashboardLocale) {
-    return redirectUrl;
-  }
-  const url = new URL(redirectUrl, "https://weblingo.app");
-  url.searchParams.set("locale", dashboardLocale);
-  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function readDemoAccessTokenFromLocation(): string {

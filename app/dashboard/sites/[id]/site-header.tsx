@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import type { Site } from "@internal/dashboard/webhooks";
 
 type SiteHeaderSite = Pick<Site, "id" | "sourceUrl"> & {
@@ -25,6 +26,7 @@ export function SiteHeader({
   deactivateConfirm,
   activateHelpLabel,
   activateHelp,
+  dashboardLocale = null,
 }: {
   site: SiteHeaderSite;
   canEdit: boolean;
@@ -35,6 +37,7 @@ export function SiteHeader({
   deactivateConfirm: string;
   activateHelpLabel: string;
   activateHelp: string;
+  dashboardLocale?: string | null;
 }) {
   const verifiedDomains = site.domains?.filter((domain) => domain.status === "verified").length;
   const isActive = site.status === "active";
@@ -42,6 +45,7 @@ export function SiteHeader({
   const nextStatus = isActive ? "inactive" : "active";
   const toggleLabel = isActive ? deactivateLabel : reactivateLabel;
   const showInlineActivate = !isActive && (canToggleStatus || canEdit);
+  const settingsHref = withDashboardLocale(`/dashboard/sites/${site.id}/settings`, dashboardLocale);
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -106,7 +110,7 @@ export function SiteHeader({
           ) : null
         ) : null}
         <Button asChild variant="outline">
-          <Link href={`/dashboard/sites/${site.id}/settings`} title="Settings">
+          <Link href={settingsHref} title="Settings">
             Settings
           </Link>
         </Button>

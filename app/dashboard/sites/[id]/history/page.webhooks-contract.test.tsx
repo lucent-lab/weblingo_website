@@ -9,6 +9,7 @@ const ORIGINAL_FETCH = globalThis.fetch;
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   getSiteTargetLangsCached: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => locale),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -33,6 +34,7 @@ vi.mock("@internal/dashboard/data", () => ({
   getSiteTargetLangsCached: mocks.getSiteTargetLangsCached,
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));

@@ -8,7 +8,14 @@ import { ActionForm } from "@/components/dashboard/action-form";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PagesSummaryBlock } from "@/components/dashboard/pages-summary-block";
 import { DashboardRetryButton } from "@/components/dashboard/retry-button";
-import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
+import {
+  buildSiteHeaderAccess,
+  buildSiteHeaderLabels,
+  getSingleDashboardSearchParam,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
+  type DashboardRouteSearchParams,
+} from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
 import { CrawlSummaryClient } from "./crawl-summary.client";
 
@@ -24,7 +31,7 @@ import {
   type SitePageSummary,
   type SitePagesSummary,
 } from "@internal/dashboard/webhooks";
-import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 export const metadata = {
   title: "Pages & crawl",
@@ -33,7 +40,7 @@ export const metadata = {
 
 type SitePagesPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 const PAGES_PAGE_SIZE = 25;
@@ -41,7 +48,10 @@ const PAGES_PAGE_SIZE = 25;
 export default async function SitePagesPage({ params, searchParams }: SitePagesPageProps) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
-  const requestedPage = Number.parseInt(resolvedSearchParams?.page ?? "1", 10);
+  const requestedPage = Number.parseInt(
+    getSingleDashboardSearchParam(resolvedSearchParams?.page) ?? "1",
+    10,
+  );
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const offset = (currentPage - 1) * PAGES_PAGE_SIZE;
   const auth = await requireDashboardAuth();
@@ -50,7 +60,12 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canCrawl = auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && mutationsAllowed;
@@ -144,9 +159,14 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
           technicalDetails={errorView.technicalDetails}
           actions={
             <>
-              <DashboardRetryButton href={`/dashboard/sites/${id}/pages`} label="Retry pages" />
+              <DashboardRetryButton
+                href={createPagesHref(id, 1, dashboardLocale)}
+                label="Retry pages"
+              />
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+                <Link href={localizeDashboardRouteHref(`/dashboard/sites/${id}`, dashboardLocale)!}>
+                  Site overview
+                </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/dashboard">Dashboard home</Link>
@@ -191,10 +211,8 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const totalPages = Math.max(1, Math.ceil(pageTotal / PAGES_PAGE_SIZE));
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = pageHasMore;
-  const basePagesPath = `/dashboard/sites/${id}/pages`;
-  const previousPageHref =
-    currentPage - 1 <= 1 ? basePagesPath : `${basePagesPath}?page=${currentPage - 1}`;
-  const nextPageHref = `${basePagesPath}?page=${currentPage + 1}`;
+  const previousPageHref = createPagesHref(id, currentPage - 1, dashboardLocale);
+  const nextPageHref = createPagesHref(id, currentPage + 1, dashboardLocale);
   const headerSite = {
     id: pageSite?.id ?? id,
     sourceUrl: pageSite?.sourceUrl ?? `Site ${id}`,
@@ -213,6 +231,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         deactivateConfirm={headerLabels.deactivateConfirm}
         activateHelpLabel={headerLabels.activateHelpLabel}
         activateHelp={headerLabels.activateHelp}
+        dashboardLocale={dashboardLocale}
       />
 
       <Card>
@@ -448,4 +467,20 @@ function formatNextCrawlAt(value: string | null | undefined, eligibleNowLabel: s
     return eligibleNowLabel;
   }
   return formatTimestamp(value);
+}
+
+function createPagesHref(
+  siteId: string,
+  page: number,
+  dashboardLocale: string | null | undefined,
+): string {
+  const params = new URLSearchParams();
+  if (dashboardLocale) {
+    params.set("locale", dashboardLocale);
+  }
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+  const query = params.toString();
+  return `/dashboard/sites/${siteId}/pages${query ? `?${query}` : ""}`;
 }

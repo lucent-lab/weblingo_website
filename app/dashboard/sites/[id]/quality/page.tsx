@@ -16,15 +16,18 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 import {
   buildSiteHeaderAccess,
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatCount,
+  localizeDashboardRouteHref,
   MetricCard,
+  resolveDashboardRouteLocale,
   toneForStatus,
+  type DashboardRouteSearchParams,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
 
@@ -35,18 +38,25 @@ export const metadata = {
 
 type QualityPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 type QualityProjection = Extract<SiteDashboardProjectionResponse, { meta: { view: "quality" } }>;
 
-export default async function QualityPage({ params }: QualityPageProps) {
+export default async function QualityPage({ params, searchParams }: QualityPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess(auth);
 
@@ -72,6 +82,7 @@ export default async function QualityPage({ params }: QualityPageProps) {
           siteId={id}
           retryHref={`/dashboard/sites/${id}/quality`}
           retryLabel="Retry quality"
+          dashboardLocale={dashboardLocale}
           nextSteps={[
             "Retry quality data.",
             "Open the site overview to check current blockers and activity.",
@@ -93,6 +104,7 @@ export default async function QualityPage({ params }: QualityPageProps) {
         canEdit={siteHeaderAccess.canEdit}
         canPauseTranslations={siteHeaderAccess.canPauseTranslations}
         canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        dashboardLocale={dashboardLocale}
         {...headerLabels}
       />
 
@@ -138,28 +150,48 @@ export default async function QualityPage({ params }: QualityPageProps) {
         <QualityWorkflowCard
           available={projection.access.canUseGlossary}
           description="Manage canonical product, brand, and domain vocabulary."
-          href={`/dashboard/sites/${projection.site.id}/overrides#glossary`}
+          href={
+            localizeDashboardRouteHref(
+              `/dashboard/sites/${projection.site.id}/overrides#glossary`,
+              dashboardLocale,
+            )!
+          }
           icon={<Languages className="h-4 w-4" />}
           title="Glossary"
         />
         <QualityWorkflowCard
           available={projection.access.canUseOverrides}
           description="Override individual strings when you need exact phrasing."
-          href={`/dashboard/sites/${projection.site.id}/overrides#manual-overrides`}
+          href={
+            localizeDashboardRouteHref(
+              `/dashboard/sites/${projection.site.id}/overrides#manual-overrides`,
+              dashboardLocale,
+            )!
+          }
           icon={<PencilLine className="h-4 w-4" />}
           title="Manual overrides"
         />
         <QualityWorkflowCard
           available={projection.access.canEditSlugs}
           description="Review localized URL paths without exposing deployment internals."
-          href={`/dashboard/sites/${projection.site.id}/overrides#localized-slugs`}
+          href={
+            localizeDashboardRouteHref(
+              `/dashboard/sites/${projection.site.id}/overrides#localized-slugs`,
+              dashboardLocale,
+            )!
+          }
           icon={<Route className="h-4 w-4" />}
           title="Localized slugs"
         />
         <QualityWorkflowCard
           available={projection.access.canUseConsistencyGovernance}
           description="Open consistency governance when the plan supports it."
-          href={`/dashboard/sites/${projection.site.id}/overrides#consistency-governance`}
+          href={
+            localizeDashboardRouteHref(
+              `/dashboard/sites/${projection.site.id}/overrides#consistency-governance`,
+              dashboardLocale,
+            )!
+          }
           icon={<ListChecks className="h-4 w-4" />}
           title="Consistency governance"
         />

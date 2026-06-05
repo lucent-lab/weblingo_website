@@ -12,7 +12,51 @@ import {
   formatNullableDateTime,
 } from "@internal/dashboard/customer-copy";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import type { Translator } from "@internal/i18n";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
+import {
+  normalizeLocale,
+  resolvePreferredLocale,
+  type Locale,
+  type Translator,
+} from "@internal/i18n";
+
+export type DashboardRouteSearchParams = Record<string, string | string[] | undefined>;
+
+export type DashboardRouteLocale = {
+  locale: Locale;
+  dashboardLocale: Locale | null;
+};
+
+export function resolveDashboardRouteLocale(
+  searchParams: DashboardRouteSearchParams | undefined,
+  acceptLanguage: string | null,
+): DashboardRouteLocale {
+  const requestedLocale = getSingleDashboardSearchParam(searchParams?.locale);
+  if (requestedLocale) {
+    const locale = normalizeLocale(requestedLocale);
+    return { locale, dashboardLocale: locale };
+  }
+  return {
+    locale: resolvePreferredLocale(acceptLanguage),
+    dashboardLocale: null,
+  };
+}
+
+export function getSingleDashboardSearchParam(
+  value: string | string[] | undefined,
+): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export function localizeDashboardRouteHref(
+  href: string | null,
+  dashboardLocale: string | null | undefined,
+): string | null {
+  if (!href || !href.startsWith("/dashboard/sites/")) {
+    return href;
+  }
+  return withDashboardLocale(href, dashboardLocale);
+}
 
 export function buildSiteHeaderLabels(t: Translator) {
   return {
@@ -45,6 +89,7 @@ export function FocusedRouteErrorState({
   retryHref,
   retryLabel = "Retry section",
   nextSteps,
+  dashboardLocale = null,
 }: {
   error: unknown;
   title: string;
@@ -54,11 +99,18 @@ export function FocusedRouteErrorState({
   retryHref?: string;
   retryLabel?: string;
   nextSteps?: string[];
+  dashboardLocale?: string | null;
 }) {
   const errorView = resolveDashboardErrorView(error, { title, description, message });
   const supportSubject = encodeURIComponent(
     `Dashboard ${errorView.kind}${errorView.referenceCode ? ` ${errorView.referenceCode}` : ""}`,
   );
+  const localizedRetryHref = retryHref
+    ? localizeDashboardRouteHref(retryHref, dashboardLocale)
+    : null;
+  const localizedSiteHref = siteId
+    ? localizeDashboardRouteHref(`/dashboard/sites/${siteId}`, dashboardLocale)
+    : null;
   return (
     <ErrorStateCard
       title={errorView.title}
@@ -69,10 +121,12 @@ export function FocusedRouteErrorState({
       technicalDetails={errorView.technicalDetails}
       actions={
         <>
-          {retryHref ? <DashboardRetryButton href={retryHref} label={retryLabel} /> : null}
-          {siteId ? (
+          {localizedRetryHref ? (
+            <DashboardRetryButton href={localizedRetryHref} label={retryLabel} />
+          ) : null}
+          {localizedSiteHref ? (
             <Button asChild variant="outline">
-              <Link href={`/dashboard/sites/${siteId}`}>
+              <Link href={localizedSiteHref}>
                 <Home className="h-4 w-4" aria-hidden="true" />
                 Site overview
               </Link>

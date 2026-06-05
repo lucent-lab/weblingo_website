@@ -47,8 +47,16 @@ vi.mock("@internal/i18n", () => ({
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
 vi.mock("./prospect-demo-conversion-card", () => ({
-  ProspectDemoConversionCard: ({ siteId }: { siteId: string }) => (
-    <div data-testid="prospect-demo-card">Activate {siteId}</div>
+  ProspectDemoConversionCard: ({
+    dashboardLocale,
+    siteId,
+  }: {
+    dashboardLocale?: string | null;
+    siteId: string;
+  }) => (
+    <div data-dashboard-locale={dashboardLocale ?? ""} data-testid="prospect-demo-card">
+      Activate {siteId}
+    </div>
   ),
 }));
 
@@ -239,10 +247,11 @@ describe("SitePage", () => {
     vi.resetModules();
     const { default: SitePage } = await import("./page");
 
-    await SitePage({
+    const tree = await SitePage({
       params: Promise.resolve({ id: "site-1" }),
       searchParams: Promise.resolve({ locale: "fr" }),
     });
+    render(tree);
 
     const calls = mocks.resolveLocaleTranslator.mock.calls as unknown as Array<
       [Promise<{ locale: string }>]
@@ -250,6 +259,12 @@ describe("SitePage", () => {
     const localeArg = await calls[0]?.[0];
     expect(localeArg).toEqual({ locale: "fr" });
     expect(mocks.resolvePreferredLocale).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: /verify domain/i }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1/domains?locale=fr#domain-fr-example-com",
+    );
+    expect(screen.getAllByRole("link", { name: "Pages" })[0]?.getAttribute("href")).toBe(
+      "/dashboard/sites/site-1/pages?locale=fr",
+    );
   });
 
   it("renders demo scoped auth on the real site page", async () => {

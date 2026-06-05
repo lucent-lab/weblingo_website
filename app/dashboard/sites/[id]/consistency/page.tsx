@@ -2,10 +2,14 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
+import {
+  getSingleDashboardSearchParam,
+  type DashboardRouteSearchParams,
+} from "../focused-route-utils";
 
 type SiteConsistencyPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ sourceLang?: string; targetLang?: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 export default async function SiteConsistencyPage({
@@ -20,12 +24,19 @@ export default async function SiteConsistencyPage({
   }
   const query = new URLSearchParams();
 
-  if (resolvedSearchParams?.sourceLang) {
-    query.set("sourceLang", resolvedSearchParams.sourceLang);
+  const dashboardLocale = getSingleDashboardSearchParam(resolvedSearchParams?.locale);
+  if (dashboardLocale) {
+    query.set("locale", dashboardLocale);
   }
 
-  if (resolvedSearchParams?.targetLang) {
-    query.set("targetLang", resolvedSearchParams.targetLang);
+  const sourceLang = getSingleDashboardSearchParam(resolvedSearchParams?.sourceLang);
+  if (sourceLang) {
+    query.set("sourceLang", sourceLang);
+  }
+
+  const targetLang = getSingleDashboardSearchParam(resolvedSearchParams?.targetLang);
+  if (targetLang) {
+    query.set("targetLang", targetLang);
   }
 
   const suffix = query.size ? `?${query.toString()}` : "";

@@ -18,7 +18,7 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
 import {
   provisionDomainAction,
@@ -32,8 +32,11 @@ import {
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatDate,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
   StatusValueBadge,
   toneForStatus,
+  type DashboardRouteSearchParams,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
 
@@ -44,20 +47,27 @@ export const metadata = {
 
 type DomainsPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 type DomainsProjection = Extract<SiteDashboardProjectionResponse, { meta: { view: "domains" } }>;
 type CustomerDomain = DomainsProjection["domains"][number];
 type CustomerLanguage = DomainsProjection["languages"][number];
 
-export default async function DomainsPage({ params }: DomainsPageProps) {
+export default async function DomainsPage({ params, searchParams }: DomainsPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess(auth);
   const canEdit = siteHeaderAccess.canEdit;
@@ -84,6 +94,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
           siteId={id}
           retryHref={`/dashboard/sites/${id}/domains`}
           retryLabel="Retry domains"
+          dashboardLocale={dashboardLocale}
           nextSteps={[
             "Retry domain setup.",
             "Open the site overview to continue with other site work.",
@@ -115,6 +126,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
         siteId={id}
         retryHref={`/dashboard/sites/${id}/domains`}
         retryLabel="Retry domains"
+        dashboardLocale={dashboardLocale}
         nextSteps={[
           "Retry domain setup once.",
           "Open the site overview to continue with other site work.",
@@ -139,6 +151,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
         canEdit={siteHeaderAccess.canEdit}
         canPauseTranslations={siteHeaderAccess.canPauseTranslations}
         canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        dashboardLocale={dashboardLocale}
         {...headerLabels}
       />
 
@@ -194,7 +207,16 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
             </CardHeader>
             <CardContent>
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${projection.site.id}/settings`}>Open settings</Link>
+                <Link
+                  href={
+                    localizeDashboardRouteHref(
+                      `/dashboard/sites/${projection.site.id}/settings`,
+                      dashboardLocale,
+                    )!
+                  }
+                >
+                  Open settings
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -207,6 +229,7 @@ export default async function DomainsPage({ params }: DomainsPageProps) {
         languages={projection.languages}
         siteId={projection.site.id}
         siteStatus={projection.site.status}
+        dashboardLocale={dashboardLocale}
         t={t}
       />
     </div>
@@ -379,6 +402,7 @@ function DomainActionForm({
 function ServingLanguagesCard({
   canToggleServing,
   canTranslateAndServe,
+  dashboardLocale,
   languages,
   siteId,
   siteStatus,
@@ -386,6 +410,7 @@ function ServingLanguagesCard({
 }: {
   canToggleServing: boolean;
   canTranslateAndServe: boolean;
+  dashboardLocale: string | null;
   languages: CustomerLanguage[];
   siteId: string;
   siteStatus: string;
@@ -420,6 +445,7 @@ function ServingLanguagesCard({
                   key={`${language.tag}:${language.domain ?? "domain"}:${index}`}
                   canToggleServing={canToggleServing}
                   canTranslateAndServe={canTranslateAndServe}
+                  dashboardLocale={dashboardLocale}
                   language={language}
                   siteId={siteId}
                   siteStatus={siteStatus}
@@ -437,6 +463,7 @@ function ServingLanguagesCard({
 function ServingLanguageRow({
   canToggleServing,
   canTranslateAndServe,
+  dashboardLocale,
   language,
   siteId,
   siteStatus,
@@ -444,6 +471,7 @@ function ServingLanguageRow({
 }: {
   canToggleServing: boolean;
   canTranslateAndServe: boolean;
+  dashboardLocale: string | null;
   language: CustomerLanguage;
   siteId: string;
   siteStatus: string;
@@ -515,7 +543,16 @@ function ServingLanguageRow({
             </Button>
           ) : servingValue === "needs_domain" ? (
             <Button asChild size="sm" variant="outline">
-              <Link href={`/dashboard/sites/${siteId}/settings`}>Configure domain</Link>
+              <Link
+                href={
+                  localizeDashboardRouteHref(
+                    `/dashboard/sites/${siteId}/settings`,
+                    dashboardLocale,
+                  )!
+                }
+              >
+                Configure domain
+              </Link>
             </Button>
           ) : null}
           {servingValue !== "inactive" ? (

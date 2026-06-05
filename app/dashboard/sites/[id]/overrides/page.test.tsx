@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   fetchConsistencyCpm: vi.fn(),
   fetchConsistencyBlocks: vi.fn(),
   fetchConsistencyOverrideHygiene: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => locale),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -66,6 +67,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   fetchConsistencyOverrideHygiene: mocks.fetchConsistencyOverrideHygiene,
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
@@ -191,6 +193,7 @@ describe("SiteOverridesPage", () => {
     const consistencyTree = await ConsistencyGovernanceSection({
       authToken,
       canEdit: true,
+      dashboardLocale: null,
       mutationsAllowed: true,
       pricingPath: "/en/pricing",
       selectedLocaleScope: { sourceLang: "en", targetLang: "fr" },

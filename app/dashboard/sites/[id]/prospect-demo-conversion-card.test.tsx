@@ -150,4 +150,33 @@ describe("ProspectDemoConversionCard", () => {
     const link = screen.getByRole("link", { name: "Open dashboard" });
     expect(link.getAttribute("href")).toBe("/auth/login?next=%2Fdashboard%2Fsites%2Fsite-demo");
   });
+
+  it("preserves an explicit dashboard locale in the converted login handoff", async () => {
+    convertProspectDemoAction.mockResolvedValue({
+      ok: true,
+      messageKey: "demoActivated",
+      message: "Demo activated.",
+      meta: {
+        status: "converted",
+        activationStatus: "active",
+        locked: false,
+        lockedReason: "none",
+        nextAction: "open_dashboard",
+        email: "owner@example.com",
+      },
+    });
+
+    render(<ProspectDemoConversionCard copy={copy} dashboardLocale="fr" siteId="site-demo" />);
+
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await screen.findByText("Demo activated.");
+    const link = screen.getByRole("link", { name: "Open dashboard" });
+    expect(link.getAttribute("href")).toBe(
+      "/auth/login?next=%2Fdashboard%2Fsites%2Fsite-demo%3Flocale%3Dfr",
+    );
+  });
 });

@@ -1,3 +1,5 @@
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
+
 const DEMO_DASHBOARD_PATH = "/dashboard/demo";
 const URL_BASE = "https://weblingo.app";
 
@@ -12,8 +14,10 @@ export function withDemoDashboardLocale(href: string, locale: string): string {
     if (url.pathname !== DEMO_DASHBOARD_PATH) {
       return href;
     }
-    url.searchParams.set("locale", normalizedLocale);
-    return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
+    return withDashboardLocale(
+      isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`,
+      normalizedLocale,
+    );
   } catch {
     return href;
   }

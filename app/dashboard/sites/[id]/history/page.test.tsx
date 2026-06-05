@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetchCustomerDeploymentHistory: vi.fn(),
   fetchCustomerTranslationRuns: vi.fn(),
   getSiteTargetLangsCached: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => locale),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -46,6 +47,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   },
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));

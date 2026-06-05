@@ -24,13 +24,20 @@ import {
   WebhooksApiError,
 } from "@internal/dashboard/webhooks";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
-import { resolvePreferredLocale, resolveLocaleTranslator } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 import {
   buildConsistencyLocaleScopes,
   formatConsistencyLocaleScopeLabel,
   selectConsistencyLocaleScope,
 } from "../consistency/locale-scope";
-import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
+import {
+  buildSiteHeaderAccess,
+  buildSiteHeaderLabels,
+  getSingleDashboardSearchParam,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
+  type DashboardRouteSearchParams,
+} from "../focused-route-utils";
 import {
   fetchConsistencyBlocks,
   fetchConsistencyCpm,
@@ -52,7 +59,7 @@ export const metadata = {
 
 type SiteOverridesPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ sourceLang?: string; targetLang?: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 export default async function SiteOverridesPage({ params, searchParams }: SiteOverridesPageProps) {
@@ -64,7 +71,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
@@ -158,9 +170,16 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           technicalDetails={errorView.technicalDetails}
           actions={
             <>
-              <DashboardRetryButton href={`/dashboard/sites/${id}/overrides`} label="Retry rules" />
+              <DashboardRetryButton
+                href={
+                  localizeDashboardRouteHref(`/dashboard/sites/${id}/overrides`, dashboardLocale)!
+                }
+                label="Retry rules"
+              />
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+                <Link href={localizeDashboardRouteHref(`/dashboard/sites/${id}`, dashboardLocale)!}>
+                  Site overview
+                </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/dashboard">Dashboard home</Link>
@@ -181,8 +200,8 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const targetLangs = Array.from(new Set(site.locales.map((entry) => entry.targetLang)));
   const localeScopes = buildConsistencyLocaleScopes(site.locales);
   const selectedLocaleScope = selectConsistencyLocaleScope(localeScopes, {
-    sourceLang: resolvedSearchParams?.sourceLang,
-    targetLang: resolvedSearchParams?.targetLang,
+    sourceLang: getSingleDashboardSearchParam(resolvedSearchParams?.sourceLang),
+    targetLang: getSingleDashboardSearchParam(resolvedSearchParams?.targetLang),
   });
 
   return (
@@ -197,6 +216,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         deactivateConfirm={headerLabels.deactivateConfirm}
         activateHelpLabel={headerLabels.activateHelpLabel}
         activateHelp={headerLabels.activateHelp}
+        dashboardLocale={dashboardLocale}
       />
 
       <Card>
@@ -240,13 +260,16 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                   selectedLocaleScope !== null &&
                   scope.targetLang === selectedLocaleScope.targetLang &&
                   scope.sourceLang === selectedLocaleScope.sourceLang;
-                const params = new URLSearchParams({
-                  sourceLang: scope.sourceLang,
-                  targetLang: scope.targetLang,
-                });
+                const params = new URLSearchParams();
+                if (dashboardLocale) {
+                  params.set("locale", dashboardLocale);
+                }
+                params.set("sourceLang", scope.sourceLang);
+                params.set("targetLang", scope.targetLang);
                 const href =
                   scope.sourceLang === localeScopes[0]?.sourceLang &&
-                  scope.targetLang === localeScopes[0]?.targetLang
+                  scope.targetLang === localeScopes[0]?.targetLang &&
+                  !dashboardLocale
                     ? `/dashboard/sites/${site.id}/overrides`
                     : `/dashboard/sites/${site.id}/overrides?${params.toString()}`;
                 return (
@@ -336,6 +359,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           <ConsistencyGovernanceSection
             authToken={authToken}
             canEdit={canEdit}
+            dashboardLocale={dashboardLocale}
             mutationsAllowed={mutationsAllowed}
             pricingPath={pricingPath}
             selectedLocaleScope={selectedLocaleScope}
@@ -350,6 +374,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
 export async function ConsistencyGovernanceSection({
   authToken,
   canEdit,
+  dashboardLocale,
   mutationsAllowed,
   pricingPath,
   selectedLocaleScope,
@@ -357,6 +382,7 @@ export async function ConsistencyGovernanceSection({
 }: {
   authToken: WebhooksAuthContext;
   canEdit: boolean;
+  dashboardLocale: string | null;
   mutationsAllowed: boolean;
   pricingPath: string;
   selectedLocaleScope: { sourceLang: string; targetLang: string } | null;
@@ -448,11 +474,22 @@ export async function ConsistencyGovernanceSection({
                 actions={
                   <>
                     <DashboardRetryButton
-                      href={`/dashboard/sites/${siteId}/overrides`}
+                      href={
+                        localizeDashboardRouteHref(
+                          `/dashboard/sites/${siteId}/overrides`,
+                          dashboardLocale,
+                        )!
+                      }
                       label="Retry consistency"
                     />
                     <Button asChild variant="outline">
-                      <Link href={`/dashboard/sites/${siteId}`}>Site overview</Link>
+                      <Link
+                        href={
+                          localizeDashboardRouteHref(`/dashboard/sites/${siteId}`, dashboardLocale)!
+                        }
+                      >
+                        Site overview
+                      </Link>
                     </Button>
                     <Button asChild variant="ghost">
                       <a href="mailto:contact@weblingo.app?subject=Dashboard%20consistency%20data%20unavailable">

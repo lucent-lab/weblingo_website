@@ -14,10 +14,16 @@ import {
   type SiteDashboardProjectionResponse,
   type SourceSelectionRule,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
 import { updateSourceSelectionAction } from "../../../actions";
-import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
+import {
+  buildSiteHeaderAccess,
+  buildSiteHeaderLabels,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
+  type DashboardRouteSearchParams,
+} from "../focused-route-utils";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { SourceSelectionManager, type SourceSelectionCopy } from "./source-selection-manager";
@@ -34,17 +40,27 @@ export const metadata = {
 
 type SourceSelectionPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
-export default async function SourceSelectionPage({ params }: SourceSelectionPageProps) {
+export default async function SourceSelectionPage({
+  params,
+  searchParams,
+}: SourceSelectionPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
@@ -95,11 +111,18 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
           actions={
             <>
               <DashboardRetryButton
-                href={`/dashboard/sites/${id}/source-selection`}
+                href={
+                  localizeDashboardRouteHref(
+                    `/dashboard/sites/${id}/source-selection`,
+                    dashboardLocale,
+                  )!
+                }
                 label="Retry source selection"
               />
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+                <Link href={localizeDashboardRouteHref(`/dashboard/sites/${id}`, dashboardLocale)!}>
+                  Site overview
+                </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/dashboard">Dashboard home</Link>
@@ -135,6 +158,7 @@ export default async function SourceSelectionPage({ params }: SourceSelectionPag
         deactivateConfirm={headerLabels.deactivateConfirm}
         activateHelpLabel={headerLabels.activateHelpLabel}
         activateHelp={headerLabels.activateHelp}
+        dashboardLocale={dashboardLocale}
       />
 
       {canEdit && hasUnsupportedSourceSelectionRules ? (

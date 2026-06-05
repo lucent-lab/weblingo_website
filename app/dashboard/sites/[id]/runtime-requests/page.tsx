@@ -13,14 +13,20 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
 import {
   listRuntimeRequestObservationsAction,
   updateRuntimeRequestObservationLifecycleAction,
   updateRuntimeRequestPolicyAction,
 } from "../../../actions";
-import { buildSiteHeaderAccess, buildSiteHeaderLabels } from "../focused-route-utils";
+import {
+  buildSiteHeaderAccess,
+  buildSiteHeaderLabels,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
+  type DashboardRouteSearchParams,
+} from "../focused-route-utils";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { SiteHeader } from "../site-header";
 import { RuntimeRequestsManager, type RuntimeRequestsCopy } from "./runtime-requests-manager";
@@ -32,6 +38,7 @@ export const metadata = {
 
 type RuntimeRequestsPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 type SiteDeveloperToolsProjection = Extract<
@@ -39,15 +46,24 @@ type SiteDeveloperToolsProjection = Extract<
   { meta: { view: "developer_tools" } }
 >;
 
-export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPageProps) {
+export default async function RuntimeRequestsPage({
+  params,
+  searchParams,
+}: RuntimeRequestsPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
@@ -98,14 +114,30 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
           actions={
             <>
               <DashboardRetryButton
-                href={`/dashboard/sites/${id}/runtime-requests`}
+                href={
+                  localizeDashboardRouteHref(
+                    `/dashboard/sites/${id}/runtime-requests`,
+                    dashboardLocale,
+                  )!
+                }
                 label="Retry requests"
               />
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${id}/developer-tools`}>Developer tools</Link>
+                <Link
+                  href={
+                    localizeDashboardRouteHref(
+                      `/dashboard/sites/${id}/developer-tools`,
+                      dashboardLocale,
+                    )!
+                  }
+                >
+                  Developer tools
+                </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href={`/dashboard/sites/${id}`}>Site overview</Link>
+                <Link href={localizeDashboardRouteHref(`/dashboard/sites/${id}`, dashboardLocale)!}>
+                  Site overview
+                </Link>
               </Button>
               <Button asChild variant="ghost">
                 <a href="mailto:contact@weblingo.app?subject=Dashboard%20runtime%20requests%20unavailable">
@@ -136,6 +168,7 @@ export default async function RuntimeRequestsPage({ params }: RuntimeRequestsPag
         deactivateConfirm={headerLabels.deactivateConfirm}
         activateHelpLabel={headerLabels.activateHelpLabel}
         activateHelp={headerLabels.activateHelp}
+        dashboardLocale={dashboardLocale}
       />
 
       {canViewRuntimeRequests ? (

@@ -20,7 +20,7 @@ import {
   type CustomerDeploymentHistoryResponse,
   type CustomerTranslationRunsResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
 import {
   cancelTranslationRunAction,
@@ -31,8 +31,11 @@ import {
   FocusedRouteErrorState,
   formatCount,
   formatDate,
+  getSingleDashboardSearchParam,
+  resolveDashboardRouteLocale,
   StatusValueBadge,
   toneForStatus,
+  type DashboardRouteSearchParams,
 } from "../focused-route-utils";
 
 export const metadata = {
@@ -46,12 +49,7 @@ type HistoryKind = "runs" | "deployments";
 
 type HistoryPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{
-    targetLang?: string;
-    historyType?: string;
-    runsPage?: string;
-    deploymentsPage?: string;
-  }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 export default async function HistoryPage({ params, searchParams }: HistoryPageProps) {
@@ -62,6 +60,12 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
     notFound();
   }
   const authToken = auth.webhooksAuth!;
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   let targetLangs: string[] | null;
   try {
     targetLangs = await getSiteTargetLangsCached(authToken, id);
@@ -74,8 +78,9 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
         description="We could not load the configured target locales for this site. The rest of your site dashboard is still available."
         message="Unable to load the configured target locales."
         siteId={id}
-        retryHref={historyHref(id, {})}
+        retryHref={historyHref(id, { locale: dashboardLocale ?? undefined })}
         retryLabel="Retry history"
+        dashboardLocale={dashboardLocale}
         nextSteps={[
           "Retry this history view once.",
           "Return to the site overview if you need to continue managing this site.",
@@ -87,16 +92,21 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   if (targetLangs === null) {
     notFound();
   }
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const historyType = readHistoryKind(resolvedSearchParams?.historyType);
-  const selectedTargetLang = normalizeTargetLang(resolvedSearchParams?.targetLang);
+  const historyType = readHistoryKind(
+    getSingleDashboardSearchParam(resolvedSearchParams?.historyType),
+  );
+  const selectedTargetLang = normalizeTargetLang(
+    getSingleDashboardSearchParam(resolvedSearchParams?.targetLang),
+  );
   const activeTargetLang =
     selectedTargetLang && targetLangs.includes(selectedTargetLang) ? selectedTargetLang : null;
   const invalidTargetLang = selectedTargetLang !== null && activeTargetLang === null;
   const invalidTargetLangLabel = selectedTargetLang ? selectedTargetLang.toUpperCase() : "";
-  const runsPage = readPageNumber(resolvedSearchParams?.runsPage);
-  const deploymentsPage = readPageNumber(resolvedSearchParams?.deploymentsPage);
+  const runsPage = readPageNumber(getSingleDashboardSearchParam(resolvedSearchParams?.runsPage));
+  const deploymentsPage = readPageNumber(
+    getSingleDashboardSearchParam(resolvedSearchParams?.deploymentsPage),
+  );
   const canManageRuns =
     auth.has({ allFeatures: ["edit", "crawl_trigger"] }) && auth.mutationsAllowed;
 
@@ -129,6 +139,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
     const retryHref = historyHref(id, {
       targetLang: activeTargetLang,
       historyType,
+      locale: dashboardLocale ?? undefined,
       runsPage: historyType === "runs" ? String(runsPage) : undefined,
       deploymentsPage: historyType === "deployments" ? String(deploymentsPage) : undefined,
     });
@@ -141,6 +152,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
         siteId={id}
         retryHref={retryHref}
         retryLabel="Retry history"
+        dashboardLocale={dashboardLocale}
         nextSteps={[
           "Retry this history view once.",
           "Switch to another locale or history stream if you need a different record.",
@@ -165,6 +177,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
             action={`/dashboard/sites/${id}/history`}
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
           >
+            {dashboardLocale ? <input name="locale" type="hidden" value={dashboardLocale} /> : null}
             <input name="historyType" type="hidden" value={historyType} />
             <div className="w-full max-w-xs space-y-1">
               <label className="text-xs font-medium text-muted-foreground" htmlFor="targetLang">
@@ -190,6 +203,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
                   href={historyHref(id, {
                     targetLang: activeTargetLang,
                     historyType: "runs",
+                    locale: dashboardLocale ?? undefined,
                   })}
                 >
                   Translation runs
@@ -204,6 +218,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
                   href={historyHref(id, {
                     targetLang: activeTargetLang,
                     historyType: "deployments",
+                    locale: dashboardLocale ?? undefined,
                   })}
                 >
                   Deployments
@@ -240,6 +255,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
           siteId={id}
           t={t}
           targetLang={activeTargetLang}
+          dashboardLocale={dashboardLocale}
         />
       ) : runs ? (
         <TranslationRunsCard
@@ -249,6 +265,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
           siteId={id}
           t={t}
           targetLang={activeTargetLang}
+          dashboardLocale={dashboardLocale}
         />
       ) : null}
     </div>
@@ -257,6 +274,7 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
 
 function TranslationRunsCard({
   canManageRuns,
+  dashboardLocale,
   page,
   response,
   siteId,
@@ -264,6 +282,7 @@ function TranslationRunsCard({
   targetLang,
 }: {
   canManageRuns: boolean;
+  dashboardLocale: string | null;
   page: number;
   response: CustomerTranslationRunsResponse;
   siteId: string;
@@ -316,6 +335,7 @@ function TranslationRunsCard({
           nextOffset={response.pagination.nextOffset}
           siteId={siteId}
           targetLang={targetLang}
+          dashboardLocale={dashboardLocale}
         />
       </CardContent>
     </Card>
@@ -401,12 +421,14 @@ function RunActions({
 }
 
 function DeploymentsCard({
+  dashboardLocale,
   page,
   response,
   siteId,
   t,
   targetLang,
 }: {
+  dashboardLocale: string | null;
   page: number;
   response: CustomerDeploymentHistoryResponse;
   siteId: string;
@@ -474,6 +496,7 @@ function DeploymentsCard({
           nextOffset={response.pagination.nextOffset}
           siteId={siteId}
           targetLang={targetLang}
+          dashboardLocale={dashboardLocale}
         />
       </CardContent>
     </Card>
@@ -491,12 +514,14 @@ function HistoryMetric({ label, value }: { label: string; value: string }) {
 
 function PaginationLinks({
   currentPage,
+  dashboardLocale,
   historyType,
   nextOffset,
   siteId,
   targetLang,
 }: {
   currentPage: number;
+  dashboardLocale: string | null;
   historyType: HistoryKind;
   nextOffset?: number | null;
   siteId: string;
@@ -513,6 +538,7 @@ function PaginationLinks({
             href={historyHref(siteId, {
               targetLang,
               historyType,
+              locale: dashboardLocale ?? undefined,
               [pageParam]: String(previousPage),
             })}
           >
@@ -533,6 +559,7 @@ function PaginationLinks({
             href={historyHref(siteId, {
               targetLang,
               historyType,
+              locale: dashboardLocale ?? undefined,
               [pageParam]: String(nextPage),
             })}
           >

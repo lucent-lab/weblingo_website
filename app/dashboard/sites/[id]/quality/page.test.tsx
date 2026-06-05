@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   fetchSiteDashboardProjection: vi.fn(),
   fetchGlossary: vi.fn(),
   fetchConsistencyCpm: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => locale),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -30,6 +31,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   WebhooksApiError: class WebhooksApiError extends Error {},
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));

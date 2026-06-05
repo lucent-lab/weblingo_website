@@ -13,14 +13,16 @@ import {
 } from "@internal/dashboard/webhooks";
 import { listSupportedLanguagesCached } from "@internal/dashboard/data";
 import { deriveSiteSettingsAccess } from "@internal/dashboard/site-settings";
-import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 import {
   buildSiteHeaderAccess,
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatDate,
+  resolveDashboardRouteLocale,
   SummaryRow,
+  type DashboardRouteSearchParams,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
 import { PageSectionNav } from "../page-section-nav";
@@ -33,18 +35,25 @@ export const metadata = {
 
 type SettingsPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 type SettingsProjection = Extract<SiteDashboardProjectionResponse, { meta: { view: "settings" } }>;
 
-export default async function SettingsPage({ params }: SettingsPageProps) {
+export default async function SettingsPage({ params, searchParams }: SettingsPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const settingsAccess = deriveSiteSettingsAccess({
     has: auth.has,
@@ -79,6 +88,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           siteId={id}
           retryHref={`/dashboard/sites/${id}/settings`}
           retryLabel="Retry settings"
+          dashboardLocale={dashboardLocale}
           nextSteps={[
             "Retry settings.",
             "Open the site overview to check current health and next actions.",
@@ -141,6 +151,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         canEdit={siteHeaderAccess.canEdit}
         canPauseTranslations={siteHeaderAccess.canPauseTranslations}
         canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        dashboardLocale={dashboardLocale}
         {...headerLabels}
       />
 

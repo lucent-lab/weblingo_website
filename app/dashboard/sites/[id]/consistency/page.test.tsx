@@ -35,13 +35,13 @@ describe("SiteConsistencyPage", () => {
     await expect(
       SiteConsistencyPage({
         params: Promise.resolve({ id: "site-demo" }),
-        searchParams: Promise.resolve({ sourceLang: "en", targetLang: "fr" }),
+        searchParams: Promise.resolve({ locale: "fr", sourceLang: "en", targetLang: "fr" }),
       }),
     ).rejects.toThrow(
-      "NEXT_REDIRECT:/dashboard/sites/site-demo/overrides?sourceLang=en&targetLang=fr",
+      "NEXT_REDIRECT:/dashboard/sites/site-demo/overrides?locale=fr&sourceLang=en&targetLang=fr",
     );
     expect(mocks.redirect).toHaveBeenCalledWith(
-      "/dashboard/sites/site-demo/overrides?sourceLang=en&targetLang=fr",
+      "/dashboard/sites/site-demo/overrides?locale=fr&sourceLang=en&targetLang=fr",
     );
     expect(mocks.notFound).not.toHaveBeenCalled();
   });

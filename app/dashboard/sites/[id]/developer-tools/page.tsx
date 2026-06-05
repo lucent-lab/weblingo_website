@@ -15,7 +15,7 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
+import { resolveLocaleTranslator } from "@internal/i18n";
 
 import { fetchSwitcherSnippetsAction } from "../../../actions";
 import {
@@ -23,9 +23,12 @@ import {
   buildSiteHeaderLabels,
   FocusedRouteErrorState,
   formatDate,
+  localizeDashboardRouteHref,
+  resolveDashboardRouteLocale,
   StatusValueBadge,
   SummaryRow,
   toneForStatus,
+  type DashboardRouteSearchParams,
 } from "../focused-route-utils";
 import { SiteHeader } from "../site-header";
 import { SwitcherSnippetsCard } from "./switcher-snippets-card";
@@ -37,6 +40,7 @@ export const metadata = {
 
 type DeveloperToolsPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<DashboardRouteSearchParams>;
 };
 
 type DeveloperToolsProjection = Extract<
@@ -44,14 +48,23 @@ type DeveloperToolsProjection = Extract<
   { meta: { view: "developer_tools" } }
 >;
 
-export default async function DeveloperToolsPage({ params }: DeveloperToolsPageProps) {
+export default async function DeveloperToolsPage({
+  params,
+  searchParams,
+}: DeveloperToolsPageProps) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
   const authToken = auth.webhooksAuth!;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const routeLocale = resolveDashboardRouteLocale(
+    resolvedSearchParams,
+    (await headers()).get("accept-language"),
+  );
+  const locale = routeLocale.locale;
+  const dashboardLocale = routeLocale.dashboardLocale;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess(auth);
 
@@ -77,6 +90,7 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
           siteId={id}
           retryHref={`/dashboard/sites/${id}/developer-tools`}
           retryLabel="Retry tools"
+          dashboardLocale={dashboardLocale}
           nextSteps={[
             "Retry developer tools.",
             "Open the site overview if you need to continue with non-developer tasks.",
@@ -98,6 +112,7 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
         canEdit={siteHeaderAccess.canEdit}
         canPauseTranslations={siteHeaderAccess.canPauseTranslations}
         canResumeTranslations={siteHeaderAccess.canResumeTranslations}
+        dashboardLocale={dashboardLocale}
         {...headerLabels}
       />
 
@@ -197,7 +212,14 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
               />
             </dl>
             <Button asChild variant="outline">
-              <Link href={`/dashboard/sites/${projection.site.id}/runtime-requests`}>
+              <Link
+                href={
+                  localizeDashboardRouteHref(
+                    `/dashboard/sites/${projection.site.id}/runtime-requests`,
+                    dashboardLocale,
+                  )!
+                }
+              >
                 <ShieldCheck className="h-4 w-4" />
                 Open runtime requests
               </Link>
@@ -207,7 +229,14 @@ export default async function DeveloperToolsPage({ params }: DeveloperToolsPageP
       </div>
 
       <Button asChild variant="link">
-        <Link href={`/dashboard/sites/${projection.site.id}/settings`}>
+        <Link
+          href={
+            localizeDashboardRouteHref(
+              `/dashboard/sites/${projection.site.id}/settings`,
+              dashboardLocale,
+            )!
+          }
+        >
           <ExternalLink className="h-4 w-4" />
           Open settings
         </Link>

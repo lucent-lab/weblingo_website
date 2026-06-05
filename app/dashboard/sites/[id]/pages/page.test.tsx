@@ -1,10 +1,11 @@
 import { isValidElement } from "react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   fetchSitePages: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => locale),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -42,6 +43,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   },
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
@@ -78,6 +80,10 @@ function makeCompactStatus() {
 }
 
 describe("SitePagesPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("uses one direct pages response instead of legacy dashboard or extra status payloads", async () => {
     const webhooksAuth = {
       token: "token",
@@ -145,6 +151,63 @@ describe("SitePagesPage", () => {
     expect(mocks.fetchSitePages).toHaveBeenCalledWith(webhooksAuth, "site-1", {
       limit: 25,
       offset: 0,
+    });
+  });
+
+  it("uses an explicit dashboard handoff locale when loading pages", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: {
+        dailyCrawlUsage: { pageCrawls: 0, siteCrawls: 0 },
+        featureFlags: { maxDailyPageRecrawls: null, maxDailyRecrawls: null },
+      },
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSitePages.mockResolvedValue({
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        status: "active",
+      },
+      status: makeCompactStatus(),
+      pagesSummary: null,
+      pages: [],
+      pagination: {
+        limit: 25,
+        offset: 25,
+        total: 60,
+        hasMore: true,
+      },
+    });
+
+    vi.resetModules();
+    const { default: SitePagesPage } = await import("./page");
+
+    await SitePagesPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ locale: "fr", page: "2" }),
+    });
+
+    const calls = mocks.resolveLocaleTranslator.mock.calls as unknown as Array<
+      [Promise<{ locale: string }>]
+    >;
+    const localeArg = await calls[0]?.[0];
+    expect(localeArg).toEqual({ locale: "fr" });
+    expect(mocks.fetchSitePages).toHaveBeenCalledWith(webhooksAuth, "site-1", {
+      limit: 25,
+      offset: 25,
     });
   });
 });

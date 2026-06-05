@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 
 import {
   convertProspectDemoAction,
@@ -38,14 +39,16 @@ const initialState: ProspectDemoConversionActionState = {
 const RESUBMIT_NEXT_ACTIONS = new Set(["complete_payment", "retry_payment", "wait_for_activation"]);
 
 export function ProspectDemoConversionCard({
+  dashboardLocale = null,
   copy,
   siteId,
 }: {
+  dashboardLocale?: string | null;
   copy: ProspectDemoConversionCardCopy;
   siteId: string;
 }) {
   const [state, formAction, pending] = useActionState(convertProspectDemoAction, initialState);
-  const followUpAction = resolveFollowUpAction({ copy, siteId, state });
+  const followUpAction = resolveFollowUpAction({ copy, dashboardLocale, siteId, state });
 
   return (
     <Card className="border-primary/30 bg-primary/5">
@@ -118,10 +121,12 @@ type FollowUpAction =
 
 function resolveFollowUpAction({
   copy,
+  dashboardLocale,
   siteId,
   state,
 }: {
   copy: ProspectDemoConversionCardCopy;
+  dashboardLocale: string | null;
   siteId: string;
   state: ProspectDemoConversionActionState;
 }): FollowUpAction | null {
@@ -144,7 +149,10 @@ function resolveFollowUpAction({
       label: copy.nextActions[meta.nextAction] ?? copy.nextActions.default,
     };
   }
-  const dashboardPath = `/dashboard/sites/${encodeURIComponent(siteId)}`;
+  const dashboardPath = withDashboardLocale(
+    `/dashboard/sites/${encodeURIComponent(siteId)}`,
+    dashboardLocale,
+  );
   if (meta.nextAction === "open_dashboard") {
     return {
       kind: "link",
