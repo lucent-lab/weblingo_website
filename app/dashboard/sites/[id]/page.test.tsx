@@ -8,6 +8,7 @@ import type { SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks"
 const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   getSiteCustomerOverviewCached: vi.fn(),
+  normalizeLocale: vi.fn((locale: string) => (["en", "fr", "ja"].includes(locale) ? locale : "en")),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -41,6 +42,7 @@ vi.mock("@internal/dashboard/webhooks", () => ({
   },
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: mocks.normalizeLocale,
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
@@ -212,6 +214,42 @@ describe("SitePage", () => {
       "/dashboard/sites/site-1/domains#domain-fr-example-com",
     );
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
+  });
+
+  it("prefers an explicit handoff locale over Accept-Language on the real site page", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: null,
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(makeOverview());
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ locale: "fr" }),
+    });
+
+    const calls = mocks.resolveLocaleTranslator.mock.calls as unknown as Array<
+      [Promise<{ locale: string }>]
+    >;
+    const localeArg = await calls[0]?.[0];
+    expect(localeArg).toEqual({ locale: "fr" });
+    expect(mocks.resolvePreferredLocale).not.toHaveBeenCalled();
   });
 
   it("renders demo scoped auth on the real site page", async () => {

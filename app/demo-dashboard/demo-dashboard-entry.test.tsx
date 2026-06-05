@@ -78,6 +78,21 @@ describe("DemoDashboardEntry", () => {
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
   });
 
+  it("preserves an explicit public demo locale on the real dashboard handoff", async () => {
+    window.history.replaceState(null, "", "/fr/dashboard/demo#token=fragment-token");
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ demo: true, redirectUrl: "/dashboard/sites/site-demo" }),
+    );
+    const navigate = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry dashboardLocale="fr" messages={messages} navigate={navigate} />);
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith("/dashboard/sites/site-demo?locale=fr");
+    });
+  });
+
   it("renders an error when the claim response is invalid", async () => {
     window.history.replaceState(null, "", "/dashboard/demo#token=fragment-token");
     const fetchMock = vi.fn(async () =>

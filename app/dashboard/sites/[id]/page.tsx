@@ -22,7 +22,13 @@ import { getSiteCustomerOverviewCached } from "@internal/dashboard/data";
 import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
+import {
+  normalizeLocale,
+  resolveLocaleTranslator,
+  resolvePreferredLocale,
+  type Locale,
+  type Translator,
+} from "@internal/i18n";
 
 import {
   ProspectDemoConversionCard,
@@ -31,6 +37,7 @@ import {
 
 type SitePageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 type CustomerLanguage = SiteCustomerOverviewResponse["languages"][number];
@@ -40,7 +47,7 @@ type CustomerError = SiteCustomerOverviewResponse["errors"][number];
 type CustomerBlocker = SiteCustomerOverviewResponse["blockers"][number];
 type CustomerCta = SiteCustomerOverviewResponse["nextAction"]["cta"];
 
-export default async function SitePage({ params }: SitePageProps) {
+export default async function SitePage({ params, searchParams }: SitePageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
   if (!isDashboardAuthScopedToSite(auth, id)) {
@@ -48,7 +55,11 @@ export default async function SitePage({ params }: SitePageProps) {
   }
   const demoSession = auth.accessMode === "demo" ? auth.demoSession : null;
   const authToken = auth.webhooksAuth!;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const requestHeaders = await headers();
+  const locale = resolveDashboardSitePageLocale(
+    searchParams ? await searchParams : undefined,
+    requestHeaders.get("accept-language"),
+  );
   const pricingPath = `/${locale}/pricing`;
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
 
@@ -267,6 +278,20 @@ function buildProspectDemoConversionCopy(t: Translator): ProspectDemoConversionC
       default: t("dashboard.prospectDemoConversion.nextActions.default"),
     },
   };
+}
+
+function resolveDashboardSitePageLocale(
+  searchParams: Record<string, string | string[] | undefined> | undefined,
+  acceptLanguage: string | null,
+): Locale {
+  const requestedLocale = getSingleSearchParam(searchParams?.locale);
+  return requestedLocale
+    ? normalizeLocale(requestedLocale)
+    : resolvePreferredLocale(acceptLanguage);
+}
+
+function getSingleSearchParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function WorkspaceSummaryCard({

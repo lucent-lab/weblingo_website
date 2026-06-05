@@ -7,6 +7,7 @@ import {
   getMessages,
   normalizeLocale,
   resolvePreferredLocale,
+  type Locale,
   type Messages,
 } from "@internal/i18n";
 
@@ -25,23 +26,23 @@ export async function generateMetadata({
 }
 
 export default async function DemoDashboardPage({ searchParams }: DemoDashboardPageProps) {
-  const { messages } = await resolveDemoDashboardMessages(searchParams);
-  return <DemoDashboardEntry messages={messages} />;
+  const { explicitLocale, messages } = await resolveDemoDashboardMessages(searchParams);
+  return <DemoDashboardEntry dashboardLocale={explicitLocale} messages={messages} />;
 }
 
 async function resolveDemoDashboardMessages(
   searchParams?: DemoDashboardPageProps["searchParams"],
 ): Promise<{
+  explicitLocale: Locale | null;
   messages: Messages;
   t: ReturnType<typeof createTranslator>;
 }> {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedLocale = getSingleSearchParam(resolvedSearchParams?.locale);
-  const locale = requestedLocale
-    ? normalizeLocale(requestedLocale)
-    : resolvePreferredLocale((await headers()).get("accept-language"));
+  const explicitLocale = requestedLocale ? normalizeLocale(requestedLocale) : null;
+  const locale = explicitLocale ?? resolvePreferredLocale((await headers()).get("accept-language"));
   const messages = await getMessages(locale);
-  return { messages, t: createTranslator(messages) };
+  return { explicitLocale, messages, t: createTranslator(messages) };
 }
 
 function getSingleSearchParam(value: string | string[] | undefined) {

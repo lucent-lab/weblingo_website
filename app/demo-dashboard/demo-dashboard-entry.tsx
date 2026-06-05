@@ -59,6 +59,15 @@ function parseClaimBridgeResponse(value: unknown): ClaimBridgeResponse | null {
   };
 }
 
+function withDashboardLocale(redirectUrl: string, dashboardLocale: string | null): string {
+  if (!dashboardLocale) {
+    return redirectUrl;
+  }
+  const url = new URL(redirectUrl, "https://weblingo.app");
+  url.searchParams.set("locale", dashboardLocale);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function readDemoAccessTokenFromLocation(): string {
   if (typeof window === "undefined") {
     return "";
@@ -116,10 +125,12 @@ function scrubDemoAccessTokenFromLocation(): void {
 
 export function DemoDashboardEntry({
   accessToken = "",
+  dashboardLocale = null,
   messages,
   navigate,
 }: {
   accessToken?: AccessTokenInput;
+  dashboardLocale?: string | null;
   messages: ClientMessages;
   navigate?: (href: string) => void;
 }) {
@@ -129,6 +140,7 @@ export function DemoDashboardEntry({
   return (
     <DemoDashboardBridge
       accessToken={trimmedToken}
+      dashboardLocale={dashboardLocale}
       messages={messages}
       navigate={navigate ?? ((href) => window.location.assign(href))}
     />
@@ -137,10 +149,12 @@ export function DemoDashboardEntry({
 
 function DemoDashboardBridge({
   accessToken,
+  dashboardLocale,
   messages,
   navigate,
 }: {
   accessToken: string;
+  dashboardLocale: string | null;
   messages: ClientMessages;
   navigate: (href: string) => void;
 }) {
@@ -188,7 +202,7 @@ function DemoDashboardBridge({
           });
           return;
         }
-        navigate(parsed.redirectUrl);
+        navigate(withDashboardLocale(parsed.redirectUrl, dashboardLocale));
       } catch {
         if (isCanceled()) {
           return;
@@ -200,7 +214,7 @@ function DemoDashboardBridge({
         });
       }
     },
-    [navigate, t],
+    [dashboardLocale, navigate, t],
   );
 
   const resendAccessLink = useCallback(
