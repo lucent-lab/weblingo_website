@@ -19,10 +19,17 @@ publicDemoDashboardPaths.add("/dashboard/demo");
 publicDemoDashboardPaths.add("/dashboard/demo/");
 
 function resolveDashboardReturnPath(pathname: string, search: string): string | null {
-  if (!normalizeDashboardPathname(pathname)) {
+  const dashboardPathname = normalizeDashboardPathname(pathname);
+  if (!dashboardPathname) {
     return null;
   }
-  return `${pathname}${search}`;
+  const searchParams = new URLSearchParams(search);
+  const locale = getLocalePrefixedDashboardPathname(pathname);
+  if (locale && !searchParams.has("locale")) {
+    searchParams.set("locale", locale);
+  }
+  const query = searchParams.toString();
+  return `${dashboardPathname}${query ? `?${query}` : ""}`;
 }
 
 function isDemoDashboardSessionPath(pathname: string): boolean {
@@ -60,6 +67,19 @@ function normalizeDashboardPathname(pathname: string): string | null {
     parts[1] === "dashboard"
   ) {
     return `/${parts.slice(1).join("/")}${pathname.endsWith("/") ? "/" : ""}`;
+  }
+  return null;
+}
+
+function getLocalePrefixedDashboardPathname(pathname: string): Locale | null {
+  const parts = pathname.split("/").filter(Boolean);
+  const maybeLocale = parts[0];
+  if (
+    maybeLocale &&
+    i18nConfig.locales.includes(maybeLocale as Locale) &&
+    parts[1] === "dashboard"
+  ) {
+    return maybeLocale as Locale;
   }
   return null;
 }

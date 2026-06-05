@@ -30,6 +30,7 @@ import {
   getActiveAgencyCustomers,
   getDashboardAuth,
   hasActorInternalOps,
+  shouldRecoverDashboardDemoSession,
   type DashboardAuth,
   type WebhooksAuthContext,
 } from "@internal/dashboard/auth";
@@ -138,6 +139,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const requestHeaders = await headers();
   const auth = await getDashboardAuth();
   if (!auth.user || !auth.session) {
+    if (await shouldRecoverDashboardDemoSession(auth)) {
+      redirect("/dashboard/demo");
+    }
     redirect("/auth/login");
   }
   if (!auth.webhooksAuth || !auth.account) {

@@ -127,11 +127,15 @@ export function DemoDashboardEntry({
   navigate?: (href: string) => void;
 }) {
   const searchParams = useSearchParams();
-  const trimmedToken =
-    normalizeAccessToken(accessToken) || normalizeAccessToken(searchParams.get("token"));
+  const [initialToken] = useState(
+    () =>
+      normalizeAccessToken(accessToken) ||
+      normalizeAccessToken(searchParams.get("token")) ||
+      readDemoAccessTokenFromLocation(),
+  );
   return (
     <DemoDashboardBridge
-      accessToken={trimmedToken}
+      accessToken={initialToken}
       dashboardLocale={dashboardLocale}
       messages={messages}
       navigate={navigate ?? ((href) => window.location.assign(href))}
@@ -253,11 +257,10 @@ function DemoDashboardBridge({
 
   useEffect(() => {
     let canceled = false;
-    const token = accessToken || readDemoAccessTokenFromLocation();
     scrubDemoAccessTokenFromLocation();
     void Promise.resolve().then(() => {
       if (!canceled) {
-        void claimAndEnterDashboard(token, () => canceled);
+        void claimAndEnterDashboard(accessToken, () => canceled);
       }
     });
     return () => {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { Session, User } from "@supabase/supabase-js";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
@@ -26,7 +26,10 @@ import {
   readDashboardDemoSession,
   type DashboardDemoSession,
 } from "./demo-session";
-import { DASHBOARD_DEMO_SCOPE_HEADER } from "./demo-session-constants";
+import {
+  DASHBOARD_DEMO_SCOPE_HEADER,
+  DASHBOARD_DEMO_SESSION_COOKIE,
+} from "./demo-session-constants";
 
 export type WebhooksAuthContext = {
   token: string;
@@ -374,6 +377,19 @@ async function buildDashboardDemoAuth(): Promise<DashboardAuth | null> {
 async function isDashboardDemoScopeRequest(): Promise<boolean> {
   const requestHeaders = await headers();
   return requestHeaders.get(DASHBOARD_DEMO_SCOPE_HEADER) === "1";
+}
+
+export async function shouldRecoverDashboardDemoSession(
+  auth: Pick<DashboardAuth, "accessMode" | "session" | "user">,
+): Promise<boolean> {
+  if (auth.accessMode !== "anonymous" || auth.user || auth.session) {
+    return false;
+  }
+  const [requestHeaders, cookieStore] = await Promise.all([headers(), cookies()]);
+  return (
+    requestHeaders.get(DASHBOARD_DEMO_SCOPE_HEADER) === "1" &&
+    Boolean(cookieStore.get(DASHBOARD_DEMO_SESSION_COOKIE)?.value.trim())
+  );
 }
 
 async function getBootstrap({

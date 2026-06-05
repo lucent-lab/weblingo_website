@@ -123,7 +123,7 @@ describe("updateSession", () => {
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://weblingo.app/auth/login?next=%2Fen%2Fdashboard%2Fsites%2Fsite-customer%3Ftab%3Dbilling",
+      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fsite-customer%3Ftab%3Dbilling%26locale%3Den",
     );
   });
 
@@ -265,7 +265,7 @@ describe("updateSession", () => {
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://weblingo.app/auth/login?next=%2Ffr%2Fdashboard%2Fsites%2Fnew",
+      "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fnew%3Flocale%3Dfr",
     );
   });
 

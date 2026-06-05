@@ -78,6 +78,30 @@ describe("DemoDashboardEntry", () => {
     expect(window.sessionStorage.getItem("weblingo:demo-dashboard:claim:v1")).toBeNull();
   });
 
+  it("keeps the captured query token stable after the URL is scrubbed", async () => {
+    searchParamsState.value = new URLSearchParams("token=query-token");
+    window.history.replaceState(null, "", "/dashboard/demo?token=query-token");
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ demo: true, redirectUrl: "/dashboard/sites/site-query" }),
+    );
+    const navigate = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DemoDashboardEntry messages={messages} navigate={navigate} />);
+    searchParamsState.value = new URLSearchParams();
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith("/dashboard/sites/site-query");
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/prospect-showcases/claim",
+      expect.objectContaining({
+        body: JSON.stringify({ token: "query-token" }),
+      }),
+    );
+  });
+
   it("preserves an explicit public demo locale on the real dashboard handoff", async () => {
     window.history.replaceState(null, "", "/fr/dashboard/demo#token=fragment-token");
     const fetchMock = vi.fn(async () =>

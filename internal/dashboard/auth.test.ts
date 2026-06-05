@@ -390,6 +390,41 @@ describe("getDashboardAuth", () => {
     expect(fetchAccountMe).not.toHaveBeenCalled();
   });
 
+  it("marks anonymous demo-scoped requests with a stale demo cookie for recovery", async () => {
+    enableDemoDashboardScopeRequest();
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
+
+    vi.resetModules();
+    const { shouldRecoverDashboardDemoSession } = await import("./auth");
+
+    await expect(
+      shouldRecoverDashboardDemoSession({
+        accessMode: "anonymous",
+        user: null,
+        session: null,
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("does not mark normal anonymous requests for demo recovery", async () => {
+    cookiesStore.get.mockImplementation((name: string) =>
+      name === "weblingo_dashboard_demo" ? { value: "opaque-demo-session" } : undefined,
+    );
+
+    vi.resetModules();
+    const { shouldRecoverDashboardDemoSession } = await import("./auth");
+
+    await expect(
+      shouldRecoverDashboardDemoSession({
+        accessMode: "anonymous",
+        user: null,
+        session: null,
+      }),
+    ).resolves.toBe(false);
+  });
+
   it("uses the actor workspace when no subject workspace is requested", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn

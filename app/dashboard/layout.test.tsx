@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getDashboardAuth = vi.fn();
+const shouldRecoverDashboardDemoSession = vi.fn();
 const redirect = vi.fn((path: string) => {
   throw new Error(`redirect:${path}`);
 });
@@ -15,6 +16,7 @@ vi.mock("@internal/dashboard/auth", () => ({
   getDashboardAuth,
   getActiveAgencyCustomers: vi.fn(() => []),
   hasActorInternalOps: vi.fn(() => false),
+  shouldRecoverDashboardDemoSession,
 }));
 
 vi.mock("@internal/dashboard/data", () => ({
@@ -25,6 +27,8 @@ vi.mock("@internal/dashboard/data", () => ({
 describe("DashboardLayout", () => {
   beforeEach(() => {
     getDashboardAuth.mockReset();
+    shouldRecoverDashboardDemoSession.mockReset();
+    shouldRecoverDashboardDemoSession.mockResolvedValue(false);
     redirect.mockClear();
   });
 
@@ -54,6 +58,24 @@ describe("DashboardLayout", () => {
     });
 
     await expect(DashboardLayout({ children: <div /> })).rejects.toThrow("redirect:/auth/login");
+  });
+
+  it("routes stale demo-scoped anonymous sessions back to demo recovery", async () => {
+    const { default: DashboardLayout } = await import("./layout");
+    const auth = {
+      accessMode: "anonymous",
+      user: null,
+      session: null,
+      webhooksAuth: null,
+      account: null,
+    };
+    getDashboardAuth.mockResolvedValueOnce(auth);
+    shouldRecoverDashboardDemoSession.mockResolvedValueOnce(true);
+
+    await expect(DashboardLayout({ children: <div /> })).rejects.toThrow(
+      "redirect:/dashboard/demo",
+    );
+    expect(shouldRecoverDashboardDemoSession).toHaveBeenCalledWith(auth);
   });
 
   it("uses fresh site reads for customer shell site navigation and counts", async () => {
