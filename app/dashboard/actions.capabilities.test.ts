@@ -304,6 +304,42 @@ describe("dashboard capability actions", () => {
     expect(updateGlossary).not.toHaveBeenCalled();
   });
 
+  it("returns glossary quota details when the backend rejects over-limit demo entries", async () => {
+    updateGlossary.mockRejectedValue(
+      new MockWebhooksApiError("Glossary exceeds plan limit", 403, {
+        maxGlossarySources: 2,
+        uniqueSources: 3,
+      }),
+    );
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "glossary"),
+    });
+    const { updateGlossaryAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-demo");
+    formData.set(
+      "entries",
+      JSON.stringify([
+        { source: "One", target: "Un", targetLangs: ["en"] },
+        { source: "Two", target: "Deux", targetLangs: ["en"] },
+        { source: "Three", target: "Trois", targetLangs: ["en"] },
+      ]),
+    );
+
+    await expect(updateGlossaryAction(undefined, formData)).resolves.toEqual({
+      ok: false,
+      message: "This demo allows up to 2 glossary source terms. You tried to save 3.",
+      meta: undefined,
+    });
+  });
+
   it("updates digest subscription and returns off-specific messaging", async () => {
     upsertDigestSubscription.mockResolvedValue({
       id: "sub-1",

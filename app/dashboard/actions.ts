@@ -180,6 +180,24 @@ function toFriendlyDashboardActionErrorWithDetails(
   return { message: toFriendlyDashboardActionError(error, fallback), details: null };
 }
 
+function toFriendlyGlossaryActionError(error: unknown, fallback: string): string {
+  if (error instanceof WebhooksApiError) {
+    const details = error.details;
+    if (details && typeof details === "object" && !Array.isArray(details)) {
+      const maxGlossarySources = (details as Record<string, unknown>).maxGlossarySources;
+      const uniqueSources = (details as Record<string, unknown>).uniqueSources;
+      if (typeof maxGlossarySources === "number" && Number.isFinite(maxGlossarySources)) {
+        const attempted =
+          typeof uniqueSources === "number" && Number.isFinite(uniqueSources)
+            ? ` You tried to save ${uniqueSources}.`
+            : "";
+        return `This demo allows up to ${maxGlossarySources} glossary source terms.${attempted}`;
+      }
+    }
+  }
+  return toFriendlyDashboardActionError(error, fallback);
+}
+
 function isNextRedirectError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -2113,7 +2131,7 @@ export async function updateGlossaryAction(
     if (isNextRedirectError(error)) {
       throw error;
     }
-    return failed(toFriendlyDashboardActionError(error, "Unable to save glossary."));
+    return failed(toFriendlyGlossaryActionError(error, "Unable to save glossary."));
   }
 }
 
