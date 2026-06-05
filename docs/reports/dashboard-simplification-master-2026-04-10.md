@@ -29,7 +29,6 @@ Scope:
   - [app/dashboard/agency/customers/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/agency/customers/page.tsx)
   - [app/dashboard/ops/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/ops/page.tsx)
   - [app/dashboard/ops/accounts/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/ops/accounts/page.tsx)
-  - [app/dashboard/ops/previews/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/ops/previews/page.tsx)
   - [app/dashboard/ops/showcases/page.tsx](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/app/dashboard/ops/showcases/page.tsx)
 - Contracts and gating:
   - [internal/dashboard/auth.ts](/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_website/internal/dashboard/auth.ts)

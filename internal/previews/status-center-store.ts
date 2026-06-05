@@ -4,11 +4,9 @@ import {
   isPreviewJobTerminal,
   parsePreviewRetryHint,
   reducePreviewJob,
-  resolveNextPreviewJobPhase,
   resolvePreviewRetryHintDelayMs,
   type PreviewJob,
   type PreviewJobEvent,
-  type PreviewJobKind,
   type PreviewJobPatch,
   type PreviewJobPhase,
   type PreviewJobUpsertInput,
@@ -27,6 +25,7 @@ export const ACTIVE_PREVIEW_SESSION_STORAGE_KEY = "weblingo:try-form:active-prev
 export const DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS = 5_000;
 export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
+const PROSPECT_SHOWCASE_REQUEST_KEY_KIND = "prospect_showcase";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;
 const STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -41,7 +40,6 @@ export type PreviewStatusCenterState = {
 };
 
 export type ParsedPreviewStatusCenterRequestKey = {
-  kind: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
@@ -84,16 +82,8 @@ export type PreviewStatusCenterStoreEvent =
 
 type Listener = () => void;
 
-type LegacyPendingPreviewState = {
-  previewId: string;
-  statusToken: string;
-  requestKey: string;
-  updatedAt: number;
-};
-
 type ReadJobsResult = {
   jobs: PreviewStatusCenterJob[];
-  migratedFromLegacy: boolean;
   unknownPhaseDrops: number;
 };
 
@@ -189,14 +179,13 @@ function decodeRequestKeyPart(value: string): string {
 }
 
 export function buildPreviewStatusCenterRequestKey(input: {
-  kind?: PreviewJobKind;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
   email?: string | null;
 }): string {
   const parts = [
-    input.kind ?? "preview",
+    PROSPECT_SHOWCASE_REQUEST_KEY_KIND,
     input.sourceUrl.trim(),
     normalizeLangTagForRequestKey(input.sourceLang),
     normalizeLangTagForRequestKey(input.targetLang),
@@ -213,11 +202,10 @@ export function parsePreviewStatusCenterRequestKey(
   if (requestKey.startsWith(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX)) {
     const encoded = requestKey.slice(PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX.length);
     const parts = encoded.split("|");
-    const hasKind = parts[0] === "preview" || parts[0] === "prospect_showcase";
-    const kind: PreviewJobKind = hasKind ? (parts[0] as PreviewJobKind) : "preview";
-    const [, sourceUrl, sourceLang, targetLang, email = "", ...rest] = hasKind
-      ? parts
-      : ["preview", ...parts];
+    const [kind, sourceUrl, sourceLang, targetLang, email = "", ...rest] = parts;
+    if (decodeRequestKeyPart(kind) !== PROSPECT_SHOWCASE_REQUEST_KEY_KIND) {
+      return null;
+    }
     if (!sourceUrl || !sourceLang || !targetLang || rest.length > 0) {
       return null;
     }
@@ -229,44 +217,25 @@ export function parsePreviewStatusCenterRequestKey(
       return null;
     }
     return {
-      kind,
       sourceUrl: decodedSourceUrl,
       sourceLang: decodedSourceLang,
       targetLang: decodedTargetLang,
       email: decodedEmail,
     };
   }
-
-  const [sourceUrl, sourceLang, targetLang, ...rest] = requestKey.split("|");
-  if (!sourceUrl || !sourceLang || !targetLang) {
-    return null;
-  }
-  return {
-    kind: "preview",
-    sourceUrl,
-    sourceLang,
-    targetLang,
-    email: rest.join("|"),
-  };
+  return null;
 }
 
-function resolveCanonicalRequestKey(
-  requestKey: string | null | undefined,
-  fallback: {
-    kind?: PreviewJobKind;
-    sourceUrl: string;
-    sourceLang: string;
-    targetLang: string;
-    email?: string | null;
-  },
-): string {
+function resolveCanonicalRequestKey(requestKey: string | null | undefined): string | null {
   const parsed = requestKey ? parsePreviewStatusCenterRequestKey(requestKey) : null;
+  if (!parsed) {
+    return null;
+  }
   return buildPreviewStatusCenterRequestKey({
-    kind: parsed?.kind ?? fallback.kind,
-    sourceUrl: parsed?.sourceUrl ?? fallback.sourceUrl,
-    sourceLang: parsed?.sourceLang ?? fallback.sourceLang,
-    targetLang: parsed?.targetLang ?? fallback.targetLang,
-    email: parsed?.email ?? fallback.email,
+    sourceUrl: parsed.sourceUrl,
+    sourceLang: parsed.sourceLang,
+    targetLang: parsed.targetLang,
+    email: parsed.email,
   });
 }
 
@@ -276,10 +245,6 @@ function parseOptionalPreviewErrorCode(value: unknown): PreviewErrorCode | null 
 
 function parseOptionalPreviewStage(value: unknown): PreviewStage | null {
   return isPreviewStage(value) ? value : null;
-}
-
-function parseOptionalPreviewJobKind(value: unknown): PreviewJobKind {
-  return value === "prospect_showcase" ? "prospect_showcase" : "preview";
 }
 
 function resolveHydratedActiveNextPollAt(
@@ -367,6 +332,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   }
   if (
     !isString(value.previewId) ||
+    !isString(value.requestKey) ||
     !isString(value.statusToken) ||
     !isString(value.sourceUrl) ||
     !isString(value.sourceLang) ||
@@ -379,20 +345,15 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   }
 
   const status = value.status;
-  const requestKey = resolveCanonicalRequestKey(
-    isString(value.requestKey) ? value.requestKey : null,
-    {
-      sourceUrl: value.sourceUrl,
-      sourceLang: value.sourceLang,
-      targetLang: value.targetLang,
-    },
-  );
+  const requestKey = resolveCanonicalRequestKey(value.requestKey);
+  if (!requestKey) {
+    return null;
+  }
   const stage = parseOptionalPreviewStage(value.stage);
   const errorStage = parseOptionalPreviewStage(value.errorStage);
   const retryHint = parsePreviewRetryHint(value.retryHint);
 
   return normalizeJob({
-    kind: parseOptionalPreviewJobKind(value.kind),
     previewId: value.previewId,
     requestKey,
     statusToken: value.statusToken,
@@ -418,77 +379,6 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
   });
 }
 
-function parseStoredLegacyV1Job(value: unknown): PreviewStatusCenterJob | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-  if (
-    !isString(value.previewId) ||
-    !isString(value.statusToken) ||
-    !isString(value.sourceUrl) ||
-    !isString(value.sourceLang) ||
-    !isString(value.targetLang) ||
-    !isPreviewJobPhase(value.status) ||
-    !isFiniteNumber(value.createdAt) ||
-    !isFiniteNumber(value.updatedAt)
-  ) {
-    return null;
-  }
-
-  const status = value.status;
-  const legacyStage = parseOptionalPreviewStage(value.errorStage);
-
-  return normalizeJob({
-    kind: "preview",
-    previewId: value.previewId,
-    requestKey: buildPreviewStatusCenterRequestKey({
-      sourceUrl: value.sourceUrl,
-      sourceLang: value.sourceLang,
-      targetLang: value.targetLang,
-    }),
-    statusToken: value.statusToken,
-    sourceUrl: value.sourceUrl,
-    sourceLang: value.sourceLang,
-    targetLang: value.targetLang,
-    status,
-    stage: !isPreviewStatusCenterJobTerminal(status) ? legacyStage : null,
-    previewUrl: isString(value.previewUrl) ? value.previewUrl : null,
-    demoDashboardUrl: null,
-    error: isString(value.error) ? value.error : null,
-    errorCode: parseOptionalPreviewErrorCode(value.errorCode),
-    errorStage: legacyStage,
-    retryHint: null,
-    remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
-    createdAt: value.createdAt,
-    updatedAt: value.updatedAt,
-    expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
-    retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
-    nextPollAt: isPreviewStatusCenterJobTerminal(status)
-      ? Number.POSITIVE_INFINITY
-      : resolveHydratedActiveNextPollAt(value.nextPollAt, null),
-  });
-}
-
-function parseLegacyPendingPreview(value: unknown): LegacyPendingPreviewState | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-  if (
-    !isString(value.previewId) ||
-    !isString(value.statusToken) ||
-    !isString(value.requestKey) ||
-    !isFiniteNumber(value.updatedAt)
-  ) {
-    return null;
-  }
-  return {
-    previewId: value.previewId,
-    statusToken: value.statusToken,
-    requestKey: value.requestKey,
-    updatedAt: value.updatedAt,
-  };
-}
-
 function expireTerminalJob(job: PreviewStatusCenterJob, now: number): PreviewStatusCenterJob {
   if (
     (job.status !== "ready" && job.status !== "failed") ||
@@ -502,7 +392,7 @@ function expireTerminalJob(job: PreviewStatusCenterJob, now: number): PreviewSta
     status: "expired",
     stage: null,
     previewUrl: null,
-    demoDashboardUrl: job.kind === "prospect_showcase" ? job.demoDashboardUrl : null,
+    demoDashboardUrl: job.demoDashboardUrl,
     error: job.error,
     errorCode: "preview_expired",
     errorStage: null,
@@ -617,135 +507,17 @@ function readV2JobsFromStorage():
   }
 }
 
-function migrateLegacyJobsFromStorage(now: number): {
-  jobs: PreviewStatusCenterJob[];
-  unknownPhaseDrops: number;
-} {
-  if (!canUseStorage()) {
-    return {
-      jobs: [],
-      unknownPhaseDrops: 0,
-    };
-  }
-
-  const legacyJobsRaw = window.localStorage.getItem(LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY);
-  const pendingRaw = window.localStorage.getItem(LEGACY_PENDING_PREVIEW_STORAGE_KEY);
-
-  const jobs: PreviewStatusCenterJob[] = [];
-  let unknownPhaseDrops = 0;
-  if (legacyJobsRaw) {
-    try {
-      const parsedLegacy = JSON.parse(legacyJobsRaw) as unknown;
-      if (Array.isArray(parsedLegacy)) {
-        for (const entry of parsedLegacy) {
-          if (resolveUnknownPhase(entry)) {
-            unknownPhaseDrops += 1;
-          }
-          const parsedJob = parseStoredLegacyV1Job(entry);
-          if (parsedJob) {
-            jobs.push(parsedJob);
-          }
-        }
-      }
-    } catch {
-      // Ignore malformed legacy payloads.
-    }
-  }
-
-  let pending: LegacyPendingPreviewState | null = null;
-  if (pendingRaw) {
-    try {
-      pending = parseLegacyPendingPreview(JSON.parse(pendingRaw));
-    } catch {
-      pending = null;
-    }
-  }
-
-  if (!pending) {
-    return {
-      jobs: pruneJobs(jobs, now),
-      unknownPhaseDrops,
-    };
-  }
-
-  const existingIndex = jobs.findIndex((job) => job.previewId === pending.previewId);
-  const parsedRequestKey = parsePreviewStatusCenterRequestKey(pending.requestKey);
-  const canonicalRequestKey = resolveCanonicalRequestKey(pending.requestKey, {
-    sourceUrl: parsedRequestKey?.sourceUrl ?? "",
-    sourceLang: parsedRequestKey?.sourceLang ?? "",
-    targetLang: parsedRequestKey?.targetLang ?? "",
-    email: parsedRequestKey?.email ?? "",
-  });
-
-  if (existingIndex >= 0) {
-    const existing = jobs[existingIndex];
-    const terminal = isPreviewStatusCenterJobTerminal(existing.status);
-    jobs[existingIndex] = normalizeJob({
-      ...existing,
-      requestKey: canonicalRequestKey,
-      statusToken: pending.statusToken,
-      sourceUrl: parsedRequestKey?.sourceUrl ?? existing.sourceUrl,
-      sourceLang: parsedRequestKey?.sourceLang ?? existing.sourceLang,
-      targetLang: parsedRequestKey?.targetLang ?? existing.targetLang,
-      status: terminal
-        ? existing.status
-        : resolveNextPreviewJobPhase(existing.status, "processing"),
-      stage: terminal ? null : existing.stage,
-      remoteStatusVerified: terminal,
-      updatedAt: Math.max(existing.updatedAt, pending.updatedAt),
-      nextPollAt: terminal
-        ? Number.POSITIVE_INFINITY
-        : now + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
-    });
-  } else {
-    const status: PreviewStatusCenterJobStatus = "processing";
-    jobs.push(
-      normalizeJob({
-        kind: "preview",
-        previewId: pending.previewId,
-        requestKey: canonicalRequestKey,
-        statusToken: pending.statusToken,
-        sourceUrl: parsedRequestKey?.sourceUrl ?? "",
-        sourceLang: parsedRequestKey?.sourceLang ?? "",
-        targetLang: parsedRequestKey?.targetLang ?? "",
-        status,
-        stage: null,
-        previewUrl: null,
-        demoDashboardUrl: null,
-        error: null,
-        errorCode: null,
-        errorStage: null,
-        retryHint: null,
-        remoteStatusVerified: false,
-        createdAt: pending.updatedAt,
-        updatedAt: pending.updatedAt,
-        expiresAt: null,
-        retryCount: 0,
-        nextPollAt: now + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
-      }),
-    );
-  }
-
-  return {
-    jobs: pruneJobs(jobs, now),
-    unknownPhaseDrops,
-  };
-}
-
 function readJobsFromStorage(): ReadJobsResult {
   const v2Result = readV2JobsFromStorage();
   if (v2Result.jobs !== null) {
     return {
       jobs: v2Result.jobs,
-      migratedFromLegacy: false,
       unknownPhaseDrops: v2Result.unknownPhaseDrops,
     };
   }
-  const migrated = migrateLegacyJobsFromStorage(Date.now());
   return {
-    jobs: migrated.jobs,
-    migratedFromLegacy: true,
-    unknownPhaseDrops: migrated.unknownPhaseDrops,
+    jobs: [],
+    unknownPhaseDrops: 0,
   };
 }
 
@@ -755,14 +527,11 @@ function ensureHydrated() {
   }
   hydrated = true;
 
-  const { jobs, migratedFromLegacy, unknownPhaseDrops } = readJobsFromStorage();
+  const { jobs, unknownPhaseDrops } = readJobsFromStorage();
   state = {
     jobs,
   };
 
-  if (migratedFromLegacy) {
-    persistJobs(state.jobs);
-  }
   clearLegacyStorageKeys();
 
   if (unknownPhaseDrops > 0) {

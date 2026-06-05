@@ -58,9 +58,7 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
         const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
         const showDemoDashboardAction =
           Boolean(job.demoDashboardUrl) &&
-          (job.status === "ready" ||
-            job.status === "failed" ||
-            (job.kind === "prospect_showcase" && job.status === "expired"));
+          (job.status === "ready" || job.status === "failed" || job.status === "expired");
         return (
           <section
             key={job.previewId}

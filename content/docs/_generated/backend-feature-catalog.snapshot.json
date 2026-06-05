@@ -2939,6 +2939,41 @@
     },
     {
       "family": "pipeline",
+      "group": "pipeline",
+      "id": "pipeline.ProspectShowcaseReadyEmailQueuePayload",
+      "name": "ProspectShowcaseReadyEmailQueuePayload",
+      "payloadContract": {
+        "fields": [
+          {
+            "name": "type",
+            "optional": false,
+            "type": "\"prospect_showcase.ready\""
+          },
+          {
+            "name": "site_id",
+            "optional": false,
+            "type": "SiteId"
+          },
+          {
+            "name": "target_lang",
+            "optional": false,
+            "type": "LangTag"
+          },
+          {
+            "name": "deployment_id",
+            "optional": true,
+            "type": "DeploymentId"
+          }
+        ],
+        "interfaceName": "ProspectShowcaseReadyEmailQueuePayload",
+        "kindLiteral": null
+      },
+      "stability": "Internal",
+      "summary": "Queue payload contract for pipeline worker messages.",
+      "userFacing": false
+    },
+    {
+      "family": "pipeline",
       "group": "publish",
       "id": "pipeline.PublishFinalizeQueuePayload",
       "name": "PublishFinalizeQueuePayload",

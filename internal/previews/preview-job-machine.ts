@@ -10,8 +10,6 @@ export type PreviewJobPhase =
 
 export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_capacity_wait";
 
-export type PreviewJobKind = "preview" | "prospect_showcase";
-
 export type PreviewRetryHint = {
   reason: PreviewRetryHintReason;
   retryAfterSeconds: number | null;
@@ -19,7 +17,6 @@ export type PreviewRetryHint = {
 };
 
 export type PreviewJob = {
-  kind: PreviewJobKind;
   previewId: string;
   requestKey: string;
   statusToken: string;
@@ -43,7 +40,6 @@ export type PreviewJob = {
 };
 
 export type PreviewJobUpsertInput = {
-  kind?: PreviewJobKind;
   previewId: string;
   requestKey: string;
   statusToken: string;
@@ -65,7 +61,6 @@ export type PreviewJobUpsertInput = {
 };
 
 export type PreviewJobPatch = Partial<{
-  kind: PreviewJobKind;
   requestKey: string;
   statusToken: string;
   sourceUrl: string;
@@ -274,7 +269,6 @@ function reduceUpsert(
       : input.retryHint;
 
   return {
-    kind: input.kind ?? existing?.kind ?? "preview",
     previewId: input.previewId,
     requestKey: resolveStringWithFallback(input.requestKey, existing?.requestKey ?? ""),
     statusToken: resolveStringWithFallback(input.statusToken, existing?.statusToken ?? ""),
@@ -328,7 +322,6 @@ function reducePatch(
 
   return {
     ...existing,
-    kind: patch.kind ?? existing.kind,
     requestKey: resolveStringWithFallback(patch.requestKey, existing.requestKey),
     statusToken: resolveStringWithFallback(patch.statusToken, existing.statusToken),
     sourceUrl: resolveStringWithFallback(patch.sourceUrl, existing.sourceUrl),

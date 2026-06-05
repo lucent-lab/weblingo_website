@@ -27,17 +27,20 @@ Minimal validation:
 
 - Marketing pages, pricing, legal, contact, and checkout flows.
 - Lightweight dashboard surfaces for onboarding and configuration.
-- Try-Now previews, including create, status, SSE stream, and rendered preview handoff.
+- Try-Now prospect showcases, including create, status, SSE stream, demo-dashboard handoff, and rendered showcase handoff.
 - Stripe Checkout and Stripe webhook lifecycle handling.
 
 ## Hard Invariants
 
 - Keep client and server env handling centralized in `internal/core/env.ts` and `internal/core/env-server.ts`.
 - Localize UI copy via `@internal/i18n`; do not hardcode page or component strings.
-- Preview proxy routes must stay aligned with backend preview contracts:
-  - `POST /api/previews`
-  - `GET /api/previews/:id`
-  - `GET /api/previews/:id/stream`
+- Prospect-showcase proxy routes must stay aligned with backend prospect-showcase contracts:
+  - `POST /api/prospect-showcases`
+  - `GET /api/prospect-showcases/:ref/status`
+  - `GET /api/prospect-showcases/:ref/stream`
+  - `POST /api/prospect-showcases/claim`
+  - `POST /api/prospect-showcases/:ref/convert`
+  - `POST /api/prospect-showcases/access-link/resend`
 - Preview `errorCode` and `stage` enums must stay consistent with backend `webhooks-worker` responses.
 - Stripe routes must verify signatures and preserve metadata needed to associate subscriptions with sites.
 - Logging follows the one-wide-event rule from `docs/LOGGING_POLICY.md`.

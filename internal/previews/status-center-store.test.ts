@@ -28,7 +28,6 @@ import {
 
 function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenterJob>[0]> = {}) {
   return {
-    kind: "preview" as const,
     previewId: "11111111-1111-1111-1111-111111111111",
     requestKey: buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://example.com",
@@ -129,32 +128,10 @@ describe("status-center-store", () => {
     expect(getPreviewStatusCenterSnapshot().jobs).toHaveLength(0);
   });
 
-  it("expires ready preview jobs with stale expiry and clears terminal action URLs", () => {
+  it("expires ready prospect showcase jobs with stale expiry and preserves dashboard handoffs", () => {
     upsertPreviewStatusCenterJob(
       buildJob({
         previewId: "expired-ready-1111-1111-1111-111111111111",
-        status: "ready",
-        previewUrl: "https://preview.example.com/fr",
-        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
-        expiresAt: Date.now() - 1_000,
-      }),
-    );
-
-    const snapshot = getPreviewStatusCenterSnapshot();
-    expect(snapshot.jobs).toHaveLength(1);
-    expect(snapshot.jobs[0]).toMatchObject({
-      status: "expired",
-      previewUrl: null,
-      demoDashboardUrl: null,
-      errorCode: "preview_expired",
-    });
-  });
-
-  it("expires prospect showcase jobs with stale expiry and preserves dashboard handoffs", () => {
-    upsertPreviewStatusCenterJob(
-      buildJob({
-        kind: "prospect_showcase",
-        previewId: "expired-showcase-1111-1111-1111-111111111111",
         status: "ready",
         previewUrl: "https://showcase.example.com/fr",
         demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=old",
@@ -213,8 +190,7 @@ describe("status-center-store", () => {
     expect(snapshot.jobs[0].stage).toBe("translating");
   });
 
-  it("migrates legacy status-center and pending-preview keys to v2", () => {
-    const now = Date.now();
+  it("clears legacy preview storage keys without migrating old preview jobs", () => {
     window.localStorage.setItem(
       LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY,
       JSON.stringify([
@@ -225,8 +201,6 @@ describe("status-center-store", () => {
           sourceLang: "en",
           targetLang: "fr",
           status: "pending",
-          createdAt: now - 10_000,
-          updatedAt: now - 9_000,
           errorStage: "fetching_page",
         },
       ]),
@@ -237,26 +211,16 @@ describe("status-center-store", () => {
         previewId: "22222222-2222-2222-2222-222222222222",
         statusToken: "pending-token",
         requestKey: "https://legacy.example.com|en|fr|hello@example.com",
-        updatedAt: now,
+        updatedAt: Date.now(),
       }),
     );
 
     hydratePreviewStatusCenterStore();
 
     const snapshot = getPreviewStatusCenterSnapshot();
-    expect(snapshot.jobs).toHaveLength(1);
-    expect(snapshot.jobs[0].statusToken).toBe("pending-token");
-    expect(snapshot.jobs[0].requestKey).toBe(
-      buildPreviewStatusCenterRequestKey({
-        sourceUrl: "https://legacy.example.com",
-        sourceLang: "en",
-        targetLang: "fr",
-        email: "hello@example.com",
-      }),
-    );
-    expect(snapshot.jobs[0].status).toBe("processing");
+    expect(snapshot.jobs).toHaveLength(0);
 
-    expect(window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)).toBeTruthy();
+    expect(window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)).toBeNull();
     expect(window.localStorage.getItem(LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY)).toBeNull();
     expect(window.localStorage.getItem(LEGACY_PENDING_PREVIEW_STORAGE_KEY)).toBeNull();
   });
@@ -630,7 +594,6 @@ describe("status-center-store", () => {
     const parsed = parsePreviewStatusCenterRequestKey(requestKey);
 
     expect(parsed).toEqual({
-      kind: "preview",
       sourceUrl: "https://example.com/a|b?mode=test",
       sourceLang: "en",
       targetLang: "fr",
@@ -638,62 +601,58 @@ describe("status-center-store", () => {
     });
   });
 
-  it("keeps parsing legacy delimiter request keys", () => {
+  it("rejects legacy delimiter request keys", () => {
     const parsed = parsePreviewStatusCenterRequestKey(
       "https://legacy.example.com|en|fr|old@example.com",
     );
 
-    expect(parsed).toEqual({
-      kind: "preview",
-      sourceUrl: "https://legacy.example.com",
-      sourceLang: "en",
-      targetLang: "fr",
-      email: "old@example.com",
-    });
+    expect(parsed).toBeNull();
   });
 
-  it("keeps prospect-showcase request keys distinct from preview request keys", () => {
-    const previewRequestKey = buildPreviewStatusCenterRequestKey({
-      kind: "preview",
-      sourceUrl: "https://example.com",
-      sourceLang: "en",
-      targetLang: "fr",
-    });
+  it("rejects old preview v2 request keys and stored jobs", () => {
+    const now = Date.now();
+    const previewRequestKey = "v2:preview|https%3A%2F%2Fexample.com|en|fr|";
     const prospectRequestKey = buildPreviewStatusCenterRequestKey({
-      kind: "prospect_showcase",
       sourceUrl: "https://example.com",
       sourceLang: "en",
       targetLang: "fr",
     });
 
-    expect(previewRequestKey).not.toBe(prospectRequestKey);
+    expect(parsePreviewStatusCenterRequestKey(previewRequestKey)).toBeNull();
     expect(parsePreviewStatusCenterRequestKey(prospectRequestKey)).toMatchObject({
-      kind: "prospect_showcase",
       sourceUrl: "https://example.com",
       sourceLang: "en",
       targetLang: "fr",
     });
 
-    upsertPreviewStatusCenterJob(
-      buildJob({
-        kind: "preview",
-        previewId: "preview-1111-1111-1111-111111111111",
-        requestKey: previewRequestKey,
-        statusToken: "preview-token",
-      }),
-    );
-    upsertPreviewStatusCenterJob(
-      buildJob({
-        kind: "prospect_showcase",
-        previewId: "prospect-1111-1111-1111-111111111111",
-        requestKey: prospectRequestKey,
-        statusToken: "prospect-token",
-      }),
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...buildJob({
+            previewId: "preview-1111-1111-1111-111111111111",
+            requestKey: previewRequestKey,
+            statusToken: "preview-token",
+          }),
+          kind: "preview",
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+        },
+        {
+          ...buildJob({
+            previewId: "prospect-1111-1111-1111-111111111111",
+            requestKey: prospectRequestKey,
+            statusToken: "prospect-token",
+          }),
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+        },
+      ]),
     );
 
-    expect(selectLatestJobByRequestKey(previewRequestKey)?.previewId).toBe(
-      "preview-1111-1111-1111-111111111111",
-    );
+    hydratePreviewStatusCenterStore();
+
+    expect(selectLatestJobByRequestKey(previewRequestKey)).toBeNull();
     expect(selectLatestJobByRequestKey(prospectRequestKey)?.previewId).toBe(
       "prospect-1111-1111-1111-111111111111",
     );

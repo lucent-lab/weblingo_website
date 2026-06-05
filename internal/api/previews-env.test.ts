@@ -46,7 +46,7 @@ function setRequiredEnv() {
 }
 
 function makeRequest(payload: unknown, accept = "application/json") {
-  return new Request("http://localhost/api/previews", {
+  return new Request("http://localhost/api/prospect-showcases", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -58,7 +58,7 @@ function makeRequest(payload: unknown, accept = "application/json") {
 
 async function loadRoute() {
   vi.resetModules();
-  return await import("../../app/api/previews/route");
+  return await import("../../app/api/prospect-showcases/route");
 }
 
 beforeEach(() => {
@@ -115,7 +115,7 @@ describe("preview api env", () => {
       throw new Error("Expected preview fetch to be called.");
     }
     const [url, init] = call;
-    expect(url).toBe("https://client.example.com/api/previews");
+    expect(url).toBe("https://client.example.com/api/prospect-showcases");
     const headers = (init as RequestInit | undefined)?.headers as Record<string, string>;
     expect(headers["x-preview-token"]).toBe("server-preview-token");
   });

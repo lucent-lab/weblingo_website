@@ -15,8 +15,8 @@ backend OpenAPI snapshot.
 
 - Base path: `/api`
 - Default API auth: `Authorization: Bearer <dashboard-jwt>`
-- Preview creation auth: `x-preview-token` or bearer JWT
-- Preview status auth: `x-preview-status-token` or bearer JWT (when enabled)
+- Prospect showcase creation auth: `x-preview-token` or bearer JWT
+- Prospect showcase status/stream auth: status token from the create response
 - Rate limiting: `429` with `Retry-After`
 
 ## Serve surfaces (outside `/api`)
@@ -27,15 +27,17 @@ feature set.
 - Serving enable/disable operation: `POST /api/sites/{siteId}/locales/{targetLang}/serve`
   (`sites.locales.serve`)
 - Localized pages: `GET /{path}`
-- Preview pages: `GET /_preview/{previewId}`
+- Prospect showcase pages: open the `showcaseUrl` returned by
+  `POST /api/prospect-showcases` or `GET /api/prospect-showcases/{ref}/status`
 - Surface auth: `None`
 
-For rollout sequencing, use the backend playbook label `Playbook: Serving Access and Previews`.
+For rollout sequencing, use the backend playbook label `Playbook: Prospect Showcase Conversion`.
 
 ## Workflows
 
 Use [Workflow Playbooks](../workflows) when you need ordered, task-specific guidance (setup,
-domain verification, crawl/translate, previews). Use this page for schema-level contracts.
+domain verification, crawl/translate, prospect showcases). Use this page for schema-level
+contracts.
 
 Additional dashboard-oriented endpoints that are commonly used during rollout:
 

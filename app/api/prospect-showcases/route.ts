@@ -1,14 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  buildPreviewHostRateLimitKey,
-  buildPreviewIpRateLimitKey,
-  buildPreviewUpstreamResponseHeaders,
-  createPreviewFetchErrorResponse,
-  enforcePreviewRateLimit,
-  getPreviewProxyConfig,
-  readPreviewJsonBodyLimited,
-} from "@internal/api/previews-proxy";
+  buildProspectShowcaseHostRateLimitKey,
+  buildProspectShowcaseIpRateLimitKey,
+  buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseFetchErrorResponse,
+  enforceProspectShowcaseRateLimit,
+  getProspectShowcaseProxyConfig,
+  readProspectShowcaseJsonBodyLimited,
+} from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
 
 export const runtime = "nodejs";
@@ -29,14 +29,14 @@ function tryExtractSourceHost(payload: unknown): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  const configResult = getPreviewProxyConfig("json");
+  const configResult = getProspectShowcaseProxyConfig("json");
   if (!configResult.ok) {
     return configResult.response;
   }
   const { config } = configResult;
 
-  const ipLimitResponse = await enforcePreviewRateLimit({
-    key: buildPreviewIpRateLimitKey(request, "prospect-create"),
+  const ipLimitResponse = await enforceProspectShowcaseRateLimit({
+    key: buildProspectShowcaseIpRateLimitKey(request, "prospect-create"),
     limit: config.createMaxPerWindow,
     windowMs: config.rateLimitWindowMs,
     responseKind: "json",
@@ -47,15 +47,15 @@ export async function POST(request: NextRequest) {
     return ipLimitResponse;
   }
 
-  const bodyResult = await readPreviewJsonBodyLimited(request, config.maxBodyBytes);
+  const bodyResult = await readProspectShowcaseJsonBodyLimited(request, config.maxBodyBytes);
   if (!bodyResult.ok) {
     return bodyResult.response;
   }
 
   const sourceHost = tryExtractSourceHost(bodyResult.payload);
   if (sourceHost) {
-    const hostLimitResponse = await enforcePreviewRateLimit({
-      key: buildPreviewHostRateLimitKey(sourceHost),
+    const hostLimitResponse = await enforceProspectShowcaseRateLimit({
+      key: buildProspectShowcaseHostRateLimitKey(sourceHost),
       limit: config.createMaxPerSourceHostPerWindow,
       windowMs: config.rateLimitWindowMs,
       responseKind: "json",
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         redirect: "manual",
         headers: {
           "Content-Type": "application/json",
-          "x-preview-token": config.previewToken,
+          "x-preview-token": config.tryNowToken,
           Accept: "application/json",
         },
         body: JSON.stringify(bodyResult.payload),
@@ -87,9 +87,9 @@ export async function POST(request: NextRequest) {
     const text = await upstream.text();
     return new NextResponse(text || undefined, {
       status: upstream.status,
-      headers: buildPreviewUpstreamResponseHeaders(upstream, "application/json"),
+      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
     });
   } catch (error) {
-    return createPreviewFetchErrorResponse(error, "json");
+    return createProspectShowcaseFetchErrorResponse(error, "json");
   }
 }

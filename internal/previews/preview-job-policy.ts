@@ -1,38 +1,19 @@
-import type { PreviewJobKind } from "./preview-job-machine";
 import { isPreviewStage, type PreviewStage } from "./preview-sse";
 
-export function buildPreviewJobStatusUrl(
-  kind: PreviewJobKind,
-  previewId: string,
-  statusToken: string,
-): string {
+export function buildPreviewJobStatusUrl(previewId: string, statusToken: string): string {
   const token = encodeURIComponent(statusToken);
-  if (kind === "prospect_showcase") {
-    return `/api/prospect-showcases/${encodeURIComponent(previewId)}/status?token=${token}`;
-  }
-  return `/api/previews/${previewId}?token=${token}`;
+  return `/api/prospect-showcases/${encodeURIComponent(previewId)}/status?token=${token}`;
 }
 
-export function buildPreviewJobStreamUrl(
-  kind: PreviewJobKind,
-  previewId: string,
-  statusToken: string,
-): string {
+export function buildPreviewJobStreamUrl(previewId: string, statusToken: string): string {
   const token = encodeURIComponent(statusToken);
-  if (kind === "prospect_showcase") {
-    return `/api/prospect-showcases/${encodeURIComponent(previewId)}/stream?token=${token}`;
-  }
-  return `/api/previews/${previewId}/stream?token=${token}`;
+  return `/api/prospect-showcases/${encodeURIComponent(previewId)}/stream?token=${token}`;
 }
 
 export function resolvePreviewJobPayloadUrl(
-  kind: PreviewJobKind,
   payload: Record<string, unknown> | null,
 ): string | null {
-  if (kind === "prospect_showcase") {
-    return typeof payload?.showcaseUrl === "string" ? payload.showcaseUrl : null;
-  }
-  return typeof payload?.previewUrl === "string" ? payload.previewUrl : null;
+  return typeof payload?.showcaseUrl === "string" ? payload.showcaseUrl : null;
 }
 
 export function resolvePreviewJobPayloadDemoDashboardUrl(

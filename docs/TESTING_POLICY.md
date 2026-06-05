@@ -82,7 +82,7 @@ WEBLINGO_LIVE_PREVIEW_QA=1 \
 PREVIEW_UX_CASES_JSON='[
   {
     "name": "WebLingo Japanese hero rotator",
-    "url": "https://preview.weblingo.app/_preview/<preview-id>",
+    "url": "https://t2.weblingo.app/<prospect-showcase-ref>/en",
     "requiredText": ["海外"],
     "forbiddenText": ["Turn international traffic into", "bookings", "signups", "revenue"],
     "dom": [

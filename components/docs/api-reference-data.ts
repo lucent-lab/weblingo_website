@@ -1,3 +1,5 @@
+import { isDeprecatedPreviewOperationId } from "./deprecated-preview-filters";
+
 export type OpenApiTag = {
   name?: string;
   [key: string]: unknown;
@@ -64,7 +66,10 @@ export function getUserFacingApiOperationIds(catalog: FeatureCatalog): Set<strin
     (catalog.features ?? [])
       .filter((entry) => entry.family === "api" && entry.userFacing)
       .map((entry) => entry.endpoint?.operationId)
-      .filter((operationId): operationId is string => typeof operationId === "string"),
+      .filter(
+        (operationId): operationId is string =>
+          typeof operationId === "string" && !isDeprecatedPreviewOperationId(operationId),
+      ),
   );
 }
 
@@ -118,7 +123,7 @@ export function buildUserFacingOpenApiSpec(
     ...(spec.info ?? {}),
     title: "WebLingo API",
     description:
-      "User-facing API for account setup, site/domain configuration, crawl and translation workflows, previews, and notifications.",
+      "User-facing API for account setup, site/domain configuration, crawl and translation workflows, prospect showcases, and notifications.",
   };
   const servers = [{ url: "/api", description: "WebLingo API base path" }];
 

@@ -65,7 +65,7 @@ Invariants:
 ### Polling path
 
 - Implemented in `usePreviewStatusRuntime`.
-- Polls `/api/previews/:id` for active jobs based on `nextPollAt`.
+- Polls `/api/prospect-showcases/:ref/status?token=...` for active jobs based on `nextPollAt`.
 - Applies retry/backoff for transient failures.
 - Marks terminal on definitive failures (`404`/`410` and explicit failure payloads).
 - Handles resume/recovery after refresh/navigation.

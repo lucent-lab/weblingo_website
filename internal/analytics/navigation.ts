@@ -96,10 +96,6 @@ function templateDashboardRoute(segments: string[]): string {
     return `/${["dashboard", "ops", "accounts", "[accountId]", ...segments.slice(4)].join("/")}`;
   }
 
-  if (segments[1] === "ops" && segments[2] === "previews" && segments[3]) {
-    return `/${["dashboard", "ops", "previews", "[previewId]", ...segments.slice(4)].join("/")}`;
-  }
-
   return `/${segments.map(normalizePublicSegment).join("/")}`;
 }
 

@@ -553,8 +553,8 @@ const DOMAIN_BOUND_HTML = `<!doctype html>
       <h1>Detect domain-bound external capabilities without flagging passive CDN assets.</h1>
       <p>
         These markers model browser-side providers that often validate origin, domain, referrer,
-        site key, redirect URI, or postMessage origin after a translated preview moves to
-        preview.weblingo.app.
+        site key, redirect URI, or postMessage origin after a prospect showcase moves to a
+        generated showcase host.
       </p>
 
       <section class="grid" aria-label="Domain-bound external widget candidates">

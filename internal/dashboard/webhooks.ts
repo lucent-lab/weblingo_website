@@ -57,7 +57,6 @@ const planTypeSchema = z.enum(["free", "starter", "pro", "agency"]);
 const managedAccountPlanSchema = z.enum(["free", "starter", "pro"]);
 const planStatusSchema = z.enum(["active", "past_due", "cancelled"]);
 const siteStatusValueSchema = z.enum(["active", "inactive"]);
-const previewRequestStatusSchema = z.enum(["pending", "processing", "ready", "failed"]);
 
 const entitlementsSchema = z
   .object({
@@ -2101,68 +2100,6 @@ const rerunManagedDemoSiteCrawlResponseSchema = z
   })
   .strict();
 
-const adminPreviewFeedbackSummarySchema = z
-  .object({
-    reviewCount: z.number().int().nonnegative(),
-    latestSubmittedAt: z.string().nullable(),
-  })
-  .strict();
-
-const adminPreviewSummarySchema = z
-  .object({
-    previewId: z.string(),
-    sourceUrl: z.string(),
-    sourceLang: z.string(),
-    targetLang: z.string(),
-    status: previewRequestStatusSchema,
-    previewUrl: z.string().nullable(),
-    expiresAt: z.string().nullable(),
-    readyAt: z.string().nullable(),
-    stageLast: z.string().nullable(),
-    errorCode: z.string().nullable(),
-    errorStage: z.string().nullable(),
-    error: z.string().nullable(),
-    createdAt: z.string().nullable(),
-    updatedAt: z.string().nullable(),
-    feedback: adminPreviewFeedbackSummarySchema,
-  })
-  .strict();
-
-const adminPreviewReviewSchema = z
-  .object({
-    id: z.string(),
-    translationRating: z.number().int().min(1).max(5),
-    designRating: z.number().int().min(1).max(5),
-    comment: z.string().nullable(),
-    previewStatusAtSubmit: previewRequestStatusSchema,
-    previewStageAtSubmit: z.string().nullable(),
-    previewErrorCodeAtSubmit: z.string().nullable(),
-    channel: z.literal("overlay"),
-    originUrl: z.string().nullable(),
-    submittedAt: z.string().nullable(),
-  })
-  .strict();
-
-const listAdminPreviewsResponseSchema = z
-  .object({
-    items: z.array(adminPreviewSummarySchema),
-    pagination: z
-      .object({
-        limit: z.number().int().positive(),
-        offset: z.number().int().nonnegative(),
-        hasMore: z.boolean(),
-      })
-      .strict(),
-  })
-  .strict();
-
-const getAdminPreviewResponseSchema = z
-  .object({
-    preview: adminPreviewSummarySchema,
-    reviews: z.array(adminPreviewReviewSchema),
-  })
-  .strict();
-
 const dashboardBootstrapResponseSchema = z
   .object({
     token: z.string().min(1),
@@ -2349,10 +2286,6 @@ export type CreateManagedDemoSiteResponse = z.infer<typeof createManagedDemoSite
 export type RerunManagedDemoSiteCrawlResponse = z.infer<
   typeof rerunManagedDemoSiteCrawlResponseSchema
 >;
-export type AdminPreviewSummary = z.infer<typeof adminPreviewSummarySchema>;
-export type AdminPreviewReview = z.infer<typeof adminPreviewReviewSchema>;
-export type ListAdminPreviewsResponse = z.infer<typeof listAdminPreviewsResponseSchema>;
-export type GetAdminPreviewResponse = z.infer<typeof getAdminPreviewResponseSchema>;
 
 // Exported for cross-repo contract tests only (OpenAPI ↔ website zod schemas).
 export const __webhooksZodContracts = {
@@ -2369,8 +2302,6 @@ export const __webhooksZodContracts = {
   listManagedDemoSitesResponseSchema,
   createManagedDemoSiteResponseSchema,
   rerunManagedDemoSiteCrawlResponseSchema,
-  listAdminPreviewsResponseSchema,
-  getAdminPreviewResponseSchema,
   siteShowcaseResponseSchema,
   listSitesResponseSchema,
   siteSummarySchema,
@@ -3601,78 +3532,6 @@ function createDashboardE2eMockManagedDemoSummary() {
   };
 }
 
-function createDashboardE2eMockAdminPreviewSummary(input: {
-  previewId: string;
-  sourceUrl: string;
-  targetLang: string;
-  status: z.infer<typeof previewRequestStatusSchema>;
-  reviewCount: number;
-  latestSubmittedAt: string | null;
-}) {
-  const createdAt = "2026-04-03T00:00:00.000Z";
-  return {
-    previewId: input.previewId,
-    sourceUrl: input.sourceUrl,
-    sourceLang: "en",
-    targetLang: input.targetLang,
-    status: input.status,
-    previewUrl:
-      input.status === "ready" ? `https://preview.weblingo.app/_preview/${input.previewId}` : null,
-    expiresAt: "2026-04-04T00:00:00.000Z",
-    readyAt: input.status === "ready" ? "2026-04-03T00:05:00.000Z" : null,
-    stageLast: input.status === "failed" ? "generating_preview" : "complete",
-    errorCode: input.status === "failed" ? "render_failed" : null,
-    errorStage: input.status === "failed" ? "generating_preview" : null,
-    error: input.status === "failed" ? "Render failed while generating preview." : null,
-    createdAt,
-    updatedAt: input.latestSubmittedAt ?? createdAt,
-    feedback: {
-      reviewCount: input.reviewCount,
-      latestSubmittedAt: input.latestSubmittedAt,
-    },
-  };
-}
-
-function createDashboardE2eMockAdminPreviewDetail(previewId: string) {
-  const preview = createDashboardE2eMockAdminPreviewSummary({
-    previewId,
-    sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
-    targetLang: "fr",
-    status: "ready",
-    reviewCount: 2,
-    latestSubmittedAt: "2026-04-03T00:12:00.000Z",
-  });
-  return {
-    preview,
-    reviews: [
-      {
-        id: `${previewId}-review-2`,
-        translationRating: 5,
-        designRating: 4,
-        comment: "Navigation feels clear, but hero spacing is still tight.",
-        previewStatusAtSubmit: "ready" as const,
-        previewStageAtSubmit: "complete",
-        previewErrorCodeAtSubmit: null,
-        channel: "overlay" as const,
-        originUrl: `https://preview.weblingo.app/_preview/${previewId}`,
-        submittedAt: "2026-04-03T00:12:00.000Z",
-      },
-      {
-        id: `${previewId}-review-1`,
-        translationRating: 4,
-        designRating: 5,
-        comment: "Copy quality looks solid.",
-        previewStatusAtSubmit: "ready" as const,
-        previewStageAtSubmit: "complete",
-        previewErrorCodeAtSubmit: null,
-        channel: "overlay" as const,
-        originUrl: `https://preview.weblingo.app/_preview/${previewId}`,
-        submittedAt: "2026-04-03T00:10:00.000Z",
-      },
-    ],
-  };
-}
-
 function resolveDashboardE2eMockPayload(input: {
   path: string;
   method: string;
@@ -3723,34 +3582,6 @@ function resolveDashboardE2eMockPayload(input: {
       force: body.force === true,
       targetLangs: ["fr"],
       crawlStatus: { enqueued: true },
-    };
-  }
-
-  if (method === "GET" && pathname === "/admin/previews") {
-    return {
-      items: [
-        createDashboardE2eMockAdminPreviewSummary({
-          previewId: "preview-e2e-ready",
-          sourceUrl: DASHBOARD_E2E_MOCK_SOURCE_URL,
-          targetLang: "fr",
-          status: "ready",
-          reviewCount: 2,
-          latestSubmittedAt: "2026-04-03T00:12:00.000Z",
-        }),
-        createDashboardE2eMockAdminPreviewSummary({
-          previewId: "preview-e2e-failed",
-          sourceUrl: `${DASHBOARD_E2E_MOCK_SOURCE_URL}/pricing`,
-          targetLang: "ja",
-          status: "failed",
-          reviewCount: 1,
-          latestSubmittedAt: "2026-04-03T00:08:00.000Z",
-        }),
-      ],
-      pagination: {
-        limit: 20,
-        offset: 0,
-        hasMore: false,
-      },
     };
   }
 
@@ -3918,11 +3749,6 @@ function resolveDashboardE2eMockPayload(input: {
             : current.showcase.status,
       },
     };
-  }
-
-  const adminPreviewMatch = pathname.match(/^\/admin\/previews\/([^/]+)$/);
-  if (adminPreviewMatch && method === "GET") {
-    return createDashboardE2eMockAdminPreviewDetail(adminPreviewMatch[1]);
   }
 
   const deploymentsMatch = pathname.match(/^\/sites\/([^/]+)\/deployments$/);
@@ -4616,38 +4442,6 @@ export async function rerunManagedDemoSiteCrawl(
     body: options?.force === true ? { force: true } : undefined,
     schema: rerunManagedDemoSiteCrawlResponseSchema,
     timeoutProfile: "mutation",
-  });
-}
-
-export async function listAdminPreviews(
-  auth: AuthInput,
-  options?: { limit?: number; offset?: number },
-): Promise<ListAdminPreviewsResponse> {
-  const qs = new URLSearchParams();
-  if (typeof options?.limit === "number") {
-    qs.set("limit", String(options.limit));
-  }
-  if (typeof options?.offset === "number" && options.offset > 0) {
-    qs.set("offset", String(options.offset));
-  }
-  const path = qs.size ? `/admin/previews?${qs.toString()}` : "/admin/previews";
-  return request({
-    path,
-    auth,
-    schema: listAdminPreviewsResponseSchema,
-    timeoutProfile: "list",
-  });
-}
-
-export async function getAdminPreview(
-  auth: AuthInput,
-  previewId: string,
-): Promise<GetAdminPreviewResponse> {
-  return request({
-    path: `/admin/previews/${encodeURIComponent(previewId)}`,
-    auth,
-    schema: getAdminPreviewResponseSchema,
-    timeoutProfile: "detail",
   });
 }
 

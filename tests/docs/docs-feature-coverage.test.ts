@@ -9,6 +9,10 @@ import {
   type FeatureCatalog,
   type OpenApiSpec,
 } from "../../components/docs/api-reference-data";
+import {
+  DEPRECATED_PREVIEW_OPERATION_IDS,
+  DEPRECATED_PREVIEW_SURFACE_PATHS,
+} from "../../components/docs/deprecated-preview-filters";
 import { getWorkflowPlaybooks } from "../../content/docs/workflow-playbooks";
 
 function readUtf8OrThrow(relativePath: string): string {
@@ -45,15 +49,29 @@ describe("docs feature coverage", () => {
     expect(apiReferenceMarkdown).toContain("../workflows");
     expect(apiReferenceMarkdown).toContain("`sites.locales.serve`");
     expect(apiReferenceMarkdown).toContain("/{path}");
-    expect(apiReferenceMarkdown).toContain("/_preview/{previewId}");
+    expect(apiReferenceMarkdown).toContain("/api/prospect-showcases");
+    for (const surfacePath of DEPRECATED_PREVIEW_SURFACE_PATHS) {
+      expect(apiReferenceMarkdown).not.toContain(surfacePath);
+    }
   });
 
   it("builds user-facing workflow pages from synced playbooks", () => {
     expect(workflowPlaybooks.length).toBeGreaterThan(0);
+    const workflowOperationIds = new Set(
+      workflowPlaybooks.flatMap((playbook) => playbook.operationIds),
+    );
+    expect(workflowOperationIds).toContain("digests.subscription.upsert");
+    expect(workflowOperationIds).toContain("sites.locales.translationSummary.put");
     for (const playbook of workflowPlaybooks) {
       expect(playbook.slug.length).toBeGreaterThan(0);
       expect(playbook.stepDetails.length).toBeGreaterThan(0);
       expect(playbook.operationIds.length + playbook.surfacePaths.length).toBeGreaterThan(0);
+      for (const surfacePath of DEPRECATED_PREVIEW_SURFACE_PATHS) {
+        expect(playbook.surfacePaths).not.toContain(surfacePath);
+      }
+      for (const operationId of DEPRECATED_PREVIEW_OPERATION_IDS) {
+        expect(playbook.operationIds).not.toContain(operationId);
+      }
     }
   });
 
@@ -63,6 +81,15 @@ describe("docs feature coverage", () => {
       (operationId) => !renderedOperationIds.has(operationId),
     );
     expect(missing).toEqual([]);
+  });
+
+  it("does not expose deprecated preview API operationIds in redoc spec", () => {
+    for (const operationId of DEPRECATED_PREVIEW_OPERATION_IDS) {
+      expect(renderedOperationIds).not.toContain(operationId);
+    }
+    expect(renderedOperationIds).toContain("prospectShowcases.create");
+    expect(renderedOperationIds).toContain("prospectShowcases.status");
+    expect(renderedOperationIds).toContain("prospectShowcases.stream");
   });
 
   it("does not expose internal API operationIds in redoc spec", () => {
