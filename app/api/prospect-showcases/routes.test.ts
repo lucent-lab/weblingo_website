@@ -471,6 +471,49 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test("POST /api/prospect-showcases/:ref/convert preserves body dashboardToken compatibility", async () => {
+    const { POST } = await import("./[ref]/convert/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "checkout_pending" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const ref = "ps-convert-ref";
+    const request = buildNextRequest(`http://localhost/api/prospect-showcases/${ref}/convert`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({
+        dashboardToken: "dashboard-demo-token",
+        email: "Owner@Example.com",
+        conversionToken: "conversion-token",
+      }),
+    });
+
+    const response = await POST(request, { params: Promise.resolve({ ref }) });
+
+    expect(response.status).toBe(200);
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      `https://api.example.com/api/prospect-showcases/${encodeURIComponent(ref)}/convert`,
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer dashboard-demo-token",
+        }),
+        body: JSON.stringify({
+          email: "Owner@Example.com",
+          conversionToken: "conversion-token",
+        }),
+      }),
+      expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
+    );
+  });
+
   test("POST /api/prospect-showcases/:ref/convert requires demo bearer auth", async () => {
     const { POST } = await import("./[ref]/convert/route");
 

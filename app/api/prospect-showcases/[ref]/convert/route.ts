@@ -23,6 +23,11 @@ function readBearerAuthorization(request: NextRequest): string {
   return /^Bearer\s+\S+$/i.test(authorization) ? authorization : "";
 }
 
+function buildBodyBearerAuthorization(body: Record<string, unknown>): string {
+  const dashboardToken = typeof body.dashboardToken === "string" ? body.dashboardToken.trim() : "";
+  return dashboardToken ? `Bearer ${dashboardToken}` : "";
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
 
@@ -37,11 +42,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return invalidRefResponse;
   }
 
-  const authorization = readBearerAuthorization(request);
-  if (!authorization) {
-    return createProspectShowcaseProxyResponse("json", "Missing Authorization header", 401);
-  }
-
   const bodyResult = await readProspectShowcaseJsonBodyLimited(request, 1_024);
   if (!bodyResult.ok) {
     return bodyResult.response;
@@ -54,6 +54,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     typeof bodyResult.payload.conversionToken === "string"
       ? bodyResult.payload.conversionToken.trim()
       : "";
+  const authorization =
+    readBearerAuthorization(request) || buildBodyBearerAuthorization(bodyResult.payload);
+  if (!authorization) {
+    return createProspectShowcaseProxyResponse("json", "Missing Authorization header", 401);
+  }
   if (!email) {
     return createProspectShowcaseProxyResponse("json", "Missing email", 400);
   }
