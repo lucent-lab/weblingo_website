@@ -203,6 +203,107 @@ describe("dashboard capability actions", () => {
     expect(triggerCrawlTranslate).not.toHaveBeenCalled();
   });
 
+  it("allows scoped demo auth to save glossary entries for its claimed site only", async () => {
+    updateGlossary.mockResolvedValue({ entries: [], crawlStatus: null, retranslateStatus: null });
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "glossary"),
+    });
+    const { updateGlossaryAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-demo");
+    formData.set(
+      "entries",
+      JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
+    );
+
+    const result = await updateGlossaryAction(undefined, formData);
+
+    expect(result).toMatchObject({ ok: true, message: "Glossary saved." });
+    expect(updateGlossary).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "demo-token" }),
+      "site-demo",
+      [expect.objectContaining({ source: "Silence", target: "Silence", targetLangs: ["en"] })],
+      false,
+    );
+    expect(invalidateSiteDashboardCache).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "demo-token" }),
+      "site-demo",
+    );
+  });
+
+  it("rejects demo glossary retranslation and wrong-site glossary saves", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn((check: { feature?: string }) => check.feature === "glossary"),
+    });
+    const { updateGlossaryAction } = await import("./actions");
+    const retranslateForm = new FormData();
+    retranslateForm.set("siteId", "site-demo");
+    retranslateForm.set(
+      "entries",
+      JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
+    );
+    retranslateForm.set("retranslate", "true");
+    const wrongSiteForm = new FormData();
+    wrongSiteForm.set("siteId", "other-site");
+    wrongSiteForm.set(
+      "entries",
+      JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
+    );
+
+    await expect(updateGlossaryAction(undefined, retranslateForm)).resolves.toEqual({
+      ok: false,
+      message: "Demo glossary edits cannot trigger retranslation.",
+      meta: undefined,
+    });
+    await expect(updateGlossaryAction(undefined, wrongSiteForm)).resolves.toEqual({
+      ok: false,
+      message: "The requested dashboard data could not be found.",
+      meta: undefined,
+    });
+    expect(updateGlossary).not.toHaveBeenCalled();
+  });
+
+  it("rejects scoped demo glossary saves when the glossary feature is unavailable", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: false,
+      billingIssue: null,
+      has: vi.fn(() => false),
+    });
+    const { updateGlossaryAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-demo");
+    formData.set(
+      "entries",
+      JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
+    );
+
+    await expect(updateGlossaryAction(undefined, formData)).resolves.toEqual({
+      ok: false,
+      message: "Glossary editing is not enabled for this account.",
+      meta: undefined,
+    });
+    expect(updateGlossary).not.toHaveBeenCalled();
+  });
+
   it("updates digest subscription and returns off-specific messaging", async () => {
     upsertDigestSubscription.mockResolvedValue({
       id: "sub-1",

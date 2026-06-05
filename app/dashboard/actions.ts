@@ -68,20 +68,26 @@ export type ActionResponse = {
   meta?: Record<string, unknown>;
 };
 
-type DashboardMutationAuth = DashboardAuth & {
-  account: NonNullable<DashboardAuth["account"]>;
+type DashboardWebhooksAuth = DashboardAuth & {
   webhooksAuth: WebhooksAuthContext;
 };
 
-type DashboardReadAuth = DashboardAuth & {
-  webhooksAuth: WebhooksAuthContext;
+type DashboardMutationAuth = DashboardWebhooksAuth & {
+  account: NonNullable<DashboardAuth["account"]>;
 };
+
+type DashboardReadAuth = DashboardWebhooksAuth;
 
 type DashboardMutationGate = {
   actionLabel: string;
   permissionError: string;
   feature?: WebLingoFeature;
   allFeatures?: readonly WebLingoFeature[];
+  demo?: {
+    siteId: string;
+    feature: WebLingoFeature;
+    blockedResponse?: ActionResponse;
+  };
 };
 
 const failed = (message: string, meta?: Record<string, unknown>): ActionResponse => ({
@@ -204,18 +210,36 @@ function formatBillingBlockMessage(auth: DashboardAuth, actionLabel: string): st
 
 async function requireDashboardMutationAuth(
   gate: DashboardMutationGate,
-): Promise<{ ok: true; auth: DashboardMutationAuth } | { ok: false; response: ActionResponse }> {
+): Promise<{ ok: true; auth: DashboardWebhooksAuth } | { ok: false; response: ActionResponse }> {
   const auth = await requireDashboardAuth();
-  if (!auth.account || !auth.webhooksAuth) {
+  if (!auth.webhooksAuth) {
     return { ok: false, response: failed("Unable to resolve account entitlements.") };
   }
   if (auth.accessMode === "demo") {
+    if (gate.demo) {
+      if (!isDashboardAuthScopedToSite(auth, gate.demo.siteId)) {
+        return {
+          ok: false,
+          response: failed("The requested dashboard data could not be found."),
+        };
+      }
+      if (gate.demo.blockedResponse) {
+        return { ok: false, response: gate.demo.blockedResponse };
+      }
+      if (!auth.has({ feature: gate.demo.feature })) {
+        return { ok: false, response: failed(gate.permissionError) };
+      }
+      return { ok: true, auth: auth as DashboardWebhooksAuth };
+    }
     return {
       ok: false,
       response: failed(
         "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
       ),
     };
+  }
+  if (!auth.account) {
+    return { ok: false, response: failed("Unable to resolve account entitlements.") };
   }
   if (!auth.mutationsAllowed) {
     return { ok: false, response: failed(formatBillingBlockMessage(auth, gate.actionLabel)) };
@@ -2061,15 +2085,26 @@ export async function updateGlossaryAction(
       actionLabel: "manage glossary entries",
       permissionError: "Glossary editing is not enabled for this account.",
       allFeatures: ["edit", "glossary"],
+      demo: {
+        siteId,
+        feature: "glossary",
+        blockedResponse: retranslate
+          ? failed("Demo glossary edits cannot trigger retranslation.")
+          : undefined,
+      },
     });
     if (!mutationAuth.ok) {
       return mutationAuth.response;
     }
-    const result = await (async (auth) => {
-      const response = await updateGlossary(auth.webhooksAuth, siteId, entries, retranslate);
-      await invalidateDashboardCaches(auth.webhooksAuth, siteId, { invalidateSitesList: false });
-      return response;
-    })(mutationAuth.auth);
+    const result = await updateGlossary(
+      mutationAuth.auth.webhooksAuth,
+      siteId,
+      entries,
+      retranslate,
+    );
+    await invalidateDashboardCaches(mutationAuth.auth.webhooksAuth, siteId, {
+      invalidateSitesList: false,
+    });
     revalidatePath(`/dashboard/sites/${siteId}`);
     revalidatePath(`/dashboard/sites/${siteId}/overrides`);
     revalidatePath(`/dashboard/sites/${siteId}/quality`);

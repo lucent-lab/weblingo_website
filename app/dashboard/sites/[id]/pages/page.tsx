@@ -242,6 +242,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
         <CardContent>
           <CrawlSummaryClient
             siteId={id}
+            locale={locale}
             initialStatus={compactStatus}
             emptyLabel={crawlSummaryEmpty}
             statusLabel={crawlStatusLabel}

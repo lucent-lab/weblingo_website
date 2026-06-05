@@ -12,6 +12,7 @@ import type { SiteCompactStatusResponse } from "@internal/dashboard/webhooks";
 
 type CrawlSummaryClientProps = {
   siteId: string;
+  locale: string;
   initialStatus: SiteCompactStatusResponse;
   emptyLabel: string;
   statusLabel: string;
@@ -28,6 +29,7 @@ type CrawlSummaryClientProps = {
 
 export function CrawlSummaryClient({
   siteId,
+  locale,
   initialStatus,
   emptyLabel,
   statusLabel,
@@ -99,12 +101,14 @@ export function CrawlSummaryClient({
         </div>
         <div className="space-y-1">
           <div className="text-xs uppercase text-muted-foreground">{startedLabel}</div>
-          <span className="text-muted-foreground">{formatTimestamp(latestCrawlRun.startedAt)}</span>
+          <span className="text-muted-foreground">
+            {formatTimestamp(latestCrawlRun.startedAt, locale)}
+          </span>
         </div>
         <div className="space-y-1">
           <div className="text-xs uppercase text-muted-foreground">{finishedLabel}</div>
           <span className="text-muted-foreground">
-            {formatTimestamp(latestCrawlRun.finishedAt)}
+            {formatTimestamp(latestCrawlRun.finishedAt, locale)}
           </span>
         </div>
         <div className="space-y-1">
@@ -124,7 +128,7 @@ export function CrawlSummaryClient({
   );
 }
 
-function formatTimestamp(value?: string | null): string {
+function formatTimestamp(value: string | null | undefined, locale: string): string {
   if (!value) {
     return "—";
   }
@@ -132,7 +136,11 @@ function formatTimestamp(value?: string | null): string {
   if (Number.isNaN(date.valueOf())) {
     return value;
   }
-  return date.toLocaleString();
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function hasActiveWork(status: SiteCompactStatusResponse): boolean {

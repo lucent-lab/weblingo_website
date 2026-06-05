@@ -81,7 +81,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canEdit = siteHeaderAccess.canEdit;
-  const canGlossary = auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
+  const canDemoGlossary = auth.accessMode === "demo" && auth.has({ feature: "glossary" });
+  const canGlossary =
+    canDemoGlossary || (auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed);
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
   const canSlugs = auth.has({ allFeatures: ["edit", "slug_edit"] }) && mutationsAllowed;
   const headerLabels = buildSiteHeaderLabels(t);
@@ -296,6 +298,7 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
             </CardHeader>
             <CardContent>
               <GlossaryEditor
+                allowRetranslate={!canDemoGlossary}
                 initialEntries={glossary}
                 siteId={site.id}
                 targetLangs={targetLangs}

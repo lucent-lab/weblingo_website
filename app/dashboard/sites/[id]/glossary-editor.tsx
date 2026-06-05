@@ -15,10 +15,12 @@ const initialState: ActionResponse = { ok: false, message: "" };
 export function GlossaryEditor({
   siteId,
   initialEntries,
+  allowRetranslate = true,
   targetLangs,
 }: {
   siteId: string;
   initialEntries: GlossaryEntry[];
+  allowRetranslate?: boolean;
   targetLangs: string[];
 }) {
   const [entries, setEntries] = useState<GlossaryEntry[]>(() => initialEntries);
@@ -64,10 +66,12 @@ export function GlossaryEditor({
           onEntriesChange={setEntries}
         />
 
-        <label className="flex items-center gap-2 text-sm">
-          <input name="retranslate" type="checkbox" value="true" />
-          Retranslate after glossary updates
-        </label>
+        {allowRetranslate ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input name="retranslate" type="checkbox" value="true" />
+            Retranslate after glossary updates
+          </label>
+        ) : null}
 
         {state.message && !state.ok ? (
           <div className="text-sm text-destructive" role="status">

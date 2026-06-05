@@ -29,7 +29,14 @@ vi.mock("@/components/dashboard/error-state-card", () => ({
   ErrorStateCard: () => null,
 }));
 vi.mock("../glossary-editor", () => ({
-  GlossaryEditor: function MockGlossaryEditor({ targetLangs }: { targetLangs: string[] }) {
+  GlossaryEditor: function MockGlossaryEditor({
+    allowRetranslate,
+    targetLangs,
+  }: {
+    allowRetranslate?: boolean;
+    targetLangs: string[];
+  }) {
+    void allowRetranslate;
     return <div>glossary-editor:{targetLangs.join(",")}</div>;
   },
 }));
@@ -216,6 +223,61 @@ describe("SiteOverridesPage", () => {
       limit: 100,
       offset: 0,
     });
+  });
+
+  it("lets demo scoped auth edit glossary without exposing override or slug editors", async () => {
+    const authToken = {
+      token: "demo-token",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      subjectAccountId: "acct-demo",
+      refresh: async () => "demo-token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-1" },
+      webhooksAuth: authToken,
+      mutationsAllowed: false,
+      has: vi.fn((check: { feature?: string; allFeatures?: string[] }) => {
+        if (check.feature) {
+          return check.feature === "glossary";
+        }
+        return false;
+      }),
+      account: {
+        accountId: "acct-demo",
+        featureFlags: {},
+        planType: "pro",
+        planStatus: "active",
+      },
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSite.mockResolvedValue({
+      id: "site-1",
+      status: "active",
+      sourceUrl: "https://example.com",
+      locales: [{ sourceLang: "fr", targetLang: "en" }],
+    });
+    mocks.fetchGlossary.mockResolvedValue([]);
+
+    vi.resetModules();
+    const { default: SiteOverridesPage } = await import("./page");
+
+    const tree = await SiteOverridesPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ sourceLang: "fr", targetLang: "en" }),
+    });
+
+    expect(findElementPropsByComponentName(tree, "MockGlossaryEditor")).toMatchObject({
+      allowRetranslate: false,
+      targetLangs: ["en"],
+    });
+    expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toBeNull();
+    expect(findElementPropsByComponentName(tree, "MockSlugForm")).toBeNull();
+    expect(mocks.fetchGlossary).toHaveBeenCalledWith(authToken, "site-1");
   });
 });
 

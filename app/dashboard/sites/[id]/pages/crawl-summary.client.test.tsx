@@ -36,6 +36,7 @@ describe("CrawlSummaryClient", () => {
     render(
       <CrawlSummaryClient
         siteId="site-1"
+        locale="en"
         initialStatus={initialStatus}
         emptyLabel="No crawl yet."
         statusLabel="Status"
@@ -56,6 +57,7 @@ describe("CrawlSummaryClient", () => {
     );
 
     expect(screen.getByText("Crawl failed")).toBeTruthy();
+    expect(screen.getByText("May 7, 2026, 12:00 AM")).toBeTruthy();
     expect(screen.queryByText("provider_internal_error")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -92,6 +94,7 @@ describe("CrawlSummaryClient", () => {
     render(
       <CrawlSummaryClient
         siteId="site-1"
+        locale="en"
         initialStatus={initialStatus}
         emptyLabel="No crawl yet."
         statusLabel="Status"
@@ -143,6 +146,7 @@ describe("CrawlSummaryClient", () => {
     render(
       <CrawlSummaryClient
         siteId="site-1"
+        locale="en"
         initialStatus={initialStatus}
         emptyLabel="No crawl yet."
         statusLabel="Status"
