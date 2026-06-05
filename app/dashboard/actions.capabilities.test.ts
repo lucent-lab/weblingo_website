@@ -182,6 +182,31 @@ describe("dashboard capability actions", () => {
     expect(triggerCrawlTranslate).not.toHaveBeenCalled();
   });
 
+  it("blocks dashboard mutations for demo scoped auth even when mutationsAllowed is true", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      account: { accountId: "acct-demo", planType: "starter", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+    const { triggerCrawlTranslateAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-demo");
+    formData.set("targetLangs", "fr");
+
+    const result = await triggerCrawlTranslateAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
+    });
+    expect(triggerCrawlTranslate).not.toHaveBeenCalled();
+  });
+
   it("updates digest subscription and returns off-specific messaging", async () => {
     upsertDigestSubscription.mockResolvedValue({
       id: "sub-1",

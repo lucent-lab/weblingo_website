@@ -206,6 +206,14 @@ async function requireDashboardMutationAuth(
   if (!auth.account || !auth.webhooksAuth) {
     return { ok: false, response: failed("Unable to resolve account entitlements.") };
   }
+  if (auth.accessMode === "demo") {
+    return {
+      ok: false,
+      response: failed(
+        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
+      ),
+    };
+  }
   if (!auth.mutationsAllowed) {
     return { ok: false, response: failed(formatBillingBlockMessage(auth, gate.actionLabel)) };
   }

@@ -31,8 +31,10 @@ const mockedRequireDashboardAuth = vi.mocked(requireDashboardAuth);
 const mockedFetchSiteCompactStatus = vi.mocked(fetchSiteCompactStatus);
 
 const makeAuth = (subjectAccountId: string): DashboardAuth => ({
+  accessMode: "supabase",
   user: null,
   session: null,
+  demoSession: null,
   webhooksAuth: {
     token: "token",
     expiresAt: "2025-01-01T00:00:00Z",

@@ -10,13 +10,16 @@ import { createClient } from "@/lib/supabase/server";
 import type { AccountMe } from "./webhooks";
 import {
   exchangeWebhooksToken,
+  fetchAccountMe,
   fetchDashboardBootstrap,
   type AgencyCustomersResponse,
+  WebhooksApiError,
 } from "./webhooks";
 import { createHas, type HasCheck } from "./entitlements";
 import { resolveStripeBillingRuntime, type StripeBillingRuntimeState } from "./billing-runtime";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import { readSubjectAccountId } from "./workspace";
+import { readDashboardDemoSession, type DashboardDemoSession } from "./demo-session";
 
 export type WebhooksAuthContext = {
   token: string;
@@ -31,8 +34,10 @@ export type BillingIssue = {
 };
 
 export type DashboardAuth = {
+  accessMode: "anonymous" | "supabase" | "demo";
   user: User | null;
   session: Session | null;
+  demoSession: DashboardDemoSession | null;
   webhooksAuth: WebhooksAuthContext | null;
   account: AccountMe | null;
   actorAccount: AccountMe | null;
@@ -234,8 +239,10 @@ function buildDashboardE2eMockAuth(): DashboardAuth {
   } as Session;
 
   return {
+    accessMode: "supabase",
     user,
     session,
+    demoSession: null,
     webhooksAuth,
     account,
     actorAccount: account,
@@ -248,6 +255,109 @@ function buildDashboardE2eMockAuth(): DashboardAuth {
     actorPlanActive: true,
     subjectPlanActive: true,
     mutationsAllowed: true,
+    billingIssue: null,
+    stripeBillingRuntime: null,
+    has: createHas(account),
+  };
+}
+
+function buildAnonymousDashboardAuth(): DashboardAuth {
+  return {
+    accessMode: "anonymous",
+    user: null,
+    session: null,
+    demoSession: null,
+    webhooksAuth: null,
+    account: null,
+    actorAccount: null,
+    subjectAccount: null,
+    actorWebhooksAuth: null,
+    agencyCustomers: null,
+    actorAccountId: null,
+    subjectAccountId: null,
+    actingAsCustomer: false,
+    actorPlanActive: false,
+    subjectPlanActive: false,
+    mutationsAllowed: false,
+    billingIssue: null,
+    stripeBillingRuntime: null,
+    has: () => false,
+  };
+}
+
+async function buildDashboardDemoAuth(): Promise<DashboardAuth | null> {
+  const demoSession = await readDashboardDemoSession();
+  if (!demoSession) {
+    return null;
+  }
+
+  let account: AccountMe;
+  try {
+    account = await fetchAccountMe({ token: demoSession.token });
+  } catch (error) {
+    if (
+      error instanceof WebhooksApiError &&
+      (error.status === 401 || error.status === 403 || error.status === 404)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+
+  if (
+    account.accountId !== demoSession.subjectAccountId ||
+    demoSession.actorAccountId !== demoSession.subjectAccountId ||
+    account.featureFlags.demoMode !== true ||
+    account.featureFlags.siteCreateEnabled !== false
+  ) {
+    return null;
+  }
+
+  const user = {
+    id: `prospect-demo:${demoSession.prospectShowcaseRef}`,
+    email: "prospect-demo@weblingo.app",
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: demoSession.createdAt,
+  } as User;
+  const session = {
+    access_token: `prospect-demo:${demoSession.prospectShowcaseRef}`,
+    refresh_token: "",
+    expires_in: Math.max(0, Math.floor((Date.parse(demoSession.expiresAt) - Date.now()) / 1000)),
+    token_type: "bearer",
+    user,
+  } as Session;
+  const webhooksAuth: WebhooksAuthContext = {
+    token: demoSession.token,
+    expiresAt: demoSession.expiresAt,
+    subjectAccountId: demoSession.subjectAccountId,
+    refresh: async () => {
+      if (Date.parse(demoSession.expiresAt) <= Date.now()) {
+        throw new Error("Demo dashboard session expired.");
+      }
+      return demoSession.token;
+    },
+  };
+  const planActive = account.planStatus === "active";
+
+  return {
+    accessMode: "demo",
+    user,
+    session,
+    demoSession,
+    webhooksAuth,
+    account,
+    actorAccount: account,
+    subjectAccount: account,
+    actorWebhooksAuth: webhooksAuth,
+    agencyCustomers: null,
+    actorAccountId: demoSession.actorAccountId,
+    subjectAccountId: demoSession.subjectAccountId,
+    actingAsCustomer: false,
+    actorPlanActive: planActive,
+    subjectPlanActive: planActive,
+    mutationsAllowed: false,
     billingIssue: null,
     stripeBillingRuntime: null,
     has: createHas(account),
@@ -338,6 +448,11 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
     return buildDashboardE2eMockAuth();
   }
 
+  const demoAuth = await buildDashboardDemoAuth();
+  if (demoAuth) {
+    return demoAuth;
+  }
+
   const supabase = await createClient();
   const [
     {
@@ -349,25 +464,7 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   ] = await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
 
   if (!session || !user) {
-    return {
-      user: null,
-      session: null,
-      webhooksAuth: null,
-      account: null,
-      actorAccount: null,
-      subjectAccount: null,
-      actorWebhooksAuth: null,
-      agencyCustomers: null,
-      actorAccountId: null,
-      subjectAccountId: null,
-      actingAsCustomer: false,
-      actorPlanActive: false,
-      subjectPlanActive: false,
-      mutationsAllowed: false,
-      billingIssue: null,
-      stripeBillingRuntime: null,
-      has: () => false,
-    };
+    return buildAnonymousDashboardAuth();
   }
 
   const actorBootstrap = await getBootstrap({
@@ -416,8 +513,10 @@ export const getDashboardAuth = cache(async (): Promise<DashboardAuth> => {
   const stripeBillingRuntime = resolveStripeBillingRuntime(user.user_metadata);
 
   return {
+    accessMode: "supabase",
     user,
     session,
+    demoSession: null,
     webhooksAuth: subjectAuth,
     account: subjectAccount,
     actorAccount,

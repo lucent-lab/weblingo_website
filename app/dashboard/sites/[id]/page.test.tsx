@@ -44,6 +44,11 @@ vi.mock("@internal/i18n", () => ({
   resolvePreferredLocale: mocks.resolvePreferredLocale,
   resolveLocaleTranslator: mocks.resolveLocaleTranslator,
 }));
+vi.mock("./prospect-demo-conversion-card", () => ({
+  ProspectDemoConversionCard: ({ siteId }: { siteId: string }) => (
+    <div data-testid="prospect-demo-card">Activate {siteId}</div>
+  ),
+}));
 
 function makeOverview(): SiteCustomerOverviewResponse {
   return {
@@ -207,6 +212,72 @@ describe("SitePage", () => {
       "/dashboard/sites/site-1/domains#domain-fr-example-com",
     );
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
+  });
+
+  it("renders demo scoped auth on the real site page", async () => {
+    const webhooksAuth = {
+      token: "demo-token",
+      subjectAccountId: "acct-demo",
+      expiresAt: "2030-01-01T00:00:00.000Z",
+      refresh: async () => "demo-token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-1" },
+      webhooksAuth,
+      mutationsAllowed: false,
+      has: vi.fn().mockReturnValue(false),
+      account: { accountId: "acct-demo" },
+      subjectAccount: { accountId: "acct-demo" },
+      actorAccount: { accountId: "acct-demo" },
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(makeOverview());
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    const tree = await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+    render(tree);
+
+    expect(screen.getByTestId("prospect-demo-card").textContent).toContain("site-1");
+    expect(screen.getByText("Scoped demo access")).toBeTruthy();
+    expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
+  });
+
+  it("404s demo scoped auth before fetching a different site", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-claimed" },
+      webhooksAuth: {
+        token: "demo-token",
+        subjectAccountId: "acct-demo",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+        refresh: async () => "demo-token",
+      },
+      mutationsAllowed: false,
+      has: vi.fn().mockReturnValue(false),
+      account: { accountId: "acct-demo" },
+      subjectAccount: { accountId: "acct-demo" },
+      actorAccount: { accountId: "acct-demo" },
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    await expect(
+      SitePage({
+        params: Promise.resolve({ id: "site-other" }),
+      }),
+    ).rejects.toThrow("notFound");
+    expect(mocks.getSiteCustomerOverviewCached).not.toHaveBeenCalled();
   });
 
   it("renders repeated blocker codes without duplicate React keys", async () => {

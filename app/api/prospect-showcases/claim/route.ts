@@ -10,6 +10,13 @@ import {
   readProspectShowcaseJsonBodyLimited,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
+import {
+  buildDashboardDemoRedirectUrl,
+  buildDashboardDemoSessionCookieOptions,
+  createDashboardDemoSession,
+  parseDashboardDemoClaimPayload,
+} from "@internal/dashboard/demo-session";
+import { DASHBOARD_DEMO_SESSION_COOKIE } from "@internal/dashboard/demo-session-constants";
 
 export const runtime = "nodejs";
 
@@ -61,11 +68,77 @@ export async function POST(request: NextRequest) {
     );
 
     const text = await upstream.text();
-    return new NextResponse(text || undefined, {
-      status: upstream.status,
-      headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
-    });
+    if (!upstream.ok) {
+      return new NextResponse(text || undefined, {
+        status: upstream.status,
+        headers: buildProspectShowcaseUpstreamResponseHeaders(upstream, "application/json"),
+      });
+    }
+
+    const parsedBody = text ? safeParseJson(text) : null;
+    const claim = parseDashboardDemoClaimPayload(parsedBody);
+    if (!claim) {
+      return createProspectShowcaseProxyResponse(
+        "json",
+        "Demo service returned an invalid dashboard claim.",
+        502,
+      );
+    }
+    if (isExpiredClaim(claim.expiresAt)) {
+      return createProspectShowcaseProxyResponse(
+        "json",
+        "Demo dashboard access is no longer available.",
+        401,
+      );
+    }
+
+    let session;
+    try {
+      session = await createDashboardDemoSession(claim);
+    } catch (error) {
+      console.error("[prospect-showcases] dashboard demo session create failed:", error);
+      return createProspectShowcaseProxyResponse(
+        "json",
+        "Demo dashboard access is temporarily unavailable.",
+        503,
+      );
+    }
+
+    const response = NextResponse.json(
+      {
+        demo: true,
+        expiresAt: claim.expiresAt,
+        prospectShowcaseRef: claim.prospectShowcaseRef,
+        siteId: claim.siteId,
+        redirectUrl: buildDashboardDemoRedirectUrl(claim.siteId),
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+    response.cookies.set(
+      DASHBOARD_DEMO_SESSION_COOKIE,
+      session.id,
+      buildDashboardDemoSessionCookieOptions(session.maxAgeSeconds),
+    );
+    return response;
   } catch (error) {
     return createProspectShowcaseFetchErrorResponse(error, "json");
   }
+}
+
+function safeParseJson(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return null;
+  }
+}
+
+function isExpiredClaim(expiresAt: string): boolean {
+  const timestamp = Date.parse(expiresAt);
+  return !Number.isFinite(timestamp) || timestamp <= Date.now();
 }

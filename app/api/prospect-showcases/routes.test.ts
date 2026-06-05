@@ -13,7 +13,12 @@ class FetchTimeoutError extends Error {
 const fetchWithTimeout = vi.fn();
 vi.mock("@internal/core/fetch-timeout", () => ({ fetchWithTimeout, FetchTimeoutError }));
 
-vi.mock("@internal/core/redis", () => ({ redis: {} }));
+const redisMock = vi.hoisted(() => ({
+  get: vi.fn(),
+  set: vi.fn(),
+  del: vi.fn(),
+}));
+vi.mock("@internal/core/redis", () => ({ redis: redisMock }));
 
 beforeAll(() => {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -55,6 +60,12 @@ beforeAll(() => {
 beforeEach(() => {
   rateLimitFixedWindow.mockReset();
   fetchWithTimeout.mockReset();
+  redisMock.get.mockReset();
+  redisMock.set.mockReset();
+  redisMock.del.mockReset();
+  redisMock.get.mockResolvedValue(null);
+  redisMock.set.mockResolvedValue("OK");
+  redisMock.del.mockResolvedValue(1);
 });
 
 function buildNextRequest(url: string, init?: RequestInit): NextRequest {
@@ -70,6 +81,27 @@ function allowRateLimit() {
     current: 1,
     key: "k",
   });
+}
+
+function demoClaimPayload(options?: {
+  expiresAt?: string;
+  actorAccountId?: string;
+  subjectAccountId?: string;
+  siteId?: string;
+}) {
+  const siteId = options?.siteId ?? "site-demo";
+  return {
+    token: "dashboard-token",
+    expiresAt: options?.expiresAt ?? new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    entitlements: { planType: "starter", planStatus: "active" },
+    actorAccountId: options?.actorAccountId ?? "acct-demo",
+    subjectAccountId: options?.subjectAccountId ?? "acct-demo",
+    prospectShowcaseId: "ps-id",
+    prospectShowcaseRef: "ps-test-ref",
+    siteId,
+    demo: true,
+    conversionToken: "conversion-token",
+  };
 }
 
 describe("/api/prospect-showcases proxy routes", () => {
@@ -192,7 +224,7 @@ describe("/api/prospect-showcases proxy routes", () => {
     const { POST } = await import("./claim/route");
     allowRateLimit();
     fetchWithTimeout.mockResolvedValueOnce(
-      new Response(JSON.stringify({ token: "dashboard-token", demo: true }), {
+      new Response(JSON.stringify(demoClaimPayload()), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -208,8 +240,32 @@ describe("/api/prospect-showcases proxy routes", () => {
     });
 
     const response = await POST(request);
+    const payload = await response.json();
 
     expect(response.status).toBe(200);
+    expect(payload).toEqual({
+      demo: true,
+      expiresAt: expect.any(String),
+      prospectShowcaseRef: "ps-test-ref",
+      siteId: "site-demo",
+      redirectUrl: "/dashboard/sites/site-demo",
+    });
+    expect(payload.token).toBeUndefined();
+    expect(payload.conversionToken).toBeUndefined();
+    expect(response.headers.get("set-cookie")).toContain("weblingo_dashboard_demo=");
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(redisMock.set).toHaveBeenCalledWith(
+      expect.stringMatching(/^dashboard:demo-session:v1:[a-f0-9]{64}$/),
+      expect.objectContaining({
+        token: "dashboard-token",
+        conversionToken: "conversion-token",
+        actorAccountId: "acct-demo",
+        subjectAccountId: "acct-demo",
+        siteId: "site-demo",
+        demo: true,
+      }),
+      expect.objectContaining({ ex: expect.any(Number) }),
+    );
     expect(rateLimitFixedWindow).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -233,6 +289,58 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test("POST /api/prospect-showcases/claim rejects invalid upstream dashboard claims", async () => {
+    const { POST } = await import("./claim/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ token: "dashboard-token", demo: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/claim", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ token: "dashboard-token" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(redisMock.set).not.toHaveBeenCalled();
+  });
+
+  test("POST /api/prospect-showcases/claim rejects expired upstream dashboard claims", async () => {
+    const { POST } = await import("./claim/route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify(demoClaimPayload({ expiresAt: "2026-01-01T00:00:00.000Z" })), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const request = buildNextRequest("http://localhost/api/prospect-showcases/claim", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({ token: "dashboard-token" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(redisMock.set).not.toHaveBeenCalled();
+  });
+
   test("POST /api/prospect-showcases/claim uses the create timeout budget", async () => {
     const originalCreateTimeout = process.env.WEBSITE_PREVIEW_UPSTREAM_CREATE_TIMEOUT_MS;
     const originalStatusTimeout = process.env.WEBSITE_PREVIEW_UPSTREAM_STATUS_TIMEOUT_MS;
@@ -243,7 +351,7 @@ describe("/api/prospect-showcases proxy routes", () => {
       const { POST } = await import("./claim/route");
       allowRateLimit();
       fetchWithTimeout.mockResolvedValueOnce(
-        new Response(JSON.stringify({ token: "dashboard-token", demo: true }), {
+        new Response(JSON.stringify(demoClaimPayload()), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -359,51 +467,6 @@ describe("/api/prospect-showcases proxy routes", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: "Invalid email" });
     expect(fetchWithTimeout).not.toHaveBeenCalled();
-  });
-
-  test("POST /api/prospect-showcases/:ref/convert sends dashboard token as bearer auth", async () => {
-    const { POST } = await import("./[ref]/convert/route");
-    allowRateLimit();
-    fetchWithTimeout.mockResolvedValueOnce(
-      new Response(JSON.stringify({ status: "activation_pending" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-
-    const ref = "ps-convert-ref";
-    const request = buildNextRequest(`http://localhost/api/prospect-showcases/${ref}/convert`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-forwarded-for": "1.2.3.4",
-      },
-      body: JSON.stringify({
-        email: "owner@example.com",
-        conversionToken: "conversion-token",
-        dashboardToken: "dashboard-token",
-      }),
-    });
-
-    const response = await POST(request, { params: Promise.resolve({ ref }) });
-
-    expect(response.status).toBe(200);
-    expect(fetchWithTimeout).toHaveBeenCalledWith(
-      `https://api.example.com/api/prospect-showcases/${encodeURIComponent(ref)}/convert`,
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          Authorization: "Bearer dashboard-token",
-          Accept: "application/json",
-        }),
-        body: JSON.stringify({
-          email: "owner@example.com",
-          conversionToken: "conversion-token",
-        }),
-      }),
-      expect.objectContaining({ timeoutMs: 15000, signal: request.signal }),
-    );
   });
 
   test("prospect ref routes reject invalid references before upstream calls", async () => {

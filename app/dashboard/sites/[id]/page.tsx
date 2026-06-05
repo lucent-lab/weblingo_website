@@ -23,6 +23,8 @@ import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
 
+import { ProspectDemoConversionCard } from "./prospect-demo-conversion-card";
+
 type SitePageProps = {
   params: Promise<{ id: string }>;
 };
@@ -37,6 +39,10 @@ type CustomerCta = SiteCustomerOverviewResponse["nextAction"]["cta"];
 export default async function SitePage({ params }: SitePageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
+  const demoSession = auth.accessMode === "demo" ? auth.demoSession : null;
+  if (auth.accessMode === "demo" && demoSession?.siteId !== id) {
+    notFound();
+  }
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
@@ -177,12 +183,17 @@ export default async function SitePage({ params }: SitePageProps) {
 
       <MutationLockBanner
         locked={mutationsLocked}
+        title={auth.accessMode === "demo" ? "Scoped demo access" : undefined}
         description={
-          auth.mutationsAllowed
-            ? "This account cannot make dashboard changes until its plan allows mutations."
-            : "Billing or account status is blocking dashboard mutations for this workspace."
+          auth.accessMode === "demo"
+            ? "This demo is read-only until it is activated for your domain."
+            : auth.mutationsAllowed
+              ? "This account cannot make dashboard changes until its plan allows mutations."
+              : "Billing or account status is blocking dashboard mutations for this workspace."
         }
       />
+
+      {demoSession ? <ProspectDemoConversionCard siteId={site.id} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <NextActionCard

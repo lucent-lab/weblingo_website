@@ -31,8 +31,10 @@ const mockedPreviewSourceSelection = vi.mocked(previewSourceSelection);
 
 function makeAuth(): DashboardAuth {
   return {
+    accessMode: "supabase",
     user: null,
     session: null,
+    demoSession: null,
     webhooksAuth: {
       token: "subject-token",
       expiresAt: "2026-01-01T00:00:00.000Z",

@@ -14,15 +14,18 @@ const redirect = vi.fn((url: string) => {
 });
 const createClient = vi.fn();
 const clearSubjectAccountId = vi.fn();
+const clearDashboardDemoSessionCookie = vi.fn();
 
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@internal/dashboard/workspace", () => ({ clearSubjectAccountId }));
+vi.mock("@internal/dashboard/demo-session", () => ({ clearDashboardDemoSessionCookie }));
 
 beforeEach(() => {
   redirect.mockClear();
   createClient.mockReset();
   clearSubjectAccountId.mockClear();
+  clearDashboardDemoSessionCookie.mockClear();
 });
 
 describe("logout", () => {
@@ -41,5 +44,6 @@ describe("logout", () => {
     });
 
     expect(clearSubjectAccountId).toHaveBeenCalledOnce();
+    expect(clearDashboardDemoSessionCookie).toHaveBeenCalledOnce();
   });
 });

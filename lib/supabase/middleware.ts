@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
+import { DASHBOARD_DEMO_SESSION_COOKIE } from "@internal/dashboard/demo-session-constants";
 import { i18nConfig, type Locale } from "@internal/i18n";
 import { getSupabasePublicEnv } from "./env";
 
@@ -63,6 +64,7 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
+  const hasDemoDashboardSession = request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
 
   if (publicDemoDashboardLocale !== undefined) {
     return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale, supabaseResponse);
@@ -71,6 +73,7 @@ export async function updateSession(request: NextRequest) {
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
+    !hasDemoDashboardSession &&
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {

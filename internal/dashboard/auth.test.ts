@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgencyCustomersResponse, DashboardBootstrapResponse } from "./webhooks";
+import type { AccountMe, AgencyCustomersResponse, DashboardBootstrapResponse } from "./webhooks";
 
 const redisMock = {
   del: vi.fn(),
@@ -34,6 +34,7 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("./webhooks", () => ({
   exchangeWebhooksToken: vi.fn(),
+  fetchAccountMe: vi.fn(),
   fetchDashboardBootstrap: vi.fn(),
   WebhooksApiError: class extends Error {
     status: number;
@@ -118,7 +119,49 @@ function makeActorBootstrap(): DashboardBootstrapResponse {
   };
 }
 
+function makeDemoAccount(): AccountMe {
+  const base = makeActorBootstrap().account;
+  return {
+    ...base,
+    accountId: "acct-demo",
+    planType: "starter",
+    featureFlags: {
+      ...base.featureFlags,
+      siteCreateEnabled: false,
+      agencyActionsEnabled: false,
+      internalOpsEnabled: false,
+      demoMode: true,
+      maxSites: 1,
+    },
+    quotaLimits: {
+      ...base.quotaLimits,
+      maxSites: 1,
+    },
+    quotas: {
+      ...base.quotas,
+      maxSites: 1,
+    },
+  };
+}
+
+function makeStoredDemoSession(options?: { expiresAt?: string }) {
+  return {
+    token: "dashboard-demo-token",
+    expiresAt: options?.expiresAt ?? "2030-01-01T00:00:00.000Z",
+    entitlements: { planType: "starter", planStatus: "active" },
+    actorAccountId: "acct-demo",
+    subjectAccountId: "acct-demo",
+    prospectShowcaseId: "ps-id",
+    prospectShowcaseRef: "ps-demo-ref",
+    siteId: "site-demo",
+    demo: true,
+    conversionToken: "conversion-token",
+    createdAt: "2026-06-01T00:00:00.000Z",
+  };
+}
+
 beforeEach(() => {
+  vi.clearAllMocks();
   redisMock.del.mockReset();
   redisMock.get.mockReset();
   redisMock.set.mockReset();
@@ -164,6 +207,98 @@ describe("getActiveAgencyCustomers", () => {
 });
 
 describe("getDashboardAuth", () => {
+  it("builds demo scoped dashboard auth without a Supabase session", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const webhooks = await import("./webhooks");
+    const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
+    const fetchDashboardBootstrap = webhooks.fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      },
+    });
+    cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
+    redisMock.get.mockResolvedValue(makeStoredDemoSession());
+    fetchAccountMe.mockResolvedValue(makeDemoAccount());
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.accessMode).toBe("demo");
+    expect(auth.user?.id).toBe("prospect-demo:ps-demo-ref");
+    expect(auth.session?.access_token).toBe("prospect-demo:ps-demo-ref");
+    expect(auth.webhooksAuth?.token).toBe("dashboard-demo-token");
+    expect(auth.subjectAccountId).toBe("acct-demo");
+    expect(auth.actorAccountId).toBe("acct-demo");
+    expect(auth.agencyCustomers).toBeNull();
+    expect(auth.mutationsAllowed).toBe(false);
+    expect(auth.account?.featureFlags.siteCreateEnabled).toBe(false);
+    expect(fetchAccountMe).toHaveBeenCalledWith({ token: "dashboard-demo-token" });
+    expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
+  });
+
+  it("prefers valid demo scoped auth over an existing Supabase session", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const webhooks = await import("./webhooks");
+    const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
+    const fetchDashboardBootstrap = webhooks.fetchDashboardBootstrap as ReturnType<typeof vi.fn>;
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: session.user } }),
+      },
+    });
+    cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
+    redisMock.get.mockResolvedValue(makeStoredDemoSession());
+    fetchAccountMe.mockResolvedValue(makeDemoAccount());
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.accessMode).toBe("demo");
+    expect(auth.webhooksAuth?.token).toBe("dashboard-demo-token");
+    expect(fetchAccountMe).toHaveBeenCalledWith({ token: "dashboard-demo-token" });
+    expect(fetchDashboardBootstrap).not.toHaveBeenCalled();
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it("does not create demo dashboard auth from an expired stored session", async () => {
+    const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
+      typeof vi.fn
+    >;
+    const webhooks = await import("./webhooks");
+    const fetchAccountMe = webhooks.fetchAccountMe as ReturnType<typeof vi.fn>;
+
+    createClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      },
+    });
+    cookiesStore.get.mockReturnValue({ value: "opaque-demo-session" });
+    redisMock.get.mockResolvedValue(
+      makeStoredDemoSession({ expiresAt: "2026-01-01T00:00:00.000Z" }),
+    );
+
+    vi.resetModules();
+    const { getDashboardAuth } = await import("./auth");
+    const auth = await getDashboardAuth();
+
+    expect(auth.accessMode).toBe("anonymous");
+    expect(auth.user).toBeNull();
+    expect(auth.webhooksAuth).toBeNull();
+    expect(fetchAccountMe).not.toHaveBeenCalled();
+  });
+
   it("uses the actor workspace when no subject workspace is requested", async () => {
     const createClient = (await import("@/lib/supabase/server")).createClient as ReturnType<
       typeof vi.fn

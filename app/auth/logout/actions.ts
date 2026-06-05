@@ -9,5 +9,7 @@ export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   await clearSubjectAccountId();
+  const { clearDashboardDemoSessionCookie } = await import("@internal/dashboard/demo-session");
+  await clearDashboardDemoSessionCookie();
   redirect("/auth/login");
 }

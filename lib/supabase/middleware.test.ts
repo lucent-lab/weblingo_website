@@ -18,8 +18,11 @@ type SupabaseCookieBridge = {
 
 const createServerClientMock = vi.mocked(createServerClient);
 
-function buildRequest(url: string): NextRequest {
-  return new NextRequest(url);
+function buildRequest(
+  url: string,
+  init?: ConstructorParameters<typeof NextRequest>[1],
+): NextRequest {
+  return new NextRequest(url, init);
 }
 
 describe("updateSession", () => {
@@ -112,5 +115,16 @@ describe("updateSession", () => {
     expect(response.headers.get("location")).toBe(
       "https://weblingo.app/auth/login?next=%2Fdashboard%2Fsites%2Fsite-customer%3Ftab%3Dbilling",
     );
+  });
+
+  it("lets opaque demo dashboard sessions reach dashboard auth validation", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/dashboard/sites/site-demo", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
   });
 });

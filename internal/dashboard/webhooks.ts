@@ -2112,6 +2112,20 @@ const dashboardBootstrapResponseSchema = z
   })
   .strict();
 
+const prospectDemoConversionResponseSchema = z
+  .object({
+    prospectShowcaseRef: z.string(),
+    status: z.enum(["checkout_pending", "activation_pending", "payment_failed", "converted"]),
+    activationStatus: z.enum(["activation_pending", "payment_failed", "active"]),
+    locked: z.boolean(),
+    lockedReason: z.string(),
+    accountId: z.string(),
+    siteId: z.string(),
+    nextAction: z.string(),
+    inviteLink: z.string().optional(),
+  })
+  .strict();
+
 const translationRunResponseSchema = z.object({ run: translationRunSchema }).strict();
 
 const resumeTranslationRunResponseSchema = z
@@ -2277,6 +2291,7 @@ export type ListAdminAccountsResponse = z.infer<typeof listAdminAccountsResponse
 export type GetAdminAccountResponse = z.infer<typeof getAdminAccountResponseSchema>;
 export type UpdateAdminAccountResponse = z.infer<typeof updateAdminAccountResponseSchema>;
 export type DashboardBootstrapResponse = z.infer<typeof dashboardBootstrapResponseSchema>;
+export type ProspectDemoConversionResponse = z.infer<typeof prospectDemoConversionResponseSchema>;
 export type SiteShowcase = z.infer<typeof siteShowcaseSchema>;
 export type SiteShowcaseResponse = z.infer<typeof siteShowcaseResponseSchema>;
 export type ManagedDemoDeploymentSummary = z.infer<typeof managedDemoDeploymentSummarySchema>;
@@ -2299,6 +2314,7 @@ export const __webhooksZodContracts = {
   listAdminAccountsResponseSchema,
   getAdminAccountResponseSchema,
   updateAdminAccountResponseSchema,
+  prospectDemoConversionResponseSchema,
   listManagedDemoSitesResponseSchema,
   createManagedDemoSiteResponseSchema,
   rerunManagedDemoSiteCrawlResponseSchema,
@@ -4286,6 +4302,21 @@ export async function fetchAccountMe(auth: AuthInput): Promise<AccountMe> {
     auth,
     schema: accountMeSchema,
     timeoutProfile: "detail",
+  });
+}
+
+export async function convertProspectShowcaseDemo(
+  auth: AuthInput,
+  prospectShowcaseRef: string,
+  payload: { email: string; conversionToken: string },
+): Promise<ProspectDemoConversionResponse> {
+  return request({
+    path: `/prospect-showcases/${encodeURIComponent(prospectShowcaseRef)}/convert`,
+    method: "POST",
+    auth,
+    body: payload,
+    schema: prospectDemoConversionResponseSchema,
+    timeoutProfile: "mutation",
   });
 }
 

@@ -406,6 +406,7 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       { path: "/admin/accounts/{accountId}", method: "patch" },
       { path: "/admin/managed-demos", method: "get" },
       { path: "/admin/managed-demos", method: "post" },
+      { path: "/prospect-showcases/{prospectShowcaseRef}/convert", method: "post" },
       { path: "/digests/subscription", method: "put" },
       { path: "/sites", method: "get" },
       { path: "/sites", method: "post" },
@@ -499,6 +500,10 @@ describe("webhooks OpenAPI contract (dashboard client)", () => {
       {
         name: "CreateManagedDemoSiteResponse",
         schema: __webhooksZodContracts.createManagedDemoSiteResponseSchema,
+      },
+      {
+        name: "ProspectShowcaseConvertResponse",
+        schema: __webhooksZodContracts.prospectDemoConversionResponseSchema,
       },
       {
         name: "SiteShowcaseResponse",
