@@ -15,6 +15,7 @@ import { CrawlSummaryClient } from "./crawl-summary.client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchSitePages,
@@ -44,6 +45,9 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const offset = (currentPage - 1) * PAGES_PAGE_SIZE;
   const auth = await requireDashboardAuth();
+  if (!isDashboardAuthScopedToSite(auth, id)) {
+    notFound();
+  }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));

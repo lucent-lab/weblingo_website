@@ -19,6 +19,7 @@ import {
   formatNullableDateTime,
 } from "@internal/dashboard/customer-copy";
 import { getSiteCustomerOverviewCached } from "@internal/dashboard/data";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, resolvePreferredLocale, type Translator } from "@internal/i18n";
@@ -39,10 +40,10 @@ type CustomerCta = SiteCustomerOverviewResponse["nextAction"]["cta"];
 export default async function SitePage({ params }: SitePageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
-  const demoSession = auth.accessMode === "demo" ? auth.demoSession : null;
-  if (auth.accessMode === "demo" && demoSession?.siteId !== id) {
+  if (!isDashboardAuthScopedToSite(auth, id)) {
     notFound();
   }
+  const demoSession = auth.accessMode === "demo" ? auth.demoSession : null;
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;

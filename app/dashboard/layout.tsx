@@ -41,6 +41,7 @@ import {
   resolveDashboardWebsiteWorkspaceState,
   resolveDashboardWorkspaceAudience,
 } from "@internal/dashboard/workspace";
+import { getDashboardDemoSiteId } from "@internal/dashboard/demo-scope";
 import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
@@ -59,25 +60,26 @@ export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
   return isAgency ? listSitesCached : listSitesFresh;
 }
 
-export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  const requestHeaders = await headers();
-  const auth = await getDashboardAuth();
-  if (!auth.user || !auth.session) {
-    redirect("/auth/login");
-  }
-  if (!auth.webhooksAuth || !auth.account) {
-    return children;
+export function resolveDashboardNavItems({
+  isAgency,
+  canAccessInternalOps,
+  demoSiteId,
+}: {
+  isAgency: boolean;
+  canAccessInternalOps: boolean;
+  demoSiteId: string | null;
+}) {
+  if (demoSiteId) {
+    return [
+      {
+        href: `/dashboard/sites/${demoSiteId}`,
+        label: "Dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+      },
+    ];
   }
 
-  const locale = resolvePreferredLocale(requestHeaders.get("accept-language"));
-  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
-  const email = auth.user?.email ?? "—";
-  const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
-  const isAgency = workspaceAudience === "agency";
-  const sitesLabel = getDashboardSitesLabel(workspaceAudience);
-  const canAccessInternalOps = hasActorInternalOps(auth);
-  const pricingPath = `/${locale}/pricing`;
-  const navItems = [
+  return [
     {
       href: "/dashboard",
       label: "Dashboard",
@@ -126,6 +128,28 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         ]
       : []),
   ];
+}
+
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const requestHeaders = await headers();
+  const auth = await getDashboardAuth();
+  if (!auth.user || !auth.session) {
+    redirect("/auth/login");
+  }
+  if (!auth.webhooksAuth || !auth.account) {
+    return children;
+  }
+
+  const locale = resolvePreferredLocale(requestHeaders.get("accept-language"));
+  const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
+  const email = auth.user?.email ?? "—";
+  const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
+  const isAgency = workspaceAudience === "agency";
+  const sitesLabel = getDashboardSitesLabel(workspaceAudience);
+  const canAccessInternalOps = hasActorInternalOps(auth);
+  const demoSiteId = getDashboardDemoSiteId(auth);
+  const pricingPath = `/${locale}/pricing`;
+  const navItems = resolveDashboardNavItems({ isAgency, canAccessInternalOps, demoSiteId });
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =
     workspaceOptions.find((option) => option.id === auth.subjectAccountId)?.label ??

@@ -1,9 +1,11 @@
 import { env } from "@internal/core";
+import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { getDashboardDemoSiteId } from "@internal/dashboard/demo-scope";
 
 export const metadata = {
   title: "Developer tools",
@@ -12,6 +14,9 @@ export const metadata = {
 
 export default async function DeveloperToolsPage() {
   const auth = await requireDashboardAuth();
+  if (getDashboardDemoSiteId(auth)) {
+    notFound();
+  }
   const formattedSessionExpiry = formatEpoch(auth.session?.expires_at);
   const token = auth.webhooksAuth?.token;
   const expiresAt = auth.webhooksAuth?.expiresAt ?? "—";

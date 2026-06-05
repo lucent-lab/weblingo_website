@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
 import { getSiteTargetLangsCached } from "@internal/dashboard/data";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import {
   fetchCustomerDeploymentHistory,
   fetchCustomerTranslationRuns,
@@ -57,6 +58,9 @@ export default async function HistoryPage({ params, searchParams }: HistoryPageP
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const auth = await requireDashboardAuth();
+  if (!isDashboardAuthScopedToSite(auth, id)) {
+    notFound();
+  }
   const authToken = auth.webhooksAuth!;
   let targetLangs: string[] | null;
   try {

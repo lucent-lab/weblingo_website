@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import {
   fetchSiteDashboardProjection,
   WebhooksApiError,
@@ -52,6 +53,9 @@ type CustomerLanguage = DomainsProjection["languages"][number];
 export default async function DomainsPage({ params }: DomainsPageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
+  if (!isDashboardAuthScopedToSite(auth, id)) {
+    notFound();
+  }
   const authToken = auth.webhooksAuth!;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));

@@ -6,6 +6,7 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { Button } from "@/components/ui/button";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchSiteDashboardProjection,
@@ -38,6 +39,9 @@ type SourceSelectionPageProps = {
 export default async function SourceSelectionPage({ params }: SourceSelectionPageProps) {
   const { id } = await params;
   const auth = await requireDashboardAuth();
+  if (!isDashboardAuthScopedToSite(auth, id)) {
+    notFound();
+  }
   const authToken = auth.webhooksAuth!;
   const mutationsAllowed = auth.mutationsAllowed;
   const locale = resolvePreferredLocale((await headers()).get("accept-language"));

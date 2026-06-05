@@ -22,6 +22,13 @@ function resolveDashboardReturnPath(pathname: string, search: string): string | 
   return `${pathname}${search}`;
 }
 
+function isDemoDashboardSessionPath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return (
+    parts.length >= 3 && parts[0] === "dashboard" && parts[1] === "sites" && parts[2] !== "new"
+  );
+}
+
 export async function updateSession(request: NextRequest) {
   const publicDemoDashboardLocale = getPublicDemoDashboardLocale(request.nextUrl.pathname);
 
@@ -69,7 +76,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.search,
   );
   const hasDemoDashboardSession =
-    dashboardReturnPath !== null && request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
+    isDemoDashboardSessionPath(request.nextUrl.pathname) &&
+    request.cookies.has(DASHBOARD_DEMO_SESSION_COOKIE);
 
   if (publicDemoDashboardLocale !== undefined) {
     return buildPublicDemoDashboardRewrite(request, publicDemoDashboardLocale, supabaseResponse);

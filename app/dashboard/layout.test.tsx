@@ -70,6 +70,32 @@ describe("DashboardLayout", () => {
     expect(resolveLayoutSitesReader(true)).toBe(data.listSitesCached);
   });
 
+  it("limits demo shell navigation to the claimed site dashboard", async () => {
+    const { resolveDashboardNavItems } = await import("./layout");
+
+    const navItems = resolveDashboardNavItems({
+      isAgency: false,
+      canAccessInternalOps: false,
+      demoSiteId: "site-demo",
+    });
+
+    expect(navItems.map((item) => ({ href: item.href, label: item.label }))).toEqual([
+      { href: "/dashboard/sites/site-demo", label: "Dashboard" },
+    ]);
+  });
+
+  it("keeps global developer tools in normal authenticated navigation", async () => {
+    const { resolveDashboardNavItems } = await import("./layout");
+
+    const navItems = resolveDashboardNavItems({
+      isAgency: false,
+      canAccessInternalOps: false,
+      demoSiteId: null,
+    });
+
+    expect(navItems.map((item) => item.href)).toContain("/dashboard/developer-tools");
+  });
+
   it("shows only the single active current website in normal-customer shell navigation", async () => {
     const { resolveLayoutSiteNavEntries } = await import("./layout");
 

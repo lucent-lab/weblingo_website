@@ -107,4 +107,21 @@ describe("GET /api/dashboard/sites/[siteId]/status", () => {
     const body = await response.json();
     expect(body.error).toMatch(/not found/i);
   });
+
+  it("returns 404 for demo auth outside the claimed site before backend fetch", async () => {
+    mockedRequireDashboardAuth.mockResolvedValue({
+      ...makeAuth("acct-demo"),
+      accessMode: "demo",
+      demoSession: { siteId: "site-claimed" } as DashboardAuth["demoSession"],
+      mutationsAllowed: false,
+    });
+
+    const response = await GET(new Request("http://localhost"), {
+      params: Promise.resolve({ siteId: "site-other" }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Not found" });
+    expect(mockedFetchSiteCompactStatus).not.toHaveBeenCalled();
+  });
 });

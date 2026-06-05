@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { previewSourceSelectionTree, WebhooksApiError } from "@internal/dashboard/webhooks";
 
 type RouteParams = {
@@ -76,6 +77,10 @@ function parseTreePreviewQuery(searchParams: URLSearchParams): TreePreviewQueryR
 
 export async function POST(request: Request, { params }: RouteParams) {
   const auth = await requireDashboardAuth();
+  const { siteId } = await params;
+  if (!isDashboardAuthScopedToSite(auth, siteId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   if (!auth.webhooksAuth) {
     return NextResponse.json({ error: "Missing credentials." }, { status: 401 });
   }
@@ -83,7 +88,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Missing account context." }, { status: 401 });
   }
 
-  const { siteId } = await params;
   let body: unknown;
   try {
     body = await request.json();
