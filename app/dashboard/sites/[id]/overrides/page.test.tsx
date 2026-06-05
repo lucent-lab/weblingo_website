@@ -275,9 +275,67 @@ describe("SiteOverridesPage", () => {
       allowRetranslate: false,
       targetLangs: ["en"],
     });
+    expect(
+      treeContainsText(
+        tree,
+        "Maintain terminology control for this scoped demo. Retranslation stays locked until activation.",
+      ),
+    ).toBe(true);
     expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toBeNull();
     expect(findElementPropsByComponentName(tree, "MockSlugForm")).toBeNull();
     expect(mocks.fetchGlossary).toHaveBeenCalledWith(authToken, "site-1");
+  });
+
+  it("keeps retranslation locked for demo auth when glossary visibility comes from account flags", async () => {
+    const authToken = {
+      token: "demo-token",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      subjectAccountId: "acct-demo",
+      refresh: async () => "demo-token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-1" },
+      webhooksAuth: authToken,
+      mutationsAllowed: true,
+      has: vi.fn((check: { feature?: string; allFeatures?: string[] }) => {
+        if (check.feature) {
+          return false;
+        }
+        return check.allFeatures?.includes("glossary") === true;
+      }),
+      account: {
+        accountId: "acct-demo",
+        featureFlags: {},
+        planType: "pro",
+        planStatus: "active",
+      },
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSite.mockResolvedValue({
+      id: "site-1",
+      status: "active",
+      sourceUrl: "https://example.com",
+      locales: [{ sourceLang: "fr", targetLang: "en" }],
+    });
+    mocks.fetchGlossary.mockResolvedValue([]);
+
+    vi.resetModules();
+    const { default: SiteOverridesPage } = await import("./page");
+
+    const tree = await SiteOverridesPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ sourceLang: "fr", targetLang: "en" }),
+    });
+
+    expect(findElementPropsByComponentName(tree, "MockGlossaryEditor")).toMatchObject({
+      allowRetranslate: false,
+      targetLangs: ["en"],
+    });
   });
 });
 
@@ -303,4 +361,15 @@ function findElementPropsByComponentName(
   }
 
   return null;
+}
+
+function treeContainsText(node: ReactNode, text: string): boolean {
+  if (typeof node === "string") {
+    return node.includes(text);
+  }
+  if (!isValidElement(node)) {
+    return false;
+  }
+  const props = node.props as { children?: ReactNode };
+  return Children.toArray(props.children).some((child) => treeContainsText(child, text));
 }

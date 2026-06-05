@@ -81,7 +81,8 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canEdit = siteHeaderAccess.canEdit;
-  const canDemoGlossary = auth.accessMode === "demo" && auth.has({ feature: "glossary" });
+  const isDemoAccess = auth.accessMode === "demo";
+  const canDemoGlossary = isDemoAccess && auth.has({ feature: "glossary" });
   const canGlossary =
     canDemoGlossary || (auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed);
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
@@ -293,12 +294,14 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
             <CardHeader>
               <CardTitle>Glossary</CardTitle>
               <CardDescription>
-                Maintain terminology control and optionally retranslate after glossary updates.
+                {isDemoAccess
+                  ? "Maintain terminology control for this scoped demo. Retranslation stays locked until activation."
+                  : "Maintain terminology control and optionally retranslate after glossary updates."}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <GlossaryEditor
-                allowRetranslate={!canDemoGlossary}
+                allowRetranslate={!isDemoAccess}
                 initialEntries={glossary}
                 siteId={site.id}
                 targetLangs={targetLangs}
