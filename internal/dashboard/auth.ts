@@ -19,7 +19,12 @@ import { createHas, type HasCheck } from "./entitlements";
 import { resolveStripeBillingRuntime, type StripeBillingRuntimeState } from "./billing-runtime";
 import { isDashboardE2eMockEnabled } from "./e2e-mock";
 import { readSubjectAccountId } from "./workspace";
-import { readDashboardDemoSession, type DashboardDemoSession } from "./demo-session";
+import {
+  getDashboardDemoSessionSecondsUntilExpiry,
+  isDashboardDemoSessionFresh,
+  readDashboardDemoSession,
+  type DashboardDemoSession,
+} from "./demo-session";
 
 export type WebhooksAuthContext = {
   token: string;
@@ -324,7 +329,7 @@ async function buildDashboardDemoAuth(): Promise<DashboardAuth | null> {
   const session = {
     access_token: `prospect-demo:${demoSession.prospectShowcaseRef}`,
     refresh_token: "",
-    expires_in: Math.max(0, Math.floor((Date.parse(demoSession.expiresAt) - Date.now()) / 1000)),
+    expires_in: Math.max(0, getDashboardDemoSessionSecondsUntilExpiry(demoSession.expiresAt)),
     token_type: "bearer",
     user,
   } as Session;
@@ -333,7 +338,7 @@ async function buildDashboardDemoAuth(): Promise<DashboardAuth | null> {
     expiresAt: demoSession.expiresAt,
     subjectAccountId: demoSession.subjectAccountId,
     refresh: async () => {
-      if (Date.parse(demoSession.expiresAt) <= Date.now()) {
+      if (!isDashboardDemoSessionFresh(demoSession.expiresAt)) {
         throw new Error("Demo dashboard session expired.");
       }
       return demoSession.token;

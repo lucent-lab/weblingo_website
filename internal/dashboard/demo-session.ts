@@ -72,6 +72,18 @@ export function buildDashboardDemoRedirectUrl(siteId: string): string {
   return `/dashboard/sites/${encodeURIComponent(siteId)}`;
 }
 
+export function getDashboardDemoSessionSecondsUntilExpiry(expiresAt: string): number {
+  const timestamp = Date.parse(expiresAt);
+  if (!Number.isFinite(timestamp)) {
+    return 0;
+  }
+  return Math.floor((timestamp - Date.now()) / 1000);
+}
+
+export function isDashboardDemoSessionFresh(expiresAt: string): boolean {
+  return getDashboardDemoSessionSecondsUntilExpiry(expiresAt) >= 1;
+}
+
 export function buildDashboardDemoSessionCookieOptions(maxAgeSeconds: number) {
   return {
     httpOnly: true,
@@ -85,7 +97,7 @@ export function buildDashboardDemoSessionCookieOptions(maxAgeSeconds: number) {
 export async function createDashboardDemoSession(
   payload: DashboardDemoClaimPayload,
 ): Promise<DashboardDemoSessionCookie> {
-  const maxAgeSeconds = getSecondsUntilExpiry(payload.expiresAt);
+  const maxAgeSeconds = getDashboardDemoSessionSecondsUntilExpiry(payload.expiresAt);
   if (maxAgeSeconds < 1) {
     throw new Error("Demo dashboard claim is expired.");
   }
@@ -111,7 +123,7 @@ export async function readDashboardDemoSession(): Promise<DashboardDemoSession |
   if (!parsed.success) {
     return null;
   }
-  if (getSecondsUntilExpiry(parsed.data.expiresAt) < 1) {
+  if (!isDashboardDemoSessionFresh(parsed.data.expiresAt)) {
     return null;
   }
   return parsed.data;
@@ -125,12 +137,4 @@ export async function clearDashboardDemoSessionCookie(): Promise<void> {
 function getDashboardDemoSessionKey(sessionId: string): string {
   const digest = createHash("sha256").update(sessionId).digest("hex");
   return `${DASHBOARD_DEMO_SESSION_KEY_PREFIX}:${digest}`;
-}
-
-function getSecondsUntilExpiry(expiresAt: string): number {
-  const timestamp = Date.parse(expiresAt);
-  if (!Number.isFinite(timestamp)) {
-    return 0;
-  }
-  return Math.floor((timestamp - Date.now()) / 1000);
 }

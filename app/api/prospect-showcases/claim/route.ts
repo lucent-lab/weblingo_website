@@ -14,6 +14,7 @@ import {
   buildDashboardDemoRedirectUrl,
   buildDashboardDemoSessionCookieOptions,
   createDashboardDemoSession,
+  isDashboardDemoSessionFresh,
   parseDashboardDemoClaimPayload,
 } from "@internal/dashboard/demo-session";
 import { DASHBOARD_DEMO_SESSION_COOKIE } from "@internal/dashboard/demo-session-constants";
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         502,
       );
     }
-    if (isExpiredClaim(claim.expiresAt)) {
+    if (!isDashboardDemoSessionFresh(claim.expiresAt)) {
       return createProspectShowcaseProxyResponse(
         "json",
         "Demo dashboard access is no longer available.",
@@ -136,9 +137,4 @@ function safeParseJson(input: string): unknown {
   } catch {
     return null;
   }
-}
-
-function isExpiredClaim(expiresAt: string): boolean {
-  const timestamp = Date.parse(expiresAt);
-  return !Number.isFinite(timestamp) || timestamp <= Date.now();
 }
