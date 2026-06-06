@@ -38,6 +38,11 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+const EXAMPLE_SOURCE_SELECTION_RULES: SourceSelectionRule[] = [
+  { action: "include", pattern: "/blog/*" },
+  { action: "exclude", pattern: "/blog/drafts/*" },
+];
+
 type SourceSelectionPageProps = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<DashboardRouteSearchParams>;
@@ -65,6 +70,7 @@ export default async function SourceSelectionPage({
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canEdit = siteHeaderAccess.canEdit;
+  const isDemoAccess = auth.accessMode === "demo";
   const headerLabels = buildSiteHeaderLabels(t);
 
   let projection: SiteSourceSelectionProjection | null = null;
@@ -143,8 +149,31 @@ export default async function SourceSelectionPage({
   const initialSourceSelectionRules = projection.policy.rules
     .map(toEditableSourceSelectionRule)
     .filter((rule): rule is SourceSelectionRule => rule !== null);
+  const displaySourceSelectionRules =
+    isDemoAccess && initialSourceSelectionRules.length === 0
+      ? EXAMPLE_SOURCE_SELECTION_RULES
+      : initialSourceSelectionRules;
   const hasUnsupportedSourceSelectionRules =
     projection.policy.rules.length !== initialSourceSelectionRules.length;
+  const sourceSelectionCopy = buildSourceSelectionCopy(t);
+  const displaySourceSelectionCopy = isDemoAccess
+    ? {
+        ...sourceSelectionCopy,
+        persistedTitle: t(
+          "dashboard.sourceSelection.example.persisted.title",
+          "Example current rules",
+        ),
+        persistedDescription: t(
+          "dashboard.sourceSelection.example.persisted.description",
+          "Readonly values are shown for demonstration and are not saved from this session.",
+        ),
+        proposedTitle: t("dashboard.sourceSelection.example.proposed.title", "Example rule editor"),
+        proposedDescription: t(
+          "dashboard.sourceSelection.example.proposed.description",
+          "The same rule controls are shown with edits disabled until activation.",
+        ),
+      }
+    : sourceSelectionCopy;
 
   return (
     <div className="space-y-8">
@@ -161,7 +190,19 @@ export default async function SourceSelectionPage({
         dashboardLocale={dashboardLocale}
       />
 
-      {canEdit && hasUnsupportedSourceSelectionRules ? (
+      {isDemoAccess ? (
+        <SourceSelectionManager
+          siteId={projection.site.id}
+          initialRules={displaySourceSelectionRules}
+          routeConfigUpdatedAt={projection.preconditions.expectedRouteConfigUpdatedAt ?? null}
+          sourceSelectionFingerprint={
+            projection.preconditions.expectedSourceSelectionFingerprint ?? null
+          }
+          canEdit={false}
+          mode="example"
+          copy={displaySourceSelectionCopy}
+        />
+      ) : canEdit && hasUnsupportedSourceSelectionRules ? (
         <ErrorStateCard
           title={t(
             "dashboard.sourceSelection.unsupported.title",
@@ -186,7 +227,7 @@ export default async function SourceSelectionPage({
           }
           canEdit={canEdit}
           saveAction={updateSourceSelectionAction}
-          copy={buildSourceSelectionCopy(t)}
+          copy={displaySourceSelectionCopy}
         />
       ) : (
         <LockedFeatureCard

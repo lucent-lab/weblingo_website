@@ -45,6 +45,7 @@ Working plan to implement the customer-facing dashboard described in `docs/DASHB
 12. **Error/empty/loading states** — Shared components for toasts/inline errors, skeletons, empty prompts with next steps; ensure accessible focus behavior.
 13. **Testing & QA** — Unit tests for validation helpers and API client, smoke tests for onboarding and site edit flows, and doc updates for new env vars/runbook.
 14. **Testing strategy alignment** — Analyze and implement the website-specific layered testing strategy in `docs/plans/testing-strategy-alignment-plan-2026-03-12.md`, including command and CI contract alignment, selective preview or dashboard invariant coverage, and docs updates that keep local guidance consistent with CI.
+15. **Prospect demo buyer-journey follow-up** — Analyze the remaining trust and QA gaps from `docs/reports/prospect-demo-buyer-journey-ux-follow-up-2026-06-06.md`, including a safe valid-demo browser fixture, example-mode disclosure rules, mobile site-header action layout, and a compact demo settings summary.
 
 - **Plan/locale caps (new)** — Add `maxLocales` field and serving-mode selection to create/edit flows; reflect `maxLocales` from GET responses; proactively block add-target UI when at cap; gate glossary/override/slug UI using `/accounts/me` feature flags with an upgrade prompt; handle 400 cap errors and 403 feature gates with user-friendly copy.
 

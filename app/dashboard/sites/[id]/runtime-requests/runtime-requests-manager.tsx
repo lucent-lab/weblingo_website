@@ -15,6 +15,10 @@ import { useMemo, useState } from "react";
 import type { ActionResponse } from "@/app/dashboard/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  ExampleValuesBadge,
+  exampleFieldClassName,
+} from "@/components/dashboard/example-values-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -167,15 +171,17 @@ type RuntimeRequestsManagerProps = {
   observationsLoaded?: boolean;
   canEdit: boolean;
   canLoadObservations?: boolean;
-  loadObservationsAction: (
+  mode?: "editable" | "example";
+  exampleBadgeLabel?: string;
+  loadObservationsAction?: (
     prevState: ActionResponse | undefined,
     formData: FormData,
   ) => Promise<ActionResponse>;
-  saveAction: (
+  saveAction?: (
     prevState: ActionResponse | undefined,
     formData: FormData,
   ) => Promise<ActionResponse>;
-  lifecycleAction: (
+  lifecycleAction?: (
     prevState: ActionResponse | undefined,
     formData: FormData,
   ) => Promise<ActionResponse>;
@@ -192,11 +198,14 @@ export function RuntimeRequestsManager({
   observationsLoaded: initialObservationsLoaded = true,
   canEdit,
   canLoadObservations = canEdit,
+  mode = "editable",
+  exampleBadgeLabel = "Example values",
   loadObservationsAction,
   saveAction,
   lifecycleAction,
   copy,
 }: RuntimeRequestsManagerProps) {
+  const isExampleMode = mode === "example";
   const normalizedInitialPolicy = useMemo(
     () => normalizeRuntimePolicy(initialPolicy ?? DEFAULT_POLICY),
     [initialPolicy],
@@ -240,6 +249,8 @@ export function RuntimeRequestsManager({
     preview.collisions.length > 0;
   const canSave =
     canEdit &&
+    !isExampleMode &&
+    Boolean(saveAction) &&
     hasUnsavedChanges &&
     !isSaving &&
     !isPreviewing &&
@@ -247,7 +258,7 @@ export function RuntimeRequestsManager({
     !previewBlocksSave;
 
   const loadObservations = () => {
-    if (!canLoadObservations || isLoadingObservations) {
+    if (!canLoadObservations || isExampleMode || isLoadingObservations || !loadObservationsAction) {
       return;
     }
     setLoadingObservations(true);
@@ -283,7 +294,7 @@ export function RuntimeRequestsManager({
   };
 
   const runPreview = () => {
-    if (!canEdit) {
+    if (!canEdit || isExampleMode) {
       return;
     }
     setPreviewing(true);
@@ -323,7 +334,7 @@ export function RuntimeRequestsManager({
   };
 
   const savePolicy = () => {
-    if (!canSave) {
+    if (!canSave || !saveAction) {
       return;
     }
     setSaving(true);
@@ -371,7 +382,7 @@ export function RuntimeRequestsManager({
     group: RuntimeRequestObservationGroup,
     lifecycle: RuntimeRequestLifecycle,
   ) => {
-    if (!canEdit) {
+    if (!canEdit || isExampleMode || !lifecycleAction) {
       return;
     }
     const formData = new FormData();
@@ -409,12 +420,17 @@ export function RuntimeRequestsManager({
       <Card>
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>{copy.title}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>{copy.title}</CardTitle>
+              {isExampleMode ? <ExampleValuesBadge label={exampleBadgeLabel} /> : null}
+            </div>
             <CardDescription>{copy.description}</CardDescription>
           </div>
-          <Badge variant={servedPropagation?.stale ? "destructive" : "secondary"}>
-            {servedPropagation?.stale ? copy.propagationStale : copy.propagationReady}
-          </Badge>
+          {!isExampleMode ? (
+            <Badge variant={servedPropagation?.stale ? "destructive" : "secondary"}>
+              {servedPropagation?.stale ? copy.propagationStale : copy.propagationReady}
+            </Badge>
+          ) : null}
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-5">
           <Metric label={copy.standardMode} value={copy.standardValue} />
@@ -422,12 +438,14 @@ export function RuntimeRequestsManager({
           <Metric label={copy.unreviewedGroups} value={String(unreviewedCount)} />
           <Metric label={copy.highRiskGroups} value={String(highRiskCount)} />
           <Metric label={copy.lastSeen} value={formatDate(lastSeenAt)} />
-          <div className="md:col-span-5">
-            <p className="text-xs text-muted-foreground">
-              {copy.policyVersion}:{" "}
-              {servedVersion ?? servedPropagation?.servedVersion ?? copy.standardFallbackVersion}
-            </p>
-          </div>
+          {!isExampleMode ? (
+            <div className="md:col-span-5">
+              <p className="text-xs text-muted-foreground">
+                {copy.policyVersion}:{" "}
+                {servedVersion ?? servedPropagation?.servedVersion ?? copy.standardFallbackVersion}
+              </p>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -439,19 +457,21 @@ export function RuntimeRequestsManager({
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <p className="text-xs text-muted-foreground">{copy.redactionNote}</p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canLoadObservations || isLoadingObservations}
-              onClick={loadObservations}
-            >
-              {isLoadingObservations ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Eye className="mr-2 h-4 w-4" />
-              )}
-              {isLoadingObservations ? copy.loadingObservations : copy.loadObservations}
-            </Button>
+            {!isExampleMode ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!canLoadObservations || isLoadingObservations}
+                onClick={loadObservations}
+              >
+                {isLoadingObservations ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Eye className="mr-2 h-4 w-4" />
+                )}
+                {isLoadingObservations ? copy.loadingObservations : copy.loadObservations}
+              </Button>
+            ) : null}
           </div>
           {!observationsLoaded ? (
             <p className="text-sm text-muted-foreground">{copy.observationsDeferred}</p>
@@ -469,7 +489,7 @@ export function RuntimeRequestsManager({
           ) : null}
           {observationsLoaded ? (
             <ObservationsTable
-              canEdit={canEdit}
+              canEdit={canEdit && !isExampleMode}
               copy={copy}
               groups={groups}
               onCreateRule={(group) =>
@@ -498,9 +518,11 @@ export function RuntimeRequestsManager({
             <CardTitle>{copy.rulesTitle}</CardTitle>
             <CardDescription>{copy.rulesDescription}</CardDescription>
           </div>
-          <Badge variant={hasUnsavedChanges ? "outline" : "secondary"}>
-            {hasUnsavedChanges ? copy.draftStatus : copy.savedStatus}
-          </Badge>
+          {!isExampleMode ? (
+            <Badge variant={hasUnsavedChanges ? "outline" : "secondary"}>
+              {hasUnsavedChanges ? copy.draftStatus : copy.savedStatus}
+            </Badge>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
@@ -511,7 +533,7 @@ export function RuntimeRequestsManager({
                   key={preset.id}
                   type="button"
                   variant="outline"
-                  disabled={!canEdit || isSaving}
+                  disabled={!canEdit || isExampleMode || isSaving}
                   onClick={() =>
                     updateDraft((policy) => ({
                       ...policy,
@@ -526,44 +548,48 @@ export function RuntimeRequestsManager({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canEdit || isPreviewing}
-              onClick={runPreview}
-            >
-              {isPreviewing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Eye className="mr-2 h-4 w-4" />
-              )}
-              {copy.validateDraft}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!hasUnsavedChanges || isSaving}
-              onClick={() => setDraftPolicy(persistedPolicy)}
-            >
-              {copy.reset}
-            </Button>
-            <Button type="button" disabled={!canSave} onClick={savePolicy}>
-              {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {isSaving ? copy.saving : copy.save}
-            </Button>
-          </div>
+          {!isExampleMode ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canEdit || isPreviewing}
+                  onClick={runPreview}
+                >
+                  {isPreviewing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {copy.validateDraft}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!hasUnsavedChanges || isSaving}
+                  onClick={() => setDraftPolicy(persistedPolicy)}
+                >
+                  {copy.reset}
+                </Button>
+                <Button type="button" disabled={!canSave} onClick={savePolicy}>
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {isSaving ? copy.saving : copy.save}
+                </Button>
+              </div>
 
-          <PreviewStatus
-            copy={copy}
-            preview={preview}
-            previewError={previewError}
-            isCurrent={previewIsCurrent}
-          />
+              <PreviewStatus
+                copy={copy}
+                preview={preview}
+                previewError={previewError}
+                isCurrent={previewIsCurrent}
+              />
+            </>
+          ) : null}
 
           {draftPolicy.rules.length === 0 ? (
             <p className="text-sm text-muted-foreground">{copy.noRules}</p>
@@ -573,7 +599,8 @@ export function RuntimeRequestsManager({
                 <RuleEditor
                   key={rule.id}
                   copy={copy}
-                  canEdit={canEdit && !isSaving}
+                  canEdit={canEdit && !isExampleMode && !isSaving}
+                  readOnlyExample={isExampleMode}
                   rule={rule}
                   onChange={(nextRule) =>
                     updateDraft((policy) => ({
@@ -729,17 +756,24 @@ function ObservationsTable({
 function RuleEditor({
   canEdit,
   copy,
+  readOnlyExample = false,
   rule,
   onChange,
   onRemove,
 }: {
   canEdit: boolean;
   copy: RuntimeRequestsCopy;
+  readOnlyExample?: boolean;
   rule: RuntimeRequestPolicyRule;
   onChange: (rule: RuntimeRequestPolicyRule) => void;
   onRemove: () => void;
 }) {
   const methodSet = new Set(rule.methods);
+  const fieldClassName = readOnlyExample ? exampleFieldClassName : undefined;
+  const selectClassName = cn(
+    "h-10 rounded-md border border-input bg-background px-3 text-sm",
+    readOnlyExample ? exampleFieldClassName : "",
+  );
   return (
     <div className="rounded-md border border-border/60 bg-muted/10 p-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
@@ -754,6 +788,7 @@ function RuleEditor({
         </label>
         <Field label={copy.name} htmlFor={`${rule.id}-name`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-name`}
             value={rule.name}
             disabled={!canEdit}
@@ -768,6 +803,7 @@ function RuleEditor({
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Field label={copy.pattern} htmlFor={`${rule.id}-pattern`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-pattern`}
             value={rule.pattern}
             disabled={!canEdit}
@@ -777,7 +813,7 @@ function RuleEditor({
         <Field label={copy.action} htmlFor={`${rule.id}-action`}>
           <select
             id={`${rule.id}-action`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            className={selectClassName}
             value={rule.action}
             disabled={!canEdit}
             onChange={(event) =>
@@ -796,7 +832,7 @@ function RuleEditor({
         <Field label={copy.credentials} htmlFor={`${rule.id}-credentials`}>
           <select
             id={`${rule.id}-credentials`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            className={selectClassName}
             value={rule.credentials}
             disabled={!canEdit}
             onChange={(event) =>
@@ -836,6 +872,7 @@ function RuleEditor({
       <div className="mt-4 grid gap-4 lg:grid-cols-4">
         <Field label={copy.maxBodyBytes} htmlFor={`${rule.id}-body`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-body`}
             type="number"
             min={0}
@@ -846,6 +883,7 @@ function RuleEditor({
         </Field>
         <Field label={copy.maxResponseBytes} htmlFor={`${rule.id}-response`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-response`}
             type="number"
             min={0}
@@ -858,6 +896,7 @@ function RuleEditor({
         </Field>
         <Field label={copy.timeoutMs} htmlFor={`${rule.id}-timeout`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-timeout`}
             type="number"
             min={1}
@@ -869,7 +908,7 @@ function RuleEditor({
         <Field label={copy.cache} htmlFor={`${rule.id}-cache`}>
           <select
             id={`${rule.id}-cache`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            className={selectClassName}
             value={rule.cache}
             disabled={!canEdit}
             onChange={(event) =>
@@ -884,6 +923,7 @@ function RuleEditor({
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Field label={copy.requestHeaders} htmlFor={`${rule.id}-request-headers`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-request-headers`}
             value={rule.requestHeaders.allow.join(", ")}
             disabled={!canEdit}
@@ -894,6 +934,7 @@ function RuleEditor({
         </Field>
         <Field label={copy.responseHeaders} htmlFor={`${rule.id}-response-headers`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-response-headers`}
             value={rule.responseHeaders.allow.join(", ")}
             disabled={!canEdit}
@@ -904,6 +945,7 @@ function RuleEditor({
         </Field>
         <Field label={copy.requestContentTypes} htmlFor={`${rule.id}-request-content-types`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-request-content-types`}
             value={rule.requestContentTypes.join(", ")}
             disabled={!canEdit}
@@ -914,6 +956,7 @@ function RuleEditor({
         </Field>
         <Field label={copy.responseContentTypes} htmlFor={`${rule.id}-response-content-types`}>
           <Input
+            className={fieldClassName}
             id={`${rule.id}-response-content-types`}
             value={rule.responseContentTypes.join(", ")}
             disabled={!canEdit}
@@ -927,7 +970,7 @@ function RuleEditor({
         <Field label={copy.neutralization} htmlFor={`${rule.id}-neutralization`}>
           <select
             id={`${rule.id}-neutralization`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            className={selectClassName}
             value={rule.neutralization.shape}
             disabled={!canEdit}
             onChange={(event) =>
@@ -947,7 +990,7 @@ function RuleEditor({
         <Field label={copy.redirectScope} htmlFor={`${rule.id}-redirect`}>
           <select
             id={`${rule.id}-redirect`}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            className={selectClassName}
             value={rule.redirectScope}
             disabled={!canEdit}
             onChange={(event) =>

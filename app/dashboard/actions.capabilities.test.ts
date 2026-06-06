@@ -181,6 +181,7 @@ describe("dashboard capability actions", () => {
   it("blocks dashboard mutations for demo scoped auth even when mutationsAllowed is true", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
       account: { accountId: "acct-demo", planType: "starter", featureFlags: {} },
       webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
       actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
@@ -203,8 +204,136 @@ describe("dashboard capability actions", () => {
     expect(triggerCrawlTranslate).not.toHaveBeenCalled();
   });
 
-  it("allows scoped demo auth to save glossary entries for its claimed site only", async () => {
-    updateGlossary.mockResolvedValue({ entries: [], crawlStatus: null, retranslateStatus: null });
+  it("blocks demo mutations across scoped dashboard write surfaces", async () => {
+    requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      account: { accountId: "acct-demo", planType: "pro", featureFlags: {} },
+      webhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      actorWebhooksAuth: { token: "demo-token", subjectAccountId: "acct-demo" },
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn(() => true),
+    });
+
+    const {
+      createOverrideAction,
+      provisionDomainAction,
+      refreshDomainAction,
+      setLocaleServingAction,
+      triggerCrawlAction,
+      triggerCrawlTranslateAction,
+      translateAndServeAction,
+      updateRuntimeRequestObservationLifecycleAction,
+      updateRuntimeRequestPolicyAction,
+      updateSiteSettingsAction,
+      updateSiteStatusAction,
+      updateSlugAction,
+      updateSourceSelectionAction,
+      verifyDomainAction,
+    } = await import("./actions");
+
+    const siteSettingsForm = new FormData();
+    siteSettingsForm.set("siteId", "site-demo");
+
+    const sourceSelectionForm = new FormData();
+    sourceSelectionForm.set("siteId", "site-demo");
+    sourceSelectionForm.set(
+      "sourceSelection",
+      JSON.stringify({ rules: [{ action: "include", pattern: "/blog/*" }] }),
+    );
+
+    const runtimePolicyForm = new FormData();
+    runtimePolicyForm.set("siteId", "site-demo");
+    runtimePolicyForm.set(
+      "runtimeRequestPolicy",
+      JSON.stringify({ schemaVersion: 1, mode: "standard", enabled: true, rules: [] }),
+    );
+
+    const lifecycleForm = new FormData();
+    lifecycleForm.set("siteId", "site-demo");
+    lifecycleForm.set("groupingPathHash", "hash");
+    lifecycleForm.set("method", "GET");
+    lifecycleForm.set("shapeSignature", "shape");
+    lifecycleForm.set("lifecycle", "reviewed");
+
+    const overrideForm = new FormData();
+    overrideForm.set("siteId", "site-demo");
+    overrideForm.set("segmentId", "seg-1");
+    overrideForm.set("targetLang", "fr");
+    overrideForm.set("text", "Bonjour");
+
+    const slugForm = new FormData();
+    slugForm.set("siteId", "site-demo");
+    slugForm.set("pageId", "page-1");
+    slugForm.set("lang", "fr");
+    slugForm.set("path", "/fr/tarifs");
+
+    const domainForm = new FormData();
+    domainForm.set("siteId", "site-demo");
+    domainForm.set("domain", "fr.example.com");
+
+    const statusForm = new FormData();
+    statusForm.set("siteId", "site-demo");
+    statusForm.set("status", "active");
+
+    const servingForm = new FormData();
+    servingForm.set("siteId", "site-demo");
+    servingForm.set("targetLang", "fr");
+    servingForm.set("enabled", "true");
+
+    const crawlForm = new FormData();
+    crawlForm.set("siteId", "site-demo");
+
+    const crawlTranslateForm = new FormData();
+    crawlTranslateForm.set("siteId", "site-demo");
+    crawlTranslateForm.set("targetLangs", "fr");
+
+    const translateServeForm = new FormData();
+    translateServeForm.set("siteId", "site-demo");
+    translateServeForm.set("siteStatus", "inactive");
+    translateServeForm.set("targetLang", "fr");
+
+    const results = await Promise.all([
+      updateSiteSettingsAction(undefined, siteSettingsForm),
+      updateSourceSelectionAction(undefined, sourceSelectionForm),
+      updateRuntimeRequestPolicyAction(undefined, runtimePolicyForm),
+      updateRuntimeRequestObservationLifecycleAction(undefined, lifecycleForm),
+      createOverrideAction(undefined, overrideForm),
+      updateSlugAction(undefined, slugForm),
+      verifyDomainAction(undefined, domainForm),
+      provisionDomainAction(undefined, domainForm),
+      refreshDomainAction(undefined, domainForm),
+      updateSiteStatusAction(undefined, statusForm),
+      setLocaleServingAction(undefined, servingForm),
+      triggerCrawlAction(undefined, crawlForm),
+      triggerCrawlTranslateAction(undefined, crawlTranslateForm),
+      translateAndServeAction(undefined, translateServeForm),
+    ]);
+
+    for (const result of results) {
+      expect(result).toEqual({
+        ok: false,
+        message:
+          "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
+        meta: undefined,
+      });
+    }
+    expect(buildSiteSettingsUpdatePayload).not.toHaveBeenCalled();
+    expect(fetchSite).not.toHaveBeenCalled();
+    expect(updateSite).not.toHaveBeenCalled();
+    expect(createOverride).not.toHaveBeenCalled();
+    expect(updateSlug).not.toHaveBeenCalled();
+    expect(verifyDomain).not.toHaveBeenCalled();
+    expect(provisionDomain).not.toHaveBeenCalled();
+    expect(refreshDomain).not.toHaveBeenCalled();
+    expect(setLocaleServing).not.toHaveBeenCalled();
+    expect(triggerCrawl).not.toHaveBeenCalled();
+    expect(triggerCrawlTranslate).not.toHaveBeenCalled();
+    expect(translateSite).not.toHaveBeenCalled();
+  });
+
+  it("rejects scoped demo glossary saves for its claimed site", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -225,20 +354,17 @@ describe("dashboard capability actions", () => {
 
     const result = await updateGlossaryAction(undefined, formData);
 
-    expect(result).toMatchObject({ ok: true, message: "Glossary saved." });
-    expect(updateGlossary).toHaveBeenCalledWith(
-      expect.objectContaining({ token: "demo-token" }),
-      "site-demo",
-      [expect.objectContaining({ source: "Silence", target: "Silence", targetLangs: ["en"] })],
-      false,
-    );
-    expect(invalidateSiteDashboardCache).toHaveBeenCalledWith(
-      expect.objectContaining({ token: "demo-token" }),
-      "site-demo",
-    );
+    expect(result).toEqual({
+      ok: false,
+      message:
+        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
+      meta: undefined,
+    });
+    expect(updateGlossary).not.toHaveBeenCalled();
+    expect(invalidateSiteDashboardCache).not.toHaveBeenCalled();
   });
 
-  it("rejects demo glossary retranslation and wrong-site glossary saves", async () => {
+  it("rejects wrong-site demo glossary saves before the read-only response", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -250,13 +376,6 @@ describe("dashboard capability actions", () => {
       has: vi.fn((check: { feature?: string }) => check.feature === "glossary"),
     });
     const { updateGlossaryAction } = await import("./actions");
-    const retranslateForm = new FormData();
-    retranslateForm.set("siteId", "site-demo");
-    retranslateForm.set(
-      "entries",
-      JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
-    );
-    retranslateForm.set("retranslate", "true");
     const wrongSiteForm = new FormData();
     wrongSiteForm.set("siteId", "other-site");
     wrongSiteForm.set(
@@ -264,11 +383,6 @@ describe("dashboard capability actions", () => {
       JSON.stringify([{ source: "Silence", target: "Silence", targetLangs: ["en"] }]),
     );
 
-    await expect(updateGlossaryAction(undefined, retranslateForm)).resolves.toEqual({
-      ok: false,
-      message: "Demo glossary edits cannot trigger retranslation.",
-      meta: undefined,
-    });
     await expect(updateGlossaryAction(undefined, wrongSiteForm)).resolves.toEqual({
       ok: false,
       message: "The requested dashboard data could not be found.",
@@ -277,7 +391,7 @@ describe("dashboard capability actions", () => {
     expect(updateGlossary).not.toHaveBeenCalled();
   });
 
-  it("rejects scoped demo glossary saves when the glossary feature is unavailable", async () => {
+  it("rejects scoped demo glossary saves before checking glossary feature availability", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -298,19 +412,14 @@ describe("dashboard capability actions", () => {
 
     await expect(updateGlossaryAction(undefined, formData)).resolves.toEqual({
       ok: false,
-      message: "Glossary editing is not enabled for this account.",
+      message:
+        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
       meta: undefined,
     });
     expect(updateGlossary).not.toHaveBeenCalled();
   });
 
-  it("returns glossary quota details when the backend rejects over-limit demo entries", async () => {
-    updateGlossary.mockRejectedValue(
-      new MockWebhooksApiError("Glossary exceeds plan limit", 403, {
-        maxGlossarySources: 2,
-        uniqueSources: 3,
-      }),
-    );
+  it("does not call the glossary backend for over-limit demo entries", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -335,9 +444,11 @@ describe("dashboard capability actions", () => {
 
     await expect(updateGlossaryAction(undefined, formData)).resolves.toEqual({
       ok: false,
-      message: "This demo allows up to 2 glossary source terms. You tried to save 3.",
+      message:
+        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
       meta: undefined,
     });
+    expect(updateGlossary).not.toHaveBeenCalled();
   });
 
   it("updates digest subscription and returns off-specific messaging", async () => {

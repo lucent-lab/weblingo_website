@@ -212,4 +212,67 @@ describe("SourceSelectionPage", () => {
       "source_selection",
     );
   });
+
+  it("renders demo source selection as readonly example rules without save actions", async () => {
+    const authToken = { token: "demo-token", subjectAccountId: "acct-demo" };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      webhooksAuth: authToken,
+      mutationsAllowed: false,
+      has: vi.fn().mockReturnValue(false),
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "source_selection" },
+      site: {
+        id: "site-demo",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "inactive",
+      },
+      access: {
+        mutationsAllowed: false,
+        features: {},
+        canEditSourceSelection: false,
+        canPreviewSourceSelection: true,
+      },
+      policy: {
+        rules: [],
+      },
+      inventorySummary: {
+        knownPageCount: 0,
+      },
+      preconditions: {
+        expectedRouteConfigUpdatedAt: "2026-05-07T00:00:00.000Z",
+        expectedSourceSelectionFingerprint: "fingerprint",
+      },
+    });
+
+    vi.resetModules();
+    const { default: SourceSelectionPage } = await import("./page");
+
+    const tree = await SourceSelectionPage({
+      params: Promise.resolve({ id: "site-demo" }),
+    });
+
+    const managerProps = findElement(tree, mocks.SourceSelectionManager);
+    expect(managerProps).toMatchObject({
+      siteId: "site-demo",
+      canEdit: false,
+      mode: "example",
+      initialRules: [
+        { action: "include", pattern: "/blog/*" },
+        { action: "exclude", pattern: "/blog/drafts/*" },
+      ],
+    });
+    expect(managerProps).not.toHaveProperty("saveAction");
+    expect(mocks.fetchSiteDashboardProjection).toHaveBeenCalledWith(
+      authToken,
+      "site-demo",
+      "source_selection",
+    );
+  });
 });

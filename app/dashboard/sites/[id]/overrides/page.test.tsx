@@ -31,12 +31,15 @@ vi.mock("@/components/dashboard/error-state-card", () => ({
 vi.mock("../glossary-editor", () => ({
   GlossaryEditor: function MockGlossaryEditor({
     allowRetranslate,
+    mode,
     targetLangs,
   }: {
     allowRetranslate?: boolean;
+    mode?: string;
     targetLangs: string[];
   }) {
     void allowRetranslate;
+    void mode;
     return <div>glossary-editor:{targetLangs.join(",")}</div>;
   },
 }));
@@ -47,10 +50,18 @@ vi.mock("../site-header", () => ({
   SiteHeader: () => null,
 }));
 vi.mock("../translation-forms", () => ({
-  OverrideForm: function MockOverrideForm({ targetLangs }: { targetLangs: string[] }) {
+  OverrideForm: function MockOverrideForm({
+    mode,
+    targetLangs,
+  }: {
+    mode?: string;
+    targetLangs: string[];
+  }) {
+    void mode;
     return <div>override-form:{targetLangs.join(",")}</div>;
   },
-  SlugForm: function MockSlugForm({ targetLangs }: { targetLangs: string[] }) {
+  SlugForm: function MockSlugForm({ mode, targetLangs }: { mode?: string; targetLangs: string[] }) {
+    void mode;
     return <div>slug-form:{targetLangs.join(",")}</div>;
   },
 }));
@@ -225,7 +236,7 @@ describe("SiteOverridesPage", () => {
     });
   });
 
-  it("lets demo scoped auth edit glossary without exposing override or slug editors", async () => {
+  it("renders readonly example forms for demo scoped auth", async () => {
     const authToken = {
       token: "demo-token",
       expiresAt: "2026-01-01T00:00:00.000Z",
@@ -272,21 +283,22 @@ describe("SiteOverridesPage", () => {
     });
 
     expect(findElementPropsByComponentName(tree, "MockGlossaryEditor")).toMatchObject({
-      allowRetranslate: false,
+      mode: "example",
       targetLangs: ["en"],
     });
-    expect(
-      treeContainsText(
-        tree,
-        "Maintain terminology control for this scoped demo. Retranslation stays locked until activation.",
-      ),
-    ).toBe(true);
-    expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toBeNull();
-    expect(findElementPropsByComponentName(tree, "MockSlugForm")).toBeNull();
+    expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toMatchObject({
+      mode: "example",
+      targetLangs: ["en"],
+    });
+    expect(findElementPropsByComponentName(tree, "MockSlugForm")).toMatchObject({
+      mode: "example",
+      targetLangs: ["en"],
+    });
+    expect(findElementPropsByComponentName(tree, "ExampleValuesBadge")).not.toBeNull();
     expect(mocks.fetchGlossary).toHaveBeenCalledWith(authToken, "site-1");
   });
 
-  it("keeps retranslation locked for demo auth when glossary visibility comes from account flags", async () => {
+  it("renders demo examples even when glossary write features are unavailable", async () => {
     const authToken = {
       token: "demo-token",
       expiresAt: "2026-01-01T00:00:00.000Z",
@@ -333,7 +345,15 @@ describe("SiteOverridesPage", () => {
     });
 
     expect(findElementPropsByComponentName(tree, "MockGlossaryEditor")).toMatchObject({
-      allowRetranslate: false,
+      mode: "example",
+      targetLangs: ["en"],
+    });
+    expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toMatchObject({
+      mode: "example",
+      targetLangs: ["en"],
+    });
+    expect(findElementPropsByComponentName(tree, "MockSlugForm")).toMatchObject({
+      mode: "example",
       targetLangs: ["en"],
     });
   });
@@ -361,15 +381,4 @@ function findElementPropsByComponentName(
   }
 
   return null;
-}
-
-function treeContainsText(node: ReactNode, text: string): boolean {
-  if (typeof node === "string") {
-    return node.includes(text);
-  }
-  if (!isValidElement(node)) {
-    return false;
-  }
-  const props = node.props as { children?: ReactNode };
-  return Children.toArray(props.children).some((child) => treeContainsText(child, text));
 }

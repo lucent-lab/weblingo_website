@@ -11,6 +11,7 @@ import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import {
   fetchSiteDashboardProjection,
   WebhooksApiError,
+  type RuntimeRequestPolicyConfig,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
@@ -34,6 +35,39 @@ import { RuntimeRequestsManager, type RuntimeRequestsCopy } from "./runtime-requ
 export const metadata = {
   title: "Runtime requests",
   robots: { index: false, follow: false },
+};
+
+const EXAMPLE_RUNTIME_REQUEST_POLICY: RuntimeRequestPolicyConfig = {
+  schemaVersion: 1,
+  mode: "standard",
+  enabled: true,
+  rules: [
+    {
+      id: "example-search-proxy",
+      name: "Read-only search proxy",
+      enabled: true,
+      pattern: "/api/search",
+      methods: ["GET", "HEAD"],
+      action: "proxy",
+      credentials: "omit",
+      cache: "no-store",
+      maxBodyBytes: 0,
+      maxResponseBytes: 1_048_576,
+      timeoutMs: 5_000,
+      redirectScope: "same_origin",
+      requestHeaders: { allow: [] },
+      responseHeaders: { allow: ["content-type"] },
+      requestContentTypes: [],
+      responseContentTypes: ["application/json"],
+      neutralization: {
+        shape: "empty_json",
+        status: 200,
+        contentType: "application/json",
+        body: "{}",
+      },
+      confirmations: [],
+    },
+  ],
 };
 
 type RuntimeRequestsPageProps = {
@@ -68,6 +102,7 @@ export default async function RuntimeRequestsPage({
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canEdit = siteHeaderAccess.canEdit;
+  const isDemoAccess = auth.accessMode === "demo";
   const headerLabels = buildSiteHeaderLabels(t);
 
   let projection: SiteDeveloperToolsProjection | null = null;
@@ -154,7 +189,22 @@ export default async function RuntimeRequestsPage({
 
   const canViewRuntimeRequests =
     projection.runtimeRequests.available && projection.access.canViewRuntimeRequests;
-  const canEditRuntimeRequests = canViewRuntimeRequests && canEdit;
+  const canEditRuntimeRequests = canViewRuntimeRequests && canEdit && !isDemoAccess;
+  const runtimeRequestsCopy = buildRuntimeRequestsCopy(t);
+  const displayRuntimeRequestsCopy = isDemoAccess
+    ? {
+        ...runtimeRequestsCopy,
+        rulesDescription: t(
+          "dashboard.runtimeRequests.example.rules.description",
+          "Readonly example rules are shown until activation.",
+        ),
+      }
+    : runtimeRequestsCopy;
+  const displayRuntimeRequestPolicy =
+    isDemoAccess &&
+    (!projection.runtimeRequests.policy || projection.runtimeRequests.policy.rules.length === 0)
+      ? EXAMPLE_RUNTIME_REQUEST_POLICY
+      : projection.runtimeRequests.policy;
 
   return (
     <div className="space-y-8">
@@ -174,7 +224,7 @@ export default async function RuntimeRequestsPage({
       {canViewRuntimeRequests ? (
         <RuntimeRequestsManager
           siteId={projection.site.id}
-          initialPolicy={projection.runtimeRequests.policy}
+          initialPolicy={displayRuntimeRequestPolicy}
           runtimeRequestPolicyFingerprint={
             projection.runtimeRequests.policySummary?.fingerprint ?? null
           }
@@ -183,11 +233,16 @@ export default async function RuntimeRequestsPage({
           observations={[]}
           observationsLoaded={false}
           canEdit={canEditRuntimeRequests}
-          canLoadObservations={canViewRuntimeRequests}
-          loadObservationsAction={listRuntimeRequestObservationsAction}
-          saveAction={updateRuntimeRequestPolicyAction}
-          lifecycleAction={updateRuntimeRequestObservationLifecycleAction}
-          copy={buildRuntimeRequestsCopy(t)}
+          canLoadObservations={!isDemoAccess && canViewRuntimeRequests}
+          mode={isDemoAccess ? "example" : "editable"}
+          {...(!isDemoAccess
+            ? {
+                loadObservationsAction: listRuntimeRequestObservationsAction,
+                saveAction: updateRuntimeRequestPolicyAction,
+                lifecycleAction: updateRuntimeRequestObservationLifecycleAction,
+              }
+            : {})}
+          copy={displayRuntimeRequestsCopy}
         />
       ) : (
         <LockedFeatureCard

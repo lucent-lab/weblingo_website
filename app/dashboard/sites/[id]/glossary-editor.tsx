@@ -16,14 +16,21 @@ export function GlossaryEditor({
   siteId,
   initialEntries,
   allowRetranslate = true,
+  mode = "editable",
   targetLangs,
 }: {
   siteId: string;
   initialEntries: GlossaryEntry[];
   allowRetranslate?: boolean;
+  mode?: "editable" | "example";
   targetLangs: string[];
 }) {
-  const [entries, setEntries] = useState<GlossaryEntry[]>(() => initialEntries);
+  const isExampleMode = mode === "example";
+  const displayEntries =
+    isExampleMode && initialEntries.length === 0
+      ? buildExampleGlossaryEntries(targetLangs)
+      : initialEntries;
+  const [entries, setEntries] = useState<GlossaryEntry[]>(() => displayEntries);
   const [state, formAction, pending] = useActionState(updateGlossaryAction, initialState);
   const router = useRouter();
   const wasPending = useRef(false);
@@ -44,6 +51,14 @@ export function GlossaryEditor({
     }
     wasPending.current = pending;
   }, [pending, router, state.ok]);
+
+  if (isExampleMode) {
+    return (
+      <div className="space-y-4">
+        <GlossaryTable targetLangs={targetLangs} initialEntries={displayEntries} readOnlyExample />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -87,4 +102,45 @@ export function GlossaryEditor({
       </form>
     </div>
   );
+}
+
+function buildExampleGlossaryEntries(targetLangs: string[]): GlossaryEntry[] {
+  return targetLangs.flatMap((lang) => [
+    {
+      source: "Checkout",
+      target: exampleTargetForLang(lang, "Checkout"),
+      targetLangs: [lang],
+      scope: "segment" as const,
+      caseSensitive: false,
+      matchType: "exact",
+    },
+    {
+      source: "Free shipping",
+      target: exampleTargetForLang(lang, "Free shipping"),
+      targetLangs: [lang],
+      scope: "in_segment" as const,
+      caseSensitive: false,
+      matchType: "exact",
+    },
+  ]);
+}
+
+type ExampleGlossarySource = "Checkout" | "Free shipping";
+
+function exampleTargetForLang(lang: string, source: ExampleGlossarySource): string {
+  const examples: Record<string, Record<ExampleGlossarySource, string>> = {
+    fr: {
+      Checkout: "Paiement",
+      "Free shipping": "Livraison offerte",
+    },
+    de: {
+      Checkout: "Kasse",
+      "Free shipping": "Kostenloser Versand",
+    },
+    es: {
+      Checkout: "Pagar",
+      "Free shipping": "Envio gratis",
+    },
+  };
+  return examples[lang]?.[source] ?? `${source} (${lang})`;
 }

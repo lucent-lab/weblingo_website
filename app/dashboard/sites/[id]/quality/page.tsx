@@ -16,7 +16,7 @@ import {
   WebhooksApiError,
   type SiteDashboardProjectionResponse,
 } from "@internal/dashboard/webhooks";
-import { resolveLocaleTranslator } from "@internal/i18n";
+import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
 import {
   buildSiteHeaderAccess,
@@ -113,15 +113,7 @@ export default async function QualityPage({ params, searchParams }: QualityPageP
         description="Quality changes are locked until this workspace can make dashboard mutations."
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Quality</CardTitle>
-          <CardDescription>
-            Translation quality entry points stay focused and load details only after opening a
-            workflow.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <QualityProofCard isDemoAccess={auth.accessMode === "demo"} t={t} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -196,6 +188,71 @@ export default async function QualityPage({ params, searchParams }: QualityPageP
           title="Consistency governance"
         />
       </div>
+    </div>
+  );
+}
+
+function QualityProofCard({ isDemoAccess, t }: { isDemoAccess: boolean; t: Translator }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("dashboard.quality.title", "Quality")}</CardTitle>
+        <CardDescription className="space-y-1">
+          <span className="block font-medium text-foreground">
+            {t("dashboard.quality.proof.title", "Translation control proof")}
+          </span>
+          <span className="block">
+            {isDemoAccess
+              ? t(
+                  "dashboard.quality.proof.demoDescription",
+                  "Real saved controls appear first. When a control has no saved entries yet, the demo stays read-only and labels any examples before showing them.",
+                )
+              : t(
+                  "dashboard.quality.proof.description",
+                  "Review the controls that keep translated content consistent before changing the live site.",
+                )}
+          </span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <ProofPoint
+          title={t("dashboard.quality.proof.glossary.title", "Glossary")}
+          description={t(
+            "dashboard.quality.proof.glossary.description",
+            "Approved product, brand, and domain terms stay consistent across locales.",
+          )}
+        />
+        <ProofPoint
+          title={t("dashboard.quality.proof.overrides.title", "Manual overrides")}
+          description={t(
+            "dashboard.quality.proof.overrides.description",
+            "Exact phrases can be pinned when machine output needs human direction.",
+          )}
+        />
+        <ProofPoint
+          title={t("dashboard.quality.proof.slugs.title", "Localized slugs")}
+          description={t(
+            "dashboard.quality.proof.slugs.description",
+            "Translated URL paths can be reviewed separately from page content.",
+          )}
+        />
+        <ProofPoint
+          title={t("dashboard.quality.proof.consistency.title", "Consistency")}
+          description={t(
+            "dashboard.quality.proof.consistency.description",
+            "Canonical phrases and override conflicts stay visible for rollout review.",
+          )}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProofPoint({ description, title }: { description: string; title: string }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
     </div>
   );
 }

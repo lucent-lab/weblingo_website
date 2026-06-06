@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DashboardRetryButton } from "@/components/dashboard/retry-button";
+import { ExampleValuesBadge } from "@/components/dashboard/example-values-badge";
 import { GlossaryEditor } from "../glossary-editor";
 import { LockedFeatureCard } from "../locked-feature-card";
 import { PageSectionNav } from "../page-section-nav";
@@ -82,9 +83,8 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const siteHeaderAccess = buildSiteHeaderAccess({ has: auth.has, mutationsAllowed });
   const canEdit = siteHeaderAccess.canEdit;
   const isDemoAccess = auth.accessMode === "demo";
-  const canDemoGlossary = isDemoAccess && auth.has({ feature: "glossary" });
   const canGlossary =
-    canDemoGlossary || (auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed);
+    !isDemoAccess && auth.has({ allFeatures: ["edit", "glossary"] }) && mutationsAllowed;
   const canOverrides = auth.has({ allFeatures: ["edit", "overrides"] }) && mutationsAllowed;
   const canSlugs = auth.has({ allFeatures: ["edit", "slug_edit"] }) && mutationsAllowed;
   const headerLabels = buildSiteHeaderLabels(t);
@@ -104,7 +104,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
 
   const [siteResult, glossaryResult] = await Promise.allSettled([
     fetchSite(authToken, id),
-    canGlossary ? fetchGlossary(authToken, id) : Promise.resolve([] as GlossaryEntry[]),
+    canGlossary || isDemoAccess
+      ? fetchGlossary(authToken, id)
+      : Promise.resolve([] as GlossaryEntry[]),
   ]);
 
   if (siteResult.status === "fulfilled") {
@@ -289,7 +291,28 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       </section>
 
       <section id="glossary" className="scroll-mt-24">
-        {canGlossary ? (
+        {isDemoAccess ? (
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Glossary</CardTitle>
+                <ExampleValuesBadge />
+              </div>
+              <CardDescription>
+                Maintain terminology control for this scoped demo. Values shown here are inactive
+                examples until activation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GlossaryEditor
+                mode="example"
+                initialEntries={glossary}
+                siteId={site.id}
+                targetLangs={targetLangs}
+              />
+            </CardContent>
+          </Card>
+        ) : canGlossary ? (
           <Card>
             <CardHeader>
               <CardTitle>Glossary</CardTitle>
@@ -325,7 +348,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
 
       <div className="grid gap-4 md:grid-cols-2">
         <section id="manual-overrides" className="scroll-mt-24">
-          {canOverrides ? (
+          {isDemoAccess ? (
+            <OverrideForm mode="example" siteId={site.id} targetLangs={targetLangs} />
+          ) : canOverrides ? (
             <OverrideForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard
@@ -342,7 +367,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           )}
         </section>
         <section id="localized-slugs" className="scroll-mt-24">
-          {canSlugs ? (
+          {isDemoAccess ? (
+            <SlugForm mode="example" siteId={site.id} targetLangs={targetLangs} />
+          ) : canSlugs ? (
             <SlugForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
             <LockedFeatureCard

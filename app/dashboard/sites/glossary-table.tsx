@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { exampleFieldClassName } from "@/components/dashboard/example-values-badge";
 import { Input } from "@/components/ui/input";
 import type { GlossaryEntry } from "@internal/dashboard/webhooks";
 
@@ -20,6 +21,7 @@ type GlossaryTableProps = {
   targetLangs: string[];
   initialEntries?: GlossaryEntry[];
   onEntriesChange?: (entries: GlossaryEntry[]) => void;
+  readOnlyExample?: boolean;
 };
 
 const tooltipCopy =
@@ -29,10 +31,12 @@ export function GlossaryTable({
   targetLangs,
   initialEntries = [],
   onEntriesChange,
+  readOnlyExample = false,
 }: GlossaryTableProps) {
   const [rows, setRows] = useState<GlossaryRow[]>(() => hydrateRows(initialEntries, targetLangs));
   const hasTargetLangs = targetLangs.length > 0;
   const onEntriesChangeRef = useRef(onEntriesChange);
+  const inputClassName = readOnlyExample ? exampleFieldClassName : undefined;
 
   useEffect(() => {
     setRows((current) => syncRowsWithTargets(current, targetLangs));
@@ -62,7 +66,7 @@ export function GlossaryTable({
           type="button"
           variant="outline"
           size="sm"
-          disabled={!hasTargetLangs}
+          disabled={readOnlyExample || !hasTargetLangs}
         >
           Add term
         </Button>
@@ -98,6 +102,9 @@ export function GlossaryTable({
                 <tr key={row.id} className="border-t border-border/50">
                   <td className="min-w-[220px] px-3 py-3 align-top">
                     <Input
+                      className={inputClassName}
+                      disabled={readOnlyExample}
+                      readOnly={readOnlyExample}
                       placeholder="Checkout"
                       value={row.source}
                       onChange={(event) => updateRow(index, { source: event.target.value })}
@@ -106,6 +113,9 @@ export function GlossaryTable({
                   {targetLangs.map((lang) => (
                     <td key={lang} className="min-w-[200px] px-3 py-3 align-top">
                       <Input
+                        className={inputClassName}
+                        disabled={readOnlyExample}
+                        readOnly={readOnlyExample}
                         placeholder="Translation"
                         value={row.targets[lang] ?? ""}
                         onChange={(event) =>
@@ -120,6 +130,7 @@ export function GlossaryTable({
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <input
                         checked={row.scope === "in_segment"}
+                        disabled={readOnlyExample}
                         onChange={(event) =>
                           updateRow(index, {
                             scope: event.target.checked ? "in_segment" : "segment",
@@ -139,6 +150,7 @@ export function GlossaryTable({
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <input
                         checked={row.caseSensitive ?? false}
+                        disabled={readOnlyExample}
                         onChange={(event) =>
                           updateRow(index, { caseSensitive: event.target.checked })
                         }
@@ -149,6 +161,9 @@ export function GlossaryTable({
                   </td>
                   <td className="min-w-[140px] px-3 py-3 align-top">
                     <Input
+                      className={inputClassName}
+                      disabled={readOnlyExample}
+                      readOnly={readOnlyExample}
                       placeholder="exact"
                       value={row.matchType ?? ""}
                       onChange={(event) => updateRow(index, { matchType: event.target.value })}
@@ -162,6 +177,7 @@ export function GlossaryTable({
                       type="button"
                       variant="ghost"
                       size="sm"
+                      disabled={readOnlyExample}
                     >
                       Remove
                     </Button>

@@ -11,17 +11,19 @@ const mocks = vi.hoisted(() => ({
   normalizeLocale: vi.fn((locale: string) => (["en", "fr", "ja"].includes(locale) ? locale : "en")),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
-    t: (key: string, fallback?: string) =>
-      (
-        ({
-          "dashboard.site.demoAccess.title": "Localized scoped demo access",
-          "dashboard.site.demoAccess.description": "Localized read-only demo access.",
-          "dashboard.site.mutationLock.planDescription": "Localized plan lock.",
-          "dashboard.site.mutationLock.billingDescription": "Localized billing lock.",
-        }) as Record<string, string>
-      )[key] ??
-      fallback ??
-      key,
+    t: (key: string, fallback?: string, vars?: Record<string, string>) => {
+      const translations: Record<string, string> = {
+        "dashboard.site.demoAccess.title": "Localized scoped demo access",
+        "dashboard.site.demoAccess.description": "Localized read-only demo access.",
+        "dashboard.site.mutationLock.planDescription": "Localized plan lock.",
+        "dashboard.site.mutationLock.billingDescription": "Localized billing lock.",
+      };
+      const template = translations[key] ?? fallback ?? key;
+      return Object.entries(vars ?? {}).reduce(
+        (acc, [varKey, value]) => acc.replaceAll(`{${varKey}}`, value),
+        template,
+      );
+    },
   })),
 }));
 
@@ -231,6 +233,8 @@ describe("SitePage", () => {
     expect(screen.getByRole("link", { name: /verify domain/i }).getAttribute("href")).toBe(
       "/dashboard/sites/site-1/domains#domain-fr-example-com",
     );
+    expect(screen.queryByText("Demo walkthrough")).toBeNull();
+    expect(screen.queryByText("This is the real WebLingo dashboard")).toBeNull();
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
   });
 
@@ -308,9 +312,114 @@ describe("SitePage", () => {
     render(tree);
 
     expect(screen.getByTestId("prospect-demo-card").textContent).toContain("site-1");
-    expect(screen.getByText("Localized scoped demo access")).toBeTruthy();
-    expect(screen.getByText("Localized read-only demo access.")).toBeTruthy();
+    expect(screen.getByText("This is the real WebLingo dashboard")).toBeTruthy();
+    expect(screen.getByText("Demo walkthrough")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /activate/i }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1#activate-demo",
+    );
     expect(mocks.getSiteCustomerOverviewCached).toHaveBeenCalledWith(webhooksAuth, "site-1");
+  });
+
+  it("adds a source-vs-translated comparison only from safe live hrefs in demo access", async () => {
+    const webhooksAuth = {
+      token: "demo-token",
+      subjectAccountId: "acct-demo",
+      expiresAt: "2030-01-01T00:00:00.000Z",
+      refresh: async () => "demo-token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-1" },
+      webhooksAuth,
+      mutationsAllowed: false,
+      has: vi.fn().mockReturnValue(false),
+      account: { accountId: "acct-demo" },
+      subjectAccount: { accountId: "acct-demo" },
+      actorAccount: { accountId: "acct-demo" },
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    const overview = makeOverview();
+    overview.languages[0]!.servingStatus.cta = {
+      labelKey: "dashboard.serving.action.view",
+      actionId: "view_live_site",
+      method: "link",
+      href: "https://fr.example.com/",
+    };
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(overview);
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    const tree = await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+    render(tree);
+
+    expect(screen.getByText("Source vs translated site")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /compare/i }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1#source-comparison",
+    );
+    expect(screen.getByRole("link", { name: /Translated FR/i }).getAttribute("href")).toBe(
+      "https://fr.example.com/",
+    );
+  });
+
+  it("keeps billing-blocked and plan-locked overview copy distinct", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: false,
+      billingIssue: { scope: "subject", status: "past_due" },
+      has: vi.fn().mockReturnValue(true),
+      account: null,
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    const overview = makeOverview();
+    overview.account.mutationsAllowed = false;
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(overview);
+
+    vi.resetModules();
+    const { default: SitePage } = await import("./page");
+
+    const billingTree = await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+    render(billingTree);
+    expect(screen.getByText("Localized billing lock.")).toBeTruthy();
+    expect(screen.queryByText("Localized plan lock.")).toBeNull();
+    cleanup();
+
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      billingIssue: null,
+      has: vi.fn().mockReturnValue(true),
+      account: null,
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    mocks.getSiteCustomerOverviewCached.mockResolvedValue(overview);
+
+    const planTree = await SitePage({
+      params: Promise.resolve({ id: "site-1" }),
+    });
+    render(planTree);
+    expect(screen.getByText("Localized plan lock.")).toBeTruthy();
+    expect(screen.queryByText("Localized billing lock.")).toBeNull();
   });
 
   it("404s demo scoped auth before fetching a different site", async () => {

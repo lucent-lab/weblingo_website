@@ -102,8 +102,11 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
 
   const headerLabels = buildSiteHeaderLabels(t);
   const mutationsLocked = !auth.mutationsAllowed || !projection.access.mutationsAllowed;
-  const billingBlocked = settingsAccess.billingBlocked;
-  const lockedHelp = t("dashboard.site.settings.lockedHelp");
+  const isDemoAccess = auth.accessMode === "demo";
+  const billingBlocked = settingsAccess.billingBlocked && !isDemoAccess;
+  const lockedHelp = isDemoAccess
+    ? t("dashboard.site.settings.demoLockedHelp")
+    : t("dashboard.site.settings.lockedHelp");
   const crawlCaptureCopy = {
     title: t("dashboard.site.settings.crawlCapture.title"),
     description: t("dashboard.site.settings.crawlCapture.description"),
@@ -157,17 +160,40 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
 
       <MutationLockBanner
         locked={mutationsLocked}
-        description="Settings changes are locked until this workspace can make dashboard mutations."
+        title={
+          isDemoAccess
+            ? t("dashboard.site.settings.demoLockedTitle", "Demo settings are read-only")
+            : undefined
+        }
+        description={
+          isDemoAccess
+            ? t(
+                "dashboard.site.settings.demoLockedDescription",
+                "This is the real settings page for the claimed site, but edits are not saved until activation.",
+              )
+            : "Settings changes are locked until this workspace can make dashboard mutations."
+        }
       />
 
-      {billingBlocked || mutationsLocked ? (
+      {isDemoAccess || billingBlocked || mutationsLocked ? (
         <Card className="border-border/60 bg-muted/30">
           <CardHeader>
-            <CardTitle>{billingBlocked ? "Billing action required" : "Settings locked"}</CardTitle>
+            <CardTitle>
+              {isDemoAccess
+                ? t("dashboard.site.settings.demoSummaryTitle", "Read-only demo settings")
+                : billingBlocked
+                  ? "Billing action required"
+                  : "Settings locked"}
+            </CardTitle>
             <CardDescription>
-              {billingBlocked
-                ? "Update billing to resume editing this site."
-                : "This workspace cannot make settings changes right now."}
+              {isDemoAccess
+                ? t(
+                    "dashboard.site.settings.demoSummaryDescription",
+                    "Use this page to inspect routing, brand voice, language routing, and integration settings. Activation is required before any setting is saved.",
+                  )
+                : billingBlocked
+                  ? "Update billing to resume editing this site."
+                  : "This workspace cannot make settings changes right now."}
             </CardDescription>
           </CardHeader>
         </Card>

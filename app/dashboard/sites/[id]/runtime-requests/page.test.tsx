@@ -249,4 +249,66 @@ describe("RuntimeRequestsPage", () => {
       observationsLoaded: false,
     });
   });
+
+  it("renders demo runtime policy as readonly examples without action props", async () => {
+    const authToken = { token: "demo-token", subjectAccountId: "acct-demo" };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      accessMode: "demo",
+      demoSession: { siteId: "site-demo" },
+      webhooksAuth: authToken,
+      mutationsAllowed: false,
+      has: vi.fn().mockReturnValue(false),
+      actorAccountId: "acct-demo",
+      subjectAccountId: "acct-demo",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "developer_tools" },
+      site: {
+        id: "site-demo",
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        status: "inactive",
+      },
+      access: {
+        mutationsAllowed: false,
+        lockedReasonCode: null,
+        features: {},
+        canEditRuntime: false,
+        canEditWebhooks: false,
+        canViewRuntimeRequests: true,
+      },
+      runtime: {},
+      webhooks: { url: null, events: [], hasSecret: false },
+      snippets: { available: false },
+      runtimeRequests: {
+        available: true,
+        policy: { schemaVersion: 1, mode: "standard", enabled: true, rules: [] },
+        policySummary: null,
+        propagation: null,
+      },
+    });
+
+    vi.resetModules();
+    const { default: RuntimeRequestsPage } = await import("./page");
+
+    const tree = await RuntimeRequestsPage({
+      params: Promise.resolve({ id: "site-demo" }),
+    });
+
+    const managerProps = findElement(tree, mocks.RuntimeRequestsManager);
+    expect(managerProps).toMatchObject({
+      siteId: "site-demo",
+      mode: "example",
+      canEdit: false,
+      canLoadObservations: false,
+      observationsLoaded: false,
+      initialPolicy: expect.objectContaining({
+        rules: [expect.objectContaining({ id: "example-search-proxy", pattern: "/api/search" })],
+      }),
+    });
+    expect(managerProps).not.toHaveProperty("loadObservationsAction");
+    expect(managerProps).not.toHaveProperty("saveAction");
+    expect(managerProps).not.toHaveProperty("lifecycleAction");
+  });
 });

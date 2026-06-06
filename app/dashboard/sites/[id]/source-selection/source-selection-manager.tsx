@@ -15,6 +15,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import type { ActionResponse } from "@/app/dashboard/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  ExampleValuesBadge,
+  exampleFieldClassName,
+} from "@/components/dashboard/example-values-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -146,7 +150,9 @@ type SourceSelectionManagerProps = {
   routeConfigUpdatedAt?: string | null;
   sourceSelectionFingerprint?: string | null;
   canEdit: boolean;
-  saveAction: (
+  mode?: "editable" | "example";
+  exampleBadgeLabel?: string;
+  saveAction?: (
     prevState: ActionResponse | undefined,
     formData: FormData,
   ) => Promise<ActionResponse>;
@@ -167,9 +173,12 @@ export function SourceSelectionManager({
   routeConfigUpdatedAt,
   sourceSelectionFingerprint: backendSourceSelectionFingerprint,
   canEdit,
+  mode = "editable",
+  exampleBadgeLabel = "Example values",
   saveAction,
   copy,
 }: SourceSelectionManagerProps) {
+  const isExampleMode = mode === "example";
   const initialDraftRules = useMemo(() => normalizeRulesForForm(initialRules), [initialRules]);
   const [persistedRules, setPersistedRules] =
     useState<DraftSourceSelectionRule[]>(initialDraftRules);
@@ -203,9 +212,11 @@ export function SourceSelectionManager({
   );
   const hasUnsavedChanges = draftFingerprint !== persistedFingerprint;
   const previewIsCurrent = lastSuccessfulPreviewFingerprint === draftFingerprint;
-  const controlsCanEdit = canEdit && !isSaving;
+  const controlsCanEdit = canEdit && !isExampleMode && !isSaving;
   const canSave =
     canEdit &&
+    !isExampleMode &&
+    Boolean(saveAction) &&
     hasUnsavedChanges &&
     preview !== null &&
     previewIsCurrent &&
@@ -250,7 +261,7 @@ export function SourceSelectionManager({
   );
 
   useEffect(() => {
-    if (!canEdit || previewRequestKey === 0) {
+    if (!canEdit || isExampleMode || previewRequestKey === 0) {
       return;
     }
     if (pathSearchTooShort) {
@@ -335,6 +346,7 @@ export function SourceSelectionManager({
     };
   }, [
     canEdit,
+    isExampleMode,
     copy.previewErrorTitle,
     currentCursor,
     draftConfig,
@@ -349,7 +361,7 @@ export function SourceSelectionManager({
   ]);
 
   const savePreview = () => {
-    if (!canSave || !preview) {
+    if (!canSave || !preview || !saveAction) {
       return;
     }
     const saveConfig = draftConfig;
@@ -451,12 +463,17 @@ export function SourceSelectionManager({
       <Card>
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>{copy.title}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>{copy.title}</CardTitle>
+              {isExampleMode ? <ExampleValuesBadge label={exampleBadgeLabel} /> : null}
+            </div>
             <CardDescription>{copy.description}</CardDescription>
           </div>
-          <Badge variant={hasUnsavedChanges ? "outline" : "secondary"}>
-            {hasUnsavedChanges ? copy.unsavedChanges : copy.inSync}
-          </Badge>
+          {!isExampleMode ? (
+            <Badge variant={hasUnsavedChanges ? "outline" : "secondary"}>
+              {hasUnsavedChanges ? copy.unsavedChanges : copy.inSync}
+            </Badge>
+          ) : null}
         </CardHeader>
       </Card>
 
@@ -481,48 +498,51 @@ export function SourceSelectionManager({
               canEdit={controlsCanEdit}
               copy={copy}
               persistedRules={persistedRules}
+              readOnlyExample={isExampleMode}
               rules={draftRules}
               onChange={updateDraftRules}
             />
-            <div className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <PreviewStatus
-                copy={copy}
-                isLoading={isPreviewLoading}
-                isCurrent={previewIsCurrent}
-                error={previewError}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={requestPreview}
-                  disabled={isPreviewLoading || isSaving}
-                >
-                  {copy.preview}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetDraft}
-                  disabled={!hasUnsavedChanges || isSaving}
-                >
-                  {copy.reset}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={savePreview}
-                  disabled={!canSave}
-                  title={canSave ? copy.save : copy.saveDisabled}
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  {isSaving ? copy.saving : copy.save}
-                </Button>
+            {!isExampleMode ? (
+              <div className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <PreviewStatus
+                  copy={copy}
+                  isLoading={isPreviewLoading}
+                  isCurrent={previewIsCurrent}
+                  error={previewError}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestPreview}
+                    disabled={isPreviewLoading || isSaving}
+                  >
+                    {copy.preview}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetDraft}
+                    disabled={!hasUnsavedChanges || isSaving}
+                  >
+                    {copy.reset}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={savePreview}
+                    disabled={!canSave}
+                    title={canSave ? copy.save : copy.saveDisabled}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {isSaving ? copy.saving : copy.save}
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : null}
             {saveResult ? (
               <p
                 className={cn("text-sm", saveResult.ok ? "text-emerald-700" : "text-destructive")}
@@ -625,6 +645,7 @@ export function SourceSelectionManager({
                   canEdit={controlsCanEdit}
                   copy={copy}
                   rows={visibleTreeRows}
+                  readOnlyExample={isExampleMode}
                   onOpenFolder={openFolder}
                   onChange={updateDraftRules}
                 />
@@ -722,12 +743,14 @@ function RuleEditor({
   canEdit,
   copy,
   persistedRules,
+  readOnlyExample = false,
   rules,
   onChange,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
   persistedRules: DraftSourceSelectionRule[];
+  readOnlyExample?: boolean;
   rules: DraftSourceSelectionRule[];
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
 }) {
@@ -771,7 +794,10 @@ function RuleEditor({
             <Field label={copy.actionLabel} htmlFor={actionId}>
               <select
                 id={actionId}
-                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  readOnlyExample ? exampleFieldClassName : "",
+                )}
                 value={rule.action}
                 disabled={!canEdit}
                 onChange={(event) => {
@@ -789,6 +815,7 @@ function RuleEditor({
             </Field>
             <Field label={copy.patternLabel} htmlFor={patternId}>
               <Input
+                className={readOnlyExample ? exampleFieldClassName : undefined}
                 id={patternId}
                 value={rule.pattern}
                 placeholder={copy.patternPlaceholder}
@@ -1049,12 +1076,14 @@ function PreviewSummary({
 function SourceSelectionTree({
   canEdit,
   copy,
+  readOnlyExample = false,
   rows,
   onOpenFolder,
   onChange,
 }: {
   canEdit: boolean;
   copy: SourceSelectionCopy;
+  readOnlyExample?: boolean;
   rows: SourceSelectionTreePreviewNode[];
   onOpenFolder: (path: string) => void;
   onChange: (updater: (rules: DraftSourceSelectionRule[]) => DraftSourceSelectionRule[]) => void;
@@ -1168,6 +1197,7 @@ function SourceSelectionTree({
                 canEdit={canEdit}
                 copy={copy}
                 isFocused={activeFocusedRowId === row.id}
+                readOnlyExample={readOnlyExample}
                 row={row as SourceSelectionFolderNode}
                 rowIndex={index}
                 setRowRef={setRowRef}
@@ -1182,6 +1212,7 @@ function SourceSelectionTree({
                 canEdit={canEdit}
                 copy={copy}
                 isFocused={activeFocusedRowId === row.id}
+                readOnlyExample={readOnlyExample}
                 row={row as SourceSelectionPageNode}
                 rowIndex={index}
                 setRowRef={setRowRef}
@@ -1207,6 +1238,7 @@ function FolderRow({
   onRowKeyDown,
   row,
   rowIndex,
+  readOnlyExample = false,
   setRowRef,
 }: {
   canEdit: boolean;
@@ -1221,6 +1253,7 @@ function FolderRow({
   ) => void;
   row: SourceSelectionFolderNode;
   rowIndex: number;
+  readOnlyExample?: boolean;
   setRowRef: (id: string, node: HTMLTableRowElement | null) => void;
 }) {
   const descendantPattern = descendantPatternForPath(row.sourcePath);
@@ -1298,6 +1331,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
+            className={readOnlyExample ? "border-sky-200 bg-sky-50 text-sky-800" : undefined}
             aria-label={`${copy.includeDescendants} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("include")}
@@ -1308,6 +1342,7 @@ function FolderRow({
             type="button"
             size="sm"
             variant="outline"
+            className={readOnlyExample ? "border-sky-200 bg-sky-50 text-sky-800" : undefined}
             aria-label={`${copy.excludeDescendants} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setDescendantRule("exclude")}
@@ -1339,6 +1374,7 @@ function PageRow({
   onRowKeyDown,
   row,
   rowIndex,
+  readOnlyExample = false,
   setRowRef,
 }: {
   canEdit: boolean;
@@ -1352,6 +1388,7 @@ function PageRow({
   ) => void;
   row: SourceSelectionPageNode;
   rowIndex: number;
+  readOnlyExample?: boolean;
   setRowRef: (id: string, node: HTMLTableRowElement | null) => void;
 }) {
   const state = toBadgeState(row.effectiveState);
@@ -1419,6 +1456,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
+            className={readOnlyExample ? "border-sky-200 bg-sky-50 text-sky-800" : undefined}
             aria-label={`${copy.includePage} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("include")}
@@ -1429,6 +1467,7 @@ function PageRow({
             type="button"
             size="sm"
             variant="outline"
+            className={readOnlyExample ? "border-sky-200 bg-sky-50 text-sky-800" : undefined}
             aria-label={`${copy.excludePage} ${row.sourcePath}`}
             disabled={!canEdit}
             onClick={() => setPageRule("exclude")}

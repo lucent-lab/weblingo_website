@@ -12,7 +12,7 @@ import { DashboardRetryButton } from "@/components/dashboard/retry-button";
 import { StatusBadge, type StatusTone } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireDashboardAuth } from "@internal/dashboard/auth";
+import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import {
   formatCustomerCopy,
   formatCustomerStatusValue,
@@ -24,6 +24,11 @@ import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { WebhooksApiError, type SiteCustomerOverviewResponse } from "@internal/dashboard/webhooks";
 import { resolveLocaleTranslator, type Translator } from "@internal/i18n";
 
+import {
+  DemoExplanationBanner,
+  DemoSourceComparisonCard,
+  DemoTourChecklist,
+} from "./demo-guidance";
 import { localizeDashboardRouteHref, resolveDashboardRouteLocale } from "./focused-route-utils";
 import {
   ProspectDemoConversionCard,
@@ -124,6 +129,11 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
   }
 
   const site = overview.site;
+  const isDemoAccess = auth.accessMode === "demo";
+  const demoComparison = isDemoAccess ? resolveDemoComparisonEntry(overview) : null;
+  const activationHref =
+    localizeDashboardRouteHref(`/dashboard/sites/${site.id}#activate-demo`, dashboardLocale) ??
+    "#activate-demo";
   const mutationsLocked = !auth.mutationsAllowed || !overview.account.mutationsAllowed;
   const nextActionTitle = formatCustomerCopy(t, overview.nextAction.titleKey, {
     params: overview.nextAction.params,
@@ -245,24 +255,48 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
         </div>
       </div>
 
-      <MutationLockBanner
-        locked={mutationsLocked}
-        title={auth.accessMode === "demo" ? t("dashboard.site.demoAccess.title") : undefined}
-        description={
-          auth.accessMode === "demo"
-            ? t("dashboard.site.demoAccess.description")
-            : auth.mutationsAllowed
-              ? t("dashboard.site.mutationLock.planDescription")
-              : t("dashboard.site.mutationLock.billingDescription")
-        }
-      />
+      {isDemoAccess ? (
+        <>
+          <DemoExplanationBanner t={t} />
+          <DemoTourChecklist
+            steps={buildDemoTourSteps({
+              activationHref,
+              comparisonHref: demoComparison
+                ? localizeDashboardRouteHref(
+                    `/dashboard/sites/${site.id}#source-comparison`,
+                    dashboardLocale,
+                  )
+                : null,
+              dashboardLocale,
+              siteId: site.id,
+              t,
+            })}
+            t={t}
+          />
+          {demoComparison ? (
+            <DemoSourceComparisonCard
+              sourceUrl={demoComparison.sourceUrl}
+              targetLabel={demoComparison.targetLabel}
+              translatedUrl={demoComparison.translatedUrl}
+              t={t}
+            />
+          ) : null}
+        </>
+      ) : (
+        <MutationLockBanner
+          locked={mutationsLocked}
+          description={resolveMutationLockDescription(auth, t)}
+        />
+      )}
 
       {demoSession ? (
-        <ProspectDemoConversionCard
-          dashboardLocale={dashboardLocale}
-          copy={buildProspectDemoConversionCopy(t)}
-          siteId={site.id}
-        />
+        <section id="activate-demo" className="scroll-mt-24">
+          <ProspectDemoConversionCard
+            dashboardLocale={dashboardLocale}
+            copy={buildProspectDemoConversionCopy(t)}
+            siteId={site.id}
+          />
+        </section>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
@@ -291,6 +325,143 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
       </div>
     </div>
   );
+}
+
+function resolveMutationLockDescription(auth: DashboardAuth, t: Translator): string {
+  if (auth.billingIssue) {
+    return t("dashboard.site.mutationLock.billingDescription");
+  }
+  return t("dashboard.site.mutationLock.planDescription");
+}
+
+function buildDemoTourSteps({
+  activationHref,
+  comparisonHref,
+  dashboardLocale,
+  siteId,
+  t,
+}: {
+  activationHref: string;
+  comparisonHref: string | null;
+  dashboardLocale: string | null;
+  siteId: string;
+  t: Translator;
+}) {
+  return [
+    {
+      title: t("dashboard.demo.tour.inspect.title", "Inspect translated site"),
+      description: comparisonHref
+        ? t(
+            "dashboard.demo.tour.inspect.readyDescription",
+            "Compare the original page with the translated experience exposed by the backend.",
+          )
+        : t(
+            "dashboard.demo.tour.inspect.unavailableDescription",
+            "A live comparison link appears when a safe translated or showcase URL is available.",
+          ),
+      href: comparisonHref,
+      label: t("dashboard.demo.tour.inspect.cta", "Compare"),
+    },
+    {
+      title: t("dashboard.demo.tour.pages.title", "Review pages and crawl status"),
+      description: t(
+        "dashboard.demo.tour.pages.description",
+        "Check discovered pages, crawl freshness, and translation progress.",
+      ),
+      href: localizeDashboardRouteHref(`/dashboard/sites/${siteId}/pages`, dashboardLocale),
+      label: t("dashboard.demo.tour.pages.cta", "Open pages"),
+    },
+    {
+      title: t("dashboard.demo.tour.rules.title", "Control translation rules"),
+      description: t(
+        "dashboard.demo.tour.rules.description",
+        "Review glossary, overrides, localized slugs, and consistency controls.",
+      ),
+      href: localizeDashboardRouteHref(`/dashboard/sites/${siteId}/quality`, dashboardLocale),
+      label: t("dashboard.demo.tour.rules.cta", "Open quality"),
+    },
+    {
+      title: t("dashboard.demo.tour.serving.title", "Check domains and serving"),
+      description: t(
+        "dashboard.demo.tour.serving.description",
+        "Review domain readiness, serving state, and integration setup without changing anything.",
+      ),
+      href: localizeDashboardRouteHref(`/dashboard/sites/${siteId}/domains`, dashboardLocale),
+      label: t("dashboard.demo.tour.serving.cta", "Open domains"),
+    },
+    {
+      title: t("dashboard.demo.tour.activate.title", "Activate the demo"),
+      description: t(
+        "dashboard.demo.tour.activate.description",
+        "Conversion is the only path that turns this read-only demo into saved site access.",
+      ),
+      href: activationHref,
+      label: t("dashboard.demo.tour.activate.cta", "Activate"),
+    },
+  ];
+}
+
+type DemoComparisonEntry = {
+  sourceUrl: string;
+  targetLabel: string;
+  translatedUrl: string;
+};
+
+function resolveDemoComparisonEntry(
+  overview: SiteCustomerOverviewResponse,
+): DemoComparisonEntry | null {
+  if (!isHttpUrl(overview.site.sourceUrl)) {
+    return null;
+  }
+
+  const nextActionHref = resolveSafeViewLiveHref(overview.nextAction.cta);
+  if (nextActionHref) {
+    return {
+      sourceUrl: overview.site.sourceUrl,
+      targetLabel: "site",
+      translatedUrl: nextActionHref,
+    };
+  }
+
+  for (const language of overview.languages) {
+    const translatedUrl = resolveSafeViewLiveHref(language.servingStatus.cta);
+    if (translatedUrl) {
+      return {
+        sourceUrl: overview.site.sourceUrl,
+        targetLabel: language.tag.toUpperCase(),
+        translatedUrl,
+      };
+    }
+  }
+
+  for (const domain of overview.domains) {
+    const translatedUrl = resolveSafeViewLiveHref(domain.servingStatus?.cta ?? domain.cta);
+    if (translatedUrl) {
+      return {
+        sourceUrl: overview.site.sourceUrl,
+        targetLabel: domain.targetLang ? domain.targetLang.toUpperCase() : "site",
+        translatedUrl,
+      };
+    }
+  }
+
+  return null;
+}
+
+function resolveSafeViewLiveHref(cta: CustomerCta): string | null {
+  if (cta?.actionId !== "view_live_site" || !cta.href || !isHttpUrl(cta.href)) {
+    return null;
+  }
+  return cta.href;
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function buildProspectDemoConversionCopy(t: Translator): ProspectDemoConversionCardCopy {

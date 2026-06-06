@@ -81,6 +81,7 @@ type DashboardReadAuth = DashboardWebhooksAuth;
 type DashboardMutationGate = {
   actionLabel: string;
   permissionError: string;
+  siteId?: string;
   feature?: WebLingoFeature;
   allFeatures?: readonly WebLingoFeature[];
   demo?: {
@@ -89,6 +90,9 @@ type DashboardMutationGate = {
     blockedResponse?: ActionResponse;
   };
 };
+
+const DEMO_READ_ONLY_MESSAGE =
+  "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.";
 
 const failed = (message: string, meta?: Record<string, unknown>): ActionResponse => ({
   ok: false,
@@ -234,6 +238,12 @@ async function requireDashboardMutationAuth(
     return { ok: false, response: failed("Unable to resolve account entitlements.") };
   }
   if (auth.accessMode === "demo") {
+    if (gate.siteId && !isDashboardAuthScopedToSite(auth, gate.siteId)) {
+      return {
+        ok: false,
+        response: failed("The requested dashboard data could not be found."),
+      };
+    }
     if (gate.demo) {
       if (!isDashboardAuthScopedToSite(auth, gate.demo.siteId)) {
         return {
@@ -251,9 +261,7 @@ async function requireDashboardMutationAuth(
     }
     return {
       ok: false,
-      response: failed(
-        "Demo dashboard access is read-only. Use the activation flow to publish it on your domain.",
-      ),
+      response: failed(DEMO_READ_ONLY_MESSAGE),
     };
   }
   if (!auth.account) {
@@ -269,6 +277,16 @@ async function requireDashboardMutationAuth(
     return { ok: false, response: failed(gate.permissionError) };
   }
   return { ok: true, auth: auth as DashboardMutationAuth };
+}
+
+function rejectDemoMutationForSite(auth: DashboardAuth, siteId: string): ActionResponse | null {
+  if (auth.accessMode !== "demo") {
+    return null;
+  }
+  if (!isDashboardAuthScopedToSite(auth, siteId)) {
+    return failed("The requested dashboard data could not be found.");
+  }
+  return failed(DEMO_READ_ONLY_MESSAGE);
 }
 
 async function requireScopedDashboardReadAuth(
@@ -310,7 +328,10 @@ async function runSiteMutation<T>(options: {
   formatError?: (error: unknown, fallback: string) => string;
 }): Promise<ActionResponse> {
   try {
-    const mutationAuth = await requireDashboardMutationAuth(options.gate);
+    const mutationAuth = await requireDashboardMutationAuth({
+      ...options.gate,
+      siteId: options.gate.siteId ?? options.siteId,
+    });
     if (!mutationAuth.ok) {
       return mutationAuth.response;
     }
@@ -878,6 +899,9 @@ export async function createSiteAction(
     if (!auth.account || !auth.webhooksAuth) {
       return failed("Unable to resolve account entitlements.");
     }
+    if (auth.accessMode === "demo") {
+      return failed(DEMO_READ_ONLY_MESSAGE);
+    }
     if (!auth.mutationsAllowed) {
       return failed(formatBillingBlockMessage(auth, "create new sites"));
     }
@@ -1134,6 +1158,10 @@ export async function updateSiteSettingsAction(
     if (!auth.account || !auth.webhooksAuth) {
       return failed("Unable to resolve account entitlements.");
     }
+    const demoResponse = rejectDemoMutationForSite(auth, siteId);
+    if (demoResponse) {
+      return demoResponse;
+    }
     const access = deriveSiteSettingsAccess({
       has: auth.has,
       mutationsAllowed: auth.mutationsAllowed,
@@ -1192,6 +1220,10 @@ export async function updateSourceSelectionAction(
     const auth = await requireDashboardAuth();
     if (!auth.webhooksAuth) {
       return failed("Unable to authenticate dashboard request.");
+    }
+    const demoResponse = rejectDemoMutationForSite(auth, siteId);
+    if (demoResponse) {
+      return demoResponse;
     }
     if (!auth.has({ feature: "edit" })) {
       return failed("Source selection editing is not enabled for this account.");
@@ -1293,6 +1325,10 @@ export async function updateRuntimeRequestPolicyAction(
     const auth = await requireDashboardAuth();
     if (!auth.webhooksAuth) {
       return failed("Unable to authenticate dashboard request.");
+    }
+    const demoResponse = rejectDemoMutationForSite(auth, siteId);
+    if (demoResponse) {
+      return demoResponse;
     }
     if (!auth.has({ feature: "edit" })) {
       return failed("Runtime request editing is not enabled for this account.");
@@ -1398,6 +1434,10 @@ export async function updateRuntimeRequestObservationLifecycleAction(
     const auth = await requireDashboardAuth();
     if (!auth.webhooksAuth) {
       return failed("Unable to authenticate dashboard request.");
+    }
+    const demoResponse = rejectDemoMutationForSite(auth, siteId);
+    if (demoResponse) {
+      return demoResponse;
     }
     if (!auth.has({ feature: "edit" })) {
       return failed("Runtime request review is not enabled for this account.");
@@ -1930,6 +1970,7 @@ export async function verifyDomainAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "verify domains",
       permissionError: "Domain verification is not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "domain_verify"],
     });
     if (!mutationAuth.ok) {
@@ -1983,6 +2024,7 @@ export async function provisionDomainAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "provision domains",
       permissionError: "Domain provisioning is not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "domain_verify"],
     });
     if (!mutationAuth.ok) {
@@ -2036,6 +2078,7 @@ export async function refreshDomainAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "refresh domain status",
       permissionError: "Domain status refresh is not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "domain_verify"],
     });
     if (!mutationAuth.ok) {
@@ -2102,14 +2145,8 @@ export async function updateGlossaryAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "manage glossary entries",
       permissionError: "Glossary editing is not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "glossary"],
-      demo: {
-        siteId,
-        feature: "glossary",
-        blockedResponse: retranslate
-          ? failed("Demo glossary edits cannot trigger retranslation.")
-          : undefined,
-      },
     });
     if (!mutationAuth.ok) {
       return mutationAuth.response;
@@ -2158,6 +2195,7 @@ export async function upsertConsistencyCpmEntryAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "manage consistency governance",
       permissionError: "Consistency governance editing is not enabled for this account.",
+      siteId,
       feature: "edit",
     });
     if (!mutationAuth.ok) {
@@ -2217,6 +2255,7 @@ export async function updateConsistencyBlockAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "manage consistency governance",
       permissionError: "Consistency governance editing is not enabled for this account.",
+      siteId,
       feature: "edit",
     });
     if (!mutationAuth.ok) {
@@ -2259,6 +2298,7 @@ export async function createOverrideAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "manage manual overrides",
       permissionError: "Manual overrides are not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "overrides"],
     });
     if (!mutationAuth.ok) {
@@ -2303,6 +2343,7 @@ export async function updateSlugAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "manage localized slugs",
       permissionError: "Localized slug editing is not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "slug_edit"],
     });
     if (!mutationAuth.ok) {
@@ -2344,6 +2385,7 @@ export async function updateSiteStatusAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: status === "active" ? "enable localization" : "pause localization",
       permissionError: "Site status changes are not enabled for this account.",
+      siteId,
       feature: "edit",
     });
     if (!mutationAuth.ok) {
@@ -2390,6 +2432,7 @@ export async function setLocaleServingAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "update serving settings",
       permissionError: "Serving controls are not enabled for this account.",
+      siteId,
       allFeatures: ["edit", "serve"],
     });
     if (!mutationAuth.ok) {
@@ -2428,6 +2471,7 @@ export async function deactivateSiteAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "pause localization",
       permissionError: "Site status changes are not enabled for this account.",
+      siteId,
       feature: "edit",
     });
     if (!mutationAuth.ok) {
@@ -2465,6 +2509,7 @@ export async function activateSiteAction(
     const mutationAuth = await requireDashboardMutationAuth({
       actionLabel: "enable localization",
       permissionError: "Site status changes are not enabled for this account.",
+      siteId,
       feature: "edit",
     });
     if (!mutationAuth.ok) {
