@@ -173,7 +173,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     return children;
   }
 
-  const locale = resolveDashboardShellLocale(requestHeaders);
+  const explicitDashboardLocale = resolveExplicitDashboardShellLocale(requestHeaders);
+  const locale =
+    explicitDashboardLocale ?? resolvePreferredLocale(requestHeaders.get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const email = auth.user?.email ?? "—";
   const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
@@ -186,7 +188,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     isAgency,
     canAccessInternalOps,
     demoSiteId,
-    dashboardLocale: resolveExplicitDashboardShellLocale(requestHeaders),
+    dashboardLocale: explicitDashboardLocale,
   });
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =
@@ -279,6 +281,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               <Suspense fallback={<SitesNavSkeleton />}>
                 <SitesNavAsync
                   auth={auth}
+                  dashboardLocale={explicitDashboardLocale}
                   emptyLabel={isAgency ? "No sites yet." : "No website yet."}
                   listSites={listLayoutSites}
                 />
@@ -387,10 +390,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 // Async component for sidebar sites navigation - streams in while layout shell renders
 async function SitesNavAsync({
   auth,
+  dashboardLocale,
   emptyLabel,
   listSites,
 }: {
   auth: DashboardAuth;
+  dashboardLocale: string | null;
   emptyLabel: string;
   listSites: LayoutSitesReader;
 }) {
@@ -409,7 +414,13 @@ async function SitesNavAsync({
     emptyLabel,
   });
 
-  return <SitesNav emptyLabel={siteNav.emptyLabel} sites={siteNav.sites} />;
+  return (
+    <SitesNav
+      dashboardLocale={dashboardLocale}
+      emptyLabel={siteNav.emptyLabel}
+      sites={siteNav.sites}
+    />
+  );
 }
 
 export function resolveLayoutSiteNavEntries({

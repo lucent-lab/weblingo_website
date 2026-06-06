@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import { cn } from "@/lib/utils";
 
 export type SiteNavEntry = {
@@ -21,10 +22,15 @@ export type SiteNavEntry = {
 
 type SitesNavProps = {
   sites: SiteNavEntry[];
+  dashboardLocale?: string | null;
   emptyLabel?: string;
 };
 
-export function SitesNav({ sites, emptyLabel = "No sites yet." }: SitesNavProps) {
+export function SitesNav({
+  sites,
+  dashboardLocale = null,
+  emptyLabel = "No sites yet.",
+}: SitesNavProps) {
   const pathname = usePathname();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -36,7 +42,14 @@ export function SitesNav({ sites, emptyLabel = "No sites yet." }: SitesNavProps)
           {emptyLabel}
         </SidebarMenuItem>
       ) : (
-        sites.map((site) => <SiteNavItem key={site.id} site={site} pathname={pathname} />)
+        sites.map((site) => (
+          <SiteNavItem
+            key={site.id}
+            site={site}
+            dashboardLocale={dashboardLocale}
+            pathname={pathname}
+          />
+        ))
       )}
     </SidebarMenu>
   );
@@ -44,29 +57,30 @@ export function SitesNav({ sites, emptyLabel = "No sites yet." }: SitesNavProps)
 
 type SiteNavItemProps = {
   site: SiteNavEntry;
+  dashboardLocale: string | null;
   pathname: string | null;
 };
 
-function SiteNavItem({ site, pathname }: SiteNavItemProps) {
-  const baseHref = `/dashboard/sites/${site.id}`;
+function SiteNavItem({ site, dashboardLocale, pathname }: SiteNavItemProps) {
+  const basePath = `/dashboard/sites/${site.id}`;
   const isActive = Boolean(
-    pathname && (pathname === baseHref || pathname.startsWith(`${baseHref}/`)),
+    pathname && (pathname === basePath || pathname.startsWith(`${basePath}/`)),
   );
   const [manualOpen, setManualOpen] = useState(false);
   const open = isActive || manualOpen;
   const menuId = `site-nav-${site.id}`;
 
   const subItems = [
-    { href: baseHref, label: "Workspace" },
-    { href: `${baseHref}/pages`, label: "Pages & crawl" },
-    { href: `${baseHref}/domains`, label: "Domains" },
-    { href: `${baseHref}/source-selection`, label: "Source selection" },
-    { href: `${baseHref}/quality`, label: "Quality" },
-    { href: `${baseHref}/developer-tools`, label: "Developer tools" },
-    { href: `${baseHref}/runtime-requests`, label: "Runtime requests" },
-    { href: `${baseHref}/history`, label: "History" },
-    { href: `${baseHref}/overrides`, label: "Translation rules" },
-    { href: `${baseHref}/settings`, label: "Settings" },
+    { path: basePath, label: "Workspace" },
+    { path: `${basePath}/pages`, label: "Pages & crawl" },
+    { path: `${basePath}/domains`, label: "Domains" },
+    { path: `${basePath}/source-selection`, label: "Source selection" },
+    { path: `${basePath}/quality`, label: "Quality" },
+    { path: `${basePath}/developer-tools`, label: "Developer tools" },
+    { path: `${basePath}/runtime-requests`, label: "Runtime requests" },
+    { path: `${basePath}/history`, label: "History" },
+    { path: `${basePath}/overrides`, label: "Translation rules" },
+    { path: `${basePath}/settings`, label: "Settings" },
   ];
 
   return (
@@ -99,12 +113,13 @@ function SiteNavItem({ site, pathname }: SiteNavItemProps) {
         <div id={menuId} className="ml-4 border-l border-sidebar-border pl-3">
           <SidebarMenu className="gap-0.5">
             {subItems.map((item) => {
-              const isItemActive = pathname === item.href;
+              const href = withDashboardLocale(item.path, dashboardLocale);
+              const isItemActive = pathname === item.path;
               return (
-                <SidebarMenuItem key={item.href}>
+                <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild isActive={isItemActive} size="sm">
                     <Link
-                      href={item.href}
+                      href={href}
                       prefetch={false}
                       aria-current={isItemActive ? "page" : undefined}
                     >

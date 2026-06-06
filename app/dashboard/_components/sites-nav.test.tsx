@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/sites/site-1",
@@ -67,6 +67,8 @@ vi.mock("next/link", async () => {
 
 import { SitesNav } from "./sites-nav";
 
+afterEach(() => cleanup());
+
 describe("SitesNav", () => {
   it("uses the caller-provided empty label", () => {
     render(<SitesNav emptyLabel="No website yet." sites={[]} />);
@@ -99,5 +101,30 @@ describe("SitesNav", () => {
       const link = screen.getByRole("link", { name: label });
       expect(link.getAttribute("data-prefetch")).toBe("false");
     }
+  });
+
+  it("preserves the dashboard locale on per-site submenu links", () => {
+    render(
+      <SitesNav
+        dashboardLocale="fr"
+        sites={[
+          {
+            id: "site-1",
+            label: "Example Site",
+            status: "active",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Workspace" }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1?locale=fr",
+    );
+    expect(screen.getByRole("link", { name: "Pages & crawl" }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1/pages?locale=fr",
+    );
+    expect(screen.getByRole("link", { name: "Runtime requests" }).getAttribute("href")).toBe(
+      "/dashboard/sites/site-1/runtime-requests?locale=fr",
+    );
   });
 });
