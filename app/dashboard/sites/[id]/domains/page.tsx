@@ -314,6 +314,7 @@ function DomainCard({
               label="Provision domain"
               loading="Requesting provisioning..."
               analyticsEvent={ANALYTICS_EVENTS.domainProvisioned}
+              failureEvent={ANALYTICS_EVENTS.domainProvisionFailed}
               domainStatus={domain.status}
               siteId={siteId}
               siteStatus={siteStatus}
@@ -328,6 +329,7 @@ function DomainCard({
             label="Refresh status"
             loading="Refreshing domain..."
             analyticsEvent={ANALYTICS_EVENTS.domainRefreshRequested}
+            failureEvent={ANALYTICS_EVENTS.domainRefreshFailed}
             domainStatus={domain.status}
             siteId={siteId}
             siteStatus={siteStatus}

@@ -50,7 +50,8 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
       return;
     }
 
-    const captureKey = `${pathname}?session_id=${searchParams.has("session_id") ? "1" : "0"}`;
+    const hasQuery = searchParams.toString() ? "1" : "0";
+    const captureKey = `${pathname}?query=${hasQuery}&session_id=${searchParams.has("session_id") ? "1" : "0"}`;
     if (
       lastTrackedPathnameRef.current === captureKey ||
       shouldSkipRecentNavigationCapture(captureKey)

@@ -260,11 +260,11 @@ describe("DomainsPage", () => {
       expect.arrayContaining([
         expect.objectContaining({
           event: "domain_provisioned",
-          failureEvent: undefined,
+          failureEvent: "domain_provision_failed",
         }),
         expect.objectContaining({
           event: "domain_refresh_requested",
-          failureEvent: undefined,
+          failureEvent: "domain_refresh_failed",
         }),
       ]),
     );

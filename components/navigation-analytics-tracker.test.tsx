@@ -113,4 +113,22 @@ describe("NavigationAnalyticsTracker", () => {
     });
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("cs_secret_123");
   });
+
+  it("tracks query presence changes without retaining raw query values", async () => {
+    pathname = "/en/checkout/success";
+    searchParams = new URLSearchParams({ token: "secret" });
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams();
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
+    });
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("secret");
+  });
 });
