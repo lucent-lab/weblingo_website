@@ -252,6 +252,10 @@ describe("RuntimeRequestsPage", () => {
 
   it("renders demo runtime policy as readonly examples without action props", async () => {
     const authToken = { token: "demo-token", subjectAccountId: "acct-demo" };
+    mocks.resolveLocaleTranslator.mockResolvedValueOnce({
+      t: (key: string, fallback?: string) =>
+        key === "dashboard.demo.examples.badge" ? "Localized example values" : (fallback ?? key),
+    });
     mocks.requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -300,6 +304,7 @@ describe("RuntimeRequestsPage", () => {
     expect(managerProps).toMatchObject({
       siteId: "site-demo",
       mode: "example",
+      exampleBadgeLabel: "Localized example values",
       canEdit: false,
       canLoadObservations: false,
       observationsLoaded: false,

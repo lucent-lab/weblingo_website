@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { readDashboardDemoSession } from "@internal/dashboard/demo-session";
+import { invalidateSiteDashboardCache } from "@internal/dashboard/data";
 import {
   convertProspectShowcaseDemo,
   WebhooksApiError,
@@ -97,6 +98,15 @@ export async function convertProspectDemoAction(
     if (result.siteId !== session.siteId || result.accountId !== session.subjectAccountId) {
       return failed("unexpectedScope", "Demo conversion returned an unexpected account or site.");
     }
+    await invalidateSiteDashboardCache(
+      {
+        token: session.token,
+        expiresAt: session.expiresAt,
+        subjectAccountId: session.subjectAccountId,
+        refresh: async () => session.token,
+      },
+      session.siteId,
+    );
     revalidatePath(`/dashboard/sites/${session.siteId}`);
     return succeeded(formatConversionMessageKey(result), formatConversionMessage(result), {
       status: result.status,

@@ -153,6 +153,25 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
   });
 
+  it("rewrites signed-in locale-prefixed dashboard subpaths to canonical routes", async () => {
+    createServerClientMock.mockImplementation((() => ({
+      auth: {
+        getClaims: vi.fn(async () => ({ data: { claims: { sub: "user-1" } } })),
+      },
+    })) as never);
+
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/fr/dashboard/sites/site-customer/pages?tab=all"),
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://weblingo.app/dashboard/sites/site-customer/pages?tab=all&locale=fr",
+    );
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-locale")).toBe("fr");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
   it("rewrites opaque demo dashboard sessions from locale-prefixed dashboard site pages", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/en/dashboard/sites/site-demo", {

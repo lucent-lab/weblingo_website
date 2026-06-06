@@ -158,6 +158,7 @@ export default async function SourceSelectionPage({
   const hasUnsupportedSourceSelectionRules =
     projection.policy.rules.length !== initialSourceSelectionRules.length;
   const sourceSelectionCopy = buildSourceSelectionCopy(t);
+  const demoExampleBadgeLabel = t("dashboard.demo.examples.badge", "Example values");
   const displaySourceSelectionCopy = isDemoAccess
     ? {
         ...sourceSelectionCopy,
@@ -202,6 +203,7 @@ export default async function SourceSelectionPage({
           }
           canEdit={false}
           mode="example"
+          exampleBadgeLabel={demoExampleBadgeLabel}
           copy={displaySourceSelectionCopy}
         />
       ) : canEdit && hasUnsupportedSourceSelectionRules ? (

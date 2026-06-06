@@ -215,6 +215,10 @@ describe("SourceSelectionPage", () => {
 
   it("renders demo source selection as readonly example rules without save actions", async () => {
     const authToken = { token: "demo-token", subjectAccountId: "acct-demo" };
+    mocks.resolveLocaleTranslator.mockResolvedValueOnce({
+      t: (key: string, fallback?: string) =>
+        key === "dashboard.demo.examples.badge" ? "Localized example values" : (fallback ?? key),
+    });
     mocks.requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",
       demoSession: { siteId: "site-demo" },
@@ -263,6 +267,7 @@ describe("SourceSelectionPage", () => {
       siteId: "site-demo",
       canEdit: false,
       mode: "example",
+      exampleBadgeLabel: "Localized example values",
       initialRules: [
         { action: "include", pattern: "/blog/*" },
         { action: "exclude", pattern: "/blog/drafts/*" },

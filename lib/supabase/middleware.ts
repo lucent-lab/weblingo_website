@@ -271,6 +271,16 @@ function buildDashboardLocaleResponse(request: NextRequest, supabaseResponse: Ne
   }
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(DASHBOARD_LOCALE_HEADER, locale);
+  const dashboardPathname = normalizeDashboardPathname(request.nextUrl.pathname);
+  if (dashboardPathname && dashboardPathname !== request.nextUrl.pathname) {
+    const url = request.nextUrl.clone();
+    url.pathname = dashboardPathname;
+    if (!url.searchParams.has("locale")) {
+      url.searchParams.set("locale", locale);
+    }
+    const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    return copySupabaseResponseCookies(response, supabaseResponse);
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return copySupabaseResponseCookies(response, supabaseResponse);
 }

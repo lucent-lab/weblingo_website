@@ -6,6 +6,9 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 const readDashboardDemoSession = vi.fn();
 vi.mock("@internal/dashboard/demo-session", () => ({ readDashboardDemoSession }));
 
+const invalidateSiteDashboardCache = vi.fn();
+vi.mock("@internal/dashboard/data", () => ({ invalidateSiteDashboardCache }));
+
 const convertProspectShowcaseDemo = vi.fn();
 class MockWebhooksApiError extends Error {
   status: number;
@@ -84,6 +87,15 @@ describe("convertProspectDemoAction", () => {
         email: "Owner@Example.com",
         conversionToken: "conversion-token",
       },
+    );
+    expect(invalidateSiteDashboardCache).toHaveBeenCalledWith(
+      {
+        token: "dashboard-demo-token",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+        subjectAccountId: "acct-demo",
+        refresh: expect.any(Function),
+      },
+      "site-demo",
     );
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-demo");
   });

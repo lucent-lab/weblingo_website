@@ -191,6 +191,7 @@ export default async function RuntimeRequestsPage({
     projection.runtimeRequests.available && projection.access.canViewRuntimeRequests;
   const canEditRuntimeRequests = canViewRuntimeRequests && canEdit && !isDemoAccess;
   const runtimeRequestsCopy = buildRuntimeRequestsCopy(t);
+  const demoExampleBadgeLabel = t("dashboard.demo.examples.badge", "Example values");
   const displayRuntimeRequestsCopy = isDemoAccess
     ? {
         ...runtimeRequestsCopy,
@@ -235,6 +236,7 @@ export default async function RuntimeRequestsPage({
           canEdit={canEditRuntimeRequests}
           canLoadObservations={!isDemoAccess && canViewRuntimeRequests}
           mode={isDemoAccess ? "example" : "editable"}
+          exampleBadgeLabel={demoExampleBadgeLabel}
           {...(!isDemoAccess
             ? {
                 loadObservationsAction: listRuntimeRequestObservationsAction,
