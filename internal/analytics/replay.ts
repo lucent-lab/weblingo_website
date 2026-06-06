@@ -70,10 +70,6 @@ export function resolveAnalyticsReplayPolicy(pathname: string | null | undefined
     return { allowed: true, surface: "pre_submit_try_flow" } satisfies AnalyticsReplayPolicy;
   }
 
-  if (unlocalized === "/contact") {
-    return { allowed: true, surface: "sanitized_support" } satisfies AnalyticsReplayPolicy;
-  }
-
   if (
     unlocalized === "/" ||
     unlocalized === "/pricing" ||

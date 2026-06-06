@@ -16,10 +16,6 @@ describe("analytics replay policy", () => {
       allowed: true,
       surface: "checkout_layout",
     });
-    expect(resolveAnalyticsReplayPolicy("/contact")).toEqual({
-      allowed: true,
-      surface: "sanitized_support",
-    });
   });
 
   it("blocks authenticated and customer-content replay surfaces", () => {
@@ -48,6 +44,10 @@ describe("analytics replay policy", () => {
       surface: "blocked",
     });
     expect(resolveAnalyticsReplayPolicy("/checkout/cancel?session_id=secret")).toEqual({
+      allowed: false,
+      surface: "blocked",
+    });
+    expect(resolveAnalyticsReplayPolicy("/contact")).toEqual({
       allowed: false,
       surface: "blocked",
     });
