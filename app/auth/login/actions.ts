@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
+import { captureServerAnalyticsEvent } from "@internal/analytics/server";
 import { envServer } from "@internal/core/env-server";
 import { clearSubjectAccountId } from "@internal/dashboard/workspace";
 
@@ -89,6 +91,14 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
     supabase = await createClient();
   } catch (error) {
     console.error("Supabase login failed:", error);
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+      auth_action: "login",
+      auth_method: "password",
+      error_code: "auth_client_unavailable",
+      feature: "dashboard_auth",
+      outcome: "failed",
+      app_surface: "auth",
+    });
     return { error: toFriendlySupabaseAuthError(error, "login"), notice: null };
   }
 
@@ -102,17 +112,56 @@ export async function login(_: AuthFormState, formData: FormData): Promise<AuthF
 
     if (error) {
       console.error("Supabase login failed:", error);
+      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+        auth_action: "login",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        error_code: "auth_rejected",
+        feature: "dashboard_auth",
+        outcome: "failed",
+        app_surface: "auth",
+      });
       return { error: toFriendlySupabaseAuthError(error, "login"), notice: null };
     }
 
     if (!result.session) {
+      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+        auth_action: "login",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        error_code: "auth_session_missing",
+        feature: "dashboard_auth",
+        outcome: "failed",
+        app_surface: "auth",
+      });
       return {
         error: null,
         notice: "Signed in, but no session was created. Please check your email and try again.",
       };
     }
+    captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.authSucceeded,
+      {
+        auth_action: "login",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        feature: "dashboard_auth",
+        outcome: "succeeded",
+        app_surface: "auth",
+      },
+      { distinctId: result.user?.id },
+    );
   } catch (error) {
     console.error("Supabase login failed:", error);
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+      auth_action: "login",
+      auth_method: "password",
+      email_present: Boolean(data.email),
+      error_code: "auth_exception",
+      feature: "dashboard_auth",
+      outcome: "failed",
+      app_surface: "auth",
+    });
     return { error: toFriendlySupabaseAuthError(error, "login"), notice: null };
   }
 
@@ -130,6 +179,14 @@ export async function signup(_: AuthFormState, formData: FormData): Promise<Auth
     supabase = await createClient();
   } catch (error) {
     console.error("Supabase signup failed:", error);
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+      auth_action: "signup",
+      auth_method: "password",
+      error_code: "auth_client_unavailable",
+      feature: "dashboard_auth",
+      outcome: "failed",
+      app_surface: "auth",
+    });
     return { error: toFriendlySupabaseAuthError(error, "signup"), notice: null };
   }
 
@@ -143,18 +200,56 @@ export async function signup(_: AuthFormState, formData: FormData): Promise<Auth
 
     if (error) {
       console.error("Supabase signup failed:", error);
+      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+        auth_action: "signup",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        error_code: "auth_rejected",
+        feature: "dashboard_auth",
+        outcome: "failed",
+        app_surface: "auth",
+      });
       return { error: toFriendlySupabaseAuthError(error, "signup"), notice: null };
     }
 
     if (!result.session) {
+      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authSucceeded, {
+        auth_action: "signup",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        feature: "dashboard_auth",
+        outcome: "email_confirmation_required",
+        app_surface: "auth",
+      });
       return {
         error: null,
         notice:
           "Check your email for a confirmation link. If you already have an account, use “Log in” instead.",
       };
     }
+    captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.authSucceeded,
+      {
+        auth_action: "signup",
+        auth_method: "password",
+        email_present: Boolean(data.email),
+        feature: "dashboard_auth",
+        outcome: "succeeded",
+        app_surface: "auth",
+      },
+      { distinctId: result.user?.id },
+    );
   } catch (error) {
     console.error("Supabase signup failed:", error);
+    captureServerAnalyticsEvent(ANALYTICS_EVENTS.authFailed, {
+      auth_action: "signup",
+      auth_method: "password",
+      email_present: Boolean(data.email),
+      error_code: "auth_exception",
+      feature: "dashboard_auth",
+      outcome: "failed",
+      app_surface: "auth",
+    });
     return { error: toFriendlySupabaseAuthError(error, "signup"), notice: null };
   }
 

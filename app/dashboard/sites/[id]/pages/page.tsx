@@ -21,6 +21,7 @@ import { CrawlSummaryClient } from "./crawl-summary.client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
@@ -298,6 +299,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
             {canCrawl ? (
               <ActionForm
                 action={triggerCrawlAction}
+                analytics={{
+                  event: ANALYTICS_EVENTS.crawlTriggered,
+                  properties: {
+                    app_surface: "dashboard",
+                    feature: "site_crawl",
+                    site_id: id,
+                    site_status: compactStatus.siteStatus,
+                    retranslate: true,
+                  },
+                }}
                 loading="Starting crawl..."
                 success="Crawl enqueued."
                 error="Unable to enqueue crawl."
@@ -380,6 +391,16 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                           <td className="px-3 py-3 text-right align-top">
                             <ActionForm
                               action={triggerPageCrawlAction}
+                              analytics={{
+                                event: ANALYTICS_EVENTS.crawlTriggered,
+                                properties: {
+                                  app_surface: "dashboard",
+                                  feature: "page_crawl",
+                                  page_type: "dashboard_site_page",
+                                  site_id: id,
+                                  site_status: compactStatus.siteStatus,
+                                },
+                              }}
                               loading="Starting page crawl..."
                               success="Page crawl enqueued."
                               error="Unable to enqueue page crawl."

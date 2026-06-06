@@ -102,13 +102,20 @@ SUPABASE_AUTH_TIMEOUT_MS=15000
 NEXT_PUBLIC_POSTHOG_KEY=phc_...
 # Required at build time. Use https://metrics.weblingo.app in production/preview.
 NEXT_PUBLIC_POSTHOG_BROWSER_HOST=http://localhost:3000/_analytics/posthog
+# Kill switch for browser and server analytics capture.
+NEXT_PUBLIC_POSTHOG_CAPTURE=enabled
 # Upstream ingestion host for server analytics and the local fallback proxy route.
 NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+# Session replay is disabled unless explicitly sampled on allowlisted public routes.
+NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE=disabled
+NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE=0
 ```
 
 `PUBLIC_PORTAL_MODE=disabled` hides the login CTA, disables signup/login actions, blocks checkout, and returns 404 for the login and dashboard onboarding screens. Set it to `enabled` to expose the portal.
 
-PostHog browser traffic uses `NEXT_PUBLIC_POSTHOG_BROWSER_HOST` as the SDK `api_host`. Because `NEXT_PUBLIC_*` values are baked into the Next.js client bundle at build time, set this variable in every deployed build target before deploying. Production and preview should point it at the managed proxy (`https://metrics.weblingo.app`); local development can keep using the first-party `http://localhost:3000/_analytics/posthog` route. Keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the upstream PostHog ingestion host (for example `https://eu.i.posthog.com`), not the browser-facing proxy path.
+PostHog browser traffic uses `NEXT_PUBLIC_POSTHOG_BROWSER_HOST` as the SDK `api_host`. Because `NEXT_PUBLIC_*` values are baked into the Next.js client bundle at build time, set this variable in every deployed build target before deploying. Production and preview should point it at the managed proxy (`https://metrics.weblingo.app`); local development can keep using the first-party `http://localhost:3000/_analytics/posthog` route. Keep `NEXT_PUBLIC_POSTHOG_HOST` pointed at the upstream PostHog ingestion host (for example `https://eu.i.posthog.com`), not the browser-facing proxy path. `NEXT_PUBLIC_POSTHOG_CAPTURE=disabled` is the analytics kill switch. Session replay remains off unless `NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE=sampled` and `NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE` is a value from `0` to `1`; replay is still limited by the route allowlist in `internal/analytics/replay.ts`.
+
+See `docs/POSTHOG_ANALYTICS.md` for the event/property contract, replay allowlist, identity grouping, and PostHog MCP guardrails.
 
 ## Running Locally
 

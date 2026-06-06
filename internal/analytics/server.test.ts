@@ -53,7 +53,11 @@ function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "http://localhost:3000/_analytics/posthog";
+  process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "enabled";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://posthog.example.com";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "disabled";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "0";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable";
   process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://api.example.com/api";
@@ -126,6 +130,10 @@ describe("server analytics helpers", () => {
       event: "waitlist_signup_saved",
       groups: { account: "acct-1" },
       properties: {
+        app_surface: "marketing",
+        deployment_channel: "test",
+        environment: "test",
+        repo: "weblingo_website",
         source_host: "example.com",
         site_url_present: true,
         runtime: "server",
@@ -174,8 +182,12 @@ describe("server analytics helpers", () => {
             },
           },
         ],
+        app_surface: "marketing",
+        deployment_channel: "test",
+        environment: "test",
         source: "checkout",
         error_name: "Error",
+        repo: "weblingo_website",
         runtime: "server",
       },
     });
@@ -226,6 +238,10 @@ describe("server analytics helpers", () => {
       event: "stripe_webhook_received",
       groups: undefined,
       properties: {
+        app_surface: "checkout",
+        deployment_channel: "test",
+        environment: "test",
+        repo: "weblingo_website",
         stripe_event_type: "checkout.session.completed",
         runtime: "server",
       },
@@ -242,6 +258,17 @@ describe("server analytics helpers", () => {
     expect(posthogMock.instances[0]?.captureImmediate).toHaveBeenCalledOnce();
   });
 
+  it("does not schedule server analytics when capture is disabled", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "disabled";
+    const { captureServerAnalyticsEvent, captureServerException } = await import("./server");
+
+    captureServerAnalyticsEvent("waitlist_signup_saved");
+    captureServerException(new Error("ignored"));
+
+    expect(nextServerMock.after).not.toHaveBeenCalled();
+    expect(posthogMock.PostHog).not.toHaveBeenCalled();
+  });
+
   it("falls back to background work outside a Next request scope", async () => {
     nextServerMock.after.mockImplementationOnce(() => {
       throw new Error("no request scope");
@@ -255,6 +282,10 @@ describe("server analytics helpers", () => {
       event: "waitlist_signup_saved",
       groups: undefined,
       properties: {
+        app_surface: "marketing",
+        deployment_channel: "test",
+        environment: "test",
+        repo: "weblingo_website",
         runtime: "server",
       },
     });

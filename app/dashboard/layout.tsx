@@ -180,6 +180,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const email = auth.user?.email ?? "—";
   const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
   const isAgency = workspaceAudience === "agency";
+  const actorRole = auth.actingAsCustomer && isAgency ? "agency_actor" : workspaceAudience;
   const sitesLabel = getDashboardSitesLabel(workspaceAudience);
   const canAccessInternalOps = hasActorInternalOps(auth);
   const demoSiteId = getDashboardDemoSiteId(auth);
@@ -232,6 +233,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         userId={auth.user.id}
         accountId={auth.subjectAccountId ?? auth.account.accountId}
         actorAccountId={auth.actorAccountId}
+        actorRole={actorRole}
         planType={auth.account.planType}
         planStatus={auth.account.planStatus}
         workspaceAudience={workspaceAudience}
@@ -255,6 +257,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 label="Teams"
                 options={workspaceOptions}
                 currentId={auth.subjectAccountId ?? auth.actorAccountId ?? ""}
+                actorAccountId={auth.actorAccountId}
                 disabled={teamSwitcherDisabled}
               />
             </div>

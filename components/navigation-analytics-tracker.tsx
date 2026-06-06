@@ -7,15 +7,27 @@ import {
   ANALYTICS_EVENTS,
   captureAnalyticsEvent,
   buildNavigationAnalyticsProperties,
+  syncAnalyticsSessionReplayForPath,
 } from "@internal/analytics/client";
 
 const recentNavigationCaptures = new Map<string, number>();
 const strictModeDuplicateWindowMs = 1000;
+const maxRecentNavigationCaptures = 50;
 
 function shouldSkipRecentNavigationCapture(key: string): boolean {
   const now = Date.now();
   const lastCapturedAt = recentNavigationCaptures.get(key);
+  if (lastCapturedAt !== undefined) {
+    recentNavigationCaptures.delete(key);
+  }
   recentNavigationCaptures.set(key, now);
+  while (recentNavigationCaptures.size > maxRecentNavigationCaptures) {
+    const oldestKey = recentNavigationCaptures.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      break;
+    }
+    recentNavigationCaptures.delete(oldestKey);
+  }
 
   if (lastCapturedAt === undefined) {
     return false;
@@ -47,11 +59,15 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
     }
 
     lastTrackedPathnameRef.current = captureKey;
+    const replayPath = searchParams.toString()
+      ? `${pathname}?${searchParams.toString()}`
+      : pathname;
     const properties = buildNavigationAnalyticsProperties({
       homePageVariant,
       pathname,
       searchParams,
     });
+    syncAnalyticsSessionReplayForPath(replayPath);
     captureAnalyticsEvent(ANALYTICS_EVENTS.posthogPageView, properties, { sendInstantly: true });
   }, [homePageVariant, pathname, searchParams]);
 

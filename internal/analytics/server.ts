@@ -8,10 +8,12 @@ import { PostHog, type EventMessage } from "posthog-node";
 import { envServer } from "@internal/core/env-server";
 
 import {
+  ANALYTICS_EVENTS,
   sanitizeAnalyticsProperties,
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "./events";
+import { buildCommonAnalyticsProperties } from "./envelope";
 
 const SERVER_ANALYTICS_DISTINCT_ID = "server";
 
@@ -66,6 +68,21 @@ function sanitizeGroups(
   );
 
   return Object.keys(sanitized).length ? sanitized : undefined;
+}
+
+function analyticsCaptureEnabled(): boolean {
+  return envServer.NEXT_PUBLIC_POSTHOG_CAPTURE === "enabled";
+}
+
+function buildServerAnalyticsProperties(
+  event: AnalyticsEventName,
+  properties: AnalyticsProperties,
+) {
+  return sanitizeAnalyticsProperties({
+    ...properties,
+    ...buildCommonAnalyticsProperties(event, properties),
+    runtime: "server",
+  });
 }
 
 function resolveErrorName(error: unknown): string {
@@ -129,15 +146,21 @@ export function captureServerAnalyticsEvent(
   properties: AnalyticsProperties = {},
   options: ServerAnalyticsOptions = {},
 ): void {
-  const payload: ServerImmediateEvent = {
-    distinctId: normalizeDistinctId(options.distinctId),
-    event,
-    groups: sanitizeGroups(options.groups),
-    properties: sanitizeAnalyticsProperties({
-      ...properties,
-      runtime: "server",
-    }),
-  };
+  if (!analyticsCaptureEnabled()) {
+    return;
+  }
+
+  let payload: ServerImmediateEvent;
+  try {
+    payload = {
+      distinctId: normalizeDistinctId(options.distinctId),
+      event,
+      groups: sanitizeGroups(options.groups),
+      properties: buildServerAnalyticsProperties(event, properties),
+    };
+  } catch {
+    return;
+  }
 
   scheduleServerAnalytics(() => sendServerImmediateEvent(payload));
 }
@@ -147,19 +170,27 @@ export function captureServerException(
   properties: AnalyticsProperties = {},
   options: ServerAnalyticsOptions = {},
 ): void {
+  if (!analyticsCaptureEnabled()) {
+    return;
+  }
+
   const safeError = buildSafeAnalyticsException();
-  const payload: ServerImmediateEvent = {
-    distinctId: normalizeDistinctId(options.distinctId),
-    event: "$exception",
-    properties: {
-      $exception_list: buildSafeExceptionList(safeError),
-      ...sanitizeAnalyticsProperties({
-        ...properties,
-        error_name: resolveErrorName(error),
-        runtime: "server",
-      }),
-    },
-  };
+  let payload: ServerImmediateEvent;
+  try {
+    payload = {
+      distinctId: normalizeDistinctId(options.distinctId),
+      event: ANALYTICS_EVENTS.posthogException,
+      properties: {
+        $exception_list: buildSafeExceptionList(safeError),
+        ...buildServerAnalyticsProperties(ANALYTICS_EVENTS.posthogException, {
+          ...properties,
+          error_name: resolveErrorName(error),
+        }),
+      },
+    };
+  } catch {
+    return;
+  }
 
   scheduleServerAnalytics(() => sendServerImmediateEvent(payload));
 }

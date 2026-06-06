@@ -7,7 +7,10 @@ const validClientEnv = {
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test",
   NEXT_PUBLIC_POSTHOG_KEY: "phc_test",
   NEXT_PUBLIC_POSTHOG_BROWSER_HOST: "https://metrics.weblingo.app",
+  NEXT_PUBLIC_POSTHOG_CAPTURE: "enabled",
   NEXT_PUBLIC_POSTHOG_HOST: "https://eu.i.posthog.com",
+  NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: "sampled",
+  NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: "0.05",
   NEXT_PUBLIC_SUPABASE_URL: "https://supabase.example.com",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "supabase-key",
   NEXT_PUBLIC_WEBHOOKS_API_BASE: "https://api.weblingo.app",
@@ -33,5 +36,28 @@ describe("client env schema", () => {
         NEXT_PUBLIC_POSTHOG_HOST: validClientEnv.NEXT_PUBLIC_POSTHOG_BROWSER_HOST,
       }).success,
     ).toBe(false);
+  });
+
+  it("requires explicit analytics kill switch and bounded replay sampling config", () => {
+    expect(
+      clientEnvSchema.safeParse({
+        ...validClientEnv,
+        NEXT_PUBLIC_POSTHOG_CAPTURE: "paused",
+      }).success,
+    ).toBe(false);
+    expect(
+      clientEnvSchema.safeParse({
+        ...validClientEnv,
+        NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: "1.5",
+      }).success,
+    ).toBe(false);
+    expect(
+      clientEnvSchema.safeParse({
+        ...validClientEnv,
+        NEXT_PUBLIC_POSTHOG_CAPTURE: "disabled",
+        NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: "disabled",
+        NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: "0",
+      }).success,
+    ).toBe(true);
   });
 });

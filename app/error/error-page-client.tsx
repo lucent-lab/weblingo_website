@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 
 export default function ErrorPageClient() {
@@ -14,6 +15,7 @@ export default function ErrorPageClient() {
   const message = searchParams.get("message");
   const trace = searchParams.get("trace");
   const isProd = process.env.NODE_ENV === "production";
+  const capturedError = useRef(false);
 
   const errorView = useMemo(
     () =>
@@ -41,6 +43,18 @@ export default function ErrorPageClient() {
   }, [trace, isProd]);
 
   useEffect(() => {
+    if (!capturedError.current) {
+      capturedError.current = true;
+      captureAnalyticsEvent(ANALYTICS_EVENTS.appErrorViewed, {
+        app_surface: "marketing",
+        error_name: "Error",
+        feature: "global_error",
+        handled: true,
+        message_present: Boolean(message),
+        route_template: "/error",
+      });
+    }
+
     if (isProd) {
       return;
     }

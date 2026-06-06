@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AnalyticsPropertyValidationError,
+  assertSafeAnalyticsProperties,
   buildCtaAnalyticsProperties,
   buildPageAnalyticsProperties,
   buildPreviewAnalyticsProperties,
@@ -45,6 +47,67 @@ describe("analytics events helpers", () => {
       locale: "en",
       status: "processing",
     });
+  });
+
+  it("rejects forbidden raw analytics property names", () => {
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        email: "user@example.com",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        provider_payload: "{}",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        request_body: "{}",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        translated_text: "Bonjour",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+  });
+
+  it("rejects unsafe analytics property values", () => {
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        source_path: "/pricing?email=user@example.com",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        source_host: "https://example.com/pricing?token=secret",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        error_code: "user@example.com",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+    expect(() =>
+      sanitizeAnalyticsProperties({
+        error_code: "token=secret",
+      }),
+    ).toThrow(AnalyticsPropertyValidationError);
+  });
+
+  it("allows explicit safe product metadata including host values", () => {
+    expect(() =>
+      assertSafeAnalyticsProperties({
+        account_id: "acct_123",
+        domain_host: "customer.example.com",
+        domain_status: "verified",
+        duration_ms: 42,
+        replay_allowed: true,
+        route_template: "/dashboard/sites/[id]/domains",
+        site_id: "site_123",
+        target_lang_count: 2,
+      }),
+    ).not.toThrow();
   });
 
   it("builds preview analytics properties without leaking full URLs", () => {

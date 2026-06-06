@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResponse } from "@/app/dashboard/actions";
 import { invalidateDashboardBootstrapCache } from "@/internal/dashboard/auth";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
+import { captureServerAnalyticsEvent } from "@internal/analytics/server";
 import { envServer } from "@internal/core/env-server";
 import { FetchTimeoutError, fetchWithTimeout } from "@internal/core/fetch-timeout";
 
@@ -37,6 +39,15 @@ export async function claimAccount(
   if (!session?.access_token) {
     redirect("/auth/login");
   }
+  captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.accountClaimStarted,
+    {
+      feature: "account_claim",
+      outcome: "started",
+      app_surface: "dashboard",
+    },
+    { distinctId: session.user.id },
+  );
 
   const apiBase = envServer.NEXT_PUBLIC_WEBHOOKS_API_BASE.replace(/\/$/, "");
   const apiTimeoutMs = Number(envServer.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS);
@@ -83,6 +94,15 @@ export async function claimAccount(
   if (shouldRedirectToDashboard) {
     await invalidateDashboardBootstrapCache(session.access_token);
     revalidatePath("/dashboard");
+    captureServerAnalyticsEvent(
+      ANALYTICS_EVENTS.accountClaimSucceeded,
+      {
+        feature: "account_claim",
+        outcome: "succeeded",
+        app_surface: "dashboard",
+      },
+      { distinctId: session.user.id },
+    );
     return succeeded("Dashboard access linked. Redirecting to dashboard.", {
       redirectTo: "/dashboard",
       refresh: false,
@@ -90,5 +110,15 @@ export async function claimAccount(
     });
   }
 
+  captureServerAnalyticsEvent(
+    ANALYTICS_EVENTS.accountClaimFailed,
+    {
+      error_code: errorMessage ? "account_claim_failed" : "account_claim_unknown",
+      feature: "account_claim",
+      outcome: "failed",
+      app_surface: "dashboard",
+    },
+    { distinctId: session.user.id },
+  );
   return failed(errorMessage ?? "Unable to claim dashboard access.");
 }

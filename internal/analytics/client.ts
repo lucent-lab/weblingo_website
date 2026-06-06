@@ -5,10 +5,14 @@ import posthog from "posthog-js";
 import { env } from "@internal/core";
 
 import {
+  ANALYTICS_EVENTS,
   sanitizeAnalyticsProperties,
   type AnalyticsEventName,
   type AnalyticsProperties,
+  type AnalyticsPropertyValue,
 } from "./events";
+import { buildCommonAnalyticsProperties } from "./envelope";
+import { resolveAnalyticsReplayPolicy, shouldSampleAnalyticsReplay } from "./replay";
 
 const POSTHOG_URL_PROPERTIES = [
   "$current_url",
@@ -35,11 +39,25 @@ type AnalyticsBeforeSend = Extract<
 >;
 
 let analyticsInitialized = false;
+let replaySampled: boolean | null = null;
+let replayRecording = false;
 
 type AnalyticsIdentity = {
   distinctId?: string | null;
   accountId?: string | null;
   actorAccountId?: string | null;
+  actorRole?: string | null;
+  planType?: string | null;
+  planStatus?: string | null;
+  workspaceAudience?: string | null;
+  actingAsCustomer?: boolean | null;
+};
+
+type SiteAnalyticsIdentity = {
+  siteId?: string | null;
+  accountId?: string | null;
+  actorAccountId?: string | null;
+  actorRole?: string | null;
   planType?: string | null;
   planStatus?: string | null;
   workspaceAudience?: string | null;
@@ -57,6 +75,7 @@ export {
   type AnalyticsProperties,
 } from "./events";
 export { buildNavigationAnalyticsProperties } from "./navigation";
+export { resolveAnalyticsReplayPolicy, shouldSampleAnalyticsReplay } from "./replay";
 
 function normalizeAnalyticsText(value: string | null | undefined): string | null {
   if (typeof value !== "string") {
@@ -64,6 +83,28 @@ function normalizeAnalyticsText(value: string | null | undefined): string | null
   }
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function analyticsCaptureEnabled(): boolean {
+  return env.NEXT_PUBLIC_POSTHOG_CAPTURE === "enabled";
+}
+
+function analyticsReplayEnabled(): boolean {
+  return (
+    analyticsCaptureEnabled() &&
+    env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE === "sampled" &&
+    Number(env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE) > 0
+  );
+}
+
+function buildCaptureProperties(
+  event: AnalyticsEventName,
+  properties: AnalyticsProperties,
+): Record<string, Exclude<AnalyticsPropertyValue, null | undefined>> {
+  return sanitizeAnalyticsProperties({
+    ...properties,
+    ...buildCommonAnalyticsProperties(event, properties),
+  });
 }
 
 function stripUrlQueryAndHash(value: unknown): unknown {
@@ -174,6 +215,7 @@ export function buildAnalyticsInitConfig(): AnalyticsInitConfig {
     capture_performance: false,
     cross_subdomain_cookie: false,
     custom_personal_data_properties: ["email", "token", "secret", "key", "password"],
+    disable_session_recording: true,
     disable_persistence: true,
     enable_recording_console_log: false,
     error_tracking: {
@@ -201,13 +243,14 @@ export function buildAnalyticsInitConfig(): AnalyticsInitConfig {
       recordBody: false,
       recordCrossOriginIframes: false,
       recordHeaders: false,
+      sampleRate: Number(env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE),
     },
     before_send: sanitizePostHogCaptureResult,
   };
 }
 
 export function initializeAnalytics(): void {
-  if (analyticsInitialized || typeof window === "undefined") {
+  if (analyticsInitialized || typeof window === "undefined" || !analyticsCaptureEnabled()) {
     return;
   }
 
@@ -219,12 +262,46 @@ export function initializeAnalytics(): void {
   }
 }
 
+export function syncAnalyticsSessionReplayForPath(pathname: string | null | undefined): void {
+  if (typeof window === "undefined" || !analyticsReplayEnabled()) {
+    return;
+  }
+
+  try {
+    const policy = resolveAnalyticsReplayPolicy(pathname);
+    if (!policy.allowed) {
+      if (replayRecording) {
+        posthog.stopSessionRecording();
+        replayRecording = false;
+      }
+      return;
+    }
+
+    initializeAnalytics();
+    if (replaySampled === null) {
+      replaySampled = shouldSampleAnalyticsReplay(
+        Number(env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE),
+        Math.random(),
+      );
+    }
+    if (!replaySampled) {
+      return;
+    }
+    if (!replayRecording) {
+      posthog.startSessionRecording({ sampling: true });
+      replayRecording = true;
+    }
+  } catch {
+    // Analytics must never break user-facing flows.
+  }
+}
+
 export function captureAnalyticsEvent(
   event: AnalyticsEventName,
   properties: AnalyticsProperties = {},
   options: { sendInstantly?: boolean } = {},
 ): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !analyticsCaptureEnabled()) {
     return;
   }
 
@@ -232,7 +309,7 @@ export function captureAnalyticsEvent(
     initializeAnalytics();
     posthog.capture(
       event,
-      sanitizeAnalyticsProperties(properties),
+      buildCaptureProperties(event, properties),
       options.sendInstantly === true ? { send_instantly: true } : undefined,
     );
   } catch {
@@ -241,7 +318,7 @@ export function captureAnalyticsEvent(
 }
 
 export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !analyticsCaptureEnabled()) {
     return;
   }
 
@@ -261,8 +338,12 @@ export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
     posthog.identify(
       distinctId,
       sanitizeAnalyticsProperties({
+        ...buildCommonAnalyticsProperties(ANALYTICS_EVENTS.accountIdentified, {
+          app_surface: "dashboard",
+        }),
         account_id: accountId,
         actor_account_id: normalizeAnalyticsText(identity.actorAccountId),
+        actor_role: normalizeAnalyticsText(identity.actorRole),
         dashboard_plan_type: planType,
         dashboard_plan_status: planStatus,
         dashboard_workspace_audience: workspaceAudience,
@@ -276,6 +357,9 @@ export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
         "account",
         accountId,
         sanitizeAnalyticsProperties({
+          ...buildCommonAnalyticsProperties(ANALYTICS_EVENTS.accountIdentified, {
+            app_surface: "dashboard",
+          }),
           plan_type: planType,
           plan_status: planStatus,
           workspace_audience: workspaceAudience,
@@ -287,8 +371,42 @@ export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
   }
 }
 
+export function groupAnalyticsSite(identity: SiteAnalyticsIdentity): void {
+  if (typeof window === "undefined" || !analyticsCaptureEnabled()) {
+    return;
+  }
+
+  const siteId = normalizeAnalyticsText(identity.siteId);
+  if (!siteId) {
+    return;
+  }
+
+  initializeAnalytics();
+
+  try {
+    posthog.group(
+      "site",
+      siteId,
+      sanitizeAnalyticsProperties({
+        ...buildCommonAnalyticsProperties(ANALYTICS_EVENTS.siteDashboardViewed, {
+          app_surface: "dashboard",
+        }),
+        account_id: normalizeAnalyticsText(identity.accountId),
+        actor_account_id: normalizeAnalyticsText(identity.actorAccountId),
+        actor_role: normalizeAnalyticsText(identity.actorRole),
+        plan_type: normalizeAnalyticsText(identity.planType),
+        plan_status: normalizeAnalyticsText(identity.planStatus),
+        workspace_audience: normalizeAnalyticsText(identity.workspaceAudience),
+        dashboard_acting_as_customer: identity.actingAsCustomer ?? undefined,
+      }),
+    );
+  } catch {
+    // Analytics must never break user-facing flows.
+  }
+}
+
 export function resetAnalyticsIdentity(): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !analyticsCaptureEnabled()) {
     return;
   }
 

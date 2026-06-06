@@ -7,6 +7,7 @@ import { updateGlossaryAction, type ActionResponse } from "../../actions";
 import { GlossaryTable } from "../glossary-table";
 
 import { Button } from "@/components/ui/button";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import type { GlossaryEntry } from "@internal/dashboard/webhooks";
 
@@ -46,11 +47,24 @@ export function GlossaryEditor({
   });
 
   useEffect(() => {
-    if (wasPending.current && !pending && state.ok) {
-      router.refresh();
+    if (wasPending.current && !pending) {
+      const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+      captureAnalyticsEvent(ANALYTICS_EVENTS.glossaryUpdated, {
+        site_id: siteId,
+        glossary_entry_count: entries.length,
+        target_lang_count: targetLangs.length,
+        target_locale_count: targetLangs.length,
+        error_code: state.ok ? undefined : (code ?? "glossary_save_failed"),
+        feature: "glossary",
+        outcome: state.ok ? "succeeded" : "failed",
+        app_surface: "dashboard",
+      });
+      if (state.ok) {
+        router.refresh();
+      }
     }
     wasPending.current = pending;
-  }, [pending, router, state.ok]);
+  }, [entries.length, pending, router, siteId, state.meta, state.ok, targetLangs.length]);
 
   if (isExampleMode) {
     return (
@@ -70,6 +84,15 @@ export function GlossaryEditor({
           if (hiddenRef.current) {
             hiddenRef.current.value = JSON.stringify(entries);
           }
+          captureAnalyticsEvent(ANALYTICS_EVENTS.glossaryUpdated, {
+            site_id: siteId,
+            glossary_entry_count: entries.length,
+            target_lang_count: targetLangs.length,
+            target_locale_count: targetLangs.length,
+            feature: "glossary",
+            outcome: "submitted",
+            app_surface: "dashboard",
+          });
         }}
       >
         <input name="siteId" type="hidden" value={siteId} />

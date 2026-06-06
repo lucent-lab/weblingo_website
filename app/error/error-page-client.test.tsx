@@ -3,10 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 
+const { captureAnalyticsEvent } = vi.hoisted(() => ({
+  captureAnalyticsEvent: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
   useSearchParams() {
     return new URLSearchParams("message=boom&trace=secret-trace");
   },
+}));
+
+vi.mock("@internal/analytics/client", () => ({
+  ANALYTICS_EVENTS: {
+    appErrorViewed: "app_error_viewed",
+  },
+  captureAnalyticsEvent,
 }));
 
 vi.mock("next/link", async () => {
@@ -39,6 +50,14 @@ describe("ErrorPageClient", () => {
     expect(errorSpy).not.toHaveBeenCalledWith("Trace:", "secret-trace");
     expect(infoSpy).not.toHaveBeenCalledWith("Context:", expect.anything());
     expect(groupEndSpy).not.toHaveBeenCalled();
+    expect(captureAnalyticsEvent).toHaveBeenCalledWith("app_error_viewed", {
+      app_surface: "marketing",
+      error_name: "Error",
+      feature: "global_error",
+      handled: true,
+      message_present: true,
+      route_template: "/error",
+    });
 
     groupSpy.mockRestore();
     errorSpy.mockRestore();

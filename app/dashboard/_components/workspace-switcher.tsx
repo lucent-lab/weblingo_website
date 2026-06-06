@@ -5,6 +5,8 @@ import { useRef } from "react";
 
 import { setWorkspaceAction } from "../_lib/workspace-actions";
 
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
+
 type WorkspaceOption = {
   id: string;
   label: string;
@@ -13,11 +15,13 @@ type WorkspaceOption = {
 export function WorkspaceSwitcher({
   options,
   currentId,
+  actorAccountId,
   label = "Workspace",
   disabled = false,
 }: {
   options: WorkspaceOption[];
   currentId: string;
+  actorAccountId?: string | null;
   label?: string;
   disabled?: boolean;
 }) {
@@ -34,7 +38,17 @@ export function WorkspaceSwitcher({
         className="ph-mask h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         defaultValue={currentId}
         name="subjectAccountId"
-        onChange={() => formRef.current?.requestSubmit()}
+        onChange={(event) => {
+          captureAnalyticsEvent(ANALYTICS_EVENTS.workspaceSwitched, {
+            actor_account_id: actorAccountId,
+            subject_account_id: event.currentTarget.value,
+            account_id: event.currentTarget.value,
+            feature: "workspace_switcher",
+            outcome: "submitted",
+            app_surface: "dashboard",
+          });
+          formRef.current?.requestSubmit();
+        }}
         disabled={disabled}
       >
         {options.map((option) => (

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     );
     captureServerException(error, {
       source: "waitlist_rate_limit",
-      route: "/api/waitlist",
+      route_template: "/api/waitlist",
     });
     return NextResponse.json(
       { error: "Service temporarily unavailable. Please try again shortly." },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import {
@@ -65,6 +66,7 @@ export function OnboardingForm(props: {
   const [webhookEvents, setWebhookEvents] = useState<NotifyWebhookEventType[]>([
     ...WEBHOOK_EVENT_TYPES,
   ]);
+  const wasPendingRef = useRef(false);
 
   useEffect(() => {
     const siteIdRaw = state.meta?.siteId;
@@ -129,13 +131,51 @@ export function OnboardingForm(props: {
     error: "Unable to create website.",
   });
 
+  useEffect(() => {
+    if (!wasPendingRef.current || pending) {
+      wasPendingRef.current = pending;
+      return;
+    }
+
+    const siteId = typeof state.meta?.siteId === "string" ? state.meta.siteId : null;
+    const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+    captureAnalyticsEvent(
+      state.ok ? ANALYTICS_EVENTS.siteCreated : ANALYTICS_EVENTS.siteCreateFailed,
+      {
+        site_id: state.ok ? siteId : undefined,
+        source_lang: sourceLang || undefined,
+        target_lang_count: targetLangs.length,
+        target_locale_count: targetLangs.length,
+        error_code: state.ok ? undefined : (code ?? "site_create_failed"),
+        feature: "site_creation",
+        outcome: state.ok ? "succeeded" : "failed",
+        app_surface: "dashboard",
+      },
+    );
+    wasPendingRef.current = pending;
+  }, [pending, sourceLang, state.meta, state.ok, targetLangs.length]);
+
   return (
     <Card>
       <CardHeader className="space-y-0">
         <CardTitle className="text-xl">Website setup</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={submitWithToast} className="relative">
+        <form
+          action={submitWithToast}
+          className="relative"
+          onSubmit={() => {
+            captureAnalyticsEvent(ANALYTICS_EVENTS.siteCreateStarted, {
+              source_lang: sourceLang || undefined,
+              target_lang_count: targetLangs.length,
+              target_locale_count: targetLangs.length,
+              form_id: "dashboard_site_onboarding",
+              feature: "site_creation",
+              outcome: "started",
+              app_surface: "dashboard",
+            });
+          }}
+        >
           <PendingOverlay />
           <PendingFieldset>
             <input name="subdomainPattern" type="hidden" value={subdomainPattern} />

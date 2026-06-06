@@ -20,8 +20,11 @@ jobs:
       UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_BROWSER_HOST: https://example.com/_analytics/posthog
+      NEXT_PUBLIC_POSTHOG_CAPTURE: disabled
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
+      NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: disabled
+      NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: "0"
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon_dummy
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
@@ -108,8 +111,11 @@ jobs:
       UPSTASH_REDIS__KV_REST_API_URL: https://example.com
       NEXT_PUBLIC_APP_URL: https://example.com
       NEXT_PUBLIC_POSTHOG_BROWSER_HOST: https://example.com/_analytics/posthog
+      NEXT_PUBLIC_POSTHOG_CAPTURE: disabled
       NEXT_PUBLIC_POSTHOG_HOST: https://example.com
       NEXT_PUBLIC_POSTHOG_KEY: phc_dummy
+      NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: disabled
+      NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: "0"
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon_dummy
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co

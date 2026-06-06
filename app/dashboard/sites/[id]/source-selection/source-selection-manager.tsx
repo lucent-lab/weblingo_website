@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import type {
   SourceSelectionConfig,
   SourceSelectionPreviewReason,
@@ -366,6 +367,13 @@ export function SourceSelectionManager({
     }
     const saveConfig = draftConfig;
     const saveFingerprint = draftFingerprint;
+    captureAnalyticsEvent(ANALYTICS_EVENTS.sourceSelectionSaved, {
+      site_id: siteId,
+      rule_count: saveConfig.rules.length,
+      feature: "source_selection",
+      outcome: "submitted",
+      app_surface: "dashboard",
+    });
     setSaving(true);
     void (async () => {
       const formData = new FormData();
@@ -382,6 +390,15 @@ export function SourceSelectionManager({
         const result = await saveAction(undefined, formData);
         setSaveResult(result);
         if (!result.ok) {
+          const code = typeof result.meta?.code === "string" ? result.meta.code : null;
+          captureAnalyticsEvent(ANALYTICS_EVENTS.sourceSelectionSaved, {
+            site_id: siteId,
+            rule_count: saveConfig.rules.length,
+            error_code: code ?? "source_selection_save_failed",
+            feature: "source_selection",
+            outcome: "failed",
+            app_surface: "dashboard",
+          });
           return;
         }
         const savedConfig = readSavedSourceSelection(result.meta);
@@ -395,6 +412,14 @@ export function SourceSelectionManager({
             ok: false,
             message: copy.saveIncomplete,
           });
+          captureAnalyticsEvent(ANALYTICS_EVENTS.sourceSelectionSaved, {
+            site_id: siteId,
+            rule_count: saveConfig.rules.length,
+            error_code: "source_selection_save_incomplete",
+            feature: "source_selection",
+            outcome: "failed",
+            app_surface: "dashboard",
+          });
           return;
         }
         const savedRules = normalizeRulesForForm(savedConfig.rules);
@@ -405,11 +430,26 @@ export function SourceSelectionManager({
           setDraftRules(savedRules);
           setLastSuccessfulPreviewFingerprint(sourceSelectionFingerprint(savedConfig));
         }
+        captureAnalyticsEvent(ANALYTICS_EVENTS.sourceSelectionSaved, {
+          site_id: siteId,
+          rule_count: savedConfig.rules.length,
+          feature: "source_selection",
+          outcome: "succeeded",
+          app_surface: "dashboard",
+        });
       } catch (error) {
         console.error("[dashboard] source selection save failed:", error);
         setSaveResult({
           ok: false,
           message: copy.previewErrorTitle,
+        });
+        captureAnalyticsEvent(ANALYTICS_EVENTS.sourceSelectionSaved, {
+          site_id: siteId,
+          rule_count: saveConfig.rules.length,
+          error_code: "source_selection_save_exception",
+          feature: "source_selection",
+          outcome: "failed",
+          app_surface: "dashboard",
         });
       } finally {
         setSaving(false);

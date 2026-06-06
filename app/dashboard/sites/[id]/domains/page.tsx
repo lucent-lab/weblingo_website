@@ -10,6 +10,7 @@ import { MutationLockBanner } from "@/components/dashboard/mutation-lock-banner"
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ANALYTICS_EVENTS, type AnalyticsEventName } from "@internal/analytics/events";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
 import { isDashboardAuthScopedToSite } from "@internal/dashboard/demo-scope";
@@ -295,8 +296,13 @@ function DomainCard({
               icon={<ShieldCheck className="h-4 w-4" />}
               label="Verify domain"
               loading="Checking DNS..."
+              analyticsEvent={ANALYTICS_EVENTS.domainVerificationStarted}
+              successEvent={ANALYTICS_EVENTS.domainVerified}
+              failureEvent={ANALYTICS_EVENTS.domainVerificationFailed}
+              domainStatus={domain.status}
               siteId={siteId}
               siteStatus={siteStatus}
+              targetLang={domain.targetLang}
             />
           ) : null}
           {showProvision ? (
@@ -307,8 +313,12 @@ function DomainCard({
               icon={<ServerCog className="h-4 w-4" />}
               label="Provision domain"
               loading="Requesting provisioning..."
+              analyticsEvent={ANALYTICS_EVENTS.domainProvisioned}
+              failureEvent={ANALYTICS_EVENTS.domainVerificationFailed}
+              domainStatus={domain.status}
               siteId={siteId}
               siteStatus={siteStatus}
+              targetLang={domain.targetLang}
             />
           ) : null}
           <DomainActionForm
@@ -318,8 +328,12 @@ function DomainCard({
             icon={<RefreshCw className="h-4 w-4" />}
             label="Refresh status"
             loading="Refreshing domain..."
+            analyticsEvent={ANALYTICS_EVENTS.domainRefreshRequested}
+            failureEvent={ANALYTICS_EVENTS.domainVerificationFailed}
+            domainStatus={domain.status}
             siteId={siteId}
             siteStatus={siteStatus}
+            targetLang={domain.targetLang}
           />
         </div>
       </CardContent>
@@ -368,8 +382,13 @@ function DomainActionForm({
   icon,
   label,
   loading,
+  analyticsEvent,
+  successEvent,
+  failureEvent,
+  domainStatus,
   siteId,
   siteStatus,
+  targetLang,
 }: {
   action: typeof verifyDomainAction;
   domain: string;
@@ -377,8 +396,13 @@ function DomainActionForm({
   icon: ReactNode;
   label: string;
   loading: string;
+  analyticsEvent: AnalyticsEventName;
+  successEvent?: AnalyticsEventName;
+  failureEvent?: AnalyticsEventName;
+  domainStatus: string;
   siteId: string;
   siteStatus: string;
+  targetLang?: string | null;
 }) {
   return (
     <ActionForm
@@ -387,6 +411,19 @@ function DomainActionForm({
       success={label}
       error={`Unable to ${label}.`}
       refreshOnSuccess={true}
+      analytics={{
+        event: analyticsEvent,
+        successEvent,
+        failureEvent,
+        properties: {
+          site_id: siteId,
+          site_status: siteStatus,
+          domain_status: domainStatus,
+          target_lang: targetLang,
+          feature: "domain_setup",
+          app_surface: "dashboard",
+        },
+      }}
     >
       <input type="hidden" name="siteId" value={siteId} />
       <input type="hidden" name="domain" value={domain} />
@@ -521,6 +558,16 @@ function ServingLanguageRow({
               success="Translation started."
               error="Unable to start translation."
               refreshOnSuccess={true}
+              analytics={{
+                event: ANALYTICS_EVENTS.translationRunStarted,
+                properties: {
+                  site_id: siteId,
+                  site_status: siteStatus,
+                  target_lang: language.tag,
+                  feature: "translate_and_serve",
+                  app_surface: "dashboard",
+                },
+              }}
             >
               <>
                 <input name="siteId" type="hidden" value={siteId} />
@@ -562,6 +609,17 @@ function ServingLanguageRow({
               success="Serving updated."
               error="Unable to update serving."
               refreshOnSuccess={true}
+              analytics={{
+                event: ANALYTICS_EVENTS.localeServingToggled,
+                properties: {
+                  site_id: siteId,
+                  target_lang: language.tag,
+                  serve_enabled: toggleValue === "true",
+                  serving_status: servingValue,
+                  feature: "locale_serving",
+                  app_surface: "dashboard",
+                },
+              }}
             >
               <>
                 <input name="siteId" type="hidden" value={siteId} />

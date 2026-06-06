@@ -7,6 +7,13 @@ const POSTHOG_DIRECT_INGESTION_HOSTNAMES = new Set([
 ]);
 
 const POSTHOG_MANAGED_PROXY_HOSTNAME = "metrics.weblingo.app";
+const sampleRateSchema = z.string().refine(
+  (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1;
+  },
+  { message: "must be a decimal number between 0 and 1" },
+);
 
 function normalizeUrl(value: string): string {
   const url = new URL(value);
@@ -19,7 +26,10 @@ export const clientEnvSchema = z
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1),
     NEXT_PUBLIC_POSTHOG_BROWSER_HOST: z.string().url(),
+    NEXT_PUBLIC_POSTHOG_CAPTURE: z.enum(["enabled", "disabled"]),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
+    NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: z.enum(["disabled", "sampled"]),
+    NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: sampleRateSchema,
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_WEBHOOKS_API_BASE: z.string().url(),
@@ -67,7 +77,10 @@ export const readClientEnv = () => ({
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   NEXT_PUBLIC_POSTHOG_BROWSER_HOST: process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST,
+  NEXT_PUBLIC_POSTHOG_CAPTURE: process.env.NEXT_PUBLIC_POSTHOG_CAPTURE,
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE: process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE,
+  NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE: process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_WEBHOOKS_API_BASE: process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE,

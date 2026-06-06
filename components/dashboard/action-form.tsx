@@ -5,6 +5,11 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
+import {
+  captureAnalyticsEvent,
+  type AnalyticsEventName,
+  type AnalyticsProperties,
+} from "@internal/analytics/client";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 type ActionFormProps = {
@@ -16,6 +21,12 @@ type ActionFormProps = {
   className?: string;
   onSuccess?: (state: ActionResponse) => void;
   refreshOnSuccess?: boolean;
+  analytics?: {
+    event: AnalyticsEventName;
+    successEvent?: AnalyticsEventName;
+    failureEvent?: AnalyticsEventName;
+    properties?: AnalyticsProperties;
+  };
   children: ReactNode;
 };
 
@@ -30,6 +41,7 @@ export function ActionForm({
   className,
   onSuccess,
   refreshOnSuccess,
+  analytics,
   children,
 }: ActionFormProps) {
   const router = useRouter();
@@ -45,6 +57,20 @@ export function ActionForm({
   const wasPending = useRef(false);
 
   useEffect(() => {
+    if (wasPending.current && !pending && analytics) {
+      captureAnalyticsEvent(
+        state.ok
+          ? (analytics.successEvent ?? analytics.event)
+          : (analytics.failureEvent ?? analytics.event),
+        {
+          ...analytics.properties,
+          error_code:
+            !state.ok && typeof state.meta?.code === "string" ? state.meta.code : undefined,
+          outcome: state.ok ? "succeeded" : "failed",
+        },
+      );
+    }
+
     if (wasPending.current && !pending && state.ok) {
       onSuccess?.(state);
 
@@ -67,7 +93,7 @@ export function ActionForm({
       }
     }
     wasPending.current = pending;
-  }, [pending, state, router, onSuccess, refreshOnSuccess]);
+  }, [analytics, pending, state, router, onSuccess, refreshOnSuccess]);
 
   return (
     <form
@@ -77,6 +103,13 @@ export function ActionForm({
       onSubmit={(event) => {
         if (confirmMessage && !window.confirm(confirmMessage)) {
           event.preventDefault();
+          return;
+        }
+        if (analytics) {
+          captureAnalyticsEvent(analytics.event, {
+            ...analytics.properties,
+            outcome: "submitted",
+          });
         }
       }}
     >

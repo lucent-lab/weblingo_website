@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { login, signup } from "@/app/auth/login/actions";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 
 type AuthFormState = { error: string | null; notice: string | null };
 const initialAuthState: AuthFormState = { error: null, notice: null };
@@ -28,6 +29,7 @@ export function AuthLoginForm({ redirectTo }: { redirectTo?: string | null } = {
     initialAuthState,
   );
   const [intent, setIntent] = useState<AuthIntent | null>(null);
+  const viewedRef = useRef(false);
 
   const activeState =
     intent === "signup"
@@ -42,6 +44,19 @@ export function AuthLoginForm({ redirectTo }: { redirectTo?: string | null } = {
   const displayNotice = displayError ? null : (activeState.notice ?? null);
   const isSubmitting = loginPending || signupPending;
 
+  useEffect(() => {
+    if (viewedRef.current) {
+      return;
+    }
+    viewedRef.current = true;
+    captureAnalyticsEvent(ANALYTICS_EVENTS.authViewed, {
+      auth_method: "password",
+      feature: "dashboard_auth",
+      outcome: "viewed",
+      app_surface: "auth",
+    });
+  }, []);
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16">
       <form
@@ -52,6 +67,13 @@ export function AuthLoginForm({ redirectTo }: { redirectTo?: string | null } = {
             const nextIntent = submitter.dataset.intent;
             if (nextIntent === "login" || nextIntent === "signup") {
               setIntent(nextIntent);
+              captureAnalyticsEvent(ANALYTICS_EVENTS.authSubmitted, {
+                auth_action: nextIntent,
+                auth_method: "password",
+                feature: "dashboard_auth",
+                outcome: "submitted",
+                app_surface: "auth",
+              });
             }
           }
         }}

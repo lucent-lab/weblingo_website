@@ -5,9 +5,11 @@ import { cache } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AnalyticsTrackedLink } from "@/components/analytics-tracked-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DashboardRetryButton } from "@/components/dashboard/retry-button";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
 import { SitesList } from "./_components/sites-list";
 import { requireDashboardAuth, type DashboardAuth } from "@internal/dashboard/auth";
 import { listSitesFresh } from "@internal/dashboard/data";
@@ -125,7 +127,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={pricingPath}>Review pricing</Link>
+              <DashboardUpgradeLink
+                ctaId="dashboard_claimed_free_review_pricing"
+                href={pricingPath}
+              >
+                Review pricing
+              </DashboardUpgradeLink>
             </Button>
           </CardContent>
         </Card>
@@ -194,7 +201,9 @@ function OverviewActions({
             Create website
           </Button>
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Update billing</Link>
+            <DashboardUpgradeLink ctaId="dashboard_create_site_update_billing" href={pricingPath}>
+              Update billing
+            </DashboardUpgradeLink>
           </Button>
         </div>
       );
@@ -219,7 +228,9 @@ function OverviewActions({
           Create website
         </Button>
         <Button asChild variant="secondary">
-          <Link href={pricingPath}>Review plan</Link>
+          <DashboardUpgradeLink ctaId="dashboard_create_site_review_plan" href={pricingPath}>
+            Review plan
+          </DashboardUpgradeLink>
         </Button>
       </div>
     );
@@ -237,7 +248,9 @@ function OverviewActions({
             Add a site
           </Button>
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Update billing</Link>
+            <DashboardUpgradeLink ctaId="dashboard_add_site_update_billing" href={pricingPath}>
+              Update billing
+            </DashboardUpgradeLink>
           </Button>
         </div>
       ) : data.workspace.atSiteLimit ? (
@@ -246,7 +259,9 @@ function OverviewActions({
             Add a site
           </Button>
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Upgrade for more sites</Link>
+            <DashboardUpgradeLink ctaId="dashboard_site_limit_upgrade" href={pricingPath}>
+              Upgrade for more sites
+            </DashboardUpgradeLink>
           </Button>
         </div>
       ) : (
@@ -255,7 +270,9 @@ function OverviewActions({
             Add a site
           </Button>
           <Button asChild variant="secondary">
-            <Link href={pricingPath}>Upgrade to unlock</Link>
+            <DashboardUpgradeLink ctaId="dashboard_add_site_upgrade_unlock" href={pricingPath}>
+              Upgrade to unlock
+            </DashboardUpgradeLink>
           </Button>
         </div>
       )}
@@ -299,11 +316,15 @@ function OverviewSites({
             </Button>
           ) : workspace.billingBlocked ? (
             <Button asChild variant="secondary">
-              <Link href={pricingPath}>Update billing</Link>
+              <DashboardUpgradeLink ctaId="dashboard_empty_update_billing" href={pricingPath}>
+                Update billing
+              </DashboardUpgradeLink>
             </Button>
           ) : (
             <Button asChild variant="secondary">
-              <Link href={pricingPath}>Upgrade to start onboarding</Link>
+              <DashboardUpgradeLink ctaId="dashboard_empty_upgrade_onboarding" href={pricingPath}>
+                Upgrade to start onboarding
+              </DashboardUpgradeLink>
             </Button>
           )}
           <Button asChild variant="outline">
@@ -338,6 +359,33 @@ function OverviewSites({
   }
 
   return <SitesList sites={sites} />;
+}
+
+function DashboardUpgradeLink({
+  children,
+  ctaId,
+  href,
+}: {
+  children: string;
+  ctaId: string;
+  href: string;
+}) {
+  return (
+    <AnalyticsTrackedLink
+      analyticsProperties={{
+        cta_id: ctaId,
+        route_template: "/dashboard",
+        page_type: "dashboard",
+        feature: "quota_upgrade",
+        outcome: "clicked",
+        app_surface: "dashboard",
+      }}
+      event={ANALYTICS_EVENTS.upgradeCtaClicked}
+      href={href}
+    >
+      {children}
+    </AnalyticsTrackedLink>
+  );
 }
 
 function OverviewSitesError({ error }: { error: unknown }) {

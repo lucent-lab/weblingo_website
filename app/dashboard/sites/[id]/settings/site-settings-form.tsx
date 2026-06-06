@@ -21,6 +21,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
@@ -268,11 +269,24 @@ export function SiteSettingsForm({
   });
 
   useEffect(() => {
-    if (wasPending.current && !pending && state.ok) {
-      router.refresh();
+    if (wasPending.current && !pending) {
+      const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+      captureAnalyticsEvent(ANALYTICS_EVENTS.siteSettingSaved, {
+        site_id: siteId,
+        source_lang: sourceLang,
+        target_lang_count: targetLangs.length,
+        target_locale_count: targetLangs.length,
+        error_code: state.ok ? undefined : (code ?? "site_settings_save_failed"),
+        feature: "site_settings",
+        outcome: state.ok ? "succeeded" : "failed",
+        app_surface: "dashboard",
+      });
+      if (state.ok) {
+        router.refresh();
+      }
     }
     wasPending.current = pending;
-  }, [pending, router, state.ok]);
+  }, [pending, router, siteId, sourceLang, state.meta, state.ok, targetLangs.length]);
   const hasEditableSection =
     canEditBasics ||
     canEditLocales ||
@@ -324,7 +338,22 @@ export function SiteSettingsForm({
         </div>
       </CardHeader>
       <CardContent>
-        <form action={submitWithToast} className="space-y-8" aria-busy={pending}>
+        <form
+          action={submitWithToast}
+          className="space-y-8"
+          aria-busy={pending}
+          onSubmit={() => {
+            captureAnalyticsEvent(ANALYTICS_EVENTS.siteSettingSaved, {
+              site_id: siteId,
+              source_lang: sourceLang,
+              target_lang_count: targetLangs.length,
+              target_locale_count: targetLangs.length,
+              feature: "site_settings",
+              outcome: "submitted",
+              app_surface: "dashboard",
+            });
+          }}
+        >
           <input name="siteId" type="hidden" value={siteId} />
           {canEditBasics ? (
             <input name="subdomainPattern" type="hidden" value={subdomainPattern} />

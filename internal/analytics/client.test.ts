@@ -8,6 +8,8 @@ const posthogMock = vi.hoisted(() => ({
   identify: vi.fn(),
   init: vi.fn(),
   reset: vi.fn(),
+  startSessionRecording: vi.fn(),
+  stopSessionRecording: vi.fn(),
 }));
 
 vi.mock("posthog-js", () => ({ default: posthogMock }));
@@ -17,7 +19,10 @@ function setRequiredClientEnv() {
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
   process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "https://metrics.weblingo.app";
+  process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "enabled";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "disabled";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "0";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example.com";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "supabase-key";
   process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://api.weblingo.app";
@@ -32,6 +37,8 @@ beforeEach(() => {
   posthogMock.identify.mockReset();
   posthogMock.init.mockReset();
   posthogMock.reset.mockReset();
+  posthogMock.startSessionRecording.mockReset();
+  posthogMock.stopSessionRecording.mockReset();
 });
 
 describe("client analytics helpers", () => {
@@ -52,6 +59,7 @@ describe("client analytics helpers", () => {
         capture_pageview: false,
         capture_performance: false,
         cross_subdomain_cookie: false,
+        disable_session_recording: true,
         disable_persistence: true,
         enable_recording_console_log: false,
         mask_all_element_attributes: true,
@@ -67,6 +75,7 @@ describe("client analytics helpers", () => {
           recordBody: false,
           recordCrossOriginIframes: false,
           recordHeaders: false,
+          sampleRate: 0,
         }),
       }),
     );
@@ -179,17 +188,54 @@ describe("client analytics helpers", () => {
     expect(posthogMock.identify).toHaveBeenCalledWith("user-1", {
       account_id: "acct-1",
       actor_account_id: "acct-admin",
+      app_surface: "dashboard",
+      deployment_channel: "test",
       dashboard_plan_type: "pro",
       dashboard_plan_status: "active",
       dashboard_workspace_audience: "agency",
       dashboard_acting_as_customer: true,
       dashboard_user: true,
+      environment: "test",
+      repo: "weblingo_website",
     });
     expect(posthogMock.init).toHaveBeenCalledOnce();
     expect(posthogMock.group).toHaveBeenCalledWith("account", "acct-1", {
+      app_surface: "dashboard",
+      deployment_channel: "test",
+      environment: "test",
       plan_type: "pro",
       plan_status: "active",
+      repo: "weblingo_website",
       workspace_audience: "agency",
+    });
+  });
+
+  it("groups site-scoped dashboard routes by site", async () => {
+    const { groupAnalyticsSite } = await import("./client");
+
+    groupAnalyticsSite({
+      siteId: " site-1 ",
+      accountId: " acct-1 ",
+      actorAccountId: " acct-admin ",
+      actorRole: " agency_actor ",
+      planType: " starter ",
+      planStatus: " active ",
+      workspaceAudience: " customer ",
+      actingAsCustomer: false,
+    });
+
+    expect(posthogMock.group).toHaveBeenCalledWith("site", "site-1", {
+      account_id: "acct-1",
+      actor_account_id: "acct-admin",
+      actor_role: "agency_actor",
+      app_surface: "dashboard",
+      dashboard_acting_as_customer: false,
+      deployment_channel: "test",
+      environment: "test",
+      plan_status: "active",
+      plan_type: "starter",
+      repo: "weblingo_website",
+      workspace_audience: "customer",
     });
   });
 
@@ -223,8 +269,65 @@ describe("client analytics helpers", () => {
 
     expect(posthogMock.capture).toHaveBeenCalledWith(
       "$pageview",
-      { route_template: "/dashboard" },
+      {
+        app_surface: "marketing",
+        deployment_channel: "test",
+        environment: "test",
+        repo: "weblingo_website",
+        route_template: "/dashboard",
+      },
       { send_instantly: true },
     );
+  });
+
+  it("does not initialize or capture when analytics capture is disabled", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "disabled";
+    const {
+      captureAnalyticsEvent,
+      groupAnalyticsSite,
+      identifyAnalyticsUser,
+      initializeAnalytics,
+      resetAnalyticsIdentity,
+      syncAnalyticsSessionReplayForPath,
+    } = await import("./client");
+
+    initializeAnalytics();
+    captureAnalyticsEvent("marketing_cta_clicked", { cta_id: "hero" });
+    identifyAnalyticsUser({ distinctId: "user-1", accountId: "acct-1" });
+    groupAnalyticsSite({ siteId: "site-1", accountId: "acct-1" });
+    resetAnalyticsIdentity();
+    syncAnalyticsSessionReplayForPath("/pricing");
+
+    expect(posthogMock.init).not.toHaveBeenCalled();
+    expect(posthogMock.capture).not.toHaveBeenCalled();
+    expect(posthogMock.identify).not.toHaveBeenCalled();
+    expect(posthogMock.group).not.toHaveBeenCalled();
+    expect(posthogMock.reset).not.toHaveBeenCalled();
+    expect(posthogMock.startSessionRecording).not.toHaveBeenCalled();
+  });
+
+  it("starts replay only on sampled allowlisted routes and stops it on blocked routes", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "sampled";
+    process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "1";
+    const { syncAnalyticsSessionReplayForPath } = await import("./client");
+
+    syncAnalyticsSessionReplayForPath("/en/pricing");
+    syncAnalyticsSessionReplayForPath("/dashboard");
+
+    expect(posthogMock.init).toHaveBeenCalledOnce();
+    expect(posthogMock.startSessionRecording).toHaveBeenCalledWith({ sampling: true });
+    expect(posthogMock.stopSessionRecording).toHaveBeenCalledOnce();
+  });
+
+  it("does not initialize replay on checkout URLs carrying session query strings", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "sampled";
+    process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "1";
+    const { syncAnalyticsSessionReplayForPath } = await import("./client");
+
+    syncAnalyticsSessionReplayForPath("/ja/checkout/success?session_id=cs_secret_123");
+
+    expect(posthogMock.init).not.toHaveBeenCalled();
+    expect(posthogMock.startSessionRecording).not.toHaveBeenCalled();
+    expect(posthogMock.stopSessionRecording).not.toHaveBeenCalled();
   });
 });

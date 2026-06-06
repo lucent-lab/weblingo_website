@@ -25,7 +25,11 @@ function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test";
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "http://localhost:3000/_analytics/posthog";
+  process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "enabled";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://example.com";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "disabled";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "0";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable";
   process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://api.example.com/api";

@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TargetLocaleSelect } from "@/components/dashboard/target-locale-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { formatCustomerCopy, formatCustomerStatusValue } from "@internal/dashboard/customer-copy";
 import { getSiteTargetLangsCached } from "@internal/dashboard/data";
@@ -356,6 +357,16 @@ function RunActions({
       <div className="mt-3 flex flex-wrap gap-2">
         <ActionForm
           action={cancelTranslationRunAction}
+          analytics={{
+            event: ANALYTICS_EVENTS.translationRunCancelled,
+            properties: {
+              app_surface: "dashboard",
+              feature: "translation_history",
+              site_id: siteId,
+              status: run.customerStatus,
+              target_lang: run.targetLang,
+            },
+          }}
           loading="Cancelling run..."
           success="Translation run cancelled."
           error="Unable to cancel run."
@@ -378,6 +389,17 @@ function RunActions({
       <div className="mt-3 flex flex-wrap gap-2">
         <ActionForm
           action={retryFailedTranslationRunAction}
+          analytics={{
+            event: ANALYTICS_EVENTS.translationRunRetried,
+            successEvent: ANALYTICS_EVENTS.translationRunStarted,
+            properties: {
+              app_surface: "dashboard",
+              feature: "translation_history",
+              site_id: siteId,
+              status: run.customerStatus,
+              target_lang: run.targetLang,
+            },
+          }}
           loading="Retrying run..."
           success="Retry queued."
           error="Unable to retry run."
@@ -400,6 +422,17 @@ function RunActions({
       <div className="mt-3 flex flex-wrap gap-2">
         <ActionForm
           action={resumeTranslationRunAction}
+          analytics={{
+            event: ANALYTICS_EVENTS.translationRunResumed,
+            successEvent: ANALYTICS_EVENTS.translationRunStarted,
+            properties: {
+              app_surface: "dashboard",
+              feature: "translation_history",
+              site_id: siteId,
+              status: run.customerStatus,
+              target_lang: run.targetLang,
+            },
+          }}
           loading="Resuming run..."
           success="Translation resumed."
           error="Unable to resume run."

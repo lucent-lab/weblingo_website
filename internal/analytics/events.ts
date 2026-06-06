@@ -1,6 +1,8 @@
 export const ANALYTICS_EVENTS = {
+  posthogException: "$exception",
   posthogPageView: "$pageview",
   tryFormStarted: "try_form_started",
+  tryFormValidated: "try_form_validated",
   tryFormSubmitted: "try_form_submitted",
   previewCreateSucceeded: "preview_create_succeeded",
   previewCreateFailed: "preview_create_failed",
@@ -23,6 +25,42 @@ export const ANALYTICS_EVENTS = {
   checkoutSessionCreateFailed: "checkout_session_create_failed",
   stripeWebhookReceived: "stripe_webhook_received",
   stripeWebhookProcessed: "stripe_webhook_processed",
+  authViewed: "auth_viewed",
+  authSubmitted: "auth_submitted",
+  authSucceeded: "auth_succeeded",
+  authFailed: "auth_failed",
+  accountIdentified: "account_identified",
+  accountClaimStarted: "account_claim_started",
+  accountClaimSucceeded: "account_claim_succeeded",
+  accountClaimFailed: "account_claim_failed",
+  dashboardBootstrapped: "dashboard_bootstrapped",
+  workspaceSwitched: "workspace_switched",
+  siteDashboardViewed: "site_dashboard_viewed",
+  siteCreateStarted: "site_create_started",
+  siteCreated: "site_created",
+  siteCreateFailed: "site_create_failed",
+  onboardingStepCompleted: "onboarding_step_completed",
+  domainVerificationStarted: "domain_verification_started",
+  domainVerified: "domain_verified",
+  domainVerificationFailed: "domain_verification_failed",
+  domainProvisioned: "domain_provisioned",
+  domainRefreshRequested: "domain_refresh_requested",
+  crawlTriggered: "crawl_triggered",
+  translationRunStarted: "translation_run_started",
+  translationRunCancelled: "translation_run_cancelled",
+  translationRunRetried: "translation_run_retried",
+  translationRunResumed: "translation_run_resumed",
+  sourceSelectionSaved: "source_selection_saved",
+  glossaryUpdated: "glossary_updated",
+  overrideCreated: "override_created",
+  slugPolicyUpdated: "slug_policy_updated",
+  localeServingToggled: "locale_serving_toggled",
+  siteSettingSaved: "site_setting_saved",
+  quotaLimitHit: "quota_limit_hit",
+  upgradeCtaClicked: "upgrade_cta_clicked",
+  appErrorViewed: "app_error_viewed",
+  dashboardErrorRetryClicked: "dashboard_error_retry_clicked",
+  analyticsProxyFailed: "analytics_proxy_failed",
   waitlistSignupSaved: "waitlist_signup_saved",
   waitlistSignupFailed: "waitlist_signup_failed",
   contactMessageSubmitted: "contact_message_submitted",
@@ -34,6 +72,173 @@ export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTIC
 export type AnalyticsPropertyValue = string | number | boolean | null | undefined;
 export type AnalyticsProperties = Record<string, AnalyticsPropertyValue>;
 type SanitizedAnalyticsPropertyValue = Exclude<AnalyticsPropertyValue, null | undefined>;
+
+export const ANALYTICS_SAFE_PROPERTY_NAMES = [
+  "account_id",
+  "actor_account_id",
+  "actor_plan_status",
+  "actor_plan_type",
+  "actor_role",
+  "app_surface",
+  "auth_action",
+  "auth_method",
+  "cadence",
+  "checkout_mode",
+  "checkout_url_present",
+  "crawl_enqueued",
+  "crawl_id",
+  "cta_id",
+  "customer_present",
+  "dashboard_acting_as_customer",
+  "dashboard_plan_status",
+  "dashboard_plan_type",
+  "dashboard_route",
+  "dashboard_user",
+  "dashboard_workspace_audience",
+  "deployment_channel",
+  "domain_present",
+  "domain_host",
+  "domain_status",
+  "duration_ms",
+  "email_present",
+  "enqueued_count",
+  "environment",
+  "error_code",
+  "error_digest_present",
+  "error_name",
+  "error_stage",
+  "failure_kind",
+  "failure_status",
+  "feature",
+  "field_layout",
+  "form_id",
+  "glossary_entry_count",
+  "group_type",
+  "handled",
+  "locale",
+  "locales_present",
+  "message_present",
+  "missing_snapshot_count",
+  "outcome",
+  "override_context_present",
+  "page_path",
+  "page_type",
+  "plan_id",
+  "plan_status",
+  "plan_type",
+  "preview_id",
+  "repo",
+  "replay_allowed",
+  "replay_sampled",
+  "retranslate",
+  "retry_hint_reason",
+  "route_area",
+  "route_template",
+  "rule_count",
+  "runtime",
+  "sampling_rate",
+  "segment",
+  "selected_count",
+  "serve_enabled",
+  "serving_status",
+  "session_present",
+  "site_id",
+  "site_status",
+  "site_url_present",
+  "slug_path_present",
+  "source",
+  "source_host",
+  "source_lang",
+  "source_path",
+  "source_selection_rule_count",
+  "stage",
+  "status",
+  "stripe_event_type",
+  "subject_account_id",
+  "subject_plan_status",
+  "subject_plan_type",
+  "subscription_present",
+  "subscription_status",
+  "target_host",
+  "target_kind",
+  "target_lang",
+  "target_lang_count",
+  "target_locale_count",
+  "target_path",
+  "variant",
+  "workspace_audience",
+] as const;
+
+export type AnalyticsSafePropertyName = (typeof ANALYTICS_SAFE_PROPERTY_NAMES)[number];
+
+export const ANALYTICS_FORBIDDEN_PROPERTY_NAMES = [
+  "api_key",
+  "authorization",
+  "body",
+  "content",
+  "cookie",
+  "domain",
+  "email",
+  "full_name",
+  "full_url",
+  "glossary",
+  "href",
+  "html",
+  "invite_link",
+  "jwt",
+  "message",
+  "name",
+  "password",
+  "payload",
+  "prompt",
+  "provider_payload",
+  "raw_url",
+  "request",
+  "request_body",
+  "response",
+  "response_body",
+  "secret",
+  "source_html",
+  "source_text",
+  "source_url",
+  "target_url",
+  "text",
+  "token",
+  "translated_html",
+  "translated_text",
+  "url",
+  "verification_token",
+  "work_email",
+] as const;
+
+const safeAnalyticsPropertyNameSet = new Set<string>(ANALYTICS_SAFE_PROPERTY_NAMES);
+const forbiddenAnalyticsPropertyNameSet = new Set<string>(ANALYTICS_FORBIDDEN_PROPERTY_NAMES);
+
+const SAFE_ANALYTICS_PROPERTY_PATTERNS = [
+  /^[a-z][a-z0-9_]*_count$/,
+  /^[a-z][a-z0-9_]*_duration_ms$/,
+  /^[a-z][a-z0-9_]*_enabled$/,
+  /^[a-z][a-z0-9_]*_id$/,
+  /^[a-z][a-z0-9_]*_kind$/,
+  /^[a-z][a-z0-9_]*_present$/,
+  /^[a-z][a-z0-9_]*_role$/,
+  /^[a-z][a-z0-9_]*_status$/,
+  /^[a-z][a-z0-9_]*_type$/,
+] as const;
+
+const EMAIL_VALUE_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const SECRET_VALUE_PATTERNS = [
+  /\b(?:sk|pk|rk|whsec|phc|supabase|eyJ)[A-Za-z0-9_=-]{12,}\b/,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b/i,
+  /\b(?:token|secret|password|api[_-]?key)=/i,
+] as const;
+
+export class AnalyticsPropertyValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AnalyticsPropertyValidationError";
+  }
+}
 
 type PreviewAnalyticsInput = {
   locale?: string | null;
@@ -117,6 +322,96 @@ function combinePathWithHash(pathname: string, hash: string): string | null {
   return normalizeSourcePath(`${normalizedPath}${normalizedHash}`);
 }
 
+function hasForbiddenAnalyticsPropertyName(key: string): boolean {
+  const normalized = key.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  if (forbiddenAnalyticsPropertyNameSet.has(normalized)) {
+    return true;
+  }
+  return /(^|_)(password|secret|token|cookie|jwt|authorization|prompt|payload|body)$/i.test(
+    normalized,
+  );
+}
+
+function isAllowedAnalyticsPropertyName(key: string): boolean {
+  if (safeAnalyticsPropertyNameSet.has(key)) {
+    return true;
+  }
+  return SAFE_ANALYTICS_PROPERTY_PATTERNS.some((pattern) => pattern.test(key));
+}
+
+function looksLikeFullUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeQueryBearingPath(value: string): boolean {
+  return /^\/[^\s?#]+(?:\/[^\s?#]+)*\?/.test(value);
+}
+
+function looksLikeSecretValue(value: string): boolean {
+  return SECRET_VALUE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+export function assertSafeAnalyticsProperty(
+  key: string,
+  value: SanitizedAnalyticsPropertyValue,
+): void {
+  if (hasForbiddenAnalyticsPropertyName(key)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" is forbidden because it can carry PII, secrets, raw content, or payload bodies.`,
+    );
+  }
+  if (!isAllowedAnalyticsPropertyName(key)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" is not in the safe allowlist.`,
+    );
+  }
+  if (typeof value !== "string") {
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return;
+  }
+  if (EMAIL_VALUE_PATTERN.test(trimmed)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" contains an email-like value.`,
+    );
+  }
+  if (looksLikeFullUrl(trimmed)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" contains a full URL; use host/path helpers instead.`,
+    );
+  }
+  if (looksLikeQueryBearingPath(trimmed)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" contains a query string.`,
+    );
+  }
+  if (looksLikeSecretValue(trimmed)) {
+    throw new AnalyticsPropertyValidationError(
+      `Analytics property "${key}" contains a secret-like value.`,
+    );
+  }
+}
+
+export function assertSafeAnalyticsProperties(properties: AnalyticsProperties): void {
+  for (const [key, value] of Object.entries(properties)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    assertSafeAnalyticsProperty(key, value);
+  }
+}
+
 export function extractPublicUrlContext(sourceUrl?: string | null): PublicUrlContext {
   const trimmed = normalizeTrimmed(sourceUrl);
   if (!trimmed) {
@@ -187,9 +482,15 @@ export function extractLinkTargetContext(targetHref?: string | null): LinkTarget
 export function sanitizeAnalyticsProperties(
   properties: AnalyticsProperties,
 ): Record<string, SanitizedAnalyticsPropertyValue> {
-  return Object.fromEntries(
-    Object.entries(properties).filter(([, value]) => value !== undefined && value !== null),
-  ) as Record<string, SanitizedAnalyticsPropertyValue>;
+  const sanitized: Record<string, SanitizedAnalyticsPropertyValue> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    assertSafeAnalyticsProperty(key, value);
+    sanitized[key] = value;
+  }
+  return sanitized;
 }
 
 export function buildPreviewAnalyticsProperties(

@@ -154,7 +154,11 @@ function setClientEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_123";
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+  process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "http://localhost:3000/_analytics/posthog";
+  process.env.NEXT_PUBLIC_POSTHOG_CAPTURE = "enabled";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://posthog.example.com";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_CAPTURE = "disabled";
+  process.env.NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE = "0";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example.com";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_anon_key";
   process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE = "https://api.weblingo.example/api";

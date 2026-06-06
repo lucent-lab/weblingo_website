@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
 
+import { DashboardSiteAnalyticsScope } from "@/components/dashboard/analytics-identity";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { DASHBOARD_DEMO_LOCALE_HEADER } from "@internal/dashboard/demo-session-constants";
 import { withDashboardLocale } from "@internal/dashboard/locale-url";
+import { resolveDashboardWorkspaceAudience } from "@internal/dashboard/workspace";
 import { normalizeLocale, resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 import { DemoActivationReminder } from "./demo-guidance";
@@ -25,9 +27,22 @@ export default async function SiteDashboardLayout({ children, params }: SiteDash
     `/dashboard/sites/${id}#activate-demo`,
     dashboardLocale,
   );
+  const workspaceAudience = resolveDashboardWorkspaceAudience(auth);
+  const actorRole =
+    auth.actingAsCustomer && workspaceAudience === "agency" ? "agency_actor" : workspaceAudience;
 
   return (
     <div className="space-y-6">
+      <DashboardSiteAnalyticsScope
+        siteId={id}
+        accountId={auth.subjectAccountId ?? auth.account?.accountId}
+        actorAccountId={auth.actorAccountId}
+        actorRole={actorRole}
+        planType={auth.account?.planType}
+        planStatus={auth.account?.planStatus}
+        workspaceAudience={workspaceAudience}
+        actingAsCustomer={auth.actingAsCustomer}
+      />
       {isScopedDemo ? <DemoActivationReminder href={activationHref} t={t} /> : null}
       {children}
     </div>

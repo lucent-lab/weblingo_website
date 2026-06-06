@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 const initialState: ActionResponse = { ok: false, message: "" };
@@ -75,15 +76,41 @@ function EditableOverrideForm({ siteId, targetLangs }: { siteId: string; targetL
   });
 
   useEffect(() => {
-    if (wasPending.current && !pending && state.ok) {
-      router.refresh();
+    if (wasPending.current && !pending) {
+      const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+      captureAnalyticsEvent(ANALYTICS_EVENTS.overrideCreated, {
+        site_id: siteId,
+        target_lang_count: targetLangs.length,
+        target_locale_count: targetLangs.length,
+        error_code: state.ok ? undefined : (code ?? "override_save_failed"),
+        feature: "manual_override",
+        outcome: state.ok ? "succeeded" : "failed",
+        app_surface: "dashboard",
+      });
+      if (state.ok) {
+        router.refresh();
+      }
     }
     wasPending.current = pending;
-  }, [pending, router, state.ok]);
+  }, [pending, router, siteId, state.meta, state.ok, targetLangs.length]);
 
   return (
     <OverrideCard>
-      <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
+      <form
+        action={submitWithToast}
+        className="space-y-3"
+        aria-busy={pending}
+        onSubmit={() => {
+          captureAnalyticsEvent(ANALYTICS_EVENTS.overrideCreated, {
+            site_id: siteId,
+            target_lang_count: targetLangs.length,
+            target_locale_count: targetLangs.length,
+            feature: "manual_override",
+            outcome: "submitted",
+            app_surface: "dashboard",
+          });
+        }}
+      >
         <input name="siteId" type="hidden" value={siteId} />
         <OverrideFields
           messageId={state.message ? messageId : undefined}
@@ -255,15 +282,41 @@ function EditableSlugForm({ siteId, targetLangs }: { siteId: string; targetLangs
   });
 
   useEffect(() => {
-    if (wasPending.current && !pending && state.ok) {
-      router.refresh();
+    if (wasPending.current && !pending) {
+      const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+      captureAnalyticsEvent(ANALYTICS_EVENTS.slugPolicyUpdated, {
+        site_id: siteId,
+        target_lang_count: targetLangs.length,
+        target_locale_count: targetLangs.length,
+        error_code: state.ok ? undefined : (code ?? "slug_save_failed"),
+        feature: "localized_slug",
+        outcome: state.ok ? "succeeded" : "failed",
+        app_surface: "dashboard",
+      });
+      if (state.ok) {
+        router.refresh();
+      }
     }
     wasPending.current = pending;
-  }, [pending, router, state.ok]);
+  }, [pending, router, siteId, state.meta, state.ok, targetLangs.length]);
 
   return (
     <SlugCard>
-      <form action={submitWithToast} className="space-y-3" aria-busy={pending}>
+      <form
+        action={submitWithToast}
+        className="space-y-3"
+        aria-busy={pending}
+        onSubmit={() => {
+          captureAnalyticsEvent(ANALYTICS_EVENTS.slugPolicyUpdated, {
+            site_id: siteId,
+            target_lang_count: targetLangs.length,
+            target_locale_count: targetLangs.length,
+            feature: "localized_slug",
+            outcome: "submitted",
+            app_surface: "dashboard",
+          });
+        }}
+      >
         <input name="siteId" type="hidden" value={siteId} />
         <SlugFields messageId={state.message ? messageId : undefined} targetLangs={targetLangs} />
         {state.message && !state.ok ? (
