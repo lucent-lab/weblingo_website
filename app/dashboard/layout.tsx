@@ -36,7 +36,10 @@ import {
 } from "@internal/dashboard/auth";
 import { formatStripeBillingStatusLabel } from "@internal/dashboard/billing-runtime";
 import { listSitesCached, listSitesFresh } from "@internal/dashboard/data";
-import { DASHBOARD_DEMO_LOCALE_HEADER } from "@internal/dashboard/demo-session-constants";
+import {
+  DASHBOARD_LOCALE_HEADER,
+  DASHBOARD_DEMO_LOCALE_HEADER,
+} from "@internal/dashboard/demo-session-constants";
 import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import {
   getDashboardSitesLabel,
@@ -140,8 +143,9 @@ export function resolveDashboardNavItems({
 
 export function resolveDashboardShellLocale(requestHeaders: DashboardHeaderReader) {
   const demoLocale = requestHeaders.get(DASHBOARD_DEMO_LOCALE_HEADER);
-  return demoLocale
-    ? normalizeLocale(demoLocale)
+  const dashboardLocale = requestHeaders.get(DASHBOARD_LOCALE_HEADER);
+  return demoLocale || dashboardLocale
+    ? normalizeLocale(demoLocale ?? dashboardLocale ?? "")
     : resolvePreferredLocale(requestHeaders.get("accept-language"));
 }
 

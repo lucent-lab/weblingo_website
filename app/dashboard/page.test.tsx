@@ -40,6 +40,7 @@ vi.mock("@internal/dashboard/onboarding-state", () => ({
   resolveDashboardOnboardingState: mocks.resolveDashboardOnboardingState,
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: vi.fn((locale: string) => (["en", "fr", "ja"].includes(locale) ? locale : "en")),
   resolvePreferredLocale: vi.fn(() => "en"),
   resolveLocaleTranslator: vi.fn(async () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
@@ -102,6 +103,20 @@ describe("DashboardPage", () => {
     expect(mocks.sitesList).not.toHaveBeenCalled();
   });
 
+  it("preserves an explicit locale when routing a normal customer to one website", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-1")]);
+
+    vi.resetModules();
+    const { default: DashboardPage } = await import("./page");
+
+    await expect(
+      DashboardPage({ searchParams: Promise.resolve({ locale: "fr" }) }),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard/sites/site-1?locale=fr");
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-1?locale=fr");
+    expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
   it("routes a demo dashboard session directly to the claimed site without listing sites", async () => {
     mocks.requireDashboardAuth.mockResolvedValue({
       ...makeAuth(),
@@ -136,6 +151,23 @@ describe("DashboardPage", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-demo?locale=fr");
     expect(mocks.listSitesFresh).not.toHaveBeenCalled();
     expect(mocks.sitesList).not.toHaveBeenCalled();
+  });
+
+  it("uses an explicit dashboard locale for dashboard home copy", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesFresh.mockResolvedValue([]);
+
+    vi.resetModules();
+    const i18n = await import("@internal/i18n");
+    const { default: DashboardPage } = await import("./page");
+    const tree = await DashboardPage({ searchParams: Promise.resolve({ locale: "fr" }) });
+
+    render(tree);
+    const translatorCalls = vi.mocked(i18n.resolveLocaleTranslator).mock.calls as unknown as Array<
+      [Promise<{ locale: string }>]
+    >;
+    await expect(translatorCalls[0]?.[0]).resolves.toEqual({ locale: "fr" });
+    expect(i18n.resolvePreferredLocale).not.toHaveBeenCalled();
   });
 
   it("shows onboarding when a normal customer only has inactive website records", async () => {

@@ -91,6 +91,16 @@ describe("DashboardLayout", () => {
     expect(resolveDashboardShellLocale(headers)).toBe("fr");
   });
 
+  it("prefers the explicit dashboard locale header before Accept-Language", async () => {
+    const { resolveDashboardShellLocale } = await import("./layout");
+    const headers = new Headers({
+      "accept-language": "ja",
+      "x-weblingo-dashboard-locale": "fr",
+    });
+
+    expect(resolveDashboardShellLocale(headers)).toBe("fr");
+  });
+
   it("uses fresh site reads for customer shell site navigation and counts", async () => {
     const data = await import("@internal/dashboard/data");
     const { resolveLayoutSitesReader } = await import("./layout");

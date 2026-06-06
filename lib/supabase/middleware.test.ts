@@ -139,6 +139,20 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
+  it("marks explicit dashboard locale on signed-in browser dashboard requests", async () => {
+    createServerClientMock.mockImplementation((() => ({
+      auth: {
+        getClaims: vi.fn(async () => ({ data: { claims: { sub: "user-1" } } })),
+      },
+    })) as never);
+
+    const response = await updateSession(buildRequest("https://weblingo.app/dashboard?locale=fr"));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-locale")).toBe("fr");
+    expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
   it("rewrites opaque demo dashboard sessions from locale-prefixed dashboard site pages", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/en/dashboard/sites/site-demo", {
@@ -291,8 +305,20 @@ describe("updateSession", () => {
       }),
     );
 
-    expect(response.headers.get("location")).toBe("https://weblingo.app/auth/login");
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBeNull();
+  });
+
+  it("returns JSON unauthorized for anonymous dashboard API requests", async () => {
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/api/dashboard/sites/site-demo/status"),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(response.headers.get("location")).toBeNull();
   });
 
   it("redirects demo dashboard cookies away from site creation", async () => {

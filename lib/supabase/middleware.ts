@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 import {
+  DASHBOARD_LOCALE_HEADER,
   DASHBOARD_DEMO_LOCALE_HEADER,
   DASHBOARD_DEMO_SCOPE_HEADER,
   DASHBOARD_DEMO_SESSION_COOKIE,
@@ -156,6 +157,13 @@ export async function updateSession(request: NextRequest) {
     return buildDemoDashboardFallbackRedirect(request);
   }
 
+  if (!user && !hasDemoDashboardSession && isDashboardApiPath(request.nextUrl.pathname)) {
+    return copySupabaseResponseCookies(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      supabaseResponse,
+    );
+  }
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
@@ -190,11 +198,19 @@ export async function updateSession(request: NextRequest) {
     return buildDemoDashboardSessionResponse(request, supabaseResponse);
   }
 
+  if (isDashboardBrowserPath(request.nextUrl.pathname)) {
+    return buildDashboardLocaleResponse(request, supabaseResponse);
+  }
+
   return supabaseResponse;
 }
 
 function isDashboardBrowserPath(pathname: string): boolean {
   return normalizeDashboardPathname(pathname) !== null;
+}
+
+function isDashboardApiPath(pathname: string): boolean {
+  return pathname === "/api/dashboard" || pathname.startsWith("/api/dashboard/");
 }
 
 function getPublicDemoDashboardLocale(pathname: string): Locale | null | undefined {
@@ -231,6 +247,7 @@ function buildDemoDashboardSessionResponse(request: NextRequest, supabaseRespons
   requestHeaders.set(DASHBOARD_DEMO_SCOPE_HEADER, "1");
   const locale = resolveDashboardLocale(request.nextUrl.pathname, request.nextUrl.search);
   if (locale) {
+    requestHeaders.set(DASHBOARD_LOCALE_HEADER, locale);
     requestHeaders.set(DASHBOARD_DEMO_LOCALE_HEADER, locale);
   }
   const dashboardPathname = normalizeDashboardPathname(request.nextUrl.pathname);
@@ -243,6 +260,17 @@ function buildDemoDashboardSessionResponse(request: NextRequest, supabaseRespons
     const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     return copySupabaseResponseCookies(response, supabaseResponse);
   }
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  return copySupabaseResponseCookies(response, supabaseResponse);
+}
+
+function buildDashboardLocaleResponse(request: NextRequest, supabaseResponse: NextResponse) {
+  const locale = resolveDashboardLocale(request.nextUrl.pathname, request.nextUrl.search);
+  if (!locale) {
+    return supabaseResponse;
+  }
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(DASHBOARD_LOCALE_HEADER, locale);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return copySupabaseResponseCookies(response, supabaseResponse);
 }

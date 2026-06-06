@@ -19,7 +19,7 @@ import {
   isCustomerDashboardWorkspace,
   resolveDashboardWebsiteWorkspaceState,
 } from "@internal/dashboard/workspace";
-import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
+import { normalizeLocale, resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 
 const getOverviewData = cache(async (auth: DashboardAuth) => {
   if (!auth.webhooksAuth) {
@@ -42,7 +42,10 @@ type DashboardPageProps = {
 export default async function DashboardPage({ searchParams }: DashboardPageProps = {}) {
   const auth = await requireDashboardAuth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const dashboardLocale = getSingleSearchParam(resolvedSearchParams?.locale);
+  const requestedDashboardLocale = getSingleSearchParam(resolvedSearchParams?.locale);
+  const dashboardLocale = requestedDashboardLocale
+    ? normalizeLocale(requestedDashboardLocale)
+    : null;
   if (auth.accessMode === "demo") {
     const demoSiteId = getDashboardDemoSiteId(auth);
     if (!demoSiteId) {
@@ -50,7 +53,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }
     redirect(withDashboardLocale(`/dashboard/sites/${demoSiteId}`, dashboardLocale));
   }
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const locale =
+    dashboardLocale ?? resolvePreferredLocale((await headers()).get("accept-language"));
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const onboardingState = resolveDashboardOnboardingState(auth, t);
   const pricingPath = `/${locale}/pricing`;
@@ -69,7 +73,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     overviewData?.workspace.kind === "single_current_website" &&
     overviewData.workspace.currentSite
   ) {
-    redirect(`/dashboard/sites/${overviewData.workspace.currentSite.id}`);
+    redirect(
+      withDashboardLocale(
+        `/dashboard/sites/${overviewData.workspace.currentSite.id}`,
+        dashboardLocale,
+      ),
+    );
   }
   const showClaimedFreeOnboarding =
     onboardingState.stage === "claimed_free_account" &&
