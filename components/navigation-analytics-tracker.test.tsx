@@ -150,4 +150,28 @@ describe("NavigationAnalyticsTracker", () => {
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("alpha");
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("beta");
   });
+
+  it("dedupes equivalent query states regardless of parameter order", async () => {
+    pathname = "/en/pricing";
+    searchParams = new URLSearchParams([
+      ["a", "1"],
+      ["b", "2"],
+    ]);
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams([
+      ["b", "2"],
+      ["a", "1"],
+    ]);
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("a=1");
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("b=2");
+  });
 });

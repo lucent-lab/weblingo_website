@@ -36,16 +36,22 @@ function shouldSkipRecentNavigationCapture(key: string): boolean {
   return now - lastCapturedAt < strictModeDuplicateWindowMs;
 }
 
-function hashNavigationQuery(searchParams: URLSearchParams): string {
-  const query = searchParams.toString();
-  if (!query) {
+function buildCanonicalQueryFingerprint(searchParams: URLSearchParams): string {
+  const entries = Array.from(searchParams.entries()).sort(
+    ([leftKey, leftValue], [rightKey, rightValue]) =>
+      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue),
+  );
+  if (!entries.length) {
     return "none";
   }
 
   let hash = 2_166_136_261;
-  for (let index = 0; index < query.length; index += 1) {
-    hash ^= query.charCodeAt(index);
-    hash = Math.imul(hash, 16_777_619);
+  for (const [key, value] of entries) {
+    const entry = `${key}\u0000${value}\u0001`;
+    for (let index = 0; index < entry.length; index += 1) {
+      hash ^= entry.charCodeAt(index);
+      hash = Math.imul(hash, 16_777_619);
+    }
   }
   return (hash >>> 0).toString(36);
 }
@@ -64,7 +70,7 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
       return;
     }
 
-    const querySignature = hashNavigationQuery(searchParams);
+    const querySignature = buildCanonicalQueryFingerprint(searchParams);
     const captureKey = `${pathname}?query=${querySignature}&session_id=${searchParams.has("session_id") ? "1" : "0"}`;
     if (
       lastTrackedPathnameRef.current === captureKey ||
