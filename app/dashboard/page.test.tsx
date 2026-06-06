@@ -162,12 +162,14 @@ describe("DashboardPage", () => {
     const { default: DashboardPage } = await import("./page");
     const tree = await DashboardPage({ searchParams: Promise.resolve({ locale: "fr" }) });
 
-    render(tree);
+    const { container } = render(tree);
     const translatorCalls = vi.mocked(i18n.resolveLocaleTranslator).mock.calls as unknown as Array<
       [Promise<{ locale: string }>]
     >;
     await expect(translatorCalls[0]?.[0]).resolves.toEqual({ locale: "fr" });
     expect(i18n.resolvePreferredLocale).not.toHaveBeenCalled();
+    expect(container.querySelector('a[href="/dashboard/sites/new?locale=fr"]')).toBeTruthy();
+    expect(container.querySelector('a[href="/dashboard/developer-tools?locale=fr"]')).toBeTruthy();
   });
 
   it("shows onboarding when a normal customer only has inactive website records", async () => {

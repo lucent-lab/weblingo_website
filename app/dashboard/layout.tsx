@@ -75,15 +75,17 @@ export function resolveDashboardNavItems({
   isAgency,
   canAccessInternalOps,
   demoSiteId,
+  dashboardLocale = null,
 }: {
   isAgency: boolean;
   canAccessInternalOps: boolean;
   demoSiteId: string | null;
+  dashboardLocale?: string | null;
 }) {
   if (demoSiteId) {
     return [
       {
-        href: `/dashboard/sites/${demoSiteId}`,
+        href: withDashboardLocale(`/dashboard/sites/${demoSiteId}`, dashboardLocale),
         label: "Dashboard",
         icon: <LayoutDashboard className="h-4 w-4" />,
       },
@@ -92,14 +94,14 @@ export function resolveDashboardNavItems({
 
   return [
     {
-      href: "/dashboard",
+      href: withDashboardLocale("/dashboard", dashboardLocale),
       label: "Dashboard",
       icon: <LayoutDashboard className="h-4 w-4" />,
     },
     ...(isAgency
       ? [
           {
-            href: "/dashboard/agency",
+            href: withDashboardLocale("/dashboard/agency", dashboardLocale),
             label: "Agency overview",
             icon: <Briefcase className="h-4 w-4" />,
           },
@@ -108,31 +110,31 @@ export function resolveDashboardNavItems({
     ...(isAgency
       ? [
           {
-            href: "/dashboard/agency/customers",
+            href: withDashboardLocale("/dashboard/agency/customers", dashboardLocale),
             label: "Customers",
             icon: <Users className="h-4 w-4" />,
           },
         ]
       : []),
     {
-      href: "/dashboard/developer-tools",
+      href: withDashboardLocale("/dashboard/developer-tools", dashboardLocale),
       label: "Developer tools",
       icon: <Wrench className="h-4 w-4" />,
     },
     ...(canAccessInternalOps
       ? [
           {
-            href: "/dashboard/ops",
+            href: withDashboardLocale("/dashboard/ops", dashboardLocale),
             label: "Ops",
             icon: <Wrench className="h-4 w-4" />,
           },
           {
-            href: "/dashboard/ops/accounts",
+            href: withDashboardLocale("/dashboard/ops/accounts", dashboardLocale),
             label: "Accounts",
             icon: <Users className="h-4 w-4" />,
           },
           {
-            href: "/dashboard/ops/showcases",
+            href: withDashboardLocale("/dashboard/ops/showcases", dashboardLocale),
             label: "Showcases",
             icon: <MonitorPlay className="h-4 w-4" />,
           },
@@ -141,12 +143,19 @@ export function resolveDashboardNavItems({
   ];
 }
 
-export function resolveDashboardShellLocale(requestHeaders: DashboardHeaderReader) {
+export function resolveExplicitDashboardShellLocale(requestHeaders: DashboardHeaderReader) {
   const demoLocale = requestHeaders.get(DASHBOARD_DEMO_LOCALE_HEADER);
   const dashboardLocale = requestHeaders.get(DASHBOARD_LOCALE_HEADER);
   return demoLocale || dashboardLocale
     ? normalizeLocale(demoLocale ?? dashboardLocale ?? "")
-    : resolvePreferredLocale(requestHeaders.get("accept-language"));
+    : null;
+}
+
+export function resolveDashboardShellLocale(requestHeaders: DashboardHeaderReader) {
+  return (
+    resolveExplicitDashboardShellLocale(requestHeaders) ??
+    resolvePreferredLocale(requestHeaders.get("accept-language"))
+  );
 }
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -173,7 +182,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const canAccessInternalOps = hasActorInternalOps(auth);
   const demoSiteId = getDashboardDemoSiteId(auth);
   const pricingPath = `/${locale}/pricing`;
-  const navItems = resolveDashboardNavItems({ isAgency, canAccessInternalOps, demoSiteId });
+  const navItems = resolveDashboardNavItems({
+    isAgency,
+    canAccessInternalOps,
+    demoSiteId,
+    dashboardLocale: resolveExplicitDashboardShellLocale(requestHeaders),
+  });
   const workspaceOptions = buildWorkspaceOptions(auth);
   const subjectLabel =
     workspaceOptions.find((option) => option.id === auth.subjectAccountId)?.label ??

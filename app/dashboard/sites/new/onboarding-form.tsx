@@ -24,6 +24,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import {
   WEBHOOK_EVENT_TYPES,
@@ -49,6 +50,7 @@ export function OnboardingForm(props: {
   maxLocales: number | null;
   supportedLanguages: SupportedLanguage[];
   displayLocale: string;
+  dashboardLocale?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(createSiteAction, initialState);
   const router = useRouter();
@@ -69,9 +71,9 @@ export function OnboardingForm(props: {
     const siteId = typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
     const hasValidSiteId = siteId.length > 0 && siteId !== "undefined" && siteId !== "null";
     if (state.ok && hasValidSiteId) {
-      router.push(`/dashboard/sites/${siteId}`);
+      router.push(withDashboardLocale(`/dashboard/sites/${siteId}`, props.dashboardLocale));
     }
-  }, [router, state.meta?.siteId, state.ok]);
+  }, [props.dashboardLocale, router, state.meta?.siteId, state.ok]);
 
   const parsedSourceUrl = useMemo(() => parseSourceUrl(sourceUrl), [sourceUrl]);
   const sourceUrlValid = parsedSourceUrl !== null;

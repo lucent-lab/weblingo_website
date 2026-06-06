@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   requireDashboardAuth: vi.fn(),
   listSitesFresh: vi.fn(),
   listSupportedLanguagesCached: vi.fn(async () => []),
+  onboardingForm: vi.fn(() => <div>Onboarding form</div>),
   redirect: vi.fn((href: string) => {
     const error = new Error(`NEXT_REDIRECT:${href}`);
     (error as Error & { digest?: string }).digest = `NEXT_REDIRECT;replace;${href}`;
@@ -27,16 +28,18 @@ vi.mock("@internal/dashboard/data", () => ({
   listSupportedLanguagesCached: mocks.listSupportedLanguagesCached,
 }));
 vi.mock("@internal/i18n", () => ({
+  normalizeLocale: vi.fn((locale: string) => (["en", "fr", "ja"].includes(locale) ? locale : "en")),
   resolvePreferredLocale: vi.fn(() => "en"),
 }));
 vi.mock("./onboarding-form", () => ({
-  OnboardingForm: () => <div>Onboarding form</div>,
+  OnboardingForm: mocks.onboardingForm,
 }));
 
 describe("NewSitePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listSupportedLanguagesCached.mockResolvedValue([]);
+    mocks.onboardingForm.mockReturnValue(<div>Onboarding form</div>);
   });
 
   afterEach(() => {
@@ -84,6 +87,37 @@ describe("NewSitePage", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-1");
   });
 
+  it("preserves an explicit locale when redirecting to an existing website", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-1")]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+
+    await expect(NewSitePage({ searchParams: Promise.resolve({ locale: "fr" }) })).rejects.toThrow(
+      "NEXT_REDIRECT:/dashboard/sites/site-1?locale=fr",
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/sites/site-1?locale=fr");
+  });
+
+  it("passes the explicit dashboard locale to the onboarding form", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesFresh.mockResolvedValue([]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+    const tree = await NewSitePage({ searchParams: Promise.resolve({ locale: "fr" }) });
+
+    render(tree);
+    expect(mocks.onboardingForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayLocale: "fr",
+        dashboardLocale: "fr",
+      }),
+      undefined,
+    );
+  });
+
   it("renders normal-customer onboarding when only inactive website records exist", async () => {
     mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
     mocks.listSitesFresh.mockResolvedValue([makeSite("site-old", "inactive")]);
@@ -124,6 +158,18 @@ describe("NewSitePage", () => {
     expect(screen.getByText("Website workspace needs review")).toBeTruthy();
     expect(screen.getByText(/more than one active website record/)).toBeTruthy();
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("preserves an explicit locale on new-site back links", async () => {
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth());
+    mocks.listSitesFresh.mockResolvedValue([makeSite("site-1"), makeSite("site-2")]);
+
+    vi.resetModules();
+    const { default: NewSitePage } = await import("./page");
+    const tree = await NewSitePage({ searchParams: Promise.resolve({ locale: "fr" }) });
+
+    const { container } = render(tree);
+    expect(container.querySelector('a[href="/dashboard?locale=fr"]')).toBeTruthy();
   });
 
   it("keeps agency add-site onboarding available", async () => {

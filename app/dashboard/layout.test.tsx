@@ -129,6 +129,21 @@ describe("DashboardLayout", () => {
     ]);
   });
 
+  it("preserves the explicit locale on demo shell navigation", async () => {
+    const { resolveDashboardNavItems } = await import("./layout");
+
+    const navItems = resolveDashboardNavItems({
+      isAgency: false,
+      canAccessInternalOps: false,
+      demoSiteId: "site-demo",
+      dashboardLocale: "fr",
+    });
+
+    expect(navItems.map((item) => ({ href: item.href, label: item.label }))).toEqual([
+      { href: "/dashboard/sites/site-demo?locale=fr", label: "Dashboard" },
+    ]);
+  });
+
   it("keeps global developer tools in normal authenticated navigation", async () => {
     const { resolveDashboardNavItems } = await import("./layout");
 
@@ -136,6 +151,21 @@ describe("DashboardLayout", () => {
       isAgency: false,
       canAccessInternalOps: false,
       demoSiteId: null,
+    });
+
+    expect(navItems.map((item) => item.href)).toEqual(["/dashboard", "/dashboard/developer-tools"]);
+  });
+
+  it("does not persist Accept-Language fallback in dashboard navigation links", async () => {
+    const { resolveDashboardNavItems, resolveExplicitDashboardShellLocale } =
+      await import("./layout");
+    const headers = new Headers({ "accept-language": "fr" });
+
+    const navItems = resolveDashboardNavItems({
+      isAgency: false,
+      canAccessInternalOps: false,
+      demoSiteId: null,
+      dashboardLocale: resolveExplicitDashboardShellLocale(headers),
     });
 
     expect(navItems.map((item) => item.href)).toContain("/dashboard/developer-tools");

@@ -105,6 +105,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           data={overviewData}
           pricingPath={pricingPath}
           normalCustomerDashboard={normalCustomerDashboard}
+          dashboardLocale={dashboardLocale}
         />
       </div>
 
@@ -119,7 +120,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/dashboard/sites/new">Create website</Link>
+              <Link href={withDashboardLocale("/dashboard/sites/new", dashboardLocale)}>
+                Create website
+              </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href={pricingPath}>Review pricing</Link>
@@ -133,6 +136,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           data={overviewData}
           pricingPath={pricingPath}
           normalCustomerDashboard={normalCustomerDashboard}
+          dashboardLocale={dashboardLocale}
         />
       ) : (
         <OverviewSitesError error={overviewError} />
@@ -150,11 +154,14 @@ function OverviewActions({
   data,
   pricingPath,
   normalCustomerDashboard,
+  dashboardLocale,
 }: {
   data: OverviewData | null;
   pricingPath: string;
   normalCustomerDashboard: boolean;
+  dashboardLocale: string | null;
 }) {
+  const newSitePath = withDashboardLocale("/dashboard/sites/new", dashboardLocale);
   if (!data) {
     return (
       <Button disabled variant="outline">
@@ -176,7 +183,7 @@ function OverviewActions({
     if (data.workspace.kind === "no_current_website" && data.workspace.canCreateSite) {
       return (
         <Button asChild>
-          <Link href="/dashboard/sites/new">Create website</Link>
+          <Link href={newSitePath}>Create website</Link>
         </Button>
       );
     }
@@ -195,7 +202,14 @@ function OverviewActions({
     if (data.workspace.kind === "single_current_website" && data.workspace.currentSite) {
       return (
         <Button asChild variant="secondary">
-          <Link href={`/dashboard/sites/${data.workspace.currentSite.id}`}>Open website</Link>
+          <Link
+            href={withDashboardLocale(
+              `/dashboard/sites/${data.workspace.currentSite.id}`,
+              dashboardLocale,
+            )}
+          >
+            Open website
+          </Link>
         </Button>
       );
     }
@@ -215,7 +229,7 @@ function OverviewActions({
     <div className="flex flex-wrap gap-3">
       {data.workspace.canCreateSite ? (
         <Button asChild>
-          <Link href="/dashboard/sites/new">Add a site</Link>
+          <Link href={newSitePath}>Add a site</Link>
         </Button>
       ) : data.workspace.billingBlocked ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -253,10 +267,12 @@ function OverviewSites({
   data,
   pricingPath,
   normalCustomerDashboard,
+  dashboardLocale,
 }: {
   data: OverviewData;
   pricingPath: string;
   normalCustomerDashboard: boolean;
+  dashboardLocale: string | null;
 }) {
   const { sites, workspace } = data;
   const currentSites = normalCustomerDashboard ? workspace.activeSites : sites;
@@ -277,7 +293,7 @@ function OverviewSites({
         <CardContent className="flex flex-wrap gap-3">
           {workspace.canCreateSite ? (
             <Button asChild>
-              <Link href="/dashboard/sites/new">
+              <Link href={withDashboardLocale("/dashboard/sites/new", dashboardLocale)}>
                 {normalCustomerDashboard ? "Create website" : "Start onboarding"}
               </Link>
             </Button>
@@ -291,7 +307,9 @@ function OverviewSites({
             </Button>
           )}
           <Button asChild variant="outline">
-            <Link href="/dashboard/developer-tools">View API docs</Link>
+            <Link href={withDashboardLocale("/dashboard/developer-tools", dashboardLocale)}>
+              View API docs
+            </Link>
           </Button>
         </CardContent>
       </Card>

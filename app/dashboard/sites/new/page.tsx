@@ -11,7 +11,8 @@ import {
   isCustomerDashboardWorkspace,
   resolveDashboardWebsiteWorkspaceState,
 } from "@internal/dashboard/workspace";
-import { resolvePreferredLocale } from "@internal/i18n";
+import { withDashboardLocale } from "@internal/dashboard/locale-url";
+import { normalizeLocale, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata = {
@@ -19,10 +20,20 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function NewSitePage() {
+type NewSitePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function NewSitePage({ searchParams }: NewSitePageProps = {}) {
   const auth = await requireDashboardAuth();
   const billingBlocked = !auth.mutationsAllowed;
-  const locale = resolvePreferredLocale((await headers()).get("accept-language"));
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedDashboardLocale = getSingleSearchParam(resolvedSearchParams?.locale);
+  const dashboardLocale = requestedDashboardLocale
+    ? normalizeLocale(requestedDashboardLocale)
+    : null;
+  const locale =
+    dashboardLocale ?? resolvePreferredLocale((await headers()).get("accept-language"));
   const pricingPath = `/${locale}/pricing`;
   const isNormalCustomer = isCustomerDashboardWorkspace(auth);
   let sites: SiteSummary[] = [];
@@ -31,7 +42,7 @@ export default async function NewSitePage() {
   }
   const workspace = resolveDashboardWebsiteWorkspaceState(auth, sites);
   if (isNormalCustomer && workspace.kind === "single_current_website" && workspace.currentSite) {
-    redirect(`/dashboard/sites/${workspace.currentSite.id}`);
+    redirect(withDashboardLocale(`/dashboard/sites/${workspace.currentSite.id}`, dashboardLocale));
   }
   if (isNormalCustomer && workspace.kind === "duplicate_current_websites") {
     return (
@@ -45,7 +56,7 @@ export default async function NewSitePage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button asChild variant="secondary">
-            <Link href="/dashboard">Back to dashboard</Link>
+            <Link href={withDashboardLocale("/dashboard", dashboardLocale)}>Back to dashboard</Link>
           </Button>
           <Button asChild variant="outline">
             <a href="mailto:contact@weblingo.app?subject=Dashboard%20website%20workspace%20review">
@@ -86,7 +97,7 @@ export default async function NewSitePage() {
             <Link href={pricingPath}>{billingBlocked ? "Update billing" : "Upgrade plan"}</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard">Back to dashboard</Link>
+            <Link href={withDashboardLocale("/dashboard", dashboardLocale)}>Back to dashboard</Link>
           </Button>
         </CardContent>
       </Card>
@@ -112,7 +123,13 @@ export default async function NewSitePage() {
         maxLocales={maxLocales}
         supportedLanguages={supportedLanguages}
         displayLocale={displayLocale}
+        dashboardLocale={dashboardLocale}
       />
     </div>
   );
+}
+
+function getSingleSearchParam(value: string | string[] | undefined): string | null {
+  const resolved = Array.isArray(value) ? value[0] : value;
+  return resolved?.trim() || null;
 }
