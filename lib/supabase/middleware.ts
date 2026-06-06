@@ -223,10 +223,7 @@ function buildPublicDemoDashboardRewrite(
   }
 
   const response = NextResponse.rewrite(url);
-  for (const cookie of supabaseResponse?.cookies.getAll() ?? []) {
-    response.cookies.set(cookie);
-  }
-  return response;
+  return copySupabaseResponseCookies(response, supabaseResponse);
 }
 
 function buildDemoDashboardSessionResponse(request: NextRequest, supabaseResponse: NextResponse) {
@@ -236,8 +233,22 @@ function buildDemoDashboardSessionResponse(request: NextRequest, supabaseRespons
   if (locale) {
     requestHeaders.set(DASHBOARD_DEMO_LOCALE_HEADER, locale);
   }
+  const dashboardPathname = normalizeDashboardPathname(request.nextUrl.pathname);
+  if (dashboardPathname && dashboardPathname !== request.nextUrl.pathname) {
+    const url = request.nextUrl.clone();
+    url.pathname = dashboardPathname;
+    if (locale && !url.searchParams.has("locale")) {
+      url.searchParams.set("locale", locale);
+    }
+    const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    return copySupabaseResponseCookies(response, supabaseResponse);
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  for (const cookie of supabaseResponse.cookies.getAll()) {
+  return copySupabaseResponseCookies(response, supabaseResponse);
+}
+
+function copySupabaseResponseCookies(response: NextResponse, supabaseResponse?: NextResponse) {
+  for (const cookie of supabaseResponse?.cookies.getAll() ?? []) {
     response.cookies.set(cookie);
   }
   return response;

@@ -273,6 +273,17 @@ describe("SiteOverridesPage", () => {
       locales: [{ sourceLang: "fr", targetLang: "en" }],
     });
     mocks.fetchGlossary.mockResolvedValue([]);
+    mocks.resolveLocaleTranslator.mockResolvedValueOnce({
+      t: (key: string, fallback?: string) =>
+        ({
+          "dashboard.demo.examples.badge": "Localized example values",
+          "dashboard.site.overrides.demoGlossary.title": "Localized glossary",
+          "dashboard.site.overrides.demoGlossary.description":
+            "Localized demo glossary description.",
+        })[key] ??
+        fallback ??
+        key,
+    });
 
     vi.resetModules();
     const { default: SiteOverridesPage } = await import("./page");
@@ -293,8 +304,16 @@ describe("SiteOverridesPage", () => {
     expect(findElementPropsByComponentName(tree, "MockSlugForm")).toMatchObject({
       mode: "example",
       targetLangs: ["en"],
+      exampleBadgeLabel: "Localized example values",
     });
-    expect(findElementPropsByComponentName(tree, "ExampleValuesBadge")).not.toBeNull();
+    expect(findElementPropsByComponentName(tree, "MockOverrideForm")).toMatchObject({
+      exampleBadgeLabel: "Localized example values",
+    });
+    expect(findElementPropsByComponentName(tree, "ExampleValuesBadge")).toMatchObject({
+      label: "Localized example values",
+    });
+    expect(treeIncludesText(tree, "Localized glossary")).toBe(true);
+    expect(treeIncludesText(tree, "Localized demo glossary description.")).toBe(true);
     expect(mocks.fetchGlossary).toHaveBeenCalledWith(authToken, "site-1");
   });
 
@@ -381,4 +400,21 @@ function findElementPropsByComponentName(
   }
 
   return null;
+}
+
+function treeIncludesText(node: ReactNode, expected: string): boolean {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node) === expected;
+  }
+
+  if (Array.isArray(node)) {
+    return node.some((child) => treeIncludesText(child, expected));
+  }
+
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  const props = node.props as { children?: ReactNode };
+  return treeIncludesText(props.children, expected);
 }

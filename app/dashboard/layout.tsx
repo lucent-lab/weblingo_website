@@ -45,7 +45,7 @@ import {
   resolveDashboardWorkspaceAudience,
 } from "@internal/dashboard/workspace";
 import { getDashboardDemoSiteId } from "@internal/dashboard/demo-scope";
-import { resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
+import { normalizeLocale, resolveLocaleTranslator, resolvePreferredLocale } from "@internal/i18n";
 import type { SiteSummary } from "@internal/dashboard/webhooks";
 
 export const metadata: Metadata = {
@@ -62,6 +62,7 @@ type LayoutDemoScopeAuth = {
   accessMode?: DashboardAuth["accessMode"];
   demoSession?: { siteId: string } | null;
 };
+type DashboardHeaderReader = Pick<Headers, "get">;
 
 export function resolveLayoutSitesReader(isAgency: boolean): LayoutSitesReader {
   return isAgency ? listSitesCached : listSitesFresh;
@@ -137,6 +138,13 @@ export function resolveDashboardNavItems({
   ];
 }
 
+export function resolveDashboardShellLocale(requestHeaders: DashboardHeaderReader) {
+  const demoLocale = requestHeaders.get(DASHBOARD_DEMO_LOCALE_HEADER);
+  return demoLocale
+    ? normalizeLocale(demoLocale)
+    : resolvePreferredLocale(requestHeaders.get("accept-language"));
+}
+
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const requestHeaders = await headers();
   const auth = await getDashboardAuth();
@@ -152,7 +160,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     return children;
   }
 
-  const locale = resolvePreferredLocale(requestHeaders.get("accept-language"));
+  const locale = resolveDashboardShellLocale(requestHeaders);
   const { t } = await resolveLocaleTranslator(Promise.resolve({ locale }));
   const email = auth.user?.email ?? "—";
   const workspaceAudience = resolveDashboardWorkspaceAudience(auth);

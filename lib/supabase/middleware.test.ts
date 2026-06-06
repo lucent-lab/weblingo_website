@@ -139,7 +139,7 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
   });
 
-  it("lets opaque demo dashboard sessions reach locale-prefixed dashboard site pages", async () => {
+  it("rewrites opaque demo dashboard sessions from locale-prefixed dashboard site pages", async () => {
     const response = await updateSession(
       buildRequest("https://weblingo.app/en/dashboard/sites/site-demo", {
         headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
@@ -147,11 +147,45 @@ describe("updateSession", () => {
     );
 
     expect(response.headers.get("location")).toBeNull();
-    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://weblingo.app/dashboard/sites/site-demo?locale=en",
+    );
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-scope")).toBe("1");
     expect(response.headers.get("x-middleware-request-x-weblingo-dashboard-demo-locale")).toBe(
       "en",
     );
+  });
+
+  it("preserves Supabase refresh cookies when rewriting locale-prefixed demo dashboard sessions", async () => {
+    createServerClientMock.mockImplementation(((
+      _url: string,
+      _key: string,
+      options: SupabaseCookieBridge,
+    ) => ({
+      auth: {
+        getClaims: vi.fn(async () => {
+          options.cookies.setAll([
+            {
+              name: "sb-refresh-token",
+              value: "fresh-token",
+              options: { path: "/", httpOnly: true },
+            },
+          ]);
+          return { data: { claims: null } };
+        }),
+      },
+    })) as never);
+
+    const response = await updateSession(
+      buildRequest("https://weblingo.app/fr/dashboard/sites/site-demo", {
+        headers: { Cookie: "weblingo_dashboard_demo=opaque-session-id" },
+      }),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://weblingo.app/dashboard/sites/site-demo?locale=fr",
+    );
+    expect(response.cookies.get("sb-refresh-token")?.value).toBe("fresh-token");
   });
 
   it("marks explicit demo dashboard locale on scoped dashboard site pages", async () => {

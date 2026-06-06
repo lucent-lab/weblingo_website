@@ -97,6 +97,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
   const pageNavManualOverrides = t("dashboard.site.overrides.pageNav.manualOverrides");
   const pageNavLocalizedSlugs = t("dashboard.site.overrides.pageNav.localizedSlugs");
   const pageNavConsistencyGovernance = t("dashboard.site.overrides.pageNav.consistencyGovernance");
+  const demoExampleBadgeLabel = t("dashboard.demo.examples.badge", "Example values");
+  const demoGlossaryTitle = t("dashboard.site.overrides.demoGlossary.title", "Glossary");
+  const demoGlossaryDescription = t(
+    "dashboard.site.overrides.demoGlossary.description",
+    "Maintain terminology control for this scoped demo. Values shown here are inactive examples until activation.",
+  );
 
   let site: Site | null = null;
   let glossary: GlossaryEntry[] = [];
@@ -295,13 +301,10 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>Glossary</CardTitle>
-                <ExampleValuesBadge />
+                <CardTitle>{demoGlossaryTitle}</CardTitle>
+                <ExampleValuesBadge label={demoExampleBadgeLabel} />
               </div>
-              <CardDescription>
-                Maintain terminology control for this scoped demo. Values shown here are inactive
-                examples until activation.
-              </CardDescription>
+              <CardDescription>{demoGlossaryDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <GlossaryEditor
@@ -349,7 +352,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
       <div className="grid gap-4 md:grid-cols-2">
         <section id="manual-overrides" className="scroll-mt-24">
           {isDemoAccess ? (
-            <OverrideForm mode="example" siteId={site.id} targetLangs={targetLangs} />
+            <OverrideForm
+              exampleBadgeLabel={demoExampleBadgeLabel}
+              mode="example"
+              siteId={site.id}
+              targetLangs={targetLangs}
+            />
           ) : canOverrides ? (
             <OverrideForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
@@ -368,7 +376,12 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
         </section>
         <section id="localized-slugs" className="scroll-mt-24">
           {isDemoAccess ? (
-            <SlugForm mode="example" siteId={site.id} targetLangs={targetLangs} />
+            <SlugForm
+              exampleBadgeLabel={demoExampleBadgeLabel}
+              mode="example"
+              siteId={site.id}
+              targetLangs={targetLangs}
+            />
           ) : canSlugs ? (
             <SlugForm siteId={site.id} targetLangs={targetLangs} />
           ) : (
