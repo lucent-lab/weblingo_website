@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildNavigationAnalyticsProperties } from "./navigation";
+import { buildNavigationAnalyticsProperties, resolveDashboardRouteFeature } from "./navigation";
 
 describe("navigation analytics helpers", () => {
   it("builds a public navigation payload without query strings", () => {
@@ -118,5 +118,19 @@ describe("navigation analytics helpers", () => {
       page_type: "checkout_success",
       session_present: true,
     });
+  });
+
+  it("resolves site dashboard features from the shared route taxonomy", () => {
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]/pages")).toBe("crawl_pages");
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]/history")).toBe(
+      "deployment_history",
+    );
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]/domains")).toBe("domain_setup");
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]/source-selection")).toBe(
+      "source_selection",
+    );
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]/settings")).toBe("site_settings");
+    expect(resolveDashboardRouteFeature("/dashboard/sites/[id]")).toBe("site_overview");
+    expect(resolveDashboardRouteFeature(null)).toBe("site_unknown");
   });
 });

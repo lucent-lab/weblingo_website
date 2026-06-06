@@ -1,27 +1,15 @@
-import { i18nConfig } from "@internal/i18n";
-
 import { buildPageAnalyticsProperties, type AnalyticsProperties } from "./events";
+import {
+  cleanAnalyticsPathname,
+  resolveKnownAnalyticsLocale,
+  splitAnalyticsPathSegments,
+} from "./routes";
 
 type NavigationAnalyticsInput = {
   homePageVariant?: "classic" | "expansion";
   pathname: string | null;
   searchParams?: URLSearchParams | null;
 };
-
-const localeValues = new Set<string>(i18nConfig.locales);
-
-function cleanPathname(pathname: string | null): string {
-  if (!pathname) {
-    return "/";
-  }
-
-  const [withoutQuery] = pathname.split(/[?#]/, 1);
-  const normalized = `/${withoutQuery.replace(/^\/+/, "")}`
-    .replace(/\/{2,}/g, "/")
-    .replace(/\/$/, "");
-
-  return normalized || "/";
-}
 
 function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -200,14 +188,41 @@ function resolveRouteDetails({
   return { pageType: routeArea };
 }
 
+const DASHBOARD_ROUTE_FEATURE_SUFFIXES = [
+  ["/pages", "crawl_pages"],
+  ["/history", "deployment_history"],
+  ["/domains", "domain_setup"],
+  ["/source-selection", "source_selection"],
+  ["/overrides", "advanced_translation_controls"],
+  ["/consistency", "consistency_controls"],
+  ["/runtime-requests", "runtime_observation"],
+  ["/settings", "site_settings"],
+  ["/quality", "quality_controls"],
+  ["/developer-tools", "developer_tools"],
+] as const;
+
+export function resolveDashboardRouteFeature(routeTemplate?: string | null): string {
+  if (!routeTemplate) {
+    return "site_unknown";
+  }
+
+  for (const [suffix, feature] of DASHBOARD_ROUTE_FEATURE_SUFFIXES) {
+    if (routeTemplate.endsWith(suffix)) {
+      return feature;
+    }
+  }
+
+  return "site_overview";
+}
+
 export function buildNavigationAnalyticsProperties({
   homePageVariant,
   pathname,
   searchParams,
 }: NavigationAnalyticsInput): AnalyticsProperties {
-  const pagePath = cleanPathname(pathname);
-  const segments = pagePath.split("/").filter(Boolean);
-  const locale = localeValues.has(segments[0] ?? "") ? (segments[0] ?? null) : null;
+  const pagePath = cleanAnalyticsPathname(pathname);
+  const segments = splitAnalyticsPathSegments(pagePath);
+  const locale = resolveKnownAnalyticsLocale(segments);
   const dashboardRoute = segments[0] === "dashboard";
   const routeTemplate = dashboardRoute
     ? templateDashboardRoute(segments)

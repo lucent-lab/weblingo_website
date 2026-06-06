@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
+import { useActionSettledEffect } from "@internal/dashboard/use-action-settled-effect";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
@@ -148,7 +149,6 @@ export function SiteSettingsForm({
 }: SiteSettingsFormProps) {
   const [state, formAction, pending] = useActionState(updateSiteSettingsAction, initialState);
   const router = useRouter();
-  const wasPending = useRef(false);
   const [targets, setTargets] = useState<string[]>(() => initialTargets);
   const [aliasesByLang, setAliasesByLang] = useState<Record<string, string>>(() => {
     const entries = Object.entries(aliases).filter(
@@ -268,25 +268,24 @@ export function SiteSettingsForm({
     error: "Unable to update site settings.",
   });
 
-  useEffect(() => {
-    if (wasPending.current && !pending) {
-      const code = typeof state.meta?.code === "string" ? state.meta.code : null;
-      captureAnalyticsEvent(ANALYTICS_EVENTS.siteSettingSaved, {
-        site_id: siteId,
-        source_lang: sourceLang,
-        target_lang_count: targetLangs.length,
-        target_locale_count: targetLangs.length,
-        error_code: state.ok ? undefined : (code ?? "site_settings_save_failed"),
-        feature: "site_settings",
-        outcome: state.ok ? "succeeded" : "failed",
-        app_surface: "dashboard",
-      });
-      if (state.ok) {
-        router.refresh();
-      }
+  const handleSettingsSettled = useCallback(() => {
+    const code = typeof state.meta?.code === "string" ? state.meta.code : null;
+    captureAnalyticsEvent(ANALYTICS_EVENTS.siteSettingSaved, {
+      site_id: siteId,
+      source_lang: sourceLang,
+      target_lang_count: targetLangs.length,
+      target_locale_count: targetLangs.length,
+      error_code: state.ok ? undefined : (code ?? "site_settings_save_failed"),
+      feature: "site_settings",
+      outcome: state.ok ? "succeeded" : "failed",
+      app_surface: "dashboard",
+    });
+    if (state.ok) {
+      router.refresh();
     }
-    wasPending.current = pending;
-  }, [pending, router, siteId, sourceLang, state.meta, state.ok, targetLangs.length]);
+  }, [router, siteId, sourceLang, state.meta, state.ok, targetLangs.length]);
+
+  useActionSettledEffect(pending, handleSettingsSettled);
   const hasEditableSection =
     canEditBasics ||
     canEditLocales ||

@@ -1,3 +1,9 @@
+import {
+  cleanAnalyticsPathname,
+  hasAnalyticsPathSegment,
+  stripAnalyticsLocalePrefix,
+} from "./routes";
+
 type ReplaySurface =
   | "anonymous_marketing"
   | "checkout_layout"
@@ -29,17 +35,6 @@ const BLOCKED_SEGMENTS = [
   "translation",
 ] as const;
 
-function cleanPathname(pathname: string | null | undefined): string {
-  if (!pathname) {
-    return "/";
-  }
-  const [withoutQuery] = pathname.split(/[?#]/, 1);
-  const normalized = `/${withoutQuery.replace(/^\/+/, "")}`
-    .replace(/\/{2,}/g, "/")
-    .replace(/\/$/, "");
-  return normalized || "/";
-}
-
 function hasQueryString(pathname: string | null | undefined): boolean {
   if (typeof pathname !== "string") {
     return false;
@@ -53,28 +48,13 @@ function hasQueryString(pathname: string | null | undefined): boolean {
   return query.trim().length > 0;
 }
 
-function stripLocalePrefix(pathname: string): string {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] && /^[a-z]{2}(?:-[a-z0-9]{2,})?$/i.test(segments[0])) {
-    return `/${segments.slice(1).join("/")}` || "/";
-  }
-  return pathname;
-}
-
-function hasBlockedSegment(pathname: string): boolean {
-  const segments = pathname.split("/").filter(Boolean);
-  return segments.some((segment) =>
-    BLOCKED_SEGMENTS.includes(segment as (typeof BLOCKED_SEGMENTS)[number]),
-  );
-}
-
 export function resolveAnalyticsReplayPolicy(pathname: string | null | undefined) {
-  const cleaned = cleanPathname(pathname);
-  const unlocalized = stripLocalePrefix(cleaned);
+  const cleaned = cleanAnalyticsPathname(pathname);
+  const unlocalized = stripAnalyticsLocalePrefix(cleaned);
 
   if (
     BLOCKED_PREFIXES.some((prefix) => cleaned === prefix || cleaned.startsWith(`${prefix}/`)) ||
-    hasBlockedSegment(cleaned)
+    hasAnalyticsPathSegment(cleaned, BLOCKED_SEGMENTS)
   ) {
     return { allowed: false, surface: "blocked" } satisfies AnalyticsReplayPolicy;
   }

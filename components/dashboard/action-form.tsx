@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
@@ -10,6 +10,7 @@ import {
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "@internal/analytics/client";
+import { useActionSettledEffect } from "@internal/dashboard/use-action-settled-effect";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 
 type ActionFormProps = {
@@ -54,10 +55,8 @@ export function ActionForm({
     success,
     error,
   });
-  const wasPending = useRef(false);
-
-  useEffect(() => {
-    if (wasPending.current && !pending && analytics) {
+  const handleSettled = useCallback(() => {
+    if (analytics) {
       captureAnalyticsEvent(
         state.ok
           ? (analytics.successEvent ?? analytics.event)
@@ -71,7 +70,7 @@ export function ActionForm({
       );
     }
 
-    if (wasPending.current && !pending && state.ok) {
+    if (state.ok) {
       onSuccess?.(state);
 
       const redirectTo =
@@ -79,7 +78,6 @@ export function ActionForm({
 
       if (redirectTo) {
         router.push(redirectTo);
-        wasPending.current = pending;
         return;
       }
 
@@ -92,8 +90,9 @@ export function ActionForm({
         router.refresh();
       }
     }
-    wasPending.current = pending;
-  }, [analytics, pending, state, router, onSuccess, refreshOnSuccess]);
+  }, [analytics, onSuccess, refreshOnSuccess, router, state]);
+
+  useActionSettledEffect(pending, handleSettled);
 
   return (
     <form

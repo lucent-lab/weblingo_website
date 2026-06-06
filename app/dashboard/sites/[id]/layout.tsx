@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { DashboardSiteAnalyticsScope } from "@/components/dashboard/analytics-identity";
+import { DashboardSiteAnalyticsScope } from "@/components/dashboard/site-analytics-scope";
 import { requireDashboardAuth } from "@internal/dashboard/auth";
 import { DASHBOARD_DEMO_LOCALE_HEADER } from "@internal/dashboard/demo-session-constants";
 import { withDashboardLocale } from "@internal/dashboard/locale-url";

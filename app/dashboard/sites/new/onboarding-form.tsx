@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
 import { withDashboardLocale } from "@internal/dashboard/locale-url";
+import { useActionSettledEffect } from "@internal/dashboard/use-action-settled-effect";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import {
   WEBHOOK_EVENT_TYPES,
@@ -66,8 +67,6 @@ export function OnboardingForm(props: {
   const [webhookEvents, setWebhookEvents] = useState<NotifyWebhookEventType[]>([
     ...WEBHOOK_EVENT_TYPES,
   ]);
-  const wasPendingRef = useRef(false);
-
   useEffect(() => {
     const siteIdRaw = state.meta?.siteId;
     const siteId = typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
@@ -131,12 +130,7 @@ export function OnboardingForm(props: {
     error: "Unable to create website.",
   });
 
-  useEffect(() => {
-    if (!wasPendingRef.current || pending) {
-      wasPendingRef.current = pending;
-      return;
-    }
-
+  const handleCreateSettled = useCallback(() => {
     const siteId = typeof state.meta?.siteId === "string" ? state.meta.siteId : null;
     const code = typeof state.meta?.code === "string" ? state.meta.code : null;
     captureAnalyticsEvent(
@@ -152,8 +146,9 @@ export function OnboardingForm(props: {
         app_surface: "dashboard",
       },
     );
-    wasPendingRef.current = pending;
-  }, [pending, sourceLang, state.meta, state.ok, targetLangs.length]);
+  }, [sourceLang, state.meta, state.ok, targetLangs.length]);
+
+  useActionSettledEffect(pending, handleCreateSettled);
 
   return (
     <Card>
