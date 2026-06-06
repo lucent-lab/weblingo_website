@@ -19,9 +19,16 @@ const POSTHOG_URL_PROPERTIES = [
   "$initial_current_url",
   "$referrer",
   "$initial_referrer",
+  "$session_entry_url",
+  "$prev_pageview_url",
 ] as const;
 
-const POSTHOG_PATH_PROPERTIES = ["$pathname", "$initial_pathname"] as const;
+const POSTHOG_PATH_PROPERTIES = [
+  "$pathname",
+  "$initial_pathname",
+  "$session_entry_pathname",
+  "$prev_pageview_pathname",
+] as const;
 
 const POSTHOG_PROPERTY_DENYLIST = [
   "$current_url",

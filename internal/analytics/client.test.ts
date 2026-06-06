@@ -97,12 +97,16 @@ describe("client analytics helpers", () => {
       event: "weblingo_test_event",
       properties: {
         $current_url: "https://weblingo.app/dashboard?token=secret#billing",
+        $session_entry_url: "https://weblingo.app/error?message=secret&trace=NotARealPassword",
+        $prev_pageview_url: "https://weblingo.app/pricing?session_id=cs_secret_123",
         $referrer: "https://example.com/?email=person@example.com",
       },
       uuid: "test-event",
     });
 
     expect(sanitized?.properties.$current_url).toBe("https://weblingo.app/dashboard");
+    expect(sanitized?.properties.$session_entry_url).toBe("https://weblingo.app/error");
+    expect(sanitized?.properties.$prev_pageview_url).toBe("https://weblingo.app/pricing");
     expect(sanitized?.properties.$referrer).toBe("https://example.com/");
   });
 
@@ -120,7 +124,10 @@ describe("client analytics helpers", () => {
       properties: {
         $current_url: "https://weblingo.app/dashboard/sites/site_1234567890/settings?token=secret",
         $initial_current_url: "https://weblingo.app/dashboard/sites/site_1234567890/settings",
+        $session_entry_url: "https://weblingo.app/dashboard/sites/site_1234567890?token=secret",
         $pathname: "/dashboard/sites/site_1234567890/settings",
+        $session_entry_pathname: "/dashboard/sites/site_1234567890",
+        $prev_pageview_pathname: "/dashboard/sites/site_1234567890/pages",
         page_path: "/dashboard/sites/[id]/settings",
         route_template: "/dashboard/sites/[id]/settings",
       },
@@ -133,7 +140,12 @@ describe("client analytics helpers", () => {
     expect(sanitized?.properties.$initial_current_url).toBe(
       "https://weblingo.app/dashboard/sites/[id]/settings",
     );
+    expect(sanitized?.properties.$session_entry_url).toBe(
+      "https://weblingo.app/dashboard/sites/[id]/settings",
+    );
     expect(sanitized?.properties.$pathname).toBe("/dashboard/sites/[id]/settings");
+    expect(sanitized?.properties.$session_entry_pathname).toBe("/dashboard/sites/[id]/settings");
+    expect(sanitized?.properties.$prev_pageview_pathname).toBe("/dashboard/sites/[id]/settings");
   });
 
   it("adds safe canonical pageview URL properties when PostHog omits the raw URL", async () => {
