@@ -259,8 +259,9 @@ describe("DomainsPage", () => {
     expect(mocks.actionFormProps.map((props) => props.analytics)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          event: "domain_provisioned",
+          event: "domain_provision_requested",
           failureEvent: "domain_provision_failed",
+          successEvent: "domain_provisioned",
         }),
         expect.objectContaining({
           event: "domain_refresh_requested",

@@ -43,6 +43,7 @@ export const ANALYTICS_EVENTS = {
   domainVerificationStarted: "domain_verification_started",
   domainVerified: "domain_verified",
   domainVerificationFailed: "domain_verification_failed",
+  domainProvisionRequested: "domain_provision_requested",
   domainProvisioned: "domain_provisioned",
   domainProvisionFailed: "domain_provision_failed",
   domainRefreshRequested: "domain_refresh_requested",

@@ -47,6 +47,10 @@ describe("analytics replay policy", () => {
       allowed: false,
       surface: "blocked",
     });
+    expect(resolveAnalyticsReplayPolicy("/pricing?utm_source=newsletter")).toEqual({
+      allowed: false,
+      surface: "blocked",
+    });
     expect(resolveAnalyticsReplayPolicy("/contact")).toEqual({
       allowed: false,
       surface: "blocked",

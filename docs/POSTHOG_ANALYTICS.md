@@ -28,7 +28,7 @@ PostHog feature flags are frontend UI/advisory only. Backend policy, entitlement
 
 Replay is route-allowlisted in `internal/analytics/replay.ts`. Allowed surfaces are anonymous marketing pages, pre-submit try-flow pages, checkout layout pages, and rare sanitized support screens.
 
-Replay stays disabled on authenticated dashboard routes, preview-content pages, translation editing, runtime observation, glossary/override controls, admin routes, customer-content pages, raw lead/contact forms, API routes, and analytics proxy routes.
+Replay stays disabled on authenticated dashboard routes, preview-content pages, translation editing, runtime observation, glossary/override controls, admin routes, customer-content pages, raw lead/contact forms, query-bearing URLs, API routes, and analytics proxy routes.
 
 ## PostHog MCP And AI Workflows
 

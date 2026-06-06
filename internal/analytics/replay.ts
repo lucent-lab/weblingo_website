@@ -52,6 +52,10 @@ export function resolveAnalyticsReplayPolicy(pathname: string | null | undefined
   const cleaned = cleanAnalyticsPathname(pathname);
   const unlocalized = stripAnalyticsLocalePrefix(cleaned);
 
+  if (hasQueryString(pathname)) {
+    return { allowed: false, surface: "blocked" } satisfies AnalyticsReplayPolicy;
+  }
+
   if (
     BLOCKED_PREFIXES.some((prefix) => cleaned === prefix || cleaned.startsWith(`${prefix}/`)) ||
     hasAnalyticsPathSegment(cleaned, BLOCKED_SEGMENTS)
@@ -60,9 +64,6 @@ export function resolveAnalyticsReplayPolicy(pathname: string | null | undefined
   }
 
   if (unlocalized === "/checkout/success" || unlocalized === "/checkout/cancel") {
-    if (hasQueryString(pathname)) {
-      return { allowed: false, surface: "blocked" } satisfies AnalyticsReplayPolicy;
-    }
     return { allowed: true, surface: "checkout_layout" } satisfies AnalyticsReplayPolicy;
   }
 

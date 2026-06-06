@@ -36,6 +36,20 @@ function shouldSkipRecentNavigationCapture(key: string): boolean {
   return now - lastCapturedAt < strictModeDuplicateWindowMs;
 }
 
+function hashNavigationQuery(searchParams: URLSearchParams): string {
+  const query = searchParams.toString();
+  if (!query) {
+    return "none";
+  }
+
+  let hash = 2_166_136_261;
+  for (let index = 0; index < query.length; index += 1) {
+    hash ^= query.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 type NavigationAnalyticsTrackerProps = {
   homePageVariant?: "classic" | "expansion";
 };
@@ -50,8 +64,8 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
       return;
     }
 
-    const hasQuery = searchParams.toString() ? "1" : "0";
-    const captureKey = `${pathname}?query=${hasQuery}&session_id=${searchParams.has("session_id") ? "1" : "0"}`;
+    const querySignature = hashNavigationQuery(searchParams);
+    const captureKey = `${pathname}?query=${querySignature}&session_id=${searchParams.has("session_id") ? "1" : "0"}`;
     if (
       lastTrackedPathnameRef.current === captureKey ||
       shouldSkipRecentNavigationCapture(captureKey)
@@ -60,9 +74,7 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
     }
 
     lastTrackedPathnameRef.current = captureKey;
-    const replayPath = searchParams.toString()
-      ? `${pathname}?${searchParams.toString()}`
-      : pathname;
+    const replayPath = querySignature === "none" ? pathname : `${pathname}?query=present`;
     const properties = buildNavigationAnalyticsProperties({
       homePageVariant,
       pathname,

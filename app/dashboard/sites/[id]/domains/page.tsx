@@ -313,7 +313,8 @@ function DomainCard({
               icon={<ServerCog className="h-4 w-4" />}
               label="Provision domain"
               loading="Requesting provisioning..."
-              analyticsEvent={ANALYTICS_EVENTS.domainProvisioned}
+              analyticsEvent={ANALYTICS_EVENTS.domainProvisionRequested}
+              successEvent={ANALYTICS_EVENTS.domainProvisioned}
               failureEvent={ANALYTICS_EVENTS.domainProvisionFailed}
               domainStatus={domain.status}
               siteId={siteId}
