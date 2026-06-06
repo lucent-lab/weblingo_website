@@ -72,11 +72,27 @@ describe("navigation analytics helpers", () => {
     });
 
     expect(buildNavigationAnalyticsProperties({ pathname: "/fr/dashboard" })).toMatchObject({
-      dashboard_route: false,
+      dashboard_route: true,
       locale: "fr",
+      page_path: "/[locale]/dashboard",
       route_area: "dashboard",
       route_template: "/[locale]/dashboard",
     });
+  });
+
+  it("templates localized dashboard identifiers before capture", () => {
+    const properties = buildNavigationAnalyticsProperties({
+      pathname: "/fr/dashboard/sites/site-demo/settings",
+    });
+
+    expect(properties).toMatchObject({
+      dashboard_route: true,
+      locale: "fr",
+      page_path: "/[locale]/dashboard/sites/[id]/settings",
+      route_area: "dashboard",
+      route_template: "/[locale]/dashboard/sites/[id]/settings",
+    });
+    expect(JSON.stringify(properties)).not.toContain("site-demo");
   });
 
   it("keeps safe page-specific dimensions on the global navigation event", () => {

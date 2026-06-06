@@ -87,6 +87,11 @@ function templateDashboardRoute(segments: string[]): string {
   return `/${segments.map(normalizePublicSegment).join("/")}`;
 }
 
+function prefixLocalizedRouteTemplate(routeTemplate: string): string {
+  const segments = routeTemplate.replace(/^\/+/, "").split("/").filter(Boolean);
+  return `/${["[locale]", ...segments].join("/")}`;
+}
+
 function templateLocalizedRoute(segments: string[], locale: string | null): string {
   const templateSegments = segments.map(normalizePublicSegment);
   if (locale) {
@@ -223,9 +228,13 @@ export function buildNavigationAnalyticsProperties({
   const pagePath = cleanAnalyticsPathname(pathname);
   const segments = splitAnalyticsPathSegments(pagePath);
   const locale = resolveKnownAnalyticsLocale(segments);
-  const dashboardRoute = segments[0] === "dashboard";
+  const localizedDashboardRoute = locale !== null && segments[1] === "dashboard";
+  const dashboardSegments = localizedDashboardRoute ? segments.slice(1) : segments;
+  const dashboardRoute = dashboardSegments[0] === "dashboard";
   const routeTemplate = dashboardRoute
-    ? templateDashboardRoute(segments)
+    ? localizedDashboardRoute
+      ? prefixLocalizedRouteTemplate(templateDashboardRoute(dashboardSegments))
+      : templateDashboardRoute(dashboardSegments)
     : templateLocalizedRoute(segments, locale);
   const routeArea = resolveRouteArea(segments, locale);
   const routeDetails = resolveRouteDetails({

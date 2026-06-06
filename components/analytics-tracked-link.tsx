@@ -39,7 +39,7 @@ export const AnalyticsTrackedLink = forwardRef<HTMLAnchorElement, AnalyticsTrack
         return;
       }
 
-      captureAnalyticsEvent(event, analyticsProperties);
+      captureAnalyticsEvent(event, analyticsProperties, { sendInstantly: true });
     };
 
     if (shouldRenderExternalLink(href, external)) {

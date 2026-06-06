@@ -43,9 +43,13 @@ describe("AnalyticsTrackedLink", () => {
 
     fireEvent.click(screen.getByText("Start free"), { button: 0 });
 
-    expect(captureAnalyticsEventMock).toHaveBeenCalledWith("pricing_cta_clicked", {
-      cta_id: "pricing_final_start_free",
-    });
+    expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
+      "pricing_cta_clicked",
+      {
+        cta_id: "pricing_final_start_free",
+      },
+      { sendInstantly: true },
+    );
   });
 
   it("skips analytics when a consumer prevents default navigation", () => {
@@ -78,8 +82,12 @@ describe("AnalyticsTrackedLink", () => {
 
     fireEvent.click(screen.getByText("Contact sales"), { button: 0 });
 
-    expect(captureAnalyticsEventMock).toHaveBeenCalledWith("pricing_cta_clicked", {
-      cta_id: "pricing_header_contact",
-    });
+    expect(captureAnalyticsEventMock).toHaveBeenCalledWith(
+      "pricing_cta_clicked",
+      {
+        cta_id: "pricing_header_contact",
+      },
+      { sendInstantly: true },
+    );
   });
 });
