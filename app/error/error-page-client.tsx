@@ -15,7 +15,7 @@ export default function ErrorPageClient() {
   const message = searchParams.get("message");
   const trace = searchParams.get("trace");
   const isProd = process.env.NODE_ENV === "production";
-  const capturedError = useRef(false);
+  const capturedErrorKey = useRef<string | null>(null);
 
   const errorView = useMemo(
     () =>
@@ -43,8 +43,9 @@ export default function ErrorPageClient() {
   }, [trace, isProd]);
 
   useEffect(() => {
-    if (!capturedError.current) {
-      capturedError.current = true;
+    const errorKey = buildErrorCaptureKey(message, trace);
+    if (capturedErrorKey.current !== errorKey) {
+      capturedErrorKey.current = errorKey;
       captureAnalyticsEvent(ANALYTICS_EVENTS.appErrorViewed, {
         app_surface: "marketing",
         error_name: "Error",
@@ -71,7 +72,7 @@ export default function ErrorPageClient() {
     if (safeTrace) console.error("Trace:", safeTrace);
     console.info("Context:", context);
     console.groupEnd();
-  }, [isProd, message, safeTrace, searchParams]);
+  }, [isProd, message, safeTrace, searchParams, trace]);
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col gap-6 px-4 py-12">
@@ -113,4 +114,21 @@ export default function ErrorPageClient() {
       </ErrorStateCard>
     </div>
   );
+}
+
+function buildErrorCaptureKey(message: string | null, trace: string | null): string {
+  return `${hashErrorCapturePart(message)}:${hashErrorCapturePart(trace)}`;
+}
+
+function hashErrorCapturePart(value: string | null): string {
+  if (value === null) {
+    return "null";
+  }
+
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(36);
 }

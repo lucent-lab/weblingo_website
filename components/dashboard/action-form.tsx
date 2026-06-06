@@ -67,6 +67,7 @@ export function ActionForm({
             !state.ok && typeof state.meta?.code === "string" ? state.meta.code : undefined,
           outcome: state.ok ? "succeeded" : "failed",
         },
+        { sendInstantly: true },
       );
     }
 
@@ -105,10 +106,14 @@ export function ActionForm({
           return;
         }
         if (analytics) {
-          captureAnalyticsEvent(analytics.event, {
-            ...analytics.properties,
-            outcome: "submitted",
-          });
+          captureAnalyticsEvent(
+            analytics.event,
+            {
+              ...analytics.properties,
+              outcome: "submitted",
+            },
+            { sendInstantly: true },
+          );
         }
       }}
     >

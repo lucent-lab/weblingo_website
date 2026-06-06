@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
-import { render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActionResponse } from "@/app/dashboard/actions";
 
 const refreshSpy = vi.fn();
 const pushSpy = vi.fn();
+const analyticsMocks = vi.hoisted(() => ({
+  captureAnalyticsEvent: vi.fn(),
+}));
 
 let mockState: ActionResponse = { ok: false, message: "" };
 let mockPending = false;
@@ -24,6 +27,10 @@ vi.mock("@internal/dashboard/use-action-toast", () => ({
   useActionToast: ({ formAction }: { formAction: (formData: FormData) => unknown }) => formAction,
 }));
 
+vi.mock("@internal/analytics/client", () => ({
+  captureAnalyticsEvent: analyticsMocks.captureAnalyticsEvent,
+}));
+
 vi.mock("react", async () => {
   const actual = await vi.importActual<typeof import("react")>("react");
   return {
@@ -34,7 +41,10 @@ vi.mock("react", async () => {
 
 import { ActionForm } from "./action-form";
 
-function renderActionForm(extraProps?: { refreshOnSuccess?: boolean }) {
+function renderActionForm(extraProps?: {
+  analytics?: Parameters<typeof ActionForm>[0]["analytics"];
+  refreshOnSuccess?: boolean;
+}) {
   const action = async (
     prev: ActionResponse | undefined,
     formData: FormData,
@@ -55,6 +65,7 @@ function renderActionForm(extraProps?: { refreshOnSuccess?: boolean }) {
       loading="Loading"
       success="Success"
       error="Error"
+      analytics={extraProps?.analytics}
       refreshOnSuccess={extraProps?.refreshOnSuccess}
     >
       {children}
@@ -64,7 +75,12 @@ function renderActionForm(extraProps?: { refreshOnSuccess?: boolean }) {
 
 function completeAction(
   rerender: (ui: ReactNode) => void,
-  props?: { refreshOnSuccess?: boolean; meta?: Record<string, unknown> },
+  props?: {
+    analytics?: Parameters<typeof ActionForm>[0]["analytics"];
+    meta?: Record<string, unknown>;
+    ok?: boolean;
+    refreshOnSuccess?: boolean;
+  },
 ) {
   mockPending = true;
   mockState = { ok: false, message: "pending" };
@@ -74,6 +90,7 @@ function completeAction(
       loading="Loading"
       success="Success"
       error="Error"
+      analytics={props?.analytics}
       refreshOnSuccess={props?.refreshOnSuccess}
     >
       <button type="submit">Submit</button>
@@ -82,7 +99,7 @@ function completeAction(
 
   mockPending = false;
   mockState = {
-    ok: true,
+    ok: props?.ok ?? true,
     message: "done",
     meta: props?.meta,
   };
@@ -92,6 +109,7 @@ function completeAction(
       loading="Loading"
       success="Success"
       error="Error"
+      analytics={props?.analytics}
       refreshOnSuccess={props?.refreshOnSuccess}
     >
       <button type="submit">Submit</button>
@@ -102,9 +120,14 @@ function completeAction(
 beforeEach(() => {
   refreshSpy.mockReset();
   pushSpy.mockReset();
+  analyticsMocks.captureAnalyticsEvent.mockReset();
   formActionMock.mockReset();
   mockPending = false;
   mockState = { ok: false, message: "" };
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 describe("ActionForm refresh policy", () => {
@@ -135,5 +158,58 @@ describe("ActionForm refresh policy", () => {
     });
     expect(pushSpy).toHaveBeenCalledWith("/dashboard/sites/site-1");
     expect(refreshSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends submitted analytics immediately", () => {
+    const { container } = renderActionForm({
+      analytics: {
+        event: "site_setting_saved",
+        properties: {
+          site_id: "site-1",
+          feature: "site_settings",
+        },
+      },
+    });
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "site_setting_saved",
+      {
+        feature: "site_settings",
+        outcome: "submitted",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
+  });
+
+  it("sends settled analytics immediately before refresh or redirect", () => {
+    const analytics = {
+      event: "domain_provision_requested",
+      failureEvent: "domain_provision_failed",
+      properties: {
+        site_id: "site-1",
+        feature: "domain_setup",
+      },
+      successEvent: "domain_provisioned",
+    } as const;
+    const { rerender } = renderActionForm({ analytics });
+
+    completeAction(rerender, {
+      analytics,
+      meta: { refresh: true },
+    });
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "domain_provisioned",
+      {
+        feature: "domain_setup",
+        outcome: "succeeded",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
   });
 });

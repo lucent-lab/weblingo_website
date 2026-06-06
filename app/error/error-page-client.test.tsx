@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 
@@ -7,9 +7,11 @@ const { captureAnalyticsEvent } = vi.hoisted(() => ({
   captureAnalyticsEvent: vi.fn(),
 }));
 
+let searchParamString = "message=boom&trace=secret-trace";
+
 vi.mock("next/navigation", () => ({
   useSearchParams() {
-    return new URLSearchParams("message=boom&trace=secret-trace");
+    return new URLSearchParams(searchParamString);
   },
 }));
 
@@ -30,6 +32,11 @@ vi.mock("next/link", async () => {
 });
 
 describe("ErrorPageClient", () => {
+  beforeEach(() => {
+    captureAnalyticsEvent.mockReset();
+    searchParamString = "message=boom&trace=secret-trace";
+  });
+
   it("does not log query-param diagnostics in production", async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
@@ -64,5 +71,20 @@ describe("ErrorPageClient", () => {
     infoSpy.mockRestore();
     groupEndSpy.mockRestore();
     (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  });
+
+  it("tracks a new error signature while the boundary remains mounted", async () => {
+    vi.resetModules();
+    const { default: ErrorPageClient } = await import("./error-page-client");
+    const rendered = render(<ErrorPageClient />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEvent).toHaveBeenCalledTimes(1);
+
+    searchParamString = "message=second&trace=other-trace";
+    rendered.rerender(<ErrorPageClient />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEvent).toHaveBeenCalledTimes(2);
   });
 });
