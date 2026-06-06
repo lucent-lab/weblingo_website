@@ -61,6 +61,7 @@ import {
   validateSourceUrl,
 } from "@internal/dashboard/site-settings";
 import type { WebLingoFeature } from "@internal/dashboard/entitlements";
+import { ANALYTICS_EVENTS } from "@internal/analytics/events";
 
 export type ActionResponse = {
   ok: boolean;
@@ -1988,10 +1989,16 @@ export async function verifyDomainAction(
         ? `Domain verified: ${domain}. Activate the site to start crawling.`
         : `Domain verified: ${domain}. Crawl enqueued.`;
     if (updated.status === "verified") {
-      return succeeded(verifiedToast);
+      return succeeded(verifiedToast, {
+        analyticsEvent: ANALYTICS_EVENTS.domainVerified,
+        analyticsOutcome: "succeeded",
+      });
     }
     if (updated.status === "pending") {
-      return succeeded(`Domain verification pending: ${domain}.`);
+      return succeeded(`Domain verification pending: ${domain}.`, {
+        analyticsEvent: ANALYTICS_EVENTS.domainVerificationPending,
+        analyticsOutcome: "pending",
+      });
     }
     return failed(`Domain verification failed for ${domain}.`);
   } catch (error) {
@@ -2045,9 +2052,15 @@ export async function provisionDomainAction(
       return failed(`Provisioning failed for ${domain}.`);
     }
     if (updated.status === "verified") {
-      return succeeded(verifiedToast);
+      return succeeded(verifiedToast, {
+        analyticsEvent: ANALYTICS_EVENTS.domainProvisioned,
+        analyticsOutcome: "succeeded",
+      });
     }
-    return succeeded(`Provisioning requested for ${domain}.`);
+    return succeeded(`Provisioning requested for ${domain}.`, {
+      analyticsEvent: ANALYTICS_EVENTS.domainProvisionPending,
+      analyticsOutcome: "pending",
+    });
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;

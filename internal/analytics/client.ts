@@ -71,6 +71,7 @@ export {
   buildPreviewAnalyticsProperties,
   extractLinkTargetContext,
   extractPublicUrlContext,
+  isAnalyticsEventName,
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "./events";

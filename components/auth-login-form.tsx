@@ -67,13 +67,17 @@ export function AuthLoginForm({ redirectTo }: { redirectTo?: string | null } = {
             const nextIntent = submitter.dataset.intent;
             if (nextIntent === "login" || nextIntent === "signup") {
               setIntent(nextIntent);
-              captureAnalyticsEvent(ANALYTICS_EVENTS.authSubmitted, {
-                auth_action: nextIntent,
-                auth_method: "password",
-                feature: "dashboard_auth",
-                outcome: "submitted",
-                app_surface: "auth",
-              });
+              captureAnalyticsEvent(
+                ANALYTICS_EVENTS.authSubmitted,
+                {
+                  auth_action: nextIntent,
+                  auth_method: "password",
+                  feature: "dashboard_auth",
+                  outcome: "submitted",
+                  app_surface: "auth",
+                },
+                { sendInstantly: true },
+              );
             }
           }
         }}

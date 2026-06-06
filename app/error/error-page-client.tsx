@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
+import { hashAnalyticsKeyPart } from "@internal/analytics/error-key";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 
 export default function ErrorPageClient() {
@@ -117,18 +118,5 @@ export default function ErrorPageClient() {
 }
 
 function buildErrorCaptureKey(message: string | null, trace: string | null): string {
-  return `${hashErrorCapturePart(message)}:${hashErrorCapturePart(trace)}`;
-}
-
-function hashErrorCapturePart(value: string | null): string {
-  if (value === null) {
-    return "null";
-  }
-
-  let hash = 2_166_136_261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return (hash >>> 0).toString(36);
+  return `${hashAnalyticsKeyPart(message)}:${hashAnalyticsKeyPart(trace)}`;
 }

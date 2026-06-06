@@ -41,9 +41,11 @@ export const ANALYTICS_EVENTS = {
   siteCreateFailed: "site_create_failed",
   onboardingStepCompleted: "onboarding_step_completed",
   domainVerificationStarted: "domain_verification_started",
+  domainVerificationPending: "domain_verification_pending",
   domainVerified: "domain_verified",
   domainVerificationFailed: "domain_verification_failed",
   domainProvisionRequested: "domain_provision_requested",
+  domainProvisionPending: "domain_provision_pending",
   domainProvisioned: "domain_provisioned",
   domainProvisionFailed: "domain_provision_failed",
   domainRefreshRequested: "domain_refresh_requested",
@@ -71,6 +73,11 @@ export const ANALYTICS_EVENTS = {
 } as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
+const analyticsEventNameSet = new Set<string>(Object.values(ANALYTICS_EVENTS));
+
+export function isAnalyticsEventName(value: unknown): value is AnalyticsEventName {
+  return typeof value === "string" && analyticsEventNameSet.has(value);
+}
 
 export type AnalyticsPropertyValue = string | number | boolean | null | undefined;
 export type AnalyticsProperties = Record<string, AnalyticsPropertyValue>;

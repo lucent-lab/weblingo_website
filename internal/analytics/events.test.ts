@@ -8,6 +8,7 @@ import {
   buildPreviewAnalyticsProperties,
   extractLinkTargetContext,
   extractPublicUrlContext,
+  isAnalyticsEventName,
   sanitizeAnalyticsProperties,
 } from "./events";
 
@@ -47,6 +48,12 @@ describe("analytics events helpers", () => {
       locale: "en",
       status: "processing",
     });
+  });
+
+  it("recognizes only declared analytics event names", () => {
+    expect(isAnalyticsEventName("domain_provision_pending")).toBe(true);
+    expect(isAnalyticsEventName("provider_payload")).toBe(false);
+    expect(isAnalyticsEventName(null)).toBe(false);
   });
 
   it("rejects forbidden raw analytics property names", () => {

@@ -18,6 +18,10 @@ Allowed properties are explicit, low-cardinality product metadata such as intern
 
 Forbidden properties include raw PII, secrets, full URLs with query strings, customer content, source text, translated text, prompts, provider payloads, request bodies, and response bodies. Raw domains are treated as customer-identifying metadata: prefer status/presence fields unless a concrete analytics question requires a host value.
 
+## Event State Semantics
+
+Domain setup distinguishes submitted, pending, completed, and failed outcomes. `domain_verification_started` and `domain_provision_requested` are submit/request events. `domain_verification_pending` and `domain_provision_pending` mean the backend accepted the action but DNS or managed-hostname work is still pending. `domain_verified` and `domain_provisioned` are reserved for completed verified/provisioned states.
+
 ## Identity And Groups
 
 Authenticated dashboard sessions call `identify` with the internal user ID and safe account metadata. They also call `group("account", account_id)`. Site-scoped dashboard routes call `group("site", site_id)` with safe site/account metadata.

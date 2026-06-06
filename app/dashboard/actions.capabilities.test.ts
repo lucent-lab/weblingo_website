@@ -708,6 +708,33 @@ describe("dashboard capability actions", () => {
     }
   });
 
+  it("returns pending analytics metadata for pending domain verification and provisioning", async () => {
+    verifyDomain.mockResolvedValue({ domain: { status: "pending" } });
+    provisionDomain.mockResolvedValue({ domain: { status: "pending" } });
+    const { provisionDomainAction, verifyDomainAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("siteStatus", "active");
+    formData.set("domain", "fr.example.com");
+
+    await expect(verifyDomainAction(undefined, formData)).resolves.toEqual({
+      ok: true,
+      message: "Domain verification pending: fr.example.com.",
+      meta: {
+        analyticsEvent: "domain_verification_pending",
+        analyticsOutcome: "pending",
+      },
+    });
+    await expect(provisionDomainAction(undefined, formData)).resolves.toEqual({
+      ok: true,
+      message: "Provisioning requested for fr.example.com.",
+      meta: {
+        analyticsEvent: "domain_provision_pending",
+        analyticsOutcome: "pending",
+      },
+    });
+  });
+
   it("saves source-selection rules through the site PATCH payload", async () => {
     requireDashboardAuth.mockResolvedValue({
       account: { accountId: "acct-1", planType: "pro", featureFlags: {} },

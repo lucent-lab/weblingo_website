@@ -145,6 +145,7 @@ export function OnboardingForm(props: {
         outcome: state.ok ? "succeeded" : "failed",
         app_surface: "dashboard",
       },
+      { sendInstantly: true },
     );
   }, [sourceLang, state.meta, state.ok, targetLangs.length]);
 
@@ -160,15 +161,19 @@ export function OnboardingForm(props: {
           action={submitWithToast}
           className="relative"
           onSubmit={() => {
-            captureAnalyticsEvent(ANALYTICS_EVENTS.siteCreateStarted, {
-              source_lang: sourceLang || undefined,
-              target_lang_count: targetLangs.length,
-              target_locale_count: targetLangs.length,
-              form_id: "dashboard_site_onboarding",
-              feature: "site_creation",
-              outcome: "started",
-              app_surface: "dashboard",
-            });
+            captureAnalyticsEvent(
+              ANALYTICS_EVENTS.siteCreateStarted,
+              {
+                source_lang: sourceLang || undefined,
+                target_lang_count: targetLangs.length,
+                target_locale_count: targetLangs.length,
+                form_id: "dashboard_site_onboarding",
+                feature: "site_creation",
+                outcome: "started",
+                app_surface: "dashboard",
+              },
+              { sendInstantly: true },
+            );
           }}
         >
           <PendingOverlay />

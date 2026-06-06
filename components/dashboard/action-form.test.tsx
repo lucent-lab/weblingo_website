@@ -29,6 +29,8 @@ vi.mock("@internal/dashboard/use-action-toast", () => ({
 
 vi.mock("@internal/analytics/client", () => ({
   captureAnalyticsEvent: analyticsMocks.captureAnalyticsEvent,
+  isAnalyticsEventName: (value: unknown) =>
+    value === "domain_provision_pending" || value === "domain_provisioned",
 }));
 
 vi.mock("react", async () => {
@@ -211,5 +213,65 @@ describe("ActionForm refresh policy", () => {
       { sendInstantly: true },
     );
     expect(refreshSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses guarded action metadata for pending settled analytics", () => {
+    const analytics = {
+      event: "domain_provision_requested",
+      properties: {
+        site_id: "site-1",
+        feature: "domain_setup",
+      },
+      successEvent: "domain_provisioned",
+    } as const;
+    const { rerender } = renderActionForm({ analytics });
+
+    completeAction(rerender, {
+      analytics,
+      meta: {
+        analyticsEvent: "domain_provision_pending",
+        analyticsOutcome: "pending",
+      },
+    });
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "domain_provision_pending",
+      {
+        feature: "domain_setup",
+        outcome: "pending",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
+  });
+
+  it("ignores unknown metadata event names", () => {
+    const analytics = {
+      event: "domain_provision_requested",
+      properties: {
+        site_id: "site-1",
+        feature: "domain_setup",
+      },
+      successEvent: "domain_provisioned",
+    } as const;
+    const { rerender } = renderActionForm({ analytics });
+
+    completeAction(rerender, {
+      analytics,
+      meta: {
+        analyticsEvent: "provider_payload",
+        analyticsOutcome: "pending",
+      },
+    });
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "domain_provisioned",
+      {
+        feature: "domain_setup",
+        outcome: "succeeded",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
   });
 });

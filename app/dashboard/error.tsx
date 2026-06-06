@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { logout } from "@/app/auth/logout/actions";
-import { ANALYTICS_EVENTS, captureAnalyticsEvent } from "@internal/analytics/client";
+import {
+  ANALYTICS_EVENTS,
+  buildNavigationAnalyticsProperties,
+  captureAnalyticsEvent,
+} from "@internal/analytics/client";
+import { hashAnalyticsKeyPart } from "@internal/analytics/error-key";
 import { resolveDashboardErrorView } from "@internal/dashboard/error-state";
 import { createClientTranslator } from "@internal/i18n";
 import messages from "@internal/i18n/messages/en.json";
@@ -24,17 +29,19 @@ export default function DashboardError({
   reset: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const isProd = process.env.NODE_ENV === "production";
   const [showDetails, setShowDetails] = useState(!isProd);
   const t = useMemo(() => createClientTranslator(messages), []);
   const capturedErrorKey = useRef<string | null>(null);
+  const routeTemplate = useMemo(() => resolveDashboardErrorRouteTemplate(pathname), [pathname]);
 
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   useEffect(() => {
-    const errorKey = `${error.name}:${error.digest ?? "no-digest"}`;
+    const errorKey = buildDashboardErrorCaptureKey(error, routeTemplate);
     if (capturedErrorKey.current === errorKey) {
       return;
     }
@@ -45,9 +52,9 @@ export default function DashboardError({
       error_name: error.name || "Error",
       feature: "dashboard_error",
       handled: true,
-      route_template: "/dashboard",
+      route_template: routeTemplate,
     });
-  }, [error]);
+  }, [error, routeTemplate]);
 
   const errorView = useMemo(
     () =>
@@ -78,7 +85,7 @@ export default function DashboardError({
                   error_digest_present: Boolean(error.digest),
                   feature: "dashboard_error",
                   handled: true,
-                  route_template: "/dashboard",
+                  route_template: routeTemplate,
                 });
                 reset();
               }}
@@ -119,4 +126,19 @@ export default function DashboardError({
       </ErrorStateCard>
     </div>
   );
+}
+
+function resolveDashboardErrorRouteTemplate(pathname: string | null): string {
+  const routeProperties = buildNavigationAnalyticsProperties({
+    pathname: pathname ?? "/dashboard",
+  });
+  const routeTemplate = routeProperties.route_template;
+  return typeof routeTemplate === "string" && routeTemplate.includes("/dashboard")
+    ? routeTemplate
+    : "/dashboard";
+}
+
+function buildDashboardErrorCaptureKey(error: DashboardError, routeTemplate: string): string {
+  const digestOrMessage = error.digest ?? hashAnalyticsKeyPart(error.message);
+  return `${routeTemplate}:${error.name || "Error"}:${digestOrMessage}`;
 }

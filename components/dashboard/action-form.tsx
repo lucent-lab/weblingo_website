@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { ActionResponse } from "@/app/dashboard/actions";
 import {
   captureAnalyticsEvent,
+  isAnalyticsEventName,
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "@internal/analytics/client";
@@ -32,6 +33,39 @@ type ActionFormProps = {
 };
 
 const initialState: ActionResponse = { ok: false, message: "" };
+const SETTLED_ANALYTICS_OUTCOMES = ["pending", "succeeded"] as const;
+type SettledAnalyticsOutcome = (typeof SETTLED_ANALYTICS_OUTCOMES)[number];
+
+function readSettledAnalyticsEvent(
+  state: ActionResponse,
+  analytics: NonNullable<ActionFormProps["analytics"]>,
+): AnalyticsEventName {
+  const metaEvent = state.ok ? state.meta?.analyticsEvent : null;
+  if (isAnalyticsEventName(metaEvent)) {
+    return metaEvent;
+  }
+
+  return state.ok
+    ? (analytics.successEvent ?? analytics.event)
+    : (analytics.failureEvent ?? analytics.event);
+}
+
+function readSettledAnalyticsOutcome(state: ActionResponse): string {
+  const metaEvent = state.meta?.analyticsEvent;
+  const metaOutcome = state.meta?.analyticsOutcome;
+  if (state.ok && isAnalyticsEventName(metaEvent) && isSettledAnalyticsOutcome(metaOutcome)) {
+    return metaOutcome;
+  }
+
+  return state.ok ? "succeeded" : "failed";
+}
+
+function isSettledAnalyticsOutcome(value: unknown): value is SettledAnalyticsOutcome {
+  return (
+    typeof value === "string" &&
+    SETTLED_ANALYTICS_OUTCOMES.includes(value as SettledAnalyticsOutcome)
+  );
+}
 
 export function ActionForm({
   action,
@@ -58,14 +92,12 @@ export function ActionForm({
   const handleSettled = useCallback(() => {
     if (analytics) {
       captureAnalyticsEvent(
-        state.ok
-          ? (analytics.successEvent ?? analytics.event)
-          : (analytics.failureEvent ?? analytics.event),
+        readSettledAnalyticsEvent(state, analytics),
         {
           ...analytics.properties,
           error_code:
             !state.ok && typeof state.meta?.code === "string" ? state.meta.code : undefined,
-          outcome: state.ok ? "succeeded" : "failed",
+          outcome: readSettledAnalyticsOutcome(state),
         },
         { sendInstantly: true },
       );
