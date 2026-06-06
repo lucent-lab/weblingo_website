@@ -45,6 +45,7 @@ export function SiteHeader({
   const nextStatus = isActive ? "inactive" : "active";
   const toggleLabel = isActive ? deactivateLabel : reactivateLabel;
   const showInlineActivate = !isActive && (canToggleStatus || canEdit);
+  const dashboardHref = withDashboardLocale("/dashboard", dashboardLocale);
   const settingsHref = withDashboardLocale(`/dashboard/sites/${site.id}/settings`, dashboardLocale);
 
   return (
@@ -115,7 +116,7 @@ export function SiteHeader({
           </Link>
         </Button>
         <Button asChild variant="link">
-          <Link href="/dashboard" title="Back to dashboard">
+          <Link href={dashboardHref} title="Back to dashboard">
             Back to dashboard
           </Link>
         </Button>

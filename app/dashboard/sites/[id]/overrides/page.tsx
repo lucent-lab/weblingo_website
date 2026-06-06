@@ -193,7 +193,9 @@ export default async function SiteOverridesPage({ params, searchParams }: SiteOv
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/dashboard">Dashboard home</Link>
+                <Link href={localizeDashboardRouteHref("/dashboard", dashboardLocale)!}>
+                  Dashboard home
+                </Link>
               </Button>
               <Button asChild variant="ghost">
                 <a href="mailto:contact@weblingo.app?subject=Dashboard%20translation%20rules%20unavailable">

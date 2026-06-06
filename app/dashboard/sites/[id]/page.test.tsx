@@ -279,6 +279,9 @@ describe("SitePage", () => {
     expect(screen.getAllByRole("link", { name: "Pages" })[0]?.getAttribute("href")).toBe(
       "/dashboard/sites/site-1/pages?locale=fr",
     );
+    expect(screen.getByRole("link", { name: "Back to dashboard" }).getAttribute("href")).toBe(
+      "/dashboard?locale=fr",
+    );
   });
 
   it("renders demo scoped auth on the real site page", async () => {

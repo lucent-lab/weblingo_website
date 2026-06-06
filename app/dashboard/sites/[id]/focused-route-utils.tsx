@@ -52,7 +52,7 @@ export function localizeDashboardRouteHref(
   href: string | null,
   dashboardLocale: string | null | undefined,
 ): string | null {
-  if (!href || !href.startsWith("/dashboard/sites/")) {
+  if (!href || (href !== "/dashboard" && !href.startsWith("/dashboard/"))) {
     return href;
   }
   return withDashboardLocale(href, dashboardLocale);
@@ -111,6 +111,8 @@ export function FocusedRouteErrorState({
   const localizedSiteHref = siteId
     ? localizeDashboardRouteHref(`/dashboard/sites/${siteId}`, dashboardLocale)
     : null;
+  const localizedDashboardHref =
+    localizeDashboardRouteHref("/dashboard", dashboardLocale) ?? "/dashboard";
   return (
     <ErrorStateCard
       title={errorView.title}
@@ -133,7 +135,7 @@ export function FocusedRouteErrorState({
             </Button>
           ) : null}
           <Button asChild variant="outline">
-            <Link href="/dashboard">
+            <Link href={localizedDashboardHref}>
               <Home className="h-4 w-4" aria-hidden="true" />
               Dashboard home
             </Link>

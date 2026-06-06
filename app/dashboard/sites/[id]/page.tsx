@@ -113,7 +113,9 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
                 label="Retry overview"
               />
               <Button asChild variant="outline">
-                <Link href="/dashboard">Dashboard home</Link>
+                <Link href={localizeDashboardRouteHref("/dashboard", dashboardLocale)!}>
+                  Dashboard home
+                </Link>
               </Button>
               <Button asChild variant="ghost">
                 <a href="mailto:contact@weblingo.app?subject=Dashboard%20site%20overview%20unavailable">
@@ -250,7 +252,9 @@ export default async function SitePage({ params, searchParams }: SitePageProps) 
             </Link>
           </Button>
           <Button asChild variant="link">
-            <Link href="/dashboard">Back to dashboard</Link>
+            <Link href={localizeDashboardRouteHref("/dashboard", dashboardLocale)!}>
+              Back to dashboard
+            </Link>
           </Button>
         </div>
       </div>

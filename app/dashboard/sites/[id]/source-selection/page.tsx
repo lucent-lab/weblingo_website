@@ -131,7 +131,9 @@ export default async function SourceSelectionPage({
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/dashboard">Dashboard home</Link>
+                <Link href={localizeDashboardRouteHref("/dashboard", dashboardLocale)!}>
+                  Dashboard home
+                </Link>
               </Button>
               <Button asChild variant="ghost">
                 <a href="mailto:contact@weblingo.app?subject=Dashboard%20source%20selection%20unavailable">

@@ -169,7 +169,9 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/dashboard">Dashboard home</Link>
+                <Link href={localizeDashboardRouteHref("/dashboard", dashboardLocale)!}>
+                  Dashboard home
+                </Link>
               </Button>
               <Button asChild variant="ghost">
                 <a href="mailto:contact@weblingo.app?subject=Dashboard%20pages%20unavailable">
