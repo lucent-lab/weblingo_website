@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     );
     captureServerException(error, {
       source: "waitlist_rate_limit",
+      route_area: "api",
       route_template: "/api/waitlist",
     });
     return NextResponse.json(
@@ -152,6 +153,8 @@ export async function POST(request: NextRequest) {
     });
     captureServerException(error, {
       source: "waitlist_upsert",
+      route_area: "api",
+      route_template: "/api/waitlist",
       source_host: sourceHost,
       source_path: sourcePath,
     });

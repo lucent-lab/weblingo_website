@@ -124,7 +124,11 @@ describe("POST /api/waitlist", () => {
       });
       expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
         error,
-        expect.objectContaining({ source: "waitlist_rate_limit" }),
+        expect.objectContaining({
+          route_area: "api",
+          route_template: "/api/waitlist",
+          source: "waitlist_rate_limit",
+        }),
       );
     } finally {
       logSpy.mockRestore();
@@ -186,6 +190,41 @@ describe("POST /api/waitlist", () => {
         site_url_present: false,
       }),
       expect.objectContaining({ distinctId: "waitlist_signup:hashed" }),
+    );
+  });
+
+  it("captures API route metadata when waitlist upsert fails", async () => {
+    rateLimitFixedWindow.mockResolvedValueOnce({
+      allowed: true,
+      limit: 100,
+      remaining: 99,
+      resetAtMs: Date.now() + 1000,
+      current: 1,
+      key: "k",
+    });
+
+    const error = { message: "database unavailable" };
+    const single = vi.fn(async () => ({
+      data: null,
+      error,
+    }));
+    const select = vi.fn(() => ({ single }));
+    const upsert = vi.fn(() => ({ select }));
+    const from = vi.fn(() => ({ upsert }));
+    createServiceRoleClient.mockReturnValue({ from });
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest({ email: "a@example.com" }));
+
+    expect(response.status).toBe(500);
+    expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+      error,
+      expect.objectContaining({
+        route_area: "api",
+        route_template: "/api/waitlist",
+        source: "waitlist_upsert",
+      }),
     );
   });
 });
