@@ -28,6 +28,24 @@ Authenticated dashboard sessions call `identify` with the internal user ID and s
 
 PostHog feature flags are frontend UI/advisory only. Backend policy, entitlement, limits, and billing truth must continue to come from Supabase/backend contracts.
 
+## Backend-Produced Events
+
+The backend may send request-bound product events from `webhooks-worker` only. Event names still live in this website catalog so the vocabulary does not drift between repos.
+
+Backend-produced events use explicit low-cardinality properties such as `request_id`, `route_id`, `status_code`, account/site IDs, plan/status enums, counts, booleans, and stable `error_code` values. They must not include Cloudflare request metadata, raw domains, raw URLs, query strings, emails, invite links, verification tokens, source/translated text, prompts, provider payloads, request bodies, or response bodies.
+
+`preview_feedback_submitted` may include `preview_id`, `preview_status`, and `preview_feedback_channel`; it must not include free-text feedback, ratings comments, contact details, request bodies, or preview URLs.
+
+`serve-worker` and translated serving hot paths must not call PostHog.
+
+## Flags, Experiments, Surveys, And Annotations
+
+Feature flags and experiments are limited to frontend presentation choices such as onboarding copy/order, DNS helper copy, pricing CTA copy, preview status layout, and dashboard beta controls. They are advisory UI inputs only and must not decide backend policy, entitlements, quotas, serving, queueing, publishing, or translation behavior.
+
+Surveys should be constrained-choice by default after preview failure, DNS failure, first publish, checkout cancel, or quota-limit moments. Free-text survey responses are PII-bearing and require a separate sanitizer and retention decision before use.
+
+Product annotations are manual or reviewed operator actions for deploys, major dashboard refactors, feature-flag launches, experiment launches, and pricing changes. Runtime code should not create annotations automatically.
+
 ## Replay
 
 Replay is route-allowlisted in `internal/analytics/replay.ts`. Allowed surfaces are anonymous marketing pages, pre-submit try-flow pages, checkout layout pages, and rare sanitized support screens.
