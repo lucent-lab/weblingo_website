@@ -67,6 +67,7 @@ export const ANALYTICS_EVENTS = {
   translationRunCancelled: "translation_run_cancelled",
   translationRunRetried: "translation_run_retried",
   translationRunResumed: "translation_run_resumed",
+  translationRunTerminalFailed: "translation_run_terminal_failed",
   sourceSelectionSaved: "source_selection_saved",
   glossaryUpdated: "glossary_updated",
   overrideCreated: "override_created",
@@ -127,6 +128,7 @@ export const BACKEND_PRODUCED_ANALYTICS_EVENTS = [
   ANALYTICS_EVENTS.translationRunCancelled,
   ANALYTICS_EVENTS.translationRunResumed,
   ANALYTICS_EVENTS.translationRunStarted,
+  ANALYTICS_EVENTS.translationRunTerminalFailed,
 ] as const satisfies readonly AnalyticsEventName[];
 
 export function isAnalyticsEventName(value: unknown): value is AnalyticsEventName {

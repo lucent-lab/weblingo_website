@@ -41,7 +41,7 @@ function readSettledAnalyticsEvent(
   state: ActionResponse,
   analytics: NonNullable<ActionFormProps["analytics"]>,
 ): AnalyticsEventName {
-  const metaEvent = state.ok ? state.meta?.analyticsEvent : null;
+  const metaEvent = state.meta?.analyticsEvent;
   if (isAnalyticsEventName(metaEvent)) {
     return metaEvent;
   }

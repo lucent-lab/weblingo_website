@@ -30,7 +30,9 @@ vi.mock("@internal/dashboard/use-action-toast", () => ({
 vi.mock("@internal/analytics/client", () => ({
   captureAnalyticsEvent: analyticsMocks.captureAnalyticsEvent,
   isAnalyticsEventName: (value: unknown) =>
-    value === "domain_provision_pending" || value === "domain_provisioned",
+    value === "crawl_trigger_failed" ||
+    value === "domain_provision_pending" ||
+    value === "domain_provisioned",
 }));
 
 vi.mock("react", async () => {
@@ -267,6 +269,37 @@ describe("ActionForm refresh policy", () => {
       {
         feature: "domain_setup",
         outcome: "pending",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
+  });
+
+  it("uses guarded action metadata for failed settled analytics", () => {
+    const analytics = {
+      event: "crawl_triggered",
+      properties: {
+        site_id: "site-1",
+        feature: "site_crawl",
+      },
+    } as const;
+    const { rerender } = renderActionForm({ analytics });
+
+    completeAction(rerender, {
+      analytics,
+      ok: false,
+      meta: {
+        analyticsEvent: "crawl_trigger_failed",
+        code: "crawl_enqueue_failed",
+      },
+    });
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "crawl_trigger_failed",
+      {
+        error_code: "crawl_enqueue_failed",
+        feature: "site_crawl",
+        outcome: "failed",
         site_id: "site-1",
       },
       { sendInstantly: true },

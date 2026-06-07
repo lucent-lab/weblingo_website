@@ -168,6 +168,26 @@ function toFriendlyDashboardActionError(error: unknown, fallback: string): strin
   return fallback;
 }
 
+function buildCrawlTriggerFailureMeta(error: unknown): Record<string, unknown> | undefined {
+  if (
+    error instanceof WebhooksApiError &&
+    readDashboardErrorCode(error) === "crawl_enqueue_failed"
+  ) {
+    return {
+      analyticsEvent: ANALYTICS_EVENTS.crawlTriggerFailed,
+      code: "crawl_enqueue_failed",
+    };
+  }
+  return undefined;
+}
+
+function buildCrawlStatusFailureMeta(): Record<string, unknown> {
+  return {
+    analyticsEvent: ANALYTICS_EVENTS.crawlTriggerFailed,
+    code: "crawl_enqueue_failed",
+  };
+}
+
 function toTranslateAndServeError(error: unknown, fallback: string): string {
   if (error instanceof WebhooksApiError && error.status === 409) {
     const message = error.message.toLowerCase();
@@ -327,6 +347,7 @@ async function runSiteMutation<T>(options: {
   mutate: (auth: WebhooksAuthContext) => Promise<T>;
   onSuccess: (result: T) => ActionResponse;
   formatError?: (error: unknown, fallback: string) => string;
+  formatFailureMeta?: (error: unknown) => Record<string, unknown> | undefined;
 }): Promise<ActionResponse> {
   try {
     const mutationAuth = await requireDashboardMutationAuth({
@@ -352,9 +373,11 @@ async function runSiteMutation<T>(options: {
       throw error;
     }
     console.error(`[dashboard] ${options.logLabel} failed:`, error);
-    return failed(
-      (options.formatError ?? toFriendlyDashboardActionError)(error, options.fallbackError),
+    const message = (options.formatError ?? toFriendlyDashboardActionError)(
+      error,
+      options.fallbackError,
     );
+    return failed(message, options.formatFailureMeta?.(error));
   }
 }
 
@@ -1494,10 +1517,11 @@ export async function triggerCrawlAction(
         return succeeded("Crawl enqueued.");
       }
       if (status.error) {
-        return failed(status.error);
+        return failed(status.error, buildCrawlStatusFailureMeta());
       }
       return succeeded("Crawl is already queued.");
     },
+    formatFailureMeta: buildCrawlTriggerFailureMeta,
   });
 }
 
@@ -1952,10 +1976,11 @@ export async function triggerPageCrawlAction(
         return succeeded("Page crawl enqueued.");
       }
       if (status.error) {
-        return failed(status.error);
+        return failed(status.error, buildCrawlStatusFailureMeta());
       }
       return succeeded("Page crawl is already queued.");
     },
+    formatFailureMeta: buildCrawlTriggerFailureMeta,
   });
 }
 

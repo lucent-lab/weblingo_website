@@ -1473,6 +1473,50 @@ describe("dashboard capability actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/sites/site-demo/pages");
   });
 
+  it("returns crawl failure analytics metadata for stable backend enqueue failures", async () => {
+    triggerCrawl.mockRejectedValue(
+      new MockWebhooksApiError("crawl queue failed", 502, {
+        code: "crawl_enqueue_failed",
+      }),
+    );
+    const { triggerCrawlAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+
+    const result = await triggerCrawlAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "The dashboard service is unavailable right now.",
+      meta: {
+        analyticsEvent: "crawl_trigger_failed",
+        code: "crawl_enqueue_failed",
+      },
+    });
+  });
+
+  it("returns page crawl failure analytics metadata for defensive failed status bodies", async () => {
+    triggerPageCrawl.mockResolvedValue({
+      enqueued: false,
+      error: "crawl queue failed",
+    });
+    const { triggerPageCrawlAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("pageId", "page-1");
+
+    const result = await triggerPageCrawlAction(undefined, formData);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "crawl queue failed",
+      meta: {
+        analyticsEvent: "crawl_trigger_failed",
+        code: "crawl_enqueue_failed",
+      },
+    });
+  });
+
   it("rejects managed demo creation when locale aliases are invalid", async () => {
     parseLocaleAliases.mockReturnValue("Locale aliases are invalid.");
 
