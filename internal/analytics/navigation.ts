@@ -11,6 +11,53 @@ type NavigationAnalyticsInput = {
   searchParams?: URLSearchParams | null;
 };
 
+const NAVIGATION_SEMANTIC_QUERY_KEYS = [
+  "locale",
+  "sourceLang",
+  "targetLang",
+  "historyType",
+  "page",
+  "runsPage",
+  "deploymentsPage",
+] as const;
+
+type NavigationQueryParams = Pick<URLSearchParams, "get" | "has" | "toString">;
+
+export function buildNavigationQueryCaptureKey(
+  searchParams: NavigationQueryParams | null | undefined,
+): string {
+  const serialized = searchParams?.toString() ?? "";
+  if (!serialized || !searchParams) {
+    return "none";
+  }
+
+  const parts: string[] = [];
+  for (const key of NAVIGATION_SEMANTIC_QUERY_KEYS) {
+    const value = normalizeNavigationQueryValue(key, searchParams.get(key));
+    if (value) {
+      parts.push(`${key}:${value}`);
+    }
+  }
+  if (searchParams.has("session_id")) {
+    parts.push("session_id:present");
+  }
+  return parts.length ? parts.join("|") : "present";
+}
+
+function normalizeNavigationQueryValue(key: string, value: string | null): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  if (key === "historyType") {
+    return trimmed === "runs" || trimmed === "deployments" ? trimmed : null;
+  }
+  if (key.endsWith("Page") || key === "page") {
+    return /^\d{1,4}$/.test(trimmed) ? trimmed : null;
+  }
+  return /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/i.test(trimmed) ? trimmed.toLowerCase() : null;
+}
+
 function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

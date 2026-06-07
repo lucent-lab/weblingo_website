@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   ANALYTICS_EVENTS,
   buildNavigationAnalyticsProperties,
+  buildNavigationQueryCaptureKey,
   captureAnalyticsEvent,
   groupAnalyticsSite,
 } from "@internal/analytics/client";
@@ -33,10 +34,15 @@ export function DashboardSiteAnalyticsScope({
   actingAsCustomer,
 }: DashboardSiteAnalyticsScopeProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const trackedRouteRef = useRef<string | null>(null);
+  const querySignature = useMemo(
+    () => buildNavigationQueryCaptureKey(searchParams),
+    [searchParams],
+  );
   const routeProperties = useMemo(
-    () => buildNavigationAnalyticsProperties({ pathname }),
-    [pathname],
+    () => buildNavigationAnalyticsProperties({ pathname, searchParams }),
+    [pathname, searchParams],
   );
 
   useEffect(() => {
@@ -68,6 +74,7 @@ export function DashboardSiteAnalyticsScope({
       siteId,
       routeTemplate,
       pathname,
+      querySignature,
       accountId,
       actorAccountId,
       actorRole,
@@ -104,6 +111,7 @@ export function DashboardSiteAnalyticsScope({
     workspaceAudience,
     actingAsCustomer,
     pathname,
+    querySignature,
     routeProperties,
   ]);
 

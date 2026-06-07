@@ -150,6 +150,29 @@ describe("NavigationAnalyticsTracker", () => {
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("beta");
   });
 
+  it("tracks allowlisted semantic query changes without sending raw query values", async () => {
+    pathname = "/dashboard/sites/site_1234567890/history";
+    searchParams = new URLSearchParams({ historyType: "runs", targetLang: "fr", runsPage: "1" });
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams({
+      historyType: "deployments",
+      targetLang: "de",
+      deploymentsPage: "2",
+    });
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
+    });
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("targetLang=fr");
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("targetLang=de");
+  });
+
   it("dedupes reordered query states without sending raw query values", async () => {
     pathname = "/en/blog/reordered-query";
     searchParams = new URLSearchParams([

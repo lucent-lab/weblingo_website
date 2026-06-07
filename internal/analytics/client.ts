@@ -82,7 +82,7 @@ export {
   type AnalyticsEventName,
   type AnalyticsProperties,
 } from "./events";
-export { buildNavigationAnalyticsProperties } from "./navigation";
+export { buildNavigationAnalyticsProperties, buildNavigationQueryCaptureKey } from "./navigation";
 export { resolveAnalyticsReplayPolicy, shouldSampleAnalyticsReplay } from "./replay";
 
 function normalizeAnalyticsText(value: string | null | undefined): string | null {

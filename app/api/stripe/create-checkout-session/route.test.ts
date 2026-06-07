@@ -99,7 +99,12 @@ describe("POST /api/stripe/create-checkout-session", () => {
       );
       expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
         expect.any(Error),
-        expect.objectContaining({ source: "stripe_create_checkout_session" }),
+        expect.objectContaining({
+          app_surface: "checkout",
+          route_area: "api",
+          route_template: "/api/stripe/create-checkout-session",
+          source: "stripe_create_checkout_session",
+        }),
         expect.any(Object),
       );
     } finally {
@@ -134,7 +139,12 @@ describe("POST /api/stripe/create-checkout-session", () => {
       );
       expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
         expect.any(Error),
-        expect.objectContaining({ source: "stripe_create_checkout_session" }),
+        expect.objectContaining({
+          app_surface: "checkout",
+          route_area: "api",
+          route_template: "/api/stripe/create-checkout-session",
+          source: "stripe_create_checkout_session",
+        }),
         expect.any(Object),
       );
     } finally {

@@ -7,6 +7,7 @@ import {
   ANALYTICS_EVENTS,
   captureAnalyticsEvent,
   buildNavigationAnalyticsProperties,
+  buildNavigationQueryCaptureKey,
   syncAnalyticsSessionReplayForPath,
 } from "@internal/analytics/client";
 
@@ -36,11 +37,6 @@ function shouldSkipRecentNavigationCapture(key: string): boolean {
   return now - lastCapturedAt < strictModeDuplicateWindowMs;
 }
 
-function buildQueryCaptureKey(searchParams: Pick<URLSearchParams, "toString">): string {
-  const serialized = searchParams.toString();
-  return serialized ? "present" : "none";
-}
-
 type NavigationAnalyticsTrackerProps = {
   homePageVariant?: "classic" | "expansion";
 };
@@ -55,7 +51,7 @@ export function NavigationAnalyticsTracker({ homePageVariant }: NavigationAnalyt
       return;
     }
 
-    const querySignature = buildQueryCaptureKey(searchParams);
+    const querySignature = buildNavigationQueryCaptureKey(searchParams);
     const captureKey = `${pathname}?query=${querySignature}&session_id=${searchParams.has("session_id") ? "1" : "0"}`;
     if (
       lastTrackedPathnameRef.current === captureKey ||

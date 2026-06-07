@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
     captureServerException(
       error,
       {
+        app_surface: "checkout",
+        route_area: "api",
+        route_template: "/api/stripe/create-checkout-session",
         source: "stripe_create_checkout_session",
         plan_id: planId,
         cadence,
