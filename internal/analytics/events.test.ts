@@ -59,6 +59,7 @@ describe("analytics events helpers", () => {
     expect(isAnalyticsEventName("domain_provision_pending")).toBe(true);
     expect(isAnalyticsEventName("domain_route_refresh_failed")).toBe(true);
     expect(isAnalyticsEventName("page_crawl_triggered")).toBe(true);
+    expect(isAnalyticsEventName("product_action_failed")).toBe(true);
     expect(isAnalyticsEventName("translation_run_terminal_failed")).toBe(true);
     expect(isAnalyticsEventName("provider_payload")).toBe(false);
     expect(isAnalyticsEventName(null)).toBe(false);
@@ -72,6 +73,7 @@ describe("analytics events helpers", () => {
     expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.crawlTriggerFailed);
     expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.domainRouteRefreshFailed);
     expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.pageCrawlTriggered);
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.productActionFailed);
     expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(
       ANALYTICS_EVENTS.translationRunTerminalFailed,
     );

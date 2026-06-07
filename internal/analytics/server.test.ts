@@ -218,6 +218,29 @@ describe("server analytics helpers", () => {
     );
   });
 
+  it("preserves explicit app surface on sanitized server exceptions", async () => {
+    const { captureServerException } = await import("./server");
+
+    captureServerException(new Error("checkout failure"), {
+      app_surface: "checkout",
+      route_area: "api",
+      route_template: "/api/stripe/create-checkout-session",
+    });
+
+    await runScheduledAfterTasks();
+
+    expect(posthogMock.instances[0]?.captureImmediate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "$exception",
+        properties: expect.objectContaining({
+          app_surface: "checkout",
+          route_area: "api",
+          route_template: "/api/stripe/create-checkout-session",
+        }),
+      }),
+    );
+  });
+
   it("does not block the caller while the scheduled send is pending", async () => {
     const immediate = createDeferred();
     posthogMock.immediatePromises.push(immediate.promise);

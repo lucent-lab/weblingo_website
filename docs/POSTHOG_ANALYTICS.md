@@ -40,15 +40,19 @@ The canonical backend-produced event list is `BACKEND_PRODUCED_ANALYTICS_EVENTS`
 
 Backend-produced events use explicit low-cardinality properties such as `request_id`, `route_id`, `status_code`, account/site IDs, plan/status enums, counts, booleans, and stable `error_code` values. They must not include Cloudflare request metadata, raw domains, raw URLs, query strings, emails, invite links, verification tokens, source/translated text, prompts, provider payloads, request bodies, or response bodies.
 
+Stable-code failures on curated backend routes that do not have a more specific failure event may emit `product_action_failed`. Ordinary validation rejections without stable error codes remain uncaptured.
+
 For `sites.translate`, crawl-only accepted outcomes emit `crawl_triggered`; `translation_run_started` is reserved for responses that actually create a translation run.
 
 `preview_feedback_submitted` may include `preview_id`, `preview_status`, and `preview_feedback_channel`; it must not include free-text feedback, ratings comments, contact details, request bodies, or preview URLs.
 
 Dashboard translation controls must follow the same distinction: retry/resume actions use `translation_run_retried` or `translation_run_resumed`, and translate-and-serve actions use settled metadata to emit `translation_run_started` only when the backend returns a run.
 
-`analytics_proxy_failed` is emitted only for first-party PostHog proxy upstream failures. It may include `route_template`, `route_area`, `request_method`, `target_kind`, `status_code`, `status`, `source`, and `failure_kind`; it must not include raw proxy paths, query strings, request bodies, response bodies, cookies, or PostHog payloads.
-
 `serve-worker` and translated serving hot paths must not call PostHog.
+
+## Website Server Events
+
+`analytics_proxy_failed` is emitted only for first-party PostHog proxy upstream failures. It may include `route_template`, `route_area`, `request_method`, `target_kind`, `status_code`, `status`, `source`, and `failure_kind`; it must not include raw proxy paths, query strings, request bodies, response bodies, cookies, or PostHog payloads.
 
 ## Flags, Experiments, Surveys, And Annotations
 
