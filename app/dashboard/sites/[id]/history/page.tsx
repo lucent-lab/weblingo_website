@@ -391,7 +391,6 @@ function RunActions({
           action={retryFailedTranslationRunAction}
           analytics={{
             event: ANALYTICS_EVENTS.translationRunRetried,
-            successEvent: ANALYTICS_EVENTS.translationRunStarted,
             properties: {
               app_surface: "dashboard",
               feature: "translation_history",
@@ -424,7 +423,6 @@ function RunActions({
           action={resumeTranslationRunAction}
           analytics={{
             event: ANALYTICS_EVENTS.translationRunResumed,
-            successEvent: ANALYTICS_EVENTS.translationRunStarted,
             properties: {
               app_surface: "dashboard",
               feature: "translation_history",

@@ -42,6 +42,8 @@ For `sites.translate`, crawl-only accepted outcomes emit `crawl_triggered`; `tra
 
 `preview_feedback_submitted` may include `preview_id`, `preview_status`, and `preview_feedback_channel`; it must not include free-text feedback, ratings comments, contact details, request bodies, or preview URLs.
 
+Dashboard translation controls must follow the same distinction: retry/resume actions use `translation_run_retried` or `translation_run_resumed`, and translate-and-serve actions use settled metadata to emit `translation_run_started` only when the backend returns a run.
+
 `serve-worker` and translated serving hot paths must not call PostHog.
 
 ## Flags, Experiments, Surveys, And Annotations

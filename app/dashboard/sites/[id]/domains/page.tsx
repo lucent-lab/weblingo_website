@@ -560,7 +560,8 @@ function ServingLanguageRow({
               error="Unable to start translation."
               refreshOnSuccess={true}
               analytics={{
-                event: ANALYTICS_EVENTS.translationRunStarted,
+                event: ANALYTICS_EVENTS.crawlTriggered,
+                submitEvent: false,
                 properties: {
                   site_id: siteId,
                   site_status: siteStatus,

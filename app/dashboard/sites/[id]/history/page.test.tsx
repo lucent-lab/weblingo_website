@@ -4,6 +4,14 @@ import { isValidElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  actionFormProps: [] as Array<{
+    analytics?: {
+      event?: string;
+      failureEvent?: string;
+      submitEvent?: string | false;
+      successEvent?: string;
+    };
+  }>,
   requireDashboardAuth: vi.fn(),
   fetchCustomerDeploymentHistory: vi.fn(),
   fetchCustomerTranslationRuns: vi.fn(),
@@ -24,7 +32,21 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/components/dashboard/action-form", () => ({
-  ActionForm: ({ children }: { children: ReactNode }) => children,
+  ActionForm: ({
+    analytics,
+    children,
+  }: {
+    analytics?: {
+      event?: string;
+      failureEvent?: string;
+      submitEvent?: string | false;
+      successEvent?: string;
+    };
+    children: ReactNode;
+  }) => {
+    mocks.actionFormProps.push({ analytics });
+    return children;
+  },
 }));
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
@@ -63,6 +85,7 @@ vi.mock("../site-header", () => ({
 describe("HistoryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.actionFormProps = [];
     mocks.getSiteTargetLangsCached.mockResolvedValue(["fr", "ja"]);
   });
 
@@ -218,6 +241,71 @@ describe("HistoryPage", () => {
     expect(document.body.textContent).toContain("IT is not configured for this site");
     expect(mocks.fetchCustomerTranslationRuns).not.toHaveBeenCalled();
     expect(mocks.fetchCustomerDeploymentHistory).not.toHaveBeenCalled();
+  });
+
+  it("keeps retry and resume analytics distinct from translation-run creation", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.fetchCustomerTranslationRuns.mockResolvedValue({
+      runs: [
+        {
+          id: "run-failed",
+          targetLang: "fr",
+          rawStatus: "failed",
+          customerStatus: "failed",
+          progress: { completed: 1, failed: 1, total: 2 },
+          startedAt: "2026-05-07T00:00:00.000Z",
+          finishedAt: "2026-05-07T00:01:00.000Z",
+          createdAt: "2026-05-07T00:00:00.000Z",
+          updatedAt: "2026-05-07T00:01:00.000Z",
+          customerError: null,
+        },
+        {
+          id: "run-cancelled",
+          targetLang: "fr",
+          rawStatus: "cancelled",
+          customerStatus: "cancelled",
+          progress: { completed: 0, failed: 0, total: 2 },
+          startedAt: "2026-05-07T00:02:00.000Z",
+          finishedAt: "2026-05-07T00:03:00.000Z",
+          createdAt: "2026-05-07T00:02:00.000Z",
+          updatedAt: "2026-05-07T00:03:00.000Z",
+          customerError: null,
+        },
+      ],
+      pagination: { limit: 10, offset: 0, nextOffset: null },
+      generatedAt: "2026-05-07T00:00:00.000Z",
+    });
+
+    vi.resetModules();
+    const { default: HistoryPage } = await import("./page");
+    const tree = await HistoryPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ targetLang: "fr", historyType: "runs" }),
+    });
+
+    render(tree);
+
+    expect(screen.getByRole("button", { name: "Retry failed pages" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Resume run" })).toBeTruthy();
+    const analyticsProps = mocks.actionFormProps.map((props) => props.analytics);
+    expect(analyticsProps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "translation_run_retried",
+        }),
+        expect.objectContaining({
+          event: "translation_run_resumed",
+        }),
+      ]),
+    );
+    expect(analyticsProps).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          successEvent: "translation_run_started",
+        }),
+      ]),
+    );
   });
 
   it("renders a customer-safe error state when history schema validation fails", async () => {

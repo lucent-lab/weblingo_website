@@ -178,6 +178,64 @@ describe("dashboard capability actions", () => {
     expect(triggerCrawlTranslate).not.toHaveBeenCalled();
   });
 
+  it("marks translate-and-serve crawl-only accepts as pending crawl analytics", async () => {
+    translateSite.mockResolvedValue({
+      run: null,
+      enqueued: 0,
+      missingSnapshots: 2,
+      crawlEnqueued: true,
+    });
+
+    const { translateAndServeAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("siteStatus", "active");
+    formData.set("targetLang", "fr");
+
+    const result = await translateAndServeAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: true,
+      message: "Crawl queued. Translation will start once snapshots are ready.",
+      meta: {
+        analyticsEvent: "crawl_triggered",
+        analyticsOutcome: "pending",
+      },
+    });
+    expect(translateSite).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "webhooks-token" }),
+      "site-1",
+      "fr",
+      { intent: "translate_and_serve" },
+    );
+  });
+
+  it("marks translate-and-serve run creation as translation-start analytics", async () => {
+    translateSite.mockResolvedValue({
+      run: { id: "run-1" },
+      enqueued: 3,
+      missingSnapshots: 0,
+      crawlEnqueued: false,
+    });
+
+    const { translateAndServeAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("siteId", "site-1");
+    formData.set("siteStatus", "active");
+    formData.set("targetLang", "fr");
+
+    const result = await translateAndServeAction(undefined, formData);
+
+    expect(result).toMatchObject({
+      ok: true,
+      message: "Translation run started.",
+      meta: {
+        analyticsEvent: "translation_run_started",
+        analyticsOutcome: "succeeded",
+      },
+    });
+  });
+
   it("blocks dashboard mutations for demo scoped auth even when mutationsAllowed is true", async () => {
     requireDashboardAuth.mockResolvedValue({
       accessMode: "demo",

@@ -25,6 +25,7 @@ type ActionFormProps = {
   refreshOnSuccess?: boolean;
   analytics?: {
     event: AnalyticsEventName;
+    submitEvent?: AnalyticsEventName | false;
     successEvent?: AnalyticsEventName;
     failureEvent?: AnalyticsEventName;
     properties?: AnalyticsProperties;
@@ -137,9 +138,11 @@ export function ActionForm({
           event.preventDefault();
           return;
         }
-        if (analytics) {
+        const submitEvent =
+          analytics?.submitEvent === false ? null : (analytics?.submitEvent ?? analytics?.event);
+        if (analytics && submitEvent) {
           captureAnalyticsEvent(
-            analytics.event,
+            submitEvent,
             {
               ...analytics.properties,
               outcome: "submitted",

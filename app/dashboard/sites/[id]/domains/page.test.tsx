@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   actionFormProps: [] as Array<{
-    analytics?: { event?: string; failureEvent?: string; successEvent?: string };
+    analytics?: {
+      event?: string;
+      failureEvent?: string;
+      submitEvent?: string | false;
+      successEvent?: string;
+    };
   }>,
   requireDashboardAuth: vi.fn(),
   fetchSiteDashboardProjection: vi.fn(),
@@ -29,7 +34,12 @@ vi.mock("@/components/dashboard/action-form", () => ({
     analytics,
     children,
   }: {
-    analytics?: { event?: string; failureEvent?: string; successEvent?: string };
+    analytics?: {
+      event?: string;
+      failureEvent?: string;
+      submitEvent?: string | false;
+      successEvent?: string;
+    };
     children: ReactNode;
   }) => {
     mocks.actionFormProps.push({ analytics });
@@ -266,6 +276,72 @@ describe("DomainsPage", () => {
         expect.objectContaining({
           event: "domain_refresh_requested",
           failureEvent: "domain_refresh_failed",
+        }),
+      ]),
+    );
+  });
+
+  it("does not label translate-and-serve submit intent as a started translation run", async () => {
+    const authToken = { token: "token", subjectAccountId: "acct-1" };
+    mocks.requireDashboardAuth.mockResolvedValue(makeAuth(authToken));
+    mocks.fetchSiteDashboardProjection.mockResolvedValue({
+      meta: { view: "domains", generatedAt: "2026-05-07T00:00:00.000Z", schemaVersion: 1 },
+      site: makeSite(),
+      access: {
+        mutationsAllowed: true,
+        features: { crawl_trigger: true, serve: true },
+        canVerifyDomain: true,
+        canRefreshDomain: true,
+        canProvisionDomain: true,
+        canUpdateRouting: true,
+        canToggleServing: true,
+      },
+      routing: {
+        urlMode: "subdomain",
+        servingMode: "strict",
+        routePrefixes: [{ targetLang: "fr", prefix: "/fr" }],
+      },
+      languages: [
+        {
+          tag: "fr",
+          labelKey: "languages.fr",
+          enabled: true,
+          serveEnabled: true,
+          indexing: {
+            mode: "noindex",
+            effectiveMode: "noindex",
+            optedIn: false,
+            canIndex: false,
+            blockers: [],
+          },
+          servingStatus: {
+            value: "ready",
+            rawStatus: "ready",
+            titleKey: "dashboard.status.serving.ready.title",
+          },
+          domain: null,
+          domainStatus: null,
+          routePrefix: "/fr",
+          alias: null,
+          lastPublishedAt: null,
+          lastTranslatedAt: null,
+        },
+      ],
+      domains: [],
+    });
+
+    vi.resetModules();
+    const { default: DomainsPage } = await import("./page");
+    const tree = await DomainsPage({ params: Promise.resolve({ id: "site-1" }) });
+
+    render(tree);
+
+    expect(screen.getByRole("button", { name: "Translate & serve" })).toBeTruthy();
+    expect(mocks.actionFormProps.map((props) => props.analytics)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "crawl_triggered",
+          submitEvent: false,
         }),
       ]),
     );

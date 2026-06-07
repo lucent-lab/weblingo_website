@@ -1637,7 +1637,12 @@ export async function translateAndServeAction(
       } else if (runStarted && crawlEnqueued && missingSnapshots > 0) {
         toast = "Translation started for available snapshots. Crawl queued for missing pages.";
       }
-      return succeeded(`${activationPrefix}${toast}`);
+      return succeeded(`${activationPrefix}${toast}`, {
+        analyticsEvent: runStarted
+          ? ANALYTICS_EVENTS.translationRunStarted
+          : ANALYTICS_EVENTS.crawlTriggered,
+        analyticsOutcome: runStarted ? "succeeded" : "pending",
+      });
     },
   });
 }

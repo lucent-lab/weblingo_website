@@ -186,6 +186,34 @@ describe("ActionForm refresh policy", () => {
     );
   });
 
+  it("can suppress submitted analytics while keeping settled analytics", () => {
+    const analytics = {
+      event: "domain_provisioned",
+      properties: {
+        site_id: "site-1",
+        feature: "domain_setup",
+      },
+      submitEvent: false,
+    } as const;
+    const { container, rerender } = renderActionForm({ analytics });
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    expect(analyticsMocks.captureAnalyticsEvent).not.toHaveBeenCalled();
+
+    completeAction(rerender, { analytics });
+
+    expect(analyticsMocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "domain_provisioned",
+      {
+        feature: "domain_setup",
+        outcome: "succeeded",
+        site_id: "site-1",
+      },
+      { sendInstantly: true },
+    );
+  });
+
   it("sends settled analytics immediately before refresh or redirect", () => {
     const analytics = {
       event: "domain_provision_requested",
