@@ -55,7 +55,10 @@ describe("analytics events helpers", () => {
 
   it("recognizes only declared analytics event names", () => {
     expect(isAnalyticsEventName("auth_confirmation_required")).toBe(true);
+    expect(isAnalyticsEventName("crawl_trigger_failed")).toBe(true);
     expect(isAnalyticsEventName("domain_provision_pending")).toBe(true);
+    expect(isAnalyticsEventName("domain_route_refresh_failed")).toBe(true);
+    expect(isAnalyticsEventName("page_crawl_triggered")).toBe(true);
     expect(isAnalyticsEventName("provider_payload")).toBe(false);
     expect(isAnalyticsEventName(null)).toBe(false);
   });
@@ -65,6 +68,9 @@ describe("analytics events helpers", () => {
     expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(
       ANALYTICS_EVENTS.dashboardVisibleFailuresViewed,
     );
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.crawlTriggerFailed);
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.domainRouteRefreshFailed);
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.pageCrawlTriggered);
 
     for (const eventName of BACKEND_PRODUCED_ANALYTICS_EVENTS) {
       expect(isAnalyticsEventName(eventName)).toBe(true);

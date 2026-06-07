@@ -20,7 +20,9 @@ Forbidden properties include raw PII, secrets, full URLs with query strings, cus
 
 ## Event State Semantics
 
-Domain setup distinguishes submitted, pending, completed, and failed outcomes. `domain_verification_started` and `domain_provision_requested` are submit/request events. `domain_verification_pending` and `domain_provision_pending` mean the backend accepted the action but DNS or managed-hostname work is still pending. `domain_verified` and `domain_provisioned` are reserved for completed verified/provisioned states.
+Domain setup distinguishes submitted, pending, completed, and failed outcomes. `domain_verification_started` and `domain_provision_requested` are submit/request events. `domain_verification_pending` and `domain_provision_pending` mean the backend accepted the action but DNS or managed-hostname work is still pending. `domain_verified` and `domain_provisioned` are reserved for completed verified/provisioned states. `domain_route_refresh_failed` is reserved for backend route refresh rollback failures with the matching stable error code.
+
+Pipeline intent distinguishes full-site crawl, per-page crawl, enqueue failure, and translation-run creation. Use `crawl_triggered` for full-site crawl intent, `page_crawl_triggered` for per-page crawl intent, `crawl_trigger_failed` only for stable enqueue terminal failures, and `translation_run_started` only when the backend returns a created translation run.
 
 Authentication distinguishes client submit intent, confirmation-required acceptance, and completed sessions. Use `auth_submitted` for browser submit intent, `auth_confirmation_required` when signup is accepted but no session exists yet, and `auth_succeeded` only when the auth provider returns an active session.
 

@@ -392,7 +392,7 @@ export default async function SitePagesPage({ params, searchParams }: SitePagesP
                             <ActionForm
                               action={triggerPageCrawlAction}
                               analytics={{
-                                event: ANALYTICS_EVENTS.crawlTriggered,
+                                event: ANALYTICS_EVENTS.pageCrawlTriggered,
                                 properties: {
                                   app_surface: "dashboard",
                                   feature: "page_crawl",

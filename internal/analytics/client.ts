@@ -158,6 +158,41 @@ function rewriteUrlPath(value: unknown, safePath: string): unknown {
   }
 }
 
+function normalizeHostProperty(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withoutScheme = trimmed.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return withoutScheme && !/[/?#@]/.test(withoutScheme) ? withoutScheme : null;
+}
+
+function resolveCurrentUrlProtocol(host: string): "http:" | "https:" {
+  const normalizedHost = host.toLowerCase();
+  if (
+    typeof window !== "undefined" &&
+    window.location.host.toLowerCase() === normalizedHost &&
+    (window.location.protocol === "http:" || window.location.protocol === "https:")
+  ) {
+    return window.location.protocol;
+  }
+
+  try {
+    const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+    if (
+      appUrl.host.toLowerCase() === normalizedHost &&
+      (appUrl.protocol === "http:" || appUrl.protocol === "https:")
+    ) {
+      return appUrl.protocol;
+    }
+  } catch {
+    // Fall back to the production-safe scheme below.
+  }
+
+  return "https:";
+}
+
 function buildSafeCurrentUrl(properties: Record<string, unknown>, safePath: string): string {
   const currentUrl = properties.$current_url;
   if (typeof currentUrl === "string") {
@@ -166,7 +201,10 @@ function buildSafeCurrentUrl(properties: Record<string, unknown>, safePath: stri
 
   const host = properties.$host;
   if (typeof host === "string" && host.trim()) {
-    return `https://${host.replace(/^https?:\/\//, "").replace(/\/+$/, "")}${safePath}`;
+    const safeHost = normalizeHostProperty(host);
+    if (safeHost) {
+      return `${resolveCurrentUrlProtocol(safeHost)}//${safeHost}${safePath}`;
+    }
   }
 
   try {

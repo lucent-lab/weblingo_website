@@ -171,6 +171,30 @@ describe("client analytics helpers", () => {
     expect(sanitized?.properties.$pathname).toBe("/[locale]/pricing");
   });
 
+  it("preserves the configured local protocol when reconstructing omitted current URLs", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+    const { buildAnalyticsInitConfig } = await import("./client");
+    const config = buildAnalyticsInitConfig();
+    const beforeSend = config.before_send;
+
+    if (typeof beforeSend !== "function") {
+      throw new Error("Expected a single before_send function");
+    }
+
+    const sanitized = beforeSend({
+      event: "$pageview",
+      properties: {
+        $host: "localhost:3000",
+        page_path: "/dashboard/sites/[id]",
+        route_template: "/dashboard/sites/[id]",
+      },
+      uuid: "test-event",
+    });
+
+    expect(sanitized?.properties.$current_url).toBe("http://localhost:3000/dashboard/sites/[id]");
+    expect(sanitized?.properties.$pathname).toBe("/dashboard/sites/[id]");
+  });
+
   it("keeps browser routing separate from the upstream PostHog ingestion host", async () => {
     process.env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST = "https://metrics.weblingo.app";
     process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -282,7 +306,7 @@ describe("client analytics helpers", () => {
     expect(posthogMock.capture).toHaveBeenCalledWith(
       "$pageview",
       {
-        app_surface: "marketing",
+        app_surface: "dashboard",
         deployment_channel: "test",
         environment: "test",
         repo: "weblingo_website",

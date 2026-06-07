@@ -1,8 +1,12 @@
+// @vitest-environment happy-dom
+
 import { isValidElement } from "react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  actionFormAnalytics: [] as Array<unknown>,
   requireDashboardAuth: vi.fn(),
   fetchSitePages: vi.fn(),
   normalizeLocale: vi.fn((locale: string) => locale),
@@ -23,7 +27,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/components/dashboard/action-form", () => ({
-  ActionForm: ({ children }: { children: ReactNode }) => children,
+  ActionForm: ({ analytics, children }: { analytics?: unknown; children: ReactNode }) => {
+    mocks.actionFormAnalytics.push(analytics);
+    return children;
+  },
 }));
 vi.mock("@internal/dashboard/auth", () => ({
   requireDashboardAuth: mocks.requireDashboardAuth,
@@ -82,6 +89,11 @@ function makeCompactStatus() {
 describe("SitePagesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.actionFormAnalytics.length = 0;
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("uses one direct pages response instead of legacy dashboard or extra status payloads", async () => {
@@ -152,6 +164,84 @@ describe("SitePagesPage", () => {
       limit: 25,
       offset: 0,
     });
+  });
+
+  it("distinguishes full-site crawl and page-crawl analytics intents", async () => {
+    const webhooksAuth = {
+      token: "token",
+      subjectAccountId: "acct-1",
+      expiresAt: "2026-01-01T00:00:00.000Z",
+      refresh: async () => "token",
+    };
+    mocks.requireDashboardAuth.mockResolvedValue({
+      webhooksAuth,
+      mutationsAllowed: true,
+      has: vi.fn().mockReturnValue(true),
+      account: {
+        dailyCrawlUsage: { pageCrawls: 0, siteCrawls: 0 },
+        featureFlags: { maxDailyPageRecrawls: null, maxDailyRecrawls: null },
+      },
+      subjectAccount: null,
+      actorAccount: null,
+      actorAccountId: "acct-1",
+      subjectAccountId: "acct-1",
+      actingAsCustomer: false,
+    });
+    mocks.fetchSitePages.mockResolvedValue({
+      site: {
+        id: "site-1",
+        sourceUrl: "https://example.com",
+        status: "active",
+      },
+      status: makeCompactStatus(),
+      pagesSummary: {
+        lastCrawlStartedAt: "2026-01-01T00:00:00.000Z",
+        lastCrawlFinishedAt: "2026-01-01T00:01:00.000Z",
+        pagesUpdated: 1,
+        pagesPending: 0,
+        nextEligibleCrawlAt: null,
+        eligiblePageCount: null,
+        rawLatestCrawlStatus: "completed",
+        customerCrawlStatus: "completed",
+      },
+      pages: [
+        {
+          id: "page-1",
+          sourcePath: "/",
+          lastCrawledAt: null,
+          lastSnapshotAt: null,
+          nextCrawlAt: null,
+        },
+      ],
+      pagination: {
+        limit: 25,
+        offset: 0,
+        total: 1,
+        hasMore: false,
+      },
+    });
+
+    vi.resetModules();
+    const { default: SitePagesPage } = await import("./page");
+
+    const tree = await SitePagesPage({
+      params: Promise.resolve({ id: "site-1" }),
+      searchParams: Promise.resolve({ page: "1" }),
+    });
+    render(tree);
+
+    expect(mocks.actionFormAnalytics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "crawl_triggered",
+          properties: expect.objectContaining({ feature: "site_crawl" }),
+        }),
+        expect.objectContaining({
+          event: "page_crawl_triggered",
+          properties: expect.objectContaining({ feature: "page_crawl" }),
+        }),
+      ]),
+    );
   });
 
   it("uses an explicit dashboard handoff locale when loading pages", async () => {

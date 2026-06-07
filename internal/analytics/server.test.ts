@@ -196,6 +196,28 @@ describe("server analytics helpers", () => {
     expect(posthogMock.instances[0]?.shutdown).not.toHaveBeenCalled();
   });
 
+  it("uses route metadata when routing sanitized exception events by app surface", async () => {
+    const { captureServerException } = await import("./server");
+
+    captureServerException(new Error("dashboard error"), {
+      route_template: "/dashboard/sites/[id]/domains",
+      route_area: "dashboard",
+    });
+
+    await runScheduledAfterTasks();
+
+    expect(posthogMock.instances[0]?.captureImmediate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "$exception",
+        properties: expect.objectContaining({
+          app_surface: "dashboard",
+          route_template: "/dashboard/sites/[id]/domains",
+          route_area: "dashboard",
+        }),
+      }),
+    );
+  });
+
   it("does not block the caller while the scheduled send is pending", async () => {
     const immediate = createDeferred();
     posthogMock.immediatePromises.push(immediate.promise);
