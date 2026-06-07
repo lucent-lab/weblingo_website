@@ -696,6 +696,15 @@ describe("POST /api/stripe/webhook", () => {
       expect(payload).toMatchObject({ error: "Invalid Stripe signature" });
       expect(payload.request_id).toBeTruthy();
       expect(JSON.stringify(payload)).not.toContain("sk_test_leak");
+      expect(analyticsMocks.captureServerException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          error_name: "Error",
+          route_area: "api",
+          route_template: "/api/stripe/webhook",
+          source: "stripe_webhook_signature",
+        }),
+      );
     } finally {
       (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
     }

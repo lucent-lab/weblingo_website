@@ -46,6 +46,8 @@ For `sites.translate`, crawl-only accepted outcomes emit `crawl_triggered`; `tra
 
 Dashboard translation controls must follow the same distinction: retry/resume actions use `translation_run_retried` or `translation_run_resumed`, and translate-and-serve actions use settled metadata to emit `translation_run_started` only when the backend returns a run.
 
+`analytics_proxy_failed` is emitted only for first-party PostHog proxy upstream failures. It may include `route_template`, `route_area`, `request_method`, `target_kind`, `status_code`, `status`, `source`, and `failure_kind`; it must not include raw proxy paths, query strings, request bodies, response bodies, cookies, or PostHog payloads.
+
 `serve-worker` and translated serving hot paths must not call PostHog.
 
 ## Flags, Experiments, Surveys, And Annotations

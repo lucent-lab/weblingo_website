@@ -202,6 +202,7 @@ export const ANALYTICS_SAFE_PROPERTY_NAMES = [
   "preview_status",
   "repo",
   "request_id",
+  "request_method",
   "replay_allowed",
   "replay_sampled",
   "retranslate",

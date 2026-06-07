@@ -406,6 +406,8 @@ export async function POST(request: NextRequest) {
     captureServerException(error, {
       source: "stripe_webhook_signature",
       error_name: error instanceof Error ? error.name : "unknown",
+      route_area: "api",
+      route_template: "/api/stripe/webhook",
     });
     const message = isProdEnv()
       ? "Invalid Stripe signature"

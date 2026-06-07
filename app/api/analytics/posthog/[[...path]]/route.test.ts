@@ -3,6 +3,10 @@ import { NextRequest } from "next/server";
 
 const ORIGINAL_ENV = { ...process.env };
 const fetchMock = vi.fn<typeof fetch>();
+const analyticsMocks = vi.hoisted(() => ({
+  captureServerAnalyticsEvent: vi.fn(),
+}));
+vi.mock("@internal/analytics/server", () => analyticsMocks);
 
 function setRequiredEnv() {
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -46,6 +50,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  analyticsMocks.captureServerAnalyticsEvent.mockReset();
 });
 
 describe("PostHog proxy route", () => {
@@ -122,6 +127,19 @@ describe("PostHog proxy route", () => {
 
     expect(response.status).toBe(204);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "analytics_proxy_failed",
+      expect.objectContaining({
+        failure_kind: "upstream_fetch",
+        request_method: "POST",
+        route_area: "api",
+        route_template: "/api/analytics/posthog/[[...path]]",
+        source: "posthog_proxy",
+        status: "degraded",
+        status_code: 504,
+        target_kind: "ingestion",
+      }),
+    );
   });
 
   it("degrades without surfacing upstream ingestion error responses to the browser", async () => {
@@ -143,6 +161,17 @@ describe("PostHog proxy route", () => {
 
     expect(response.status).toBe(204);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "analytics_proxy_failed",
+      expect.objectContaining({
+        failure_kind: "upstream_status",
+        request_method: "POST",
+        route_template: "/api/analytics/posthog/[[...path]]",
+        status: "degraded",
+        status_code: 404,
+        target_kind: "ingestion",
+      }),
+    );
   });
 
   it("surfaces upstream script failures so PostHog dependency loaders receive onerror", async () => {
@@ -161,6 +190,17 @@ describe("PostHog proxy route", () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "analytics_proxy_failed",
+      expect.objectContaining({
+        failure_kind: "upstream_status",
+        request_method: "GET",
+        route_template: "/api/analytics/posthog/[[...path]]",
+        status: "surfaced",
+        status_code: 404,
+        target_kind: "static_asset",
+      }),
+    );
   });
 
   it("surfaces script fetch failures instead of returning blank successful JavaScript", async () => {
@@ -175,5 +215,16 @@ describe("PostHog proxy route", () => {
 
     expect(response.status).toBe(504);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(analyticsMocks.captureServerAnalyticsEvent).toHaveBeenCalledWith(
+      "analytics_proxy_failed",
+      expect.objectContaining({
+        failure_kind: "upstream_fetch",
+        request_method: "GET",
+        route_template: "/api/analytics/posthog/[[...path]]",
+        status: "surfaced",
+        status_code: 504,
+        target_kind: "static_asset",
+      }),
+    );
   });
 });
