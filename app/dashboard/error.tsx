@@ -80,13 +80,17 @@ export default function DashboardError({
           <>
             <Button
               onClick={() => {
-                captureAnalyticsEvent(ANALYTICS_EVENTS.dashboardErrorRetryClicked, {
-                  app_surface: "dashboard",
-                  error_digest_present: Boolean(error.digest),
-                  feature: "dashboard_error",
-                  handled: true,
-                  route_template: routeTemplate,
-                });
+                captureAnalyticsEvent(
+                  ANALYTICS_EVENTS.dashboardErrorRetryClicked,
+                  {
+                    app_surface: "dashboard",
+                    error_digest_present: Boolean(error.digest),
+                    feature: "dashboard_error",
+                    handled: true,
+                    route_template: routeTemplate,
+                  },
+                  { sendInstantly: true },
+                );
                 reset();
               }}
             >

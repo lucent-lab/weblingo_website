@@ -132,7 +132,7 @@ describe("NavigationAnalyticsTracker", () => {
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("secret");
   });
 
-  it("tracks distinct query states without sending raw query values", async () => {
+  it("dedupes raw query value changes without sending raw query values", async () => {
     pathname = "/en/pricing";
     searchParams = new URLSearchParams({ utm_source: "alpha" });
     const rendered = render(<NavigationAnalyticsTracker />);
@@ -144,15 +144,14 @@ describe("NavigationAnalyticsTracker", () => {
     searchParams = new URLSearchParams({ utm_source: "beta" });
     rendered.rerender(<NavigationAnalyticsTracker />);
 
-    await waitFor(() => {
-      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
-    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("alpha");
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("beta");
   });
 
-  it("tracks reordered query states without sending raw query values", async () => {
-    pathname = "/en/pricing";
+  it("dedupes reordered query states without sending raw query values", async () => {
+    pathname = "/en/blog/reordered-query";
     searchParams = new URLSearchParams([
       ["a", "1"],
       ["b", "2"],
@@ -169,15 +168,14 @@ describe("NavigationAnalyticsTracker", () => {
     ]);
     rendered.rerender(<NavigationAnalyticsTracker />);
 
-    await waitFor(() => {
-      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
-    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("a=1");
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("b=2");
   });
 
-  it("does not collapse distinct repeated query-param states", async () => {
-    pathname = "/en/docs";
+  it("dedupes repeated query-param value changes", async () => {
+    pathname = "/en/docs/repeated-query";
     searchParams = new URLSearchParams([
       ["a", "1"],
       ["a", "1"],
@@ -191,14 +189,13 @@ describe("NavigationAnalyticsTracker", () => {
     searchParams = new URLSearchParams([["a", "1"]]);
     rendered.rerender(<NavigationAnalyticsTracker />);
 
-    await waitFor(() => {
-      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
-    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("a=1");
   });
 
-  it("does not suppress distinct query states that collided under the old digest", async () => {
-    pathname = "/en/pricing";
+  it("dedupes query value changes that do not change emitted pageview semantics", async () => {
+    pathname = "/en/contact";
     searchParams = new URLSearchParams({ j: "bh7l" });
     const rendered = render(<NavigationAnalyticsTracker />);
 
@@ -209,10 +206,27 @@ describe("NavigationAnalyticsTracker", () => {
     searchParams = new URLSearchParams({ m5ejtl: "9e" });
     rendered.rerender(<NavigationAnalyticsTracker />);
 
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("j=bh7l");
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("m5ejtl=9e");
+  });
+
+  it("tracks checkout session presence changes without sending the session id", async () => {
+    pathname = "/fr/checkout/success";
+    searchParams = new URLSearchParams();
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams({ session_id: "cs_secret_123" });
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
     await waitFor(() => {
       expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
     });
-    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("j=bh7l");
-    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("m5ejtl=9e");
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("cs_secret_123");
   });
 });

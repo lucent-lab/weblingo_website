@@ -95,13 +95,17 @@ describe("DashboardError", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
-    expect(mocks.captureAnalyticsEvent).toHaveBeenCalledWith("dashboard_error_retry_clicked", {
-      app_surface: "dashboard",
-      error_digest_present: false,
-      feature: "dashboard_error",
-      handled: true,
-      route_template: "/dashboard/sites/[id]/domains",
-    });
+    expect(mocks.captureAnalyticsEvent).toHaveBeenCalledWith(
+      "dashboard_error_retry_clicked",
+      {
+        app_surface: "dashboard",
+        error_digest_present: false,
+        feature: "dashboard_error",
+        handled: true,
+        route_template: "/dashboard/sites/[id]/domains",
+      },
+      { sendInstantly: true },
+    );
     expect(mocks.resetBoundary).toHaveBeenCalledTimes(1);
   });
 });

@@ -38,7 +38,7 @@ function shouldSkipRecentNavigationCapture(key: string): boolean {
 
 function buildQueryCaptureKey(searchParams: Pick<URLSearchParams, "toString">): string {
   const serialized = searchParams.toString();
-  return serialized ? serialized : "none";
+  return serialized ? "present" : "none";
 }
 
 type NavigationAnalyticsTrackerProps = {
