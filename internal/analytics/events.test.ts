@@ -148,6 +148,8 @@ describe("analytics events helpers", () => {
         route_template: "/dashboard/sites/[id]/domains",
         site_id: "site_123",
         target_lang_count: 2,
+        traffic_source: "qa",
+        validation_marker: "qa-m6521-20260607",
       }),
     ).not.toThrow();
   });

@@ -32,6 +32,9 @@ function setRequiredClientEnv() {
 beforeEach(() => {
   vi.resetModules();
   setRequiredClientEnv();
+  window.history.pushState({}, "", "/");
+  window.sessionStorage.clear();
+  document.cookie = "weblingo_qa_marker=; Path=/; Max-Age=0; SameSite=Lax; Secure";
   posthogMock.capture.mockReset();
   posthogMock.group.mockReset();
   posthogMock.identify.mockReset();
@@ -314,6 +317,81 @@ describe("client analytics helpers", () => {
       },
       { send_instantly: true },
     );
+  });
+
+  it("adds a valid QA marker from the URL to explicit browser events", async () => {
+    window.history.pushState({}, "", "/en/try?qa_marker=qa-m6521-20260607");
+    const { captureAnalyticsEvent } = await import("./client");
+
+    captureAnalyticsEvent("try_form_started", { source_host: "example.com" });
+
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      "try_form_started",
+      expect.objectContaining({
+        app_surface: "marketing",
+        source_host: "example.com",
+        traffic_source: "qa",
+        validation_marker: "qa-m6521-20260607",
+      }),
+      undefined,
+    );
+    expect(window.sessionStorage.getItem("weblingo.qa_marker")).toBe("qa-m6521-20260607");
+    expect(document.cookie).toContain("weblingo_qa_marker=qa-m6521-20260607");
+  });
+
+  it("persists a valid QA marker for identify and group calls", async () => {
+    window.history.pushState({}, "", "/dashboard?qa_marker=qa-dashboard:run_01");
+    const { groupAnalyticsSite, identifyAnalyticsUser } = await import("./client");
+
+    identifyAnalyticsUser({
+      distinctId: "user-1",
+      accountId: "acct-1",
+      planType: "pro",
+      planStatus: "active",
+    });
+    groupAnalyticsSite({ siteId: "site-1", accountId: "acct-1" });
+
+    expect(posthogMock.identify).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        traffic_source: "qa",
+        validation_marker: "qa-dashboard:run_01",
+      }),
+    );
+    expect(posthogMock.group).toHaveBeenCalledWith(
+      "account",
+      "acct-1",
+      expect.objectContaining({
+        traffic_source: "qa",
+        validation_marker: "qa-dashboard:run_01",
+      }),
+    );
+    expect(posthogMock.group).toHaveBeenCalledWith(
+      "site",
+      "site-1",
+      expect.objectContaining({
+        traffic_source: "qa",
+        validation_marker: "qa-dashboard:run_01",
+      }),
+    );
+  });
+
+  it("drops invalid QA markers before analytics capture", async () => {
+    window.history.pushState({}, "", "/en/try?qa_marker=token%3Dsecret");
+    window.sessionStorage.setItem("weblingo.qa_marker", "qa-old");
+    const { captureAnalyticsEvent } = await import("./client");
+
+    captureAnalyticsEvent("try_form_started", { source_host: "example.com" });
+
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      "try_form_started",
+      expect.not.objectContaining({
+        traffic_source: "qa",
+        validation_marker: expect.any(String),
+      }),
+      undefined,
+    );
+    expect(window.sessionStorage.getItem("weblingo.qa_marker")).toBeNull();
   });
 
   it("does not initialize or capture when analytics capture is disabled", async () => {

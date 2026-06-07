@@ -51,6 +51,10 @@ describe("analytics replay policy", () => {
       allowed: false,
       surface: "blocked",
     });
+    expect(resolveAnalyticsReplayPolicy("/pricing?qa_marker=qa-m6521-20260607")).toEqual({
+      allowed: false,
+      surface: "blocked",
+    });
     expect(resolveAnalyticsReplayPolicy("/contact")).toEqual({
       allowed: false,
       surface: "blocked",

@@ -247,6 +247,8 @@ export const ANALYTICS_SAFE_PROPERTY_NAMES = [
   "target_path",
   "terminal_reason",
   "transition",
+  "traffic_source",
+  "validation_marker",
   "variant",
   "workspace_audience",
 ] as const;

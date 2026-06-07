@@ -18,6 +18,8 @@ Allowed properties are explicit, low-cardinality product metadata such as intern
 
 Forbidden properties include raw PII, secrets, full URLs with query strings, customer content, source text, translated text, prompts, provider payloads, request bodies, and response bodies. Raw domains are treated as customer-identifying metadata: prefer status/presence fields unless a concrete analytics question requires a host value.
 
+QA validation runs may tag explicit analytics events with safe metadata so test traffic can be filtered in PostHog. Browser validation starts from any website route with `?qa_marker=<marker>`. Direct API/backend validation sends `x-validation-marker: <marker>`. Valid markers use only ASCII letters, digits, `.`, `_`, `:`, and `-`, with a maximum length of 80 characters. When valid, events may include `traffic_source: "qa"` and `validation_marker: "<marker>"`; invalid markers are ignored. QA markers must not change replay policy, autocapture settings, backend policy, entitlements, serving, queueing, translation behavior, or authorization.
+
 ## Event State Semantics
 
 Domain setup distinguishes submitted, pending, completed, and failed outcomes. `domain_verification_started` and `domain_provision_requested` are submit/request events. `domain_verification_pending` and `domain_provision_pending` mean the backend accepted the action but DNS or managed-hostname work is still pending. `domain_verified` and `domain_provisioned` are reserved for completed verified/provisioned states. `domain_route_refresh_failed` is reserved for backend route refresh rollback failures with the matching stable error code.

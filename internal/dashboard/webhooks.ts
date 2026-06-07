@@ -1,5 +1,11 @@
+import { cookies } from "next/headers";
 import { z } from "zod";
 
+import {
+  normalizeValidationMarker,
+  QA_MARKER_COOKIE_NAME,
+  QA_MARKER_HEADER_NAME,
+} from "@internal/analytics/validation-marker";
 import { env } from "@internal/core";
 import { isDashboardE2eMockEnabled } from "@internal/dashboard/e2e-mock";
 
@@ -4061,6 +4067,15 @@ type RequestOptions<T> = {
   traceId?: string;
 };
 
+async function readRequestValidationMarker(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    return normalizeValidationMarker(cookieStore.get(QA_MARKER_COOKIE_NAME)?.value);
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>({
   path,
   method = "GET",
@@ -4124,18 +4139,30 @@ async function request<T>({
   const url = path.startsWith("http")
     ? path
     : `${apiBase}${path.startsWith("/") ? path : `/${path}`}`;
+  const forwardsToWebLingoApi = url === apiBase || url.startsWith(`${apiBase}/`);
   let response: Response;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const requestHeaders = new Headers();
+    if (token) {
+      requestHeaders.set("Authorization", `Bearer ${token}`);
+    }
+    if (hasBody) {
+      requestHeaders.set("Content-Type", "application/json");
+    }
+    requestHeaders.set("x-dashboard-trace-id", traceId);
+    const validationMarker = forwardsToWebLingoApi ? await readRequestValidationMarker() : null;
+    if (validationMarker) {
+      requestHeaders.set(QA_MARKER_HEADER_NAME, validationMarker);
+    }
+    new Headers(headers).forEach((value, key) => {
+      requestHeaders.set(key, value);
+    });
+
     response = await fetch(url, {
       method,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(hasBody ? { "Content-Type": "application/json" } : {}),
-        "x-dashboard-trace-id": traceId,
-        ...headers,
-      },
+      headers: requestHeaders,
       body: hasBody ? JSON.stringify(body) : undefined,
       cache: "no-store",
       signal: controller.signal,

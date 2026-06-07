@@ -13,6 +13,12 @@ import {
 } from "./events";
 import { buildCommonAnalyticsProperties } from "./envelope";
 import { resolveAnalyticsReplayPolicy, shouldSampleAnalyticsReplay } from "./replay";
+import {
+  buildQaMarkerCookieValue,
+  buildQaMarkerDeleteCookieValue,
+  normalizeValidationMarker,
+  QA_MARKER_QUERY_PARAM,
+} from "./validation-marker";
 
 const POSTHOG_URL_PROPERTIES = [
   "$current_url",
@@ -48,6 +54,7 @@ type AnalyticsBeforeSend = Extract<
 let analyticsInitialized = false;
 let replaySampled: boolean | null = null;
 let replayRecording = false;
+const QA_MARKER_SESSION_STORAGE_KEY = "weblingo.qa_marker";
 
 type AnalyticsIdentity = {
   distinctId?: string | null;
@@ -105,6 +112,82 @@ function analyticsReplayEnabled(): boolean {
   );
 }
 
+function writeQaMarkerCookie(marker: string): void {
+  try {
+    document.cookie = buildQaMarkerCookieValue(marker);
+  } catch {
+    // QA markers must never affect product behavior.
+  }
+}
+
+function deleteQaMarkerCookie(): void {
+  try {
+    document.cookie = buildQaMarkerDeleteCookieValue();
+  } catch {
+    // QA markers must never affect product behavior.
+  }
+}
+
+function readStoredValidationMarker(): string | null {
+  try {
+    return normalizeValidationMarker(window.sessionStorage.getItem(QA_MARKER_SESSION_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function persistValidationMarker(marker: string): void {
+  try {
+    window.sessionStorage.setItem(QA_MARKER_SESSION_STORAGE_KEY, marker);
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+  writeQaMarkerCookie(marker);
+}
+
+function clearValidationMarker(): void {
+  try {
+    window.sessionStorage.removeItem(QA_MARKER_SESSION_STORAGE_KEY);
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+  deleteQaMarkerCookie();
+}
+
+function readBrowserValidationMarker(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has(QA_MARKER_QUERY_PARAM)) {
+      const marker = normalizeValidationMarker(params.get(QA_MARKER_QUERY_PARAM));
+      if (marker) {
+        persistValidationMarker(marker);
+        return marker;
+      }
+      clearValidationMarker();
+      return null;
+    }
+  } catch {
+    return readStoredValidationMarker();
+  }
+
+  return readStoredValidationMarker();
+}
+
+function buildValidationMarkerProperties(): AnalyticsProperties {
+  const marker = readBrowserValidationMarker();
+  if (!marker) {
+    return {};
+  }
+  return {
+    traffic_source: "qa",
+    validation_marker: marker,
+  };
+}
+
 function buildCaptureProperties(
   event: AnalyticsEventName,
   properties: AnalyticsProperties,
@@ -112,6 +195,7 @@ function buildCaptureProperties(
   return sanitizeAnalyticsProperties({
     ...properties,
     ...buildCommonAnalyticsProperties(event, properties),
+    ...buildValidationMarkerProperties(),
   });
 }
 
@@ -395,6 +479,7 @@ export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
         dashboard_workspace_audience: workspaceAudience,
         dashboard_acting_as_customer: identity.actingAsCustomer ?? undefined,
         dashboard_user: true,
+        ...buildValidationMarkerProperties(),
       }),
     );
 
@@ -409,6 +494,7 @@ export function identifyAnalyticsUser(identity: AnalyticsIdentity): void {
           plan_type: planType,
           plan_status: planStatus,
           workspace_audience: workspaceAudience,
+          ...buildValidationMarkerProperties(),
         }),
       );
     }
@@ -444,6 +530,7 @@ export function groupAnalyticsSite(identity: SiteAnalyticsIdentity): void {
         plan_status: normalizeAnalyticsText(identity.planStatus),
         workspace_audience: normalizeAnalyticsText(identity.workspaceAudience),
         dashboard_acting_as_customer: identity.actingAsCustomer ?? undefined,
+        ...buildValidationMarkerProperties(),
       }),
     );
   } catch {
@@ -459,6 +546,7 @@ export function resetAnalyticsIdentity(): void {
   try {
     initializeAnalytics();
     posthog.reset();
+    clearValidationMarker();
   } catch {
     // Analytics must never break user-facing flows.
   }
