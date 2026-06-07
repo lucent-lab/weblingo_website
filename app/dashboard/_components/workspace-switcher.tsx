@@ -39,14 +39,18 @@ export function WorkspaceSwitcher({
         defaultValue={currentId}
         name="subjectAccountId"
         onChange={(event) => {
-          captureAnalyticsEvent(ANALYTICS_EVENTS.workspaceSwitched, {
-            actor_account_id: actorAccountId,
-            subject_account_id: event.currentTarget.value,
-            account_id: event.currentTarget.value,
-            feature: "workspace_switcher",
-            outcome: "submitted",
-            app_surface: "dashboard",
-          });
+          captureAnalyticsEvent(
+            ANALYTICS_EVENTS.workspaceSwitched,
+            {
+              actor_account_id: actorAccountId,
+              subject_account_id: event.currentTarget.value,
+              account_id: event.currentTarget.value,
+              feature: "workspace_switcher",
+              outcome: "submitted",
+              app_surface: "dashboard",
+            },
+            { sendInstantly: true },
+          );
           formRef.current?.requestSubmit();
         }}
         disabled={disabled}

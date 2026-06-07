@@ -151,7 +151,7 @@ describe("NavigationAnalyticsTracker", () => {
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("beta");
   });
 
-  it("dedupes equivalent query states regardless of parameter order", async () => {
+  it("tracks reordered query states without sending raw query values", async () => {
     pathname = "/en/pricing";
     searchParams = new URLSearchParams([
       ["a", "1"],
@@ -169,9 +169,50 @@ describe("NavigationAnalyticsTracker", () => {
     ]);
     rendered.rerender(<NavigationAnalyticsTracker />);
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
+    });
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("a=1");
     expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("b=2");
+  });
+
+  it("does not collapse distinct repeated query-param states", async () => {
+    pathname = "/en/docs";
+    searchParams = new URLSearchParams([
+      ["a", "1"],
+      ["a", "1"],
+    ]);
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams([["a", "1"]]);
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
+    });
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("a=1");
+  });
+
+  it("does not suppress distinct query states that collided under the old digest", async () => {
+    pathname = "/en/pricing";
+    searchParams = new URLSearchParams({ j: "bh7l" });
+    const rendered = render(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(1);
+    });
+
+    searchParams = new URLSearchParams({ m5ejtl: "9e" });
+    rendered.rerender(<NavigationAnalyticsTracker />);
+
+    await waitFor(() => {
+      expect(captureAnalyticsEventMock).toHaveBeenCalledTimes(2);
+    });
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("j=bh7l");
+    expect(JSON.stringify(captureAnalyticsEventMock.mock.calls)).not.toContain("m5ejtl=9e");
   });
 });

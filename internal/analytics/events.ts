@@ -84,6 +84,44 @@ export const ANALYTICS_EVENTS = {
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
 const analyticsEventNameSet = new Set<string>(Object.values(ANALYTICS_EVENTS));
 
+export const BACKEND_PRODUCED_ANALYTICS_EVENTS = [
+  ANALYTICS_EVENTS.accountClaimSucceeded,
+  ANALYTICS_EVENTS.accountClaimFailed,
+  ANALYTICS_EVENTS.agencyCustomerInvited,
+  ANALYTICS_EVENTS.agencyCustomerPlanChanged,
+  ANALYTICS_EVENTS.crawlBlockedInactiveSite,
+  ANALYTICS_EVENTS.crawlTriggered,
+  ANALYTICS_EVENTS.dashboardBootstrapped,
+  ANALYTICS_EVENTS.dashboardVisibleFailuresViewed,
+  ANALYTICS_EVENTS.domainProvisioned,
+  ANALYTICS_EVENTS.domainProvisionFailed,
+  ANALYTICS_EVENTS.domainProvisionPending,
+  ANALYTICS_EVENTS.domainRefreshFailed,
+  ANALYTICS_EVENTS.domainRefreshRequested,
+  ANALYTICS_EVENTS.domainVerificationFailed,
+  ANALYTICS_EVENTS.domainVerified,
+  ANALYTICS_EVENTS.glossaryUpdated,
+  ANALYTICS_EVENTS.localeServingToggled,
+  ANALYTICS_EVENTS.overrideCreated,
+  ANALYTICS_EVENTS.previewCreateFailed,
+  ANALYTICS_EVENTS.previewCreateSucceeded,
+  ANALYTICS_EVENTS.previewFailed,
+  ANALYTICS_EVENTS.previewFeedbackSubmitted,
+  ANALYTICS_EVENTS.quotaLimitHit,
+  ANALYTICS_EVENTS.siteActivated,
+  ANALYTICS_EVENTS.siteCreateFailed,
+  ANALYTICS_EVENTS.siteCreated,
+  ANALYTICS_EVENTS.siteDeactivated,
+  ANALYTICS_EVENTS.siteDeleted,
+  ANALYTICS_EVENTS.siteSettingSaved,
+  ANALYTICS_EVENTS.siteUpdated,
+  ANALYTICS_EVENTS.slugPolicyUpdated,
+  ANALYTICS_EVENTS.sourceSelectionSaved,
+  ANALYTICS_EVENTS.translationRunCancelled,
+  ANALYTICS_EVENTS.translationRunResumed,
+  ANALYTICS_EVENTS.translationRunStarted,
+] as const satisfies readonly AnalyticsEventName[];
+
 export function isAnalyticsEventName(value: unknown): value is AnalyticsEventName {
   return typeof value === "string" && analyticsEventNameSet.has(value);
 }

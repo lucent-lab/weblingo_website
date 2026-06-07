@@ -32,7 +32,11 @@ PostHog feature flags are frontend UI/advisory only. Backend policy, entitlement
 
 The backend may send request-bound product events from `webhooks-worker` only. Event names still live in this website catalog so the vocabulary does not drift between repos.
 
+The canonical backend-produced event list is `BACKEND_PRODUCED_ANALYTICS_EVENTS` in `internal/analytics/events.ts`. Do not restate that list in prose.
+
 Backend-produced events use explicit low-cardinality properties such as `request_id`, `route_id`, `status_code`, account/site IDs, plan/status enums, counts, booleans, and stable `error_code` values. They must not include Cloudflare request metadata, raw domains, raw URLs, query strings, emails, invite links, verification tokens, source/translated text, prompts, provider payloads, request bodies, or response bodies.
+
+For `sites.translate`, crawl-only accepted outcomes emit `crawl_triggered`; `translation_run_started` is reserved for responses that actually create a translation run.
 
 `preview_feedback_submitted` may include `preview_id`, `preview_status`, and `preview_feedback_channel`; it must not include free-text feedback, ratings comments, contact details, request bodies, or preview URLs.
 

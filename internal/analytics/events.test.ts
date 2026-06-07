@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
+  ANALYTICS_EVENTS,
   AnalyticsPropertyValidationError,
+  BACKEND_PRODUCED_ANALYTICS_EVENTS,
   assertSafeAnalyticsProperties,
   buildCtaAnalyticsProperties,
   buildPageAnalyticsProperties,
@@ -54,6 +57,25 @@ describe("analytics events helpers", () => {
     expect(isAnalyticsEventName("domain_provision_pending")).toBe(true);
     expect(isAnalyticsEventName("provider_payload")).toBe(false);
     expect(isAnalyticsEventName(null)).toBe(false);
+  });
+
+  it("keeps backend-produced events in one typed catalog list", () => {
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(ANALYTICS_EVENTS.previewFeedbackSubmitted);
+    expect(BACKEND_PRODUCED_ANALYTICS_EVENTS).toContain(
+      ANALYTICS_EVENTS.dashboardVisibleFailuresViewed,
+    );
+
+    for (const eventName of BACKEND_PRODUCED_ANALYTICS_EVENTS) {
+      expect(isAnalyticsEventName(eventName)).toBe(true);
+    }
+  });
+
+  it("points backend analytics docs at the typed backend-produced event catalog", () => {
+    const docs = readFileSync(new URL("../../docs/POSTHOG_ANALYTICS.md", import.meta.url), "utf8");
+
+    expect(docs).toContain("BACKEND_PRODUCED_ANALYTICS_EVENTS");
+    expect(docs).toContain("internal/analytics/events.ts");
+    expect(docs).toContain("Do not restate that list in prose");
   });
 
   it("rejects forbidden raw analytics property names", () => {
