@@ -67,10 +67,6 @@ describe("preview QA fixture scenarios", () => {
     expect(html).toContain("https://form.typeform.com/to/customerDomainBound");
     expect(html).toContain("https://calendly.com/weblingo/domain-bound-preview");
     expect(html.match(/data-weblingo-domain-bound-candidate=/g)).toHaveLength(10);
-    expect(html).toContain(
-      'passiveControls: ["font-preconnect", "font-css", "webflow-cdn-script", "webflow-cdn-image"]',
-    );
-
     expect(html).toContain('data-provider="auth0"');
     expect(html).toContain('data-provider="stripe"');
     expect(html).toContain('data-provider="calendly"');

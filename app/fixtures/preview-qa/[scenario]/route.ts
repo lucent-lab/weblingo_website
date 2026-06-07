@@ -464,12 +464,6 @@ const DOMAIN_BOUND_HTML = `<!doctype html>
     <link rel="canonical" href="${SOURCE_ORIGIN}/fixtures/preview-qa/domain-bound-widgets" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-weblingo-passive-external="font-preconnect" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" data-weblingo-passive-external="font-css" />
-    <script>
-      window.__WEBLINGO_PREVIEW_QA_EXPECTATIONS__ = {
-        domainBoundCandidates: ["recaptcha", "turnstile", "hcaptcha", "google-identity", "auth0", "stripe", "paypal", "hubspot", "typeform", "calendly"],
-        passiveControls: ["font-preconnect", "font-css", "webflow-cdn-script", "webflow-cdn-image"]
-      };
-    </script>
     <script defer src="https://cdn.prod.website-files.com/65a700000000000000000001/preview-qa-passive.js" data-weblingo-passive-external="webflow-cdn-script" data-testid="passive-cdn-script"></script>
     <script async defer src="https://www.google.com/recaptcha/api.js?render=explicit" data-testid="recaptcha-api"></script>
     <script async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js" data-testid="turnstile-api"></script>
