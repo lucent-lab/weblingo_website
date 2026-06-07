@@ -152,12 +152,15 @@ describe("auth login actions", () => {
       notice: expect.stringContaining("Check your email"),
     });
     expect(captureServerAnalyticsEvent).toHaveBeenCalledWith(
-      "auth_submitted",
+      "auth_confirmation_required",
       expect.objectContaining({
         auth_action: "signup",
         outcome: "email_confirmation_required",
       }),
     );
+    expect(
+      captureServerAnalyticsEvent.mock.calls.some(([event]) => event === "auth_submitted"),
+    ).toBe(false);
     expect(
       captureServerAnalyticsEvent.mock.calls.some(([event]) => event === "auth_succeeded"),
     ).toBe(false);

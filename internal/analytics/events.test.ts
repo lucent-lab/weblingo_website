@@ -54,6 +54,7 @@ describe("analytics events helpers", () => {
   });
 
   it("recognizes only declared analytics event names", () => {
+    expect(isAnalyticsEventName("auth_confirmation_required")).toBe(true);
     expect(isAnalyticsEventName("domain_provision_pending")).toBe(true);
     expect(isAnalyticsEventName("provider_payload")).toBe(false);
     expect(isAnalyticsEventName(null)).toBe(false);

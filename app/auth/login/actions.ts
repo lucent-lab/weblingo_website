@@ -213,7 +213,7 @@ export async function signup(_: AuthFormState, formData: FormData): Promise<Auth
     }
 
     if (!result.session) {
-      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authSubmitted, {
+      captureServerAnalyticsEvent(ANALYTICS_EVENTS.authConfirmationRequired, {
         auth_action: "signup",
         auth_method: "password",
         email_present: Boolean(data.email),

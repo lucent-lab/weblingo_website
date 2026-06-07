@@ -28,6 +28,7 @@ export const ANALYTICS_EVENTS = {
   stripeWebhookProcessed: "stripe_webhook_processed",
   authViewed: "auth_viewed",
   authSubmitted: "auth_submitted",
+  authConfirmationRequired: "auth_confirmation_required",
   authSucceeded: "auth_succeeded",
   authFailed: "auth_failed",
   accountIdentified: "account_identified",

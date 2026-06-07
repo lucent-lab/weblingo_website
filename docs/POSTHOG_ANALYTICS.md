@@ -22,6 +22,8 @@ Forbidden properties include raw PII, secrets, full URLs with query strings, cus
 
 Domain setup distinguishes submitted, pending, completed, and failed outcomes. `domain_verification_started` and `domain_provision_requested` are submit/request events. `domain_verification_pending` and `domain_provision_pending` mean the backend accepted the action but DNS or managed-hostname work is still pending. `domain_verified` and `domain_provisioned` are reserved for completed verified/provisioned states.
 
+Authentication distinguishes client submit intent, confirmation-required acceptance, and completed sessions. Use `auth_submitted` for browser submit intent, `auth_confirmation_required` when signup is accepted but no session exists yet, and `auth_succeeded` only when the auth provider returns an active session.
+
 ## Identity And Groups
 
 Authenticated dashboard sessions call `identify` with the internal user ID and safe account metadata. They also call `group("account", account_id)`. Site-scoped dashboard routes call `group("site", site_id)` with safe site/account metadata.
