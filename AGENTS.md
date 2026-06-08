@@ -49,6 +49,7 @@ Minimal validation:
 
 ## Development Rules
 
+- Never edit, commit to, or push `main` directly. Do all work on a branch and merge through the repository's PR workflow; if a requested merge cannot be completed through that workflow, stop and ask.
 - TypeScript strict mode.
 - Prefer server components; use client components only when required.
 - Keep files small and focused. Prefer descriptive names and early returns.
