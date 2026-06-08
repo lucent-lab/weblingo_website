@@ -50,6 +50,46 @@ describe("resolvePreviewStatusDecision", () => {
     expect(decision).toHaveProperty("previewUrl", undefined);
   });
 
+  it("clears ready status payload links with unresolved route placeholders", () => {
+    const decision = resolvePreviewStatusDecision({
+      responseOk: true,
+      responseStatus: 200,
+      payload: {
+        status: "ready",
+        showcaseUrl: "https://t2.weblingo.app/demo/%7Blang%7D",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=%7Blang%7D",
+      },
+      defaultErrorMessage: "Unable to check preview status.",
+    });
+
+    expect(decision).toMatchObject({
+      kind: "terminal",
+      status: "ready",
+    });
+    expect(decision).toHaveProperty("previewUrl", null);
+    expect(decision).toHaveProperty("demoDashboardUrl", null);
+  });
+
+  it("allows structured query state that contains encoded braces", () => {
+    const decision = resolvePreviewStatusDecision({
+      responseOk: true,
+      responseStatus: 200,
+      payload: {
+        status: "ready",
+        showcaseUrl: "https://t2.weblingo.app/demo/fr/search?state=%7B%22q%22%3A%22pricing%22%7D",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#state=%7B%22tab%22%3A%22seo%22%7D",
+      },
+      defaultErrorMessage: "Unable to check preview status.",
+    });
+
+    expect(decision).toMatchObject({
+      kind: "terminal",
+      status: "ready",
+      previewUrl: "https://t2.weblingo.app/demo/fr/search?state=%7B%22q%22%3A%22pricing%22%7D",
+      demoDashboardUrl: "https://weblingo.app/dashboard/demo#state=%7B%22tab%22%3A%22seo%22%7D",
+    });
+  });
+
   it("terminalizes prospect showcase payment_failed as failed", () => {
     expect(
       resolvePreviewStatusDecision({

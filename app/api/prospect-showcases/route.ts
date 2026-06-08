@@ -4,12 +4,14 @@ import {
   buildProspectShowcaseHostRateLimitKey,
   buildProspectShowcaseIpRateLimitKey,
   buildProspectShowcaseUpstreamResponseHeaders,
+  createProspectShowcaseProxyResponse,
   createProspectShowcaseFetchErrorResponse,
   enforceProspectShowcaseRateLimit,
   getProspectShowcaseProxyConfig,
   readProspectShowcaseJsonBodyLimited,
 } from "@internal/api/prospect-showcases-proxy";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
+import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
 
 export const runtime = "nodejs";
 
@@ -53,6 +55,19 @@ export async function POST(request: NextRequest) {
   }
 
   const sourceHost = tryExtractSourceHost(bodyResult.payload);
+  if (isRecord(bodyResult.payload) && typeof bodyResult.payload.sourceUrl === "string") {
+    try {
+      if (sourceUrlRoutePartsHaveUnresolvedPlaceholder(new URL(bodyResult.payload.sourceUrl))) {
+        return createProspectShowcaseProxyResponse(
+          "json",
+          "Source URL must not contain unresolved route placeholders.",
+          400,
+        );
+      }
+    } catch {
+      return createProspectShowcaseProxyResponse("json", "Source URL must be a valid URL.", 400);
+    }
+  }
   if (sourceHost) {
     const hostLimitResponse = await enforceProspectShowcaseRateLimit({
       key: buildProspectShowcaseHostRateLimitKey(sourceHost),
@@ -92,4 +107,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return createProspectShowcaseFetchErrorResponse(error, "json");
   }
+}
+
+function sourceUrlRoutePartsHaveUnresolvedPlaceholder(url: URL): boolean {
+  return hasUnresolvedRoutePlaceholder(`${url.hostname}${url.pathname}`);
 }

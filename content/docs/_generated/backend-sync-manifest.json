@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-08T01:01:27+09:00",
+  "generatedAt": "2026-06-08T17:31:03+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
       "bytes": 94503,
@@ -32,7 +32,7 @@
       "sha256": "0c78ae7072c2ab248ae56150be6a9032fd6b7ac8dcf83238984d57b99e19d536"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-06-08T01:01:27+09:00",
-  "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo",
-  "sourceRepoSha": "4e398a5dea3c9c1aa14983d90e99925d64b91473"
+  "sourceRepoCommitTimestamp": "2026-06-08T17:31:03+09:00",
+  "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_showcase_route_hygiene_v2_backend",
+  "sourceRepoSha": "0671a951f7fd84a57411c0c20836933105af6209"
 }

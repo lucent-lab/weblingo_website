@@ -152,6 +152,71 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test.each(["https://example.com/%7Blang%7D", "https://%7Blang%7D.example.com"])(
+    "POST /api/prospect-showcases rejects unresolved route placeholders in source URL %s",
+    async (sourceUrl) => {
+      const { POST } = await import("./route");
+      allowRateLimit();
+      const request = buildNextRequest("http://localhost/api/prospect-showcases", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": "1.2.3.4",
+        },
+        body: JSON.stringify({
+          sourceUrl,
+          sourceLang: "en",
+          targetLang: "fr",
+          email: "owner@example.com",
+        }),
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Source URL must not contain unresolved route placeholders.",
+      });
+      expect(fetchWithTimeout).not.toHaveBeenCalled();
+    },
+  );
+
+  test("POST /api/prospect-showcases allows encoded structured query state in source URLs", async () => {
+    const { POST } = await import("./route");
+    allowRateLimit();
+    fetchWithTimeout.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: "ps_123", status: "queued" }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const body = {
+      sourceUrl: "https://example.com/search?state=%7B%22q%22%3A%22pricing%22%7D",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    };
+    const request = buildNextRequest("http://localhost/api/prospect-showcases", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(202);
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      "https://api.example.com/api/prospect-showcases",
+      expect.objectContaining({
+        body: JSON.stringify(body),
+      }),
+      expect.any(Object),
+    );
+  });
+
   test("GET /api/prospect-showcases/:ref/status forwards status token upstream", async () => {
     const { GET } = await import("./[ref]/status/route");
     allowRateLimit();

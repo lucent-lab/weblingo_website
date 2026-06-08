@@ -1,4 +1,5 @@
 import { WEBHOOK_EVENT_TYPES, type NotifyWebhookEventType } from "./webhook-contracts";
+import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
 
 export type SiteSettingsFeature =
   | "edit"
@@ -438,6 +439,9 @@ export function validateSourceUrl(value: string): string | null {
     const url = new URL(value);
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return "Source URL must start with http:// or https://.";
+    }
+    if (hasUnresolvedRoutePlaceholder(url.href)) {
+      return "Source URL must not contain unresolved route placeholders.";
     }
     return null;
   } catch {
