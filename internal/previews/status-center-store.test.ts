@@ -84,6 +84,43 @@ describe("status-center-store", () => {
     expect(afterHydrate.jobs[0].remoteStatusVerified).toBe(false);
   });
 
+  it("clears hydrated preview links with unresolved route placeholders", () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "",
+    });
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "11111111-1111-1111-1111-111111111111",
+          requestKey,
+          statusToken: "status-token",
+          sourceUrl: "https://example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "ready",
+          previewUrl: "https://t2.weblingo.app/demo/%7Blang%7D",
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=%7Blang%7D",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ]),
+    );
+
+    hydratePreviewStatusCenterStore();
+
+    const snapshot = getPreviewStatusCenterSnapshot();
+    expect(snapshot.jobs).toHaveLength(1);
+    expect(snapshot.jobs[0]).toMatchObject({
+      status: "ready",
+      previewUrl: null,
+      demoDashboardUrl: null,
+    });
+  });
+
   it("derives active polling from retry hints when no explicit poll time exists", () => {
     const now = Date.now();
     upsertPreviewStatusCenterJob(

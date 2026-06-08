@@ -1,3 +1,4 @@
+import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
 import {
   isActivePreviewJobPhase,
   isPreviewJobPhase,
@@ -262,6 +263,8 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
   const terminal = isPreviewStatusCenterJobTerminal(job.status);
   return {
     ...job,
+    previewUrl: sanitizePreviewJobUrl(job.previewUrl),
+    demoDashboardUrl: sanitizePreviewJobUrl(job.demoDashboardUrl),
     retryCount: terminal ? 0 : Math.max(0, job.retryCount),
     nextPollAt: terminal
       ? Number.POSITIVE_INFINITY
@@ -272,6 +275,13 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
     retryHint: terminal ? null : job.retryHint,
     remoteStatusVerified: terminal ? true : job.remoteStatusVerified,
   };
+}
+
+function sanitizePreviewJobUrl(value: string | null | undefined): string | null {
+  if (!value || hasUnresolvedRoutePlaceholder(value)) {
+    return null;
+  }
+  return value;
 }
 
 function normalizeTimestamp(value: number): number {

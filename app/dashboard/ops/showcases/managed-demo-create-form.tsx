@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 
 import { createManagedDemoAction, type ActionResponse } from "../../actions";
 import { TargetLanguagePicker } from "../../sites/target-language-picker";
-import { buildLocaleAliases, parseSourceUrl, stripWwwPrefix } from "../../sites/site-form-utils";
+import {
+  buildLocaleAliases,
+  isValidManagedDemoWebsitePath,
+  parseSourceUrl,
+  stripWwwPrefix,
+} from "../../sites/site-form-utils";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -45,6 +50,8 @@ export function ManagedDemoCreateForm({
   const sourceHost = parsedSourceUrl ? stripWwwPrefix(parsedSourceUrl.hostname) : "";
   const derivedWebsitePath = sourceHost.toLowerCase();
   const effectiveWebsitePath = websitePath.trim() || derivedWebsitePath;
+  const websitePathValid =
+    !effectiveWebsitePath || isValidManagedDemoWebsitePath(effectiveWebsitePath);
   const targetLangs = useMemo(() => Array.from(new Set(targets)), [targets]);
   const localeAliases = useMemo(
     () => buildLocaleAliases(targetLangs, aliasesByLang),
@@ -60,7 +67,7 @@ export function ManagedDemoCreateForm({
     return `${parsedSourceUrl.protocol}//{lang}.${stripWwwPrefix(parsedSourceUrl.hostname)}`;
   }, [parsedSourceUrl]);
   const showcasePreview =
-    effectiveWebsitePath && effectiveDefaultLang
+    websitePathValid && effectiveWebsitePath && effectiveDefaultLang
       ? `https://t2.weblingo.app/${effectiveWebsitePath}/${effectiveDefaultLang}`
       : null;
   const customerPatternPreview = subdomainPattern
@@ -68,7 +75,12 @@ export function ManagedDemoCreateForm({
     : null;
 
   const submitDisabled =
-    pending || !parsedSourceUrl || !sourceLang || !targetLangs.length || !subdomainPattern;
+    pending ||
+    !parsedSourceUrl ||
+    !sourceLang ||
+    !targetLangs.length ||
+    !subdomainPattern ||
+    !websitePathValid;
 
   const submitWithToast = useActionToast({
     formAction,
@@ -153,6 +165,7 @@ export function ManagedDemoCreateForm({
                 id="managed-demo-website-path"
                 name="websitePath"
                 placeholder={derivedWebsitePath || "autotrim.com"}
+                pattern="[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?"
                 value={websitePath}
                 onChange={(event) => setWebsitePath(event.target.value.toLowerCase())}
               />

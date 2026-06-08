@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   const sourceHost = tryExtractSourceHost(bodyResult.payload);
   if (isRecord(bodyResult.payload) && typeof bodyResult.payload.sourceUrl === "string") {
     try {
-      if (hasUnresolvedRoutePlaceholder(new URL(bodyResult.payload.sourceUrl).href)) {
+      if (sourceUrlRoutePartsHaveUnresolvedPlaceholder(new URL(bodyResult.payload.sourceUrl))) {
         return createProspectShowcaseProxyResponse(
           "json",
           "Source URL must not contain unresolved route placeholders.",
@@ -107,4 +107,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return createProspectShowcaseFetchErrorResponse(error, "json");
   }
+}
+
+function sourceUrlRoutePartsHaveUnresolvedPlaceholder(url: URL): boolean {
+  return hasUnresolvedRoutePlaceholder(`${url.hostname}${url.pathname}`);
 }

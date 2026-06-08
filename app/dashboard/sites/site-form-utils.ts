@@ -20,6 +20,16 @@ export function stripWwwPrefix(host: string): string {
   return host.startsWith("www.") ? host.slice(4) : host;
 }
 
+export function isValidManagedDemoWebsitePath(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.length > 0 &&
+    normalized.length <= 128 &&
+    /^[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?$/.test(normalized) &&
+    !normalized.includes("..")
+  );
+}
+
 export function extractSubdomainToken(
   pattern: string | null | undefined,
   sourceUrl: URL | null,
