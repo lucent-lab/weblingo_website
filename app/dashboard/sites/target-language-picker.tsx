@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhook-contracts";
 import { createLanguageNameResolver, normalizeLangTag } from "@internal/i18n";
 import { suggestLocaleAlias, validateLocaleAlias } from "./site-form-utils";
 

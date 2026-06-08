@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TryForm } from "@/components/try-form";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
-import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhook-contracts";
 
 export default async function TryPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;

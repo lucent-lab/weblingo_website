@@ -39,7 +39,12 @@ describe("claimAccount", () => {
     createClient.mockResolvedValue({
       auth: {
         getSession: vi.fn().mockResolvedValue({
-          data: { session: { access_token: "supabase-access-token" } },
+          data: {
+            session: {
+              access_token: "supabase-access-token",
+              user: { id: "user-test-1" },
+            },
+          },
         }),
       },
     });
@@ -65,7 +70,12 @@ describe("claimAccount", () => {
     createClient.mockResolvedValue({
       auth: {
         getSession: vi.fn().mockResolvedValue({
-          data: { session: { access_token: "supabase-access-token" } },
+          data: {
+            session: {
+              access_token: "supabase-access-token",
+              user: { id: "user-test-1" },
+            },
+          },
         }),
       },
     });

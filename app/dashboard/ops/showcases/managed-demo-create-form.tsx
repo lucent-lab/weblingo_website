@@ -13,7 +13,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useActionToast } from "@internal/dashboard/use-action-toast";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhook-contracts";
 
 const LanguageTagCombobox = dynamic(
   () => import("@/components/language-tag-combobox").then((mod) => mod.LanguageTagCombobox),

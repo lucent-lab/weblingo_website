@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PreviewStatusCenter } from "./preview-status-center";
 import { ANALYTICS_EVENTS } from "@internal/analytics/client";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhook-contracts";
 import { resolvePreviewStatusCenterMessage } from "@internal/previews/status-center-i18n";
 import {
   buildPreviewStatusCenterRequestKey,

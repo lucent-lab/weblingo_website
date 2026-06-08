@@ -2,7 +2,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { KnownWebhookEventType } from "@internal/dashboard/webhooks";
+import type { KnownWebhookEventType } from "@internal/dashboard/webhook-contracts";
 
 import { WebhookSettingsFields } from "./webhook-settings-fields";
 

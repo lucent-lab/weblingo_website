@@ -2,6 +2,14 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import {
+  SUPPORTED_LANGUAGES_STATIC,
+  WEBHOOK_EVENT_TYPES,
+  type KnownWebhookEventType,
+  type NotifyWebhookEventType,
+  type SupportedLanguage,
+} from "@internal/dashboard/webhook-contracts";
+import { WebhooksApiError } from "@internal/dashboard/webhooks-error";
+import {
   normalizeValidationMarker,
   QA_MARKER_COOKIE_NAME,
   QA_MARKER_HEADER_NAME,
@@ -23,28 +31,15 @@ const REQUEST_TIMEOUT_MS = {
   detail: Math.min(apiTimeoutMs, 10_000),
   mutation: apiTimeoutMs,
 } as const;
+export { SUPPORTED_LANGUAGES_STATIC, WEBHOOK_EVENT_TYPES };
+export { WebhooksApiError };
+export type { KnownWebhookEventType, NotifyWebhookEventType, SupportedLanguage };
+
 const DASHBOARD_E2E_MOCK_SITE_ID = "site-smoke-1";
 const DASHBOARD_E2E_MOCK_ACCOUNT_ID = "acct-e2e-smoke";
 const DASHBOARD_E2E_MOCK_SOURCE_URL = "https://source.example.test";
-export const WEBHOOK_EVENT_TYPES = [
-  "translation.completed",
-  "translation.failed",
-  "translation.summary",
-] as const;
-export type KnownWebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
 type RequestTimeoutProfile = keyof typeof REQUEST_TIMEOUT_MS;
-
-export class WebhooksApiError extends Error {
-  status: number;
-  details?: unknown;
-
-  constructor(message: string, status: number, details?: unknown) {
-    super(message);
-    this.status = status;
-    this.details = details;
-  }
-}
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -2223,7 +2218,6 @@ export type RuntimeRequestPolicyPreviewResponse = z.infer<
   typeof runtimeRequestPolicyPreviewResponseSchema
 >;
 export type CrawlStatus = z.infer<typeof crawlStatusSchema>;
-export type NotifyWebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type DeploymentCompleteness = z.infer<typeof deploymentCompletenessSchema>;
 export type DashboardProjectionView = z.infer<typeof dashboardProjectionViewSchema>;
@@ -2281,7 +2275,6 @@ export type LanguageSwitcherSnippetsResponse = z.infer<
 >;
 export type AccountMe = z.infer<typeof accountMeSchema>;
 export type ManagedAccountPlan = z.infer<typeof managedAccountPlanSchema>;
-export type SupportedLanguage = z.infer<typeof supportedLanguageSchema>;
 export type AgencyCustomer = z.infer<typeof agencyCustomerSchema>;
 export type AgencyCustomersSummary = z.infer<typeof agencyCustomersSummarySchema>;
 export type AgencyCustomersResponse = z.infer<typeof listAgencyCustomersResponseSchema>;
@@ -2378,53 +2371,6 @@ export type WebhooksAuth = {
 };
 
 type AuthInput = string | WebhooksAuth;
-
-const FALLBACK_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
-  { tag: "ar", englishName: "Arabic", direction: "rtl" },
-  { tag: "bg", englishName: "Bulgarian (Bulgaria)", direction: "ltr" },
-  { tag: "cs", englishName: "Czech (Czech Republic)", direction: "ltr" },
-  { tag: "da", englishName: "Danish (Denmark)", direction: "ltr" },
-  { tag: "de", englishName: "German (Germany)", direction: "ltr" },
-  { tag: "el", englishName: "Greek (Greece)", direction: "ltr" },
-  { tag: "en", englishName: "English", direction: "ltr" },
-  { tag: "en-GB", englishName: "English (United Kingdom)", direction: "ltr" },
-  { tag: "es", englishName: "Spanish (Spain)", direction: "ltr" },
-  { tag: "es-419", englishName: "Spanish (Latin America)", direction: "ltr" },
-  { tag: "et", englishName: "Estonian (Estonia)", direction: "ltr" },
-  { tag: "fi", englishName: "Finnish (Finland)", direction: "ltr" },
-  { tag: "fil", englishName: "Filipino (Philippines)", direction: "ltr" },
-  { tag: "fr", englishName: "French (France)", direction: "ltr" },
-  { tag: "fr-CA", englishName: "French (Canada)", direction: "ltr" },
-  { tag: "he", englishName: "Hebrew (Israel)", direction: "rtl" },
-  { tag: "hr", englishName: "Croatian (Croatia)", direction: "ltr" },
-  { tag: "hu", englishName: "Hungarian (Hungary)", direction: "ltr" },
-  { tag: "id", englishName: "Indonesian (Indonesia)", direction: "ltr" },
-  { tag: "it", englishName: "Italian (Italy)", direction: "ltr" },
-  { tag: "ja", englishName: "Japanese (Japan)", direction: "ltr" },
-  { tag: "ko", englishName: "Korean (Korea)", direction: "ltr" },
-  { tag: "lt", englishName: "Lithuanian (Lithuania)", direction: "ltr" },
-  { tag: "lv", englishName: "Latvian (Latvia)", direction: "ltr" },
-  { tag: "ms", englishName: "Malay (Malaysia)", direction: "ltr" },
-  { tag: "mt", englishName: "Maltese (Malta)", direction: "ltr" },
-  { tag: "nb", englishName: "Norwegian Bokmål", direction: "ltr" },
-  { tag: "nl", englishName: "Dutch (Netherlands)", direction: "ltr" },
-  { tag: "pl", englishName: "Polish (Poland)", direction: "ltr" },
-  { tag: "pt", englishName: "Portuguese", direction: "ltr" },
-  { tag: "pt-BR", englishName: "Portuguese (Brazil)", direction: "ltr" },
-  { tag: "ro", englishName: "Romanian (Romania)", direction: "ltr" },
-  { tag: "ru", englishName: "Russian (Russia)", direction: "ltr" },
-  { tag: "sk", englishName: "Slovak (Slovakia)", direction: "ltr" },
-  { tag: "sl", englishName: "Slovenian (Slovenia)", direction: "ltr" },
-  { tag: "sv", englishName: "Swedish (Sweden)", direction: "ltr" },
-  { tag: "th", englishName: "Thai (Thailand)", direction: "ltr" },
-  { tag: "tr", englishName: "Turkish (Turkey)", direction: "ltr" },
-  { tag: "vi", englishName: "Vietnamese (Vietnam)", direction: "ltr" },
-  { tag: "zh", englishName: "Chinese Simplified (China)", direction: "ltr" },
-  { tag: "zh-HK", englishName: "Chinese Traditional (Hong Kong)", direction: "ltr" },
-  { tag: "zh-TW", englishName: "Chinese Traditional (Taiwan)", direction: "ltr" },
-] as const;
-
-export const SUPPORTED_LANGUAGES_STATIC: SupportedLanguage[] = [...FALLBACK_SUPPORTED_LANGUAGES];
 
 function createDashboardE2eMockRuntimeRequestPolicy(rules: RuntimeRequestPolicyRule[] = []) {
   return {
@@ -3570,7 +3516,7 @@ function resolveDashboardE2eMockPayload(input: {
   }
 
   if (method === "GET" && pathname === "/meta/languages") {
-    return { languages: FALLBACK_SUPPORTED_LANGUAGES.slice(0, 3) };
+    return { languages: SUPPORTED_LANGUAGES_STATIC.slice(0, 3) };
   }
 
   if (method === "GET" && pathname === "/admin/managed-demos") {

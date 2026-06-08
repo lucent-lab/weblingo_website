@@ -71,7 +71,7 @@ import {
   writeActivePreviewIdToSession,
   type PreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhook-contracts";
 import { z } from "zod";
 
 type TryFormFieldLayout = "legacy" | "funnel";

@@ -6,7 +6,7 @@ import { TryForm } from "@/components/try-form";
 import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
-import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhook-contracts";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 
 const howItWorksSteps = [1, 2, 3];

@@ -26,11 +26,13 @@ import { useActionSettledEffect } from "@internal/dashboard/use-action-settled-e
 import { useActionToast } from "@internal/dashboard/use-action-toast";
 import { REQUIRED_FIELDS_MESSAGE } from "@internal/dashboard/site-settings";
 import type {
-  CrawlCaptureMode,
   KnownWebhookEventType,
+  SupportedLanguage,
+} from "@internal/dashboard/webhook-contracts";
+import type {
+  CrawlCaptureMode,
   SpaRefreshFallback,
   SpaRefreshSettings,
-  SupportedLanguage,
 } from "@internal/dashboard/webhooks";
 import { WebhookSettingsFields } from "../../webhook-settings-fields";
 

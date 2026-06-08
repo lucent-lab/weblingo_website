@@ -1,5 +1,3 @@
-import { WebhooksApiError } from "./webhooks";
-
 export type DashboardErrorKind =
   | "account_missing"
   | "contract_mismatch"
@@ -23,6 +21,11 @@ type DashboardErrorViewFallback = {
   title: string;
   description: string;
   message?: string;
+};
+
+type DashboardWebhooksErrorLike = Error & {
+  status: number;
+  details?: unknown;
 };
 
 export function resolveDashboardErrorView(
@@ -140,7 +143,7 @@ export function resolveDashboardErrorView(
 }
 
 function classifyDashboardErrorKind(error: unknown): DashboardErrorKind {
-  if (error instanceof WebhooksApiError) {
+  if (isDashboardWebhooksError(error)) {
     if (isDashboardContractMismatchCode(readDashboardErrorCode(error))) {
       return "contract_mismatch";
     }
@@ -181,7 +184,7 @@ function classifyDashboardErrorKind(error: unknown): DashboardErrorKind {
 }
 
 function resolveDashboardErrorMessage(error: unknown, fallbackMessage?: string): string {
-  if (error instanceof WebhooksApiError) {
+  if (isDashboardWebhooksError(error)) {
     if (isDashboardContractMismatchCode(readDashboardErrorCode(error))) {
       return "No settings, translations, or deployments were changed. This section is paused until it can display the response safely.";
     }
@@ -202,7 +205,7 @@ function resolveDashboardErrorMessage(error: unknown, fallbackMessage?: string):
 }
 
 function resolveDashboardErrorReferenceCode(error: unknown): string | null {
-  if (error instanceof WebhooksApiError) {
+  if (isDashboardWebhooksError(error)) {
     return readDashboardErrorCode(error) ?? `webhooks_http_${error.status}`;
   }
   const digest = readErrorDigest(error);
@@ -213,7 +216,7 @@ function resolveDashboardErrorReferenceCode(error: unknown): string | null {
 }
 
 function resolveDashboardErrorTechnicalDetails(error: unknown): unknown | null {
-  if (error instanceof WebhooksApiError) {
+  if (isDashboardWebhooksError(error)) {
     const code = readDashboardErrorCode(error);
     return sanitizeDashboardTechnicalDetails({
       status: error.status,
@@ -225,7 +228,7 @@ function resolveDashboardErrorTechnicalDetails(error: unknown): unknown | null {
   return null;
 }
 
-export function readDashboardErrorCode(error: WebhooksApiError): string | null {
+export function readDashboardErrorCode(error: DashboardWebhooksErrorLike): string | null {
   const details = error.details;
   if (
     details === null ||
@@ -237,6 +240,10 @@ export function readDashboardErrorCode(error: WebhooksApiError): string | null {
   }
   const code = (details as Record<string, unknown>).code;
   return typeof code === "string" && code.trim().length > 0 ? code : null;
+}
+
+function isDashboardWebhooksError(error: unknown): error is DashboardWebhooksErrorLike {
+  return error instanceof Error && "status" in error && typeof error.status === "number";
 }
 
 function isDashboardContractMismatchCode(code: string | null): boolean {

@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { WEBHOOK_EVENT_TYPES, type KnownWebhookEventType } from "@internal/dashboard/webhooks";
+import {
+  WEBHOOK_EVENT_TYPES,
+  type KnownWebhookEventType,
+} from "@internal/dashboard/webhook-contracts";
 
 const WEBHOOK_EVENT_LABELS: Record<KnownWebhookEventType, string> = {
   "translation.completed": "Translation completed",

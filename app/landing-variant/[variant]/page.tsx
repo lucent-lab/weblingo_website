@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhook-contracts";
 import { i18nConfig, resolveLocaleTranslator } from "@internal/i18n";
 import { landingContent } from "@modules/landing/content";
 import { LandingVariant1 } from "@modules/landing-variants/variant-1";

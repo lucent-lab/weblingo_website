@@ -32,7 +32,7 @@ import {
   WEBHOOK_EVENT_TYPES,
   type NotifyWebhookEventType,
   type SupportedLanguage,
-} from "@internal/dashboard/webhooks";
+} from "@internal/dashboard/webhook-contracts";
 import { WebhookSettingsFields } from "../webhook-settings-fields";
 
 // Avoid SSR for the combobox to prevent Radix Popover ID hydration mismatches.

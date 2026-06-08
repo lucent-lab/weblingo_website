@@ -7,7 +7,7 @@ import { TryPanelHeader } from "@/components/try-panel-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ANALYTICS_EVENTS, buildCtaAnalyticsProperties } from "@internal/analytics/events";
-import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhooks";
+import { SUPPORTED_LANGUAGES_STATIC } from "@internal/dashboard/webhook-contracts";
 import { createLocalizedMetadata, resolveLocaleTranslator } from "@internal/i18n";
 import { HeroOutcomeRotator } from "./components/hero-outcome-rotator";
 import { HowStepsTimeline } from "./components/how-steps-timeline";

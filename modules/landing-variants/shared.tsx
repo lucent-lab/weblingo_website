@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import type { SupportedLanguage } from "@internal/dashboard/webhooks";
+import type { SupportedLanguage } from "@internal/dashboard/webhook-contracts";
 import type { Messages, Translator } from "@internal/i18n";
 import { landingContent } from "@modules/landing/content";
 

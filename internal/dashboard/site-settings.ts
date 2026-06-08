@@ -1,4 +1,4 @@
-import { WEBHOOK_EVENT_TYPES, type NotifyWebhookEventType } from "./webhooks";
+import { WEBHOOK_EVENT_TYPES, type NotifyWebhookEventType } from "./webhook-contracts";
 
 export type SiteSettingsFeature =
   | "edit"
