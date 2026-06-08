@@ -1,3 +1,4 @@
+import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
 import {
   isActivePreviewJobPhase,
   parsePreviewRetryHint,
@@ -74,24 +75,30 @@ function readDetails(payload: Record<string, unknown> | null): Record<string, un
 
 function buildPayloadLocationPatch(
   payload: Record<string, unknown> | null,
-  options: { clearMissingLinks?: boolean } = {},
+  options: { clearMissingLinks?: boolean; clearUnsafeLinks?: boolean } = {},
 ): PayloadLocationPatch {
   const previewUrl = resolvePreviewJobPayloadUrl(payload);
   const demoDashboardUrl = resolvePreviewJobPayloadDemoDashboardUrl(payload);
   const expiresAt = resolvePreviewJobPayloadExpiresAt(payload);
+  const clearPreviewUrl =
+    options.clearMissingLinks === true ||
+    (options.clearUnsafeLinks === true && hasUnsafePayloadUrl(payload?.showcaseUrl));
+  const clearDemoDashboardUrl =
+    options.clearMissingLinks === true ||
+    (options.clearUnsafeLinks === true && hasUnsafePayloadUrl(payload?.demoDashboardUrl));
   return {
-    ...(previewUrl === null
-      ? options.clearMissingLinks === true
-        ? { previewUrl: null }
-        : {}
-      : { previewUrl }),
+    ...(previewUrl === null ? (clearPreviewUrl ? { previewUrl: null } : {}) : { previewUrl }),
     ...(demoDashboardUrl === null
-      ? options.clearMissingLinks === true
+      ? clearDemoDashboardUrl
         ? { demoDashboardUrl: null }
         : {}
       : { demoDashboardUrl }),
     ...(expiresAt === null ? {} : { expiresAt }),
   };
+}
+
+function hasUnsafePayloadUrl(value: unknown): boolean {
+  return typeof value === "string" && hasUnresolvedRoutePlaceholder(value);
 }
 
 export function resolvePreviewErrorPayload(
@@ -201,7 +208,7 @@ export function resolvePreviewStatusDecision({
     return {
       kind: "terminal",
       status: "ready",
-      ...buildPayloadLocationPatch(payload),
+      ...buildPayloadLocationPatch(payload, { clearUnsafeLinks: true }),
       error: null,
       errorCode: null,
       errorStage: null,
