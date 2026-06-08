@@ -50,6 +50,26 @@ describe("resolvePreviewStatusDecision", () => {
     expect(decision).toHaveProperty("previewUrl", undefined);
   });
 
+  it("ignores status payload links with unresolved route placeholders", () => {
+    const decision = resolvePreviewStatusDecision({
+      responseOk: true,
+      responseStatus: 200,
+      payload: {
+        status: "ready",
+        showcaseUrl: "https://t2.weblingo.app/demo/%7Blang%7D",
+        demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=%7Blang%7D",
+      },
+      defaultErrorMessage: "Unable to check preview status.",
+    });
+
+    expect(decision).toMatchObject({
+      kind: "terminal",
+      status: "ready",
+    });
+    expect(decision).not.toHaveProperty("previewUrl");
+    expect(decision).not.toHaveProperty("demoDashboardUrl");
+  });
+
   it("terminalizes prospect showcase payment_failed as failed", () => {
     expect(
       resolvePreviewStatusDecision({

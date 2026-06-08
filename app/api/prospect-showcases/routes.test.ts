@@ -152,6 +152,32 @@ describe("/api/prospect-showcases proxy routes", () => {
     );
   });
 
+  test("POST /api/prospect-showcases rejects unresolved route placeholders in source URLs", async () => {
+    const { POST } = await import("./route");
+    allowRateLimit();
+    const request = buildNextRequest("http://localhost/api/prospect-showcases", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "1.2.3.4",
+      },
+      body: JSON.stringify({
+        sourceUrl: "https://example.com/%7Blang%7D",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Source URL must not contain unresolved route placeholders.",
+    });
+    expect(fetchWithTimeout).not.toHaveBeenCalled();
+  });
+
   test("GET /api/prospect-showcases/:ref/status forwards status token upstream", async () => {
     const { GET } = await import("./[ref]/status/route");
     allowRateLimit();
