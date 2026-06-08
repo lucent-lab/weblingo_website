@@ -73,3 +73,18 @@ Replay stays disabled on authenticated dashboard routes, preview-content pages, 
 ## PostHog MCP And AI Workflows
 
 Default to read-only inspection for PostHog MCP/AI workflows. Do not create, edit, or launch flags, experiments, dashboards, alerts, surveys, or data exports unless the task explicitly asks for that write action and the proposed change has been reviewed for privacy and free-tier volume.
+
+## Closeout Evidence
+
+The 2026-06-08 production closeout evidence for first-party proxy headers,
+browser routing, and initial dashboard inventory lives in
+[`docs/reports/posthog-csp-dashboard-closeout-evidence-2026-06-08.md`](reports/posthog-csp-dashboard-closeout-evidence-2026-06-08.md).
+
+That evidence verifies that the deployed public pages and PostHog proxy routes
+currently send no CSP header, so there is no deployed CSP directive blocking
+PostHog config, static asset, decide/config, or ingestion routes. Browser
+network checks observed PostHog config/static traffic through
+`metrics.weblingo.app` and no direct browser requests to PostHog ingestion
+hosts. Human-reviewed PostHog MCP writes added the M6.5.21 closeout tiles to
+dashboard `704493`; the evidence report records the dashboard URL, insight
+IDs, and privacy guardrails.
