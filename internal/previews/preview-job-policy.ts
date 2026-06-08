@@ -1,3 +1,4 @@
+import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
 import { isPreviewStage, type PreviewStage } from "./preview-sse";
 
 export function buildPreviewJobStatusUrl(previewId: string, statusToken: string): string {
@@ -13,13 +14,20 @@ export function buildPreviewJobStreamUrl(previewId: string, statusToken: string)
 export function resolvePreviewJobPayloadUrl(
   payload: Record<string, unknown> | null,
 ): string | null {
-  return typeof payload?.showcaseUrl === "string" ? payload.showcaseUrl : null;
+  return readSafePayloadUrl(payload?.showcaseUrl);
 }
 
 export function resolvePreviewJobPayloadDemoDashboardUrl(
   payload: Record<string, unknown> | null,
 ): string | null {
-  return typeof payload?.demoDashboardUrl === "string" ? payload.demoDashboardUrl : null;
+  return readSafePayloadUrl(payload?.demoDashboardUrl);
+}
+
+function readSafePayloadUrl(value: unknown): string | null {
+  if (typeof value !== "string" || hasUnresolvedRoutePlaceholder(value)) {
+    return null;
+  }
+  return value;
 }
 
 export function resolvePreviewJobPayloadExpiresAt(

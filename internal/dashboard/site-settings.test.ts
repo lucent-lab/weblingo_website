@@ -21,6 +21,7 @@ import {
   buildSiteSettingsUpdatePayload,
   deriveSiteSettingsAccess,
   requiresSourceUrlReactivation,
+  validateSourceUrl,
   type SiteSettingsAccess,
   type SiteSettingsFeature,
   type HasCheck,
@@ -121,6 +122,15 @@ describe("requiresSourceUrlReactivation", () => {
 });
 
 describe("buildSiteSettingsUpdatePayload", () => {
+  it("rejects source URLs with unresolved route placeholders", () => {
+    expect(validateSourceUrl("https://%7Blang%7D.example.com")).toBe(
+      "Source URL must not contain unresolved route placeholders.",
+    );
+    expect(validateSourceUrl("https://example.com/%7Blang%7D")).toBe(
+      "Source URL must not contain unresolved route placeholders.",
+    );
+  });
+
   it("builds source URL replacement payloads through the existing settings update flow", () => {
     const formData = new FormData();
     formData.set("sourceUrl", "https://www.new-example.com");
