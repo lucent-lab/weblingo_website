@@ -326,6 +326,189 @@
         ],
         "type": "object"
       },
+      "AdminDeploymentAssetDiagnosticItem": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "copyKey": {
+            "type": "string"
+          },
+          "repairActionId": {
+            "type": "string"
+          },
+          "requestPath": {
+            "type": "string"
+          },
+          "requestPathQueryRedacted": {
+            "type": "boolean"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "sourcePaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sourcePathsTruncated": {
+            "type": "boolean"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "statusCode": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "stage",
+          "requestPath",
+          "requestPathQueryRedacted",
+          "classification",
+          "retryable",
+          "sourcePaths",
+          "sourcePathsTruncated",
+          "copyKey",
+          "repairActionId"
+        ],
+        "type": "object"
+      },
+      "AdminDeploymentAssetDiagnosticsResponse": {
+        "additionalProperties": false,
+        "example": {
+          "createdAt": "2026-06-09T00:00:00.000Z",
+          "deploymentId": "dep_123",
+          "diagnostics": [
+            {
+              "classification": "strong_static_extension_candidate",
+              "code": "asset_invalid_content_type",
+              "contentType": "text/html; charset=utf-8",
+              "copyKey": "dashboard.errors.deploymentAssetInvalidContentType.description",
+              "repairActionId": "source_fix",
+              "requestPath": "/assets/app.css",
+              "requestPathQueryRedacted": false,
+              "retryable": false,
+              "sourcePaths": [
+                "/pricing"
+              ],
+              "sourcePathsTruncated": false,
+              "stage": "validate",
+              "statusCode": 200
+            }
+          ],
+          "generatedAt": "2026-06-09T00:00:00.000Z",
+          "returnedRecords": 1,
+          "siteId": "site_123",
+          "status": "available",
+          "targetLang": "fr",
+          "totalRecords": 3,
+          "truncated": true
+        },
+        "examples": [
+          {
+            "createdAt": "2026-06-09T00:00:00.000Z",
+            "deploymentId": "dep_123",
+            "diagnostics": [
+              {
+                "classification": "strong_static_extension_candidate",
+                "code": "asset_invalid_content_type",
+                "contentType": "text/html; charset=utf-8",
+                "copyKey": "dashboard.errors.deploymentAssetInvalidContentType.description",
+                "repairActionId": "source_fix",
+                "requestPath": "/assets/app.css",
+                "requestPathQueryRedacted": false,
+                "retryable": false,
+                "sourcePaths": [
+                  "/pricing"
+                ],
+                "sourcePathsTruncated": false,
+                "stage": "validate",
+                "statusCode": 200
+              }
+            ],
+            "generatedAt": "2026-06-09T00:00:00.000Z",
+            "returnedRecords": 1,
+            "siteId": "site_123",
+            "status": "available",
+            "targetLang": "fr",
+            "totalRecords": 3,
+            "truncated": true
+          }
+        ],
+        "properties": {
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customerError": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deploymentId": {
+            "type": "string"
+          },
+          "diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDeploymentAssetDiagnosticItem"
+            },
+            "type": "array"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "returnedRecords": {
+            "type": "number"
+          },
+          "siteId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentAssetDiagnosticsReadStatus"
+          },
+          "targetLang": {
+            "type": "string"
+          },
+          "totalRecords": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "siteId",
+          "targetLang",
+          "deploymentId",
+          "status",
+          "diagnostics",
+          "totalRecords",
+          "returnedRecords",
+          "truncated",
+          "generatedAt"
+        ],
+        "type": "object"
+      },
       "AdminManagedDemoRerunCrawlResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3524,6 +3707,16 @@
           "completeness": {
             "$ref": "#/components/schemas/DeploymentCompleteness"
           },
+          "customerError": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerErrorSummaryItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "customerServingStatus": {
             "$ref": "#/components/schemas/DeploymentServingStatus"
           },
@@ -3617,6 +3810,14 @@
           "completeness"
         ],
         "type": "object"
+      },
+      "DeploymentAssetDiagnosticsReadStatus": {
+        "enum": [
+          "available",
+          "missing",
+          "unreadable"
+        ],
+        "type": "string"
       },
       "DeploymentCompleteness": {
         "additionalProperties": false,
@@ -3863,7 +4064,9 @@
           "key": {
             "type": "string"
           },
-          "payload": {},
+          "payloadSummary": {
+            "$ref": "#/components/schemas/DlqPayloadSummary"
+          },
           "timestamp": {
             "type": "string"
           },
@@ -3877,7 +4080,37 @@
           "attempts",
           "error",
           "timestamp",
-          "payload"
+          "payloadSummary"
+        ],
+        "type": "object"
+      },
+      "DlqPayloadSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "arrayLength": {
+            "type": "number"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shape": {
+            "enum": [
+              "null",
+              "array",
+              "object",
+              "string",
+              "number",
+              "boolean",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "shape"
         ],
         "type": "object"
       },
@@ -13041,6 +13274,158 @@
         ]
       }
     },
+    "/admin/sites/{siteId}/deployments/{targetLang}/{deploymentId}/asset-diagnostics": {
+      "get": {
+        "description": "Internal admin read-only endpoint for the best-effort deployment asset diagnostics sidecar. The response is bounded and redacted; raw payloads, cookies, auth headers, and query values are not returned. Missing or unreadable sidecars do not affect customer deployment status or pointer activation.",
+        "operationId": "admin.deploymentAssets.diagnostics.get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target language tag. Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES` and configured for the site when the endpoint is site-scoped.",
+            "in": "path",
+            "name": "targetLang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "deploymentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "createdAt": "2026-06-09T00:00:00.000Z",
+                  "deploymentId": "dep_123",
+                  "diagnostics": [
+                    {
+                      "classification": "strong_static_extension_candidate",
+                      "code": "asset_invalid_content_type",
+                      "contentType": "text/html; charset=utf-8",
+                      "copyKey": "dashboard.errors.deploymentAssetInvalidContentType.description",
+                      "repairActionId": "source_fix",
+                      "requestPath": "/assets/app.css",
+                      "requestPathQueryRedacted": false,
+                      "retryable": false,
+                      "sourcePaths": [
+                        "/pricing"
+                      ],
+                      "sourcePathsTruncated": false,
+                      "stage": "validate",
+                      "statusCode": 200
+                    }
+                  ],
+                  "generatedAt": "2026-06-09T00:00:00.000Z",
+                  "returnedRecords": 1,
+                  "siteId": "site_123",
+                  "status": "available",
+                  "targetLang": "fr",
+                  "totalRecords": 3,
+                  "truncated": true
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDeploymentAssetDiagnosticsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "unauthorized"
+                  },
+                  "error": "Unauthorized"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "internal_ops_disabled"
+                  },
+                  "error": "Internal admin access is disabled for this account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal admin access is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Site not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The requested site does not exist."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "rate_limited"
+                  },
+                  "error": "Rate limit exceeded"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the request can be retried.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get deployment asset diagnostics",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/agency/customers": {
       "get": {
         "operationId": "agency.customers.list",
@@ -16487,6 +16872,9 @@
                       "attempts": 1,
                       "error": "string",
                       "key": "string",
+                      "payloadSummary": {
+                        "shape": "null"
+                      },
                       "timestamp": "string",
                       "worker": "string"
                     }

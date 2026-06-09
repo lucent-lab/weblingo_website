@@ -3,6 +3,10 @@
 Date: 2026-05-05
 Status: Implementation contract for the website workstream
 
+Current implementation update, 2026-06-08: the backend now requires a recognized `view` query on
+`GET /api/sites/:siteId/dashboard`; omitted `view` returns `dashboard_view_required`. The old broad
+dashboard response and `includePages` fallback are no longer a current customer-dashboard contract.
+
 This report mirrors the corrected v6 dashboard refactor contract inside the website
 repository so dashboard route, client, schema, and smoke-test work can proceed without
 depending on out-of-repo planning files.
@@ -32,9 +36,9 @@ Stable machine-readable error codes belong under `details.code`.
 
 ## Dashboard Route Contract
 
-`GET /api/sites/:siteId/dashboard` has two modes:
+`GET /api/sites/:siteId/dashboard` has projection-only modes:
 
-- Omitted `view`: preserve the current legacy `SiteDashboardResponse`.
+- Omitted `view`: reject with `details.code = "dashboard_view_required"`.
 - Recognized `view`: return a customer-safe projection response.
 
 Recognized views:
@@ -75,9 +79,9 @@ Examples:
 - `view=settings&includeOperationalSummary=false`
 - `view=domains&limit=25`
 
-The generated backend docs must expose `SiteDashboardRouteResponse`, a union that includes
-legacy `SiteDashboardResponse` plus all projection responses. Website schemas must model
-the union explicitly instead of weakening schema strictness.
+The generated backend docs must expose `SiteDashboardRouteResponse`, a union of projection
+responses discriminated by `meta.view`. Website schemas must model the union explicitly instead of
+weakening schema strictness.
 
 ## Shared Customer Primitives
 
@@ -136,18 +140,18 @@ details.code = "unsupported_error_summary_cursor";
 
 Route tests must assert route-specific worker calls after normal dashboard auth/layout.
 
-| Route                                    | First-load budget                                                                        | Must not call on first paint                                                       |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `/dashboard`                             | `listSites` max once after dedupe                                                        | site detail, site dashboard aggregate, pages, history                              |
-| `/dashboard/sites/[id]`                  | one overview projection or fallback `includePages=false&includeOperationalSummary=false` | `includePages=true`, pages, deployment history, showcase, source preview, snippets |
-| `/dashboard/sites/[id]/pages`            | one direct pages call                                                                    | full site detail polling, dashboard aggregate once direct endpoint exists          |
-| `/dashboard/sites/[id]/source-selection` | one source-selection projection                                                          | SSR preview, mount-time preview, read-only preview                                 |
-| `/dashboard/sites/[id]/quality`          | one quality projection                                                                   | consistency scans unless expanded and enabled                                      |
-| `/dashboard/sites/[id]/domains`          | one domains projection                                                                   | deployment history, pages, source preview                                          |
-| `/dashboard/sites/[id]/settings`         | one settings projection                                                                  | deployment history, showcase, duplicate site-list slot count                       |
-| `/dashboard/sites/[id]/developer-tools`  | one developer-tools projection                                                           | dashboard JWT, snippets before explicit action                                     |
-| `/dashboard/sites/[id]/runtime-requests` | one redacted observations/list call on route visit                                       | overview/settings preload                                                          |
-| `/dashboard/sites/[id]/history`          | one selected history endpoint                                                            | overview/page fetches beyond nav/layout                                            |
+| Route                                    | First-load budget                                  | Must not call on first paint                                                       |
+| ---------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `/dashboard`                             | `listSites` max once after dedupe                  | site detail, site dashboard aggregate, pages, history                              |
+| `/dashboard/sites/[id]`                  | one overview projection                            | `includePages=true`, pages, deployment history, showcase, source preview, snippets |
+| `/dashboard/sites/[id]/pages`            | one direct pages call                              | full site detail polling, dashboard aggregate once direct endpoint exists          |
+| `/dashboard/sites/[id]/source-selection` | one source-selection projection                    | SSR preview, mount-time preview, read-only preview                                 |
+| `/dashboard/sites/[id]/quality`          | one quality projection                             | consistency scans unless expanded and enabled                                      |
+| `/dashboard/sites/[id]/domains`          | one domains projection                             | deployment history, pages, source preview                                          |
+| `/dashboard/sites/[id]/settings`         | one settings projection                            | deployment history, showcase, duplicate site-list slot count                       |
+| `/dashboard/sites/[id]/developer-tools`  | one developer-tools projection                     | dashboard JWT, snippets before explicit action                                     |
+| `/dashboard/sites/[id]/runtime-requests` | one redacted observations/list call on route visit | overview/settings preload                                                          |
+| `/dashboard/sites/[id]/history`          | one selected history endpoint                      | overview/page fetches beyond nav/layout                                            |
 
 ## Polling Rules
 
@@ -171,7 +175,8 @@ Required website work:
 - Centralized customer status/copy helpers using website i18n keys.
 - `StatusBadge`, `FeatureGate`, `LockedFeatureCard`, `QuotaMeter`,
   `MutationLockBanner`, and `NextActionCard` primitives.
-- `deriveCustomerNextAction()` fallback adapter until backend `nextAction` is available.
+- Render backend `nextAction` directly; keep any frontend helper limited to copy/presentation, not
+  customer-state derivation.
 - Projection-aware Zod schemas and typed client functions.
 - Contract tests that compare website schemas against backend OpenAPI/docs snapshots.
 - E2E mocks that fail when required backend projection fields are missing.
