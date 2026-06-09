@@ -1,5 +1,11 @@
 # PostHog Funnel Instrumentation + Proxy Routing Analysis (2026-04-14)
 
+Current implementation note, 2026-06-08: this report is now a historical baseline. The website has
+since added typed custom analytics events, first-party PostHog proxy routes, global pageview/replay
+policy, CTA tracking, auth/dashboard/site scoping, and try/preview funnel instrumentation. The
+remaining open work is deployed CSP/header verification for the first-party proxy and initial
+PostHog dashboards/funnels.
+
 ## Scope
 
 Tracked by backend milestone `M6.5` as a release-blocking website/control-plane task:
@@ -11,7 +17,9 @@ Tracked by backend milestone `M6.5` as a release-blocking website/control-plane 
 
 - `posthog-js` is already installed in `weblingo_website`.
 - Client initialization already exists in `instrumentation-client.ts`.
-- No custom `posthog.capture(...)` calls currently exist, so the product funnel is effectively uninstrumented.
+- Historical baseline: at the time this report was written, no custom `posthog.capture(...)` calls
+  existed. Current code now has typed custom events across marketing, try/preview, auth, checkout,
+  and dashboard flows.
 - The highest-value existing client surfaces are:
   - marketing home / landing pages
   - pricing page

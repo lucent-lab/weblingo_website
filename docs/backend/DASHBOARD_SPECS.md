@@ -18,6 +18,10 @@ the M6.5.2 route IA, projection, pagination, customer-safe-copy, and request-bud
 integration guide remains the longer-lived API and UX reference and should be updated as M6.5.2
 contracts graduate from implementation contract to stable dashboard behavior.
 
+Current implementation update, 2026-06-08: `GET /api/sites/:id/dashboard` is projection-only and
+requires `view`. The old broad dashboard `includePages` contract is obsolete; use
+`GET /api/sites/:id/pages` for page lists.
+
 ## Table of Contents
 
 - [Auth & Base URLs](#auth--base-urls)
@@ -82,11 +86,11 @@ contracts graduate from implementation contract to stable dashboard behavior.
   - List-level aggregates: `sourceLang`, `targetLangs`, `localeCount`, `serveEnabledLocaleCount`, `domainCount`, `verifiedDomainCount`.
   - Does **not** include sensitive/detail fields (`webhookSecret`, `verificationToken`, full route internals, domains/locales arrays).
 - **PageSummary**:
-  - Returned by `GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`.
+  - Returned by `GET /api/sites/:id/pages`.
   - `id`, `sourcePath`.
   - `lastSeenAt`, `lastCrawledAt`, `lastSnapshotAt`, `nextCrawlAt`, `lastVersionAt` (ISO strings or `null`).
 - **Pagination**:
-  - Returned alongside `pages` on paginated page-list responses (`GET /api/sites/:id/pages` and `GET /api/sites/:id/dashboard` when `includePages=true`).
+  - Returned alongside `pages` on paginated page-list responses (`GET /api/sites/:id/pages`).
   - `{ limit, offset, total, hasMore }`.
 - **RouteConfig**:
   - `updatedAt`: optional optimistic concurrency token for guarded route-config writes.
@@ -210,16 +214,18 @@ contracts graduate from implementation contract to stable dashboard behavior.
 
 `GET /api/sites/:id/dashboard`
 
-- Consolidated detail payload for dashboard screens.
+- Customer-safe projection payload for dashboard screens.
 - Query:
-  - `includePages` (optional boolean, default `false`).
-  - `limit` (optional integer, default `25`, valid range `1..200`; used only when `includePages=true`).
-  - `offset` (optional integer, default `0`, must be `>=0`; used only when `includePages=true`).
-  - When `includePages=false`, `limit` and `offset` are ignored.
-  - Invalid query values return `400` (for example: `includePages` not boolean, `limit` out of range, `offset` negative).
+  - `view` is required and must be one of `overview`, `languages`, `domains`, `settings`,
+    `developer_tools`, `source_selection`, or `quality`.
+  - Omitted `view` returns `400` with `details.code = "dashboard_view_required"`.
+  - Unknown `view` returns `400` with `details.code = "unsupported_dashboard_view"`.
+  - Broad legacy params such as `includePages`, `includeOperationalSummary`, `limit`, or `offset`
+    return `400` with `details.code = "dashboard_view_param_conflict"` when combined with a
+    recognized projection view.
 - Response:
-  - Default: `{ site, deployments }`.
-  - With `includePages=true`: `{ site, deployments, pages, pagination }`.
+  - `SiteDashboardRouteResponse`, a projection union discriminated by `meta.view`.
+  - For pages, use `GET /api/sites/:id/pages?limit=25&offset=0`.
 
 `GET /api/sites/:id/showcase`, `POST /api/sites/:id/showcase`, `PATCH /api/sites/:id/showcase`
 

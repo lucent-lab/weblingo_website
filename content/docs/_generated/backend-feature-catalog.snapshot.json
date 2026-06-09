@@ -139,6 +139,25 @@
     {
       "endpoint": {
         "auth": "bearer",
+        "method": "GET",
+        "operationId": "admin.deploymentAssets.diagnostics.get",
+        "path": "/admin/sites/:siteId/deployments/:targetLang/:deploymentId/asset-diagnostics"
+      },
+      "family": "api",
+      "flagKeys": [],
+      "group": "admin",
+      "id": "api.admin.deploymentAssets.diagnostics.get",
+      "name": "Get deployment asset diagnostics",
+      "routeIds": [
+        "admin.deploymentAssets.diagnostics.get"
+      ],
+      "stability": "Internal",
+      "summary": "Internal admin read-only endpoint for the best-effort deployment asset diagnostics sidecar. The response is bounded and redacted; raw payloads, cookies, auth headers, and query values are not returned. Missing or unreadable sidecars do not affect customer deployment status or pointer activation.",
+      "userFacing": false
+    },
+    {
+      "endpoint": {
+        "auth": "bearer",
         "method": "POST",
         "operationId": "admin.managedDemos.create",
         "path": "/admin/managed-demos"
