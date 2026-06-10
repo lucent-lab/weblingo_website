@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-09T22:42:11+09:00",
+  "generatedAt": "2026-06-10T10:12:57+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
       "bytes": 95385,
@@ -32,7 +32,7 @@
       "sha256": "46464ff6cc4c96bdba558e99b8815b764e19c40354b7892b7d82f2b857cd25af"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-06-09T22:42:11+09:00",
+  "sourceRepoCommitTimestamp": "2026-06-10T10:12:57+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_m6521_posthog_closeout",
-  "sourceRepoSha": "58e040974f27aa3e458c239094a3d95ac42e64a6"
+  "sourceRepoSha": "c86c1598ca0bd5881b2db6261f17d6e155e3ad98"
 }
