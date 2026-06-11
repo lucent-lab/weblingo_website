@@ -2575,9 +2575,7 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("reattaches to an identical in-flight run instead of creating a duplicate", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
-    vi.stubGlobal("fetch", fetchMock);
+  it("reconnects an identical in-flight run through the create endpoint with the rotated token", async () => {
     const now = Date.now();
     const requestKey = buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://inflight.example.com",
@@ -2594,6 +2592,21 @@ describe("TryForm preview status", () => {
       createdAt: now - 16 * 60 * 1000,
       updatedAt: now - 16 * 60 * 1000,
     });
+    // The create endpoint dedupes server-side: the same ref comes back with a
+    // freshly rotated status token (the stored one may have been rotated by
+    // another tab and gone stale).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "inflight-8888-8888-8888-888888888888",
+          statusToken: "rotated-token",
+          status: "processing",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
@@ -2605,15 +2618,15 @@ describe("TryForm preview status", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases",
+        expect.objectContaining({ method: "POST" }),
+      );
       expect(MockEventSource.instances).toHaveLength(1);
       expect(MockEventSource.instances[0].url).toBe(
-        "/api/prospect-showcases/inflight-8888-8888-8888-888888888888/stream?token=inflight-token",
+        "/api/prospect-showcases/inflight-8888-8888-8888-888888888888/stream?token=rotated-token",
       );
     });
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/prospect-showcases",
-      expect.objectContaining({ method: "POST" }),
-    );
 
     MockEventSource.instances[0].emit("progress", {
       status: "processing",
@@ -2623,9 +2636,11 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
     });
-    expect(
-      getPreviewStatusCenterJobsSnapshot().filter((job) => job.requestKey === requestKey),
-    ).toHaveLength(1);
+    const matching = getPreviewStatusCenterJobsSnapshot().filter(
+      (job) => job.requestKey === requestKey,
+    );
+    expect(matching).toHaveLength(1);
+    expect(matching[0]?.statusToken).toBe("rotated-token");
   });
 
   it("updates the tracked job when the backend dedupes the create request", async () => {

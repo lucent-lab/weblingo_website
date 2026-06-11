@@ -1193,22 +1193,10 @@ export function TryForm({
         email: trimmedEmail,
       });
 
-      // One preview at a time: an identical request already in flight is reattached
-      // instead of creating an orphan duplicate run.
-      const existingActiveJob = selectLatestJobByRequestKey(requestKey, jobs);
-      if (existingActiveJob && isActivePreviewJobPhase(existingActiveJob.status)) {
-        setLastRequestKey(requestKey);
-        trackedPreviewIdsRef.current.add(existingActiveJob.previewId);
-        trackedPreviewTerminalRef.current.delete(existingActiveJob.previewId);
-        writeActivePreviewIdToSession(existingActiveJob.previewId);
-        if (typeof window === "undefined" || typeof window.EventSource !== "function") {
-          void handleCheckStatus(existingActiveJob.previewId, existingActiveJob.statusToken);
-        } else {
-          connectSSE(existingActiveJob.previewId, existingActiveJob.statusToken);
-        }
-        return;
-      }
-
+      // One preview at a time: identical in-flight requests are deduped by the
+      // create endpoint itself, which returns the existing prospectShowcaseRef
+      // with a freshly rotated statusToken. Reattaching from local state would
+      // keep a stale token when another tab already rotated it.
       if (trackedJob && !isActivePreviewJobPhase(trackedJob.status)) {
         removePreviewStatusCenterJob(trackedJob.previewId);
         clearPreviewTracking(trackedJob.previewId);

@@ -444,11 +444,15 @@ function staleFailActiveJob(job: PreviewStatusCenterJob, now: number): PreviewSt
 }
 
 function pruneJobs(jobs: PreviewStatusCenterJob[], now = Date.now()): PreviewStatusCenterJob[] {
-  return jobs
-    .map((job) => expireTerminalJob(staleFailActiveJob(job, now), now))
-    .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
-    .sort(comparePreviewStatusCenterJobs)
-    .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS);
+  return (
+    jobs
+      // TTL-drop on the pre-transformation timestamp: staleFailActiveJob rewrites
+      // updatedAt to now, which must not resurrect entries already past the TTL.
+      .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
+      .map((job) => expireTerminalJob(staleFailActiveJob(job, now), now))
+      .sort(comparePreviewStatusCenterJobs)
+      .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS)
+  );
 }
 
 function persistJobs(jobs: PreviewStatusCenterJob[]) {

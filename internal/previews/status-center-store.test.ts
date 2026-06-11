@@ -757,6 +757,29 @@ describe("status-center-store", () => {
     expect(persistedStale?.status).toBe("failed");
   });
 
+  it("drops ancient active jobs past the storage TTL instead of resurrecting them as failures", () => {
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...buildJob({
+            previewId: "ancient-1111-1111-1111-111111111111",
+            status: "processing",
+          }),
+          createdAt: now - 3 * 24 * 60 * 60 * 1000,
+          updatedAt: now - 2 * 24 * 60 * 60 * 1000,
+        },
+      ]),
+    );
+
+    hydratePreviewStatusCenterStore();
+
+    // Stale-failing rewrites updatedAt to now; the TTL drop must happen on the
+    // stored timestamp so a days-old entry never reappears as a fresh failure.
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
+  });
+
   it("selects only the single current active job for the status center", () => {
     const pinned = buildJob({
       previewId: "pinned-1111-1111-1111-111111111111",
