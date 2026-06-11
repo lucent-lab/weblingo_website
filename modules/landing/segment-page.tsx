@@ -89,7 +89,6 @@ export async function LandingSegmentPage({
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
-                  showEmailField
                   showInlineStatusText={false}
                   fieldLayout={tryFormFieldLayout}
                   primaryButtonClassName={styles.buttonMicro}

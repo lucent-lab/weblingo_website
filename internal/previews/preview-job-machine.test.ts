@@ -23,6 +23,7 @@ function buildJob(overrides: Partial<PreviewJob> = {}): PreviewJob {
     errorStage: null,
     retryHint: null,
     remoteStatusVerified: true,
+    lastVerifiedAt: now,
     createdAt: now,
     updatedAt: now,
     expiresAt: null,
@@ -167,24 +168,41 @@ describe("preview-job-machine", () => {
       parsePreviewRetryHint({
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: 1.5,
-        emailRecommended: true,
       }),
     ).toEqual({
       reason: "browser_capacity_exhausted",
       retryAfterSeconds: null,
-      emailRecommended: true,
     });
     expect(
       parsePreviewRetryHint({
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: -1,
-        emailRecommended: true,
       }),
     ).toEqual({
       reason: "browser_capacity_exhausted",
       retryAfterSeconds: null,
-      emailRecommended: true,
     });
+    expect(
+      parsePreviewRetryHint({
+        reason: "browser_capacity_exhausted",
+        retryAfterSeconds: 60,
+      }),
+    ).toEqual({
+      reason: "browser_capacity_exhausted",
+      retryAfterSeconds: 60,
+    });
+    expect(
+      parsePreviewRetryHint({
+        reason: "provider_capacity_wait",
+        retryAfterSeconds: 30,
+      }),
+    ).toEqual({
+      reason: "provider_capacity_wait",
+      retryAfterSeconds: 30,
+    });
+  });
+
+  it("ignores legacy emailRecommended fields in retry hint payloads", () => {
     expect(
       parsePreviewRetryHint({
         reason: "browser_capacity_exhausted",
@@ -194,18 +212,38 @@ describe("preview-job-machine", () => {
     ).toEqual({
       reason: "browser_capacity_exhausted",
       retryAfterSeconds: 60,
-      emailRecommended: true,
     });
-    expect(
-      parsePreviewRetryHint({
-        reason: "provider_capacity_wait",
-        retryAfterSeconds: 30,
-        emailRecommended: false,
-      }),
-    ).toEqual({
-      reason: "provider_capacity_wait",
-      retryAfterSeconds: 30,
-      emailRecommended: false,
-    });
+  });
+
+  it("stamps lastVerifiedAt only when the remote status is verified", () => {
+    const unverified = reducePreviewJob(
+      buildJob({ remoteStatusVerified: true, lastVerifiedAt: 1_000 }),
+      {
+        type: "patch",
+        patch: {
+          remoteStatusVerified: false,
+        },
+      },
+      {
+        now: 2_000,
+        defaultPollIntervalMs: 5_000,
+      },
+    );
+    expect(unverified?.lastVerifiedAt).toBe(1_000);
+
+    const reverified = reducePreviewJob(
+      unverified,
+      {
+        type: "patch",
+        patch: {
+          remoteStatusVerified: true,
+        },
+      },
+      {
+        now: 3_000,
+        defaultPollIntervalMs: 5_000,
+      },
+    );
+    expect(reverified?.lastVerifiedAt).toBe(3_000);
   });
 });

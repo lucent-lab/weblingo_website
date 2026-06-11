@@ -44,7 +44,6 @@ export default async function TryPage({ params }: { params: Promise<{ locale: st
               messages={messages}
               disabled={!hasPreviewConfig}
               supportedLanguages={supportedLanguages}
-              showEmailField
               fieldLayout="funnel"
             />
             {!hasPreviewConfig ? (

@@ -32,7 +32,7 @@ export default async function MarketingLayout({
         <main className="flex-1">{children}</main>
         <SiteFooter locale={locale} t={t} />
       </div>
-      <PreviewStatusCenter locale={locale} messages={statusCenterMessages} />
+      <PreviewStatusCenter messages={statusCenterMessages} />
     </>
   );
 }

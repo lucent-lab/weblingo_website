@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
+  cleanupPreviewStatusCenterJobs,
   comparePreviewStatusCenterJobs,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
@@ -12,12 +13,14 @@ import {
   LEGACY_PREVIEW_STATUS_CENTER_STORAGE_KEY,
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   removePreviewStatusCenterJob,
   resetPreviewStatusCenterJobRetry,
   resetPreviewStatusCenterStoreForTests,
   RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS,
   selectPreferredPreviewStatusCenterJob,
+  selectCurrentActivePreviewStatusCenterJob,
   selectLatestActivePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   selectRestorablePreviewStatusCenterJob,
@@ -129,7 +132,6 @@ describe("status-center-store", () => {
         retryHint: {
           reason: "provider_capacity_wait",
           retryAfterSeconds: 30,
-          emailRecommended: true,
         },
       }),
     );
@@ -327,7 +329,6 @@ describe("status-center-store", () => {
         retryHint: {
           reason: "provider_capacity_wait",
           retryAfterSeconds: null,
-          emailRecommended: true,
         },
       }),
     );
@@ -350,6 +351,7 @@ describe("status-center-store", () => {
       errorStage: null,
       retryHint: null,
       remoteStatusVerified: true,
+      lastVerifiedAt: null,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -369,6 +371,7 @@ describe("status-center-store", () => {
       errorStage: null,
       retryHint: null,
       remoteStatusVerified: true,
+      lastVerifiedAt: null,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -470,6 +473,7 @@ describe("status-center-store", () => {
         errorCode: null,
         errorStage: null,
         remoteStatusVerified: false,
+        lastVerifiedAt: null,
         createdAt: now - 1_000,
         updatedAt: now - 500,
         expiresAt: null,
@@ -487,6 +491,7 @@ describe("status-center-store", () => {
         errorCode: null,
         errorStage: null,
         remoteStatusVerified: false,
+        lastVerifiedAt: null,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
         updatedAt: now - 250,
         expiresAt: null,
@@ -525,6 +530,7 @@ describe("status-center-store", () => {
         errorCode: null,
         errorStage: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: null,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 10_000,
         updatedAt: now - 2_000,
         expiresAt: now + 60_000,
@@ -543,6 +549,7 @@ describe("status-center-store", () => {
         errorCode: null,
         errorStage: null,
         remoteStatusVerified: false,
+        lastVerifiedAt: null,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
         updatedAt: now,
         expiresAt: null,
@@ -573,6 +580,7 @@ describe("status-center-store", () => {
       errorCode: null,
       errorStage: null,
       remoteStatusVerified: false,
+      lastVerifiedAt: null,
       createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
       updatedAt: now,
       expiresAt: null,
@@ -696,5 +704,110 @@ describe("status-center-store", () => {
     expect(
       selectRestorablePreviewStatusCenterJob({ currentRequestKey: prospectRequestKey })?.previewId,
     ).toBe("prospect-1111-1111-1111-111111111111");
+  });
+
+  it("stale-fails active jobs beyond the wall-clock budget on hydration", () => {
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...buildJob({
+            previewId: "budget-1111-1111-1111-111111111111",
+            status: "processing",
+          }),
+          stage: "translating",
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 1,
+          updatedAt: now - 1_000,
+        },
+        {
+          ...buildJob({
+            previewId: "budget-2222-2222-2222-222222222222",
+            status: "processing",
+          }),
+          createdAt: now - 1_000,
+          updatedAt: now - 500,
+        },
+      ]),
+    );
+
+    hydratePreviewStatusCenterStore();
+
+    const jobs = getPreviewStatusCenterJobsSnapshot();
+    const stale = jobs.find((job) => job.previewId === "budget-1111-1111-1111-111111111111");
+    const fresh = jobs.find((job) => job.previewId === "budget-2222-2222-2222-222222222222");
+    expect(stale).toMatchObject({
+      status: "failed",
+      errorCode: "processing_stalled",
+      errorStage: "translating",
+      remoteStatusVerified: true,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    });
+    expect(fresh?.status).toBe("processing");
+
+    // The poll runtime always runs a cleanup pass after hydration; that pass
+    // persists the stale-failed conversion back to localStorage.
+    cleanupPreviewStatusCenterJobs();
+    const persisted = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY) ?? "[]",
+    ) as Array<{ previewId: string; status: string }>;
+    const persistedStale = persisted.find(
+      (job) => job.previewId === "budget-1111-1111-1111-111111111111",
+    );
+    expect(persistedStale?.status).toBe("failed");
+  });
+
+  it("selects only the single current active job for the status center", () => {
+    const pinned = buildJob({
+      previewId: "pinned-1111-1111-1111-111111111111",
+      status: "processing",
+    });
+    const other = buildJob({
+      previewId: "other-2222-2222-2222-222222222222",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://other.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "",
+      }),
+      sourceUrl: "https://other.example.com",
+      status: "pending",
+    });
+    const terminal = buildJob({
+      previewId: "done-3333-3333-3333-333333333333",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://done.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "",
+      }),
+      sourceUrl: "https://done.example.com",
+      status: "ready" as const,
+    });
+    upsertPreviewStatusCenterJob(pinned);
+    upsertPreviewStatusCenterJob(other);
+    upsertPreviewStatusCenterJob(terminal);
+    const jobs = getPreviewStatusCenterJobsSnapshot();
+
+    expect(
+      selectCurrentActivePreviewStatusCenterJob({
+        jobs,
+        pinnedPreviewId: "pinned-1111-1111-1111-111111111111",
+      })?.previewId,
+    ).toBe("pinned-1111-1111-1111-111111111111");
+
+    expect(
+      selectCurrentActivePreviewStatusCenterJob({
+        jobs,
+        pinnedPreviewId: "done-3333-3333-3333-333333333333",
+      })?.previewId,
+    ).toBe(selectLatestActivePreviewStatusCenterJob(jobs)?.previewId);
+
+    expect(
+      selectCurrentActivePreviewStatusCenterJob({
+        jobs: [getPreviewStatusCenterJobsSnapshot().find((job) => job.status === "ready")!],
+        pinnedPreviewId: null,
+      }),
+    ).toBeNull();
   });
 });

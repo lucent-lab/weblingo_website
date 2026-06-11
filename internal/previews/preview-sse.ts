@@ -15,6 +15,13 @@ export type PreviewErrorCode =
   | "preview_not_found"
   | "preview_expired"
   | "canceled"
+  | "provision_failed"
+  | "translation_failed"
+  | "showcase_failed"
+  | "provision_stalled"
+  | "processing_stalled"
+  | "translation_capacity_exhausted"
+  | "source_page_too_large"
   | "unknown";
 
 export type PreviewStage =
@@ -24,7 +31,7 @@ export type PreviewStage =
   | "generating_preview"
   | "saving";
 
-const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
+export const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
   "invalid_url",
   "blocked_host",
   "dns_failed",
@@ -41,6 +48,13 @@ const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
   "preview_not_found",
   "preview_expired",
   "canceled",
+  "provision_failed",
+  "translation_failed",
+  "showcase_failed",
+  "provision_stalled",
+  "processing_stalled",
+  "translation_capacity_exhausted",
+  "source_page_too_large",
   "unknown",
 ];
 

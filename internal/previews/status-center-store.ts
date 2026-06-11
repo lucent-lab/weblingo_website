@@ -25,6 +25,13 @@ export const LEGACY_PENDING_PREVIEW_STORAGE_KEY = "weblingo:try-form:pending-pre
 export const ACTIVE_PREVIEW_SESSION_STORAGE_KEY = "weblingo:try-form:active-preview-id:v1";
 export const DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS = 5_000;
 export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
+// Client-side backstop for active jobs. The backend reaper terminalizes stalled
+// prospect showcases after PROSPECT_SHOWCASE_PROCESSING_TIMEOUT_SECONDS (recommended
+// 3600s) plus up to one 15-minute cron interval, and that server verdict arrives via
+// polling. This budget must exceed that window so the client never fabricates a
+// failure for a job the server still considers live; it only catches jobs whose
+// server truth is unreachable.
+export const PREVIEW_ACTIVE_JOB_MAX_AGE_MS = 75 * 60 * 1000;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
 const PROSPECT_SHOWCASE_REQUEST_KEY_KIND = "prospect_showcase";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;
@@ -379,6 +386,7 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     errorStage,
     retryHint,
     remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
+    lastVerifiedAt: isFiniteNumber(value.lastVerifiedAt) ? value.lastVerifiedAt : null,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
@@ -413,9 +421,31 @@ function expireTerminalJob(job: PreviewStatusCenterJob, now: number): PreviewSta
   });
 }
 
+function staleFailActiveJob(job: PreviewStatusCenterJob, now: number): PreviewStatusCenterJob {
+  if (isPreviewStatusCenterJobTerminal(job.status)) {
+    return job;
+  }
+  if (now - normalizeTimestamp(job.createdAt) < PREVIEW_ACTIVE_JOB_MAX_AGE_MS) {
+    return job;
+  }
+  return normalizeJob({
+    ...job,
+    status: "failed",
+    stage: null,
+    error: null,
+    errorCode: "processing_stalled",
+    errorStage: job.stage,
+    retryHint: null,
+    remoteStatusVerified: true,
+    updatedAt: now,
+    retryCount: 0,
+    nextPollAt: Number.POSITIVE_INFINITY,
+  });
+}
+
 function pruneJobs(jobs: PreviewStatusCenterJob[], now = Date.now()): PreviewStatusCenterJob[] {
   return jobs
-    .map((job) => expireTerminalJob(job, now))
+    .map((job) => expireTerminalJob(staleFailActiveJob(job, now), now))
     .filter((job) => now - job.updatedAt <= STALE_PREVIEW_STATUS_CENTER_JOB_TTL_MS)
     .sort(comparePreviewStatusCenterJobs)
     .slice(0, MAX_PREVIEW_STATUS_CENTER_JOBS);
@@ -614,10 +644,20 @@ export function isPreviewStatusCenterJobActive(job: PreviewStatusCenterJob): boo
   return !isPreviewStatusCenterJobTerminal(job.status);
 }
 
-export function selectJobsForStatusCenter(
-  jobs: PreviewStatusCenterJob[] = state.jobs,
-): PreviewStatusCenterJob[] {
-  return jobs;
+// The marketing status center mirrors only the single current run so it can never
+// disagree with the try form: the session-pinned job when it is active, else the
+// latest active job, else nothing (terminal outcomes are owned by the form + email).
+export function selectCurrentActivePreviewStatusCenterJob(options: {
+  jobs: PreviewStatusCenterJob[];
+  pinnedPreviewId: string | null;
+}): PreviewStatusCenterJob | null {
+  if (options.pinnedPreviewId) {
+    const pinned = options.jobs.find((job) => job.previewId === options.pinnedPreviewId);
+    if (pinned && isPreviewStatusCenterJobActive(pinned)) {
+      return pinned;
+    }
+  }
+  return selectLatestActivePreviewStatusCenterJob(options.jobs);
 }
 
 export function selectLatestActivePreviewStatusCenterJob(

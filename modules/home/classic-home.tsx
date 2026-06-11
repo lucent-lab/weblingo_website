@@ -99,10 +99,14 @@ export async function ClassicHomePage({ locale, basePath }: { locale: string; ba
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
-                  showEmailField
                   showInlineStatusText={false}
                   fieldLayout="funnel"
                 />
+                {!hasPreviewConfig ? (
+                  <div className="mt-6 rounded-lg border border-border bg-secondary/50 p-4 text-sm text-muted-foreground">
+                    {t("try.disabled.notice")}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

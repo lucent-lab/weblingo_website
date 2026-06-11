@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ACTIVE_PREVIEW_SESSION_STORAGE_KEY,
   buildPreviewStatusCenterRequestKey,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
@@ -86,7 +87,7 @@ describe("TryPanelHeader", () => {
           errorCode: null,
           errorStage: null,
           remoteStatusVerified: true,
-          createdAt: now - 60 * 60 * 1000,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
           updatedAt: now,
           expiresAt: null,
           retryCount: 0,
@@ -104,7 +105,7 @@ describe("TryPanelHeader", () => {
     expect(screen.queryByRole("heading", { name: "Translating" })).toBeNull();
   });
 
-  it("keeps showing stale active previews when they are pinned to the current tab", async () => {
+  it("shows default copy for pinned previews past the wall-clock budget", async () => {
     const now = Date.now();
     const previewId = "pinned-3333-3333-3333-333333333333";
     window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
@@ -128,7 +129,7 @@ describe("TryPanelHeader", () => {
           error: null,
           errorCode: null,
           errorStage: null,
-          createdAt: now - 60 * 60 * 1000,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
           updatedAt: now,
           expiresAt: null,
           retryCount: 0,
@@ -139,11 +140,13 @@ describe("TryPanelHeader", () => {
 
     render(<TryPanelHeader messages={messages} />);
 
+    // Hydration stale-fails active jobs past the budget, so the header falls back
+    // to the default copy even for the pinned job.
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Checking preview status..." })).toBeTruthy();
-      expect(screen.getByText("Processing hint")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Try WebLingo" })).toBeTruthy();
+      expect(screen.getByText("Create a preview")).toBeTruthy();
     });
-    expect(screen.queryByRole("heading", { name: "Try WebLingo" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Checking preview status..." })).toBeNull();
   });
 
   it("shows translation-capacity guidance in the running header", async () => {
@@ -163,7 +166,6 @@ describe("TryPanelHeader", () => {
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 60,
-        emailRecommended: false,
       },
       remoteStatusVerified: true,
     });
@@ -206,7 +208,6 @@ describe("TryPanelHeader", () => {
           retryHint: {
             reason: "provider_capacity_wait",
             retryAfterSeconds: 60,
-            emailRecommended: false,
           },
           remoteStatusVerified: true,
           createdAt: now - 60_000,

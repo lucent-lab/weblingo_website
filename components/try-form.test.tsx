@@ -10,6 +10,7 @@ import {
   DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
   getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
@@ -74,16 +75,18 @@ const messages = {
   "try.form.sourceLabel": "Source language",
   "try.form.targetLabel": "Target language",
   "try.form.sameLanguage": "Pick a different target language",
+  "try.form.emailHint": "We email you the links when it's ready.",
   "try.status.creating": "Creating preview...",
   "try.status.capacityHint": "Capacity hint",
-  "try.status.capacityEmailHint": "Capacity email hint",
   "try.status.providerCapacityHint": "Provider capacity hint",
-  "try.status.providerCapacityEmailHint": "Provider capacity email hint",
   "try.status.pending": "Pending",
   "try.status.processing": "Processing preview...",
   "try.status.waitingProviderCapacity": "Waiting for translation capacity...",
   "try.status.restoring": "Checking preview status...",
   "try.status.processingHint": "Processing hint",
+  "try.status.emailNotice": "Usually ready in a few minutes. We'll email the links to {email}.",
+  "try.status.statusUnreachable": "We can't check the preview status right now.",
+  "try.status.pendingEmail": "We'll email {email} when your preview is ready.",
   "try.status.ready": "Ready",
   "try.progress.label": "Preview progress",
   "try.progress.queued": "Queued",
@@ -91,16 +94,10 @@ const messages = {
   "try.progress.translating": "Translating",
   "try.progress.rendering": "Rendering preview",
   "try.progress.ready": "Ready",
-  "try.status.timedOutNoEmail": "Processing is taking longer than expected.",
   "try.action.retry": "Retry preview",
-  "try.action.startAnother": "Start another preview",
+  "try.action.translateAnother": "Translate another page",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
-  "try.pending.emailPrompt": "Get notified when your preview is ready",
-  "try.pending.emailSubmit": "Email me",
-  "try.pending.emailSubmitting": "Saving...",
-  "try.pending.emailSaved": "We'll email you when it's ready.",
-  "try.pending.emailError": "Could not save email. Try again.",
   "try.preview.linkLabel": "Preview link",
   "try.preview.showcaseLinkLabel": "Showcase link",
   "try.preview.open": "Open preview",
@@ -109,10 +106,17 @@ const messages = {
   "try.preview.openDemoDashboard": "Open demo dashboard",
   "try.preview.copy": "Copy link",
   "try.preview.copied": "Copied",
+  "try.preview.emailedNotice": "We also emailed these links to {email}.",
   "try.error.default": "Preview failed.",
   "try.error.stageLabel": "Failed during {stage}",
+  "try.error.referenceHint": "If you contact support, include reference {ref}.",
   "try.error.preview_expired": "Preview expired",
   "try.error.preview_not_found": "Preview not found",
+  "try.error.provision_failed": "Provision failed copy",
+  "try.error.translation_failed": "Translation failed copy",
+  "try.error.showcase_failed": "Showcase failed copy",
+  "try.error.provision_stalled": "Provision stalled copy",
+  "try.error.processing_stalled": "Processing stalled copy",
   "try.error.unknown": "Unknown error",
   "try.stage.fetching_page": "Fetching page",
   "try.stage.analyzing_content": "Analyzing content",
@@ -171,7 +175,7 @@ function renderTryForm(locale = "en") {
       locale={locale}
       messages={messages}
       supportedLanguages={supportedLanguages}
-      showEmailField={false}
+      disabled={false}
     />,
   );
 }
@@ -286,6 +290,9 @@ describe("TryForm preview status", () => {
 
     const urlInput = screen.getByPlaceholderText("https://example.com");
     fireEvent.change(urlInput, { target: { value: "https://example.com/docs?secret=1" } });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -364,7 +371,7 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
         fieldLayout="funnel"
       />,
     );
@@ -429,6 +436,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://broken.example.com/" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -467,6 +477,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -497,6 +510,9 @@ describe("TryForm preview status", () => {
 
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -531,6 +547,9 @@ describe("TryForm preview status", () => {
 
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -573,6 +592,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -590,7 +612,7 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("clears a stale ready result when a retry create request fails", async () => {
+  it("clears a stale ready result when a fresh create request fails", async () => {
     upsertDefaultJob("pending", {
       previewId: "bcbc2222-2222-2222-2222-222222222222",
       previewUrl: "https://preview.example.com/p/ready",
@@ -617,6 +639,13 @@ describe("TryForm preview status", () => {
       expect(screen.getByRole("link", { name: "View showcase" })).toBeTruthy();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://fresh.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -647,6 +676,7 @@ describe("TryForm preview status", () => {
         errorStage: null,
         retryHint: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: 1,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -670,6 +700,7 @@ describe("TryForm preview status", () => {
         errorStage: null,
         retryHint: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: 1,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -693,6 +724,7 @@ describe("TryForm preview status", () => {
         errorStage: null,
         retryHint: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: 1,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -716,6 +748,7 @@ describe("TryForm preview status", () => {
         errorStage: null,
         retryHint: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: 1,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -739,6 +772,7 @@ describe("TryForm preview status", () => {
         errorStage: null,
         retryHint: null,
         remoteStatusVerified: true,
+        lastVerifiedAt: 1,
         createdAt: 1,
         updatedAt: 1,
         expiresAt: null,
@@ -762,7 +796,7 @@ describe("TryForm preview status", () => {
         messages={messages}
         primaryButtonClassName="landing-button-micro"
         supportedLanguages={supportedLanguages}
-        showEmailField={false}
+        disabled={false}
       />,
     );
 
@@ -821,17 +855,12 @@ describe("TryForm preview status", () => {
 
     resolveStatus(jsonResponse({ status: "processing", stage: "translating" }));
 
+    // Once the run is verified the stepper appears, and no mid-run reset action exists.
     await waitFor(() => {
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Start another preview" }));
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
-      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Translate another page" })).toBeNull();
+      expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
     });
   });
 
@@ -850,9 +879,21 @@ describe("TryForm preview status", () => {
         "/api/prospect-showcases/not-found-2222-2222-2222-222222222222/status?token=restore-token",
       );
       expect(screen.getByText("Preview not found")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "If you contact support, include reference not-found-2222-2222-2222-222222222222.",
+        ),
+      ).toBeTruthy();
       expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+      expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+
+    await waitFor(() => {
       expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
+      expect(screen.queryByText("Preview not found")).toBeNull();
     });
   });
 
@@ -888,7 +929,7 @@ describe("TryForm preview status", () => {
           error: null,
           errorCode: null,
           errorStage: null,
-          createdAt: now - 60 * 60 * 1000,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
           updatedAt: now + 1_000,
           expiresAt: null,
           retryCount: 0,
@@ -931,28 +972,30 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("does not let an old active preview take over an empty form on refresh", async () => {
+  it("stale-fails an old active preview on refresh instead of resuming it", async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
     vi.stubGlobal("fetch", fetchMock);
     const now = Date.now();
     storeRestoredActiveJob({
       previewId: "old-6666-6666-6666-666666666666",
       sourceUrl: "https://old.example.com",
-      createdAt: now - 60 * 60 * 1000,
+      createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
       updatedAt: now,
     });
 
     renderTryForm();
 
+    // The job exceeded the wall-clock budget, so it is surfaced as a stale failure
+    // with a retry path instead of being silently resumed or polled.
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
-      expect(screen.queryByText("old.example.com • English -> French")).toBeNull();
+      expect(screen.getByText("Processing stalled copy")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
+      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("shows retry and escape actions when restored status fetch fails", async () => {
+  it("shows a manual check-status retry when restored status fetch fails", async () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new Error("network unavailable"))
@@ -972,7 +1015,7 @@ describe("TryForm preview status", () => {
       expect(screen.getByText("Checking preview status...")).toBeTruthy();
       expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
       expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Start another preview" })).toBeNull();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Check status" }));
@@ -980,11 +1023,10 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Start another preview" })).toBeTruthy();
     });
   });
 
-  it("restores editable controls for terminal ready and failed states", async () => {
+  it("renders terminal cards without the editable form and resets via translate-another", async () => {
     upsertDefaultJob("pending", {
       previewId: "cccc3333-3333-3333-3333-333333333333",
       previewUrl: "https://preview.example.com/p/ready",
@@ -996,15 +1038,23 @@ describe("TryForm preview status", () => {
     renderTryForm();
     await waitFor(() => {
       expect(screen.getByText("Ready")).toBeTruthy();
-      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
+      expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Generate a private preview" })).toBeNull();
       expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
         "https://preview.example.com/p/ready",
       );
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
+      expect(screen.queryByText("Ready")).toBeNull();
+    });
+
     cleanup();
     resetPreviewStatusCenterStoreForTests();
+    window.sessionStorage.clear();
     upsertDefaultJob("pending", {
       previewId: "dddd4444-4444-4444-4444-444444444444",
     });
@@ -1018,8 +1068,8 @@ describe("TryForm preview status", () => {
     await waitFor(() => {
       expect(screen.getByText("Unknown error")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
-      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Translate another page" })).toBeTruthy();
+      expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
     });
   });
 
@@ -1051,8 +1101,15 @@ describe("TryForm preview status", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderTryForm();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Translate another page" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://new.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1120,12 +1177,14 @@ describe("TryForm preview status", () => {
             locale="en"
             messages={messages}
             supportedLanguages={supportedLanguages}
-            showEmailField={false}
+            disabled={false}
           />
           <PreviewStatusCenter messages={messages} />
         </>,
       );
 
+      const isTerminalPhase =
+        phase.status === "ready" || phase.status === "failed" || phase.status === "expired";
       const expected = resolvePreviewStatusCenterMessage(
         {
           previewId: `phase-${phase.status}`,
@@ -1147,6 +1206,7 @@ describe("TryForm preview status", () => {
           errorStage: phase.status === "failed" ? "generating_preview" : null,
           retryHint: null,
           remoteStatusVerified: true,
+          lastVerifiedAt: 1,
           createdAt: 1,
           updatedAt: 1,
           expiresAt: null,
@@ -1156,9 +1216,16 @@ describe("TryForm preview status", () => {
         (key) => messages[key as keyof typeof messages] ?? key,
       );
 
+      // Active phases render the same copy in the form and the toast; terminal
+      // outcomes are owned by the form only, so the toast renders nothing.
       await waitFor(() => {
-        expect(screen.getAllByText(expected).length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText(expected).length).toBeGreaterThanOrEqual(
+          isTerminalPhase ? 1 : 2,
+        );
       });
+      if (isTerminalPhase) {
+        expect(screen.getAllByText(expected)).toHaveLength(1);
+      }
     }
   });
 
@@ -1179,6 +1246,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1220,6 +1290,9 @@ describe("TryForm preview status", () => {
     renderTryForm("fr");
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1263,6 +1336,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -1301,6 +1377,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1342,6 +1421,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -1381,6 +1463,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1432,6 +1517,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -1468,6 +1556,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -1499,6 +1590,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1537,6 +1631,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1581,6 +1678,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -1710,19 +1810,29 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
         fieldLayout="funnel"
       />,
     );
 
+    // The restored terminal job renders the success card; the email survives the
+    // translate-another reset because it is collected once.
     await waitFor(() => {
-      expect(screen.getByDisplayValue("https://restore.example.com")).toBeTruthy();
-      expect(screen.getByDisplayValue("owner@example.com")).toBeTruthy();
+      expect(screen.getByText("We also emailed these links to owner@example.com.")).toBeTruthy();
       expect(getPreviewStatusCenterJobsSnapshot()[0]?.requestKey).toBe(requestKey);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("owner@example.com")).toBeTruthy();
+      expect((screen.getByPlaceholderText("https://example.com") as HTMLInputElement).value).toBe(
+        "",
+      );
     });
   });
 
-  it("keeps the legacy email field editable after restoring a prospect showcase job", async () => {
+  it("keeps the email editable after resetting from a restored prospect showcase job", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({
         prospectShowcaseRef: "prospect-next-3333",
@@ -1769,12 +1879,20 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
       />,
     );
 
+    const translateAnother = await screen.findByRole("button", {
+      name: "Translate another page",
+    });
+    fireEvent.click(translateAnother);
+
     const emailInput = await screen.findByDisplayValue("owner@example.com");
     fireEvent.change(emailInput, { target: { value: "next@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://restore.example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -1796,7 +1914,6 @@ describe("TryForm preview status", () => {
         retryHint: {
           reason: "provider_capacity_wait",
           retryAfterSeconds: 60,
-          emailRecommended: false,
         },
       }),
     );
@@ -1840,7 +1957,6 @@ describe("TryForm preview status", () => {
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       },
     });
 
@@ -1857,12 +1973,10 @@ describe("TryForm preview status", () => {
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       });
       expect(job?.remoteStatusVerified).toBe(false);
       expect(screen.getByText("Waiting for translation capacity...")).toBeTruthy();
       expect(screen.getByText("Processing hint")).toBeTruthy();
-      expect(screen.queryByText("Provider capacity email hint")).toBeNull();
     });
   });
 
@@ -1952,12 +2066,15 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField={false}
+        disabled={false}
       />,
     );
 
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com/docs" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -2093,7 +2210,7 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
       />,
     );
 
@@ -2121,7 +2238,6 @@ describe("TryForm preview status", () => {
       retryHint: {
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: 60,
-        emailRecommended: true,
       },
     });
 
@@ -2130,12 +2246,12 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Capacity email hint")).toBeTruthy();
+      expect(screen.getByText("Capacity hint")).toBeTruthy();
     });
   });
 
@@ -2156,7 +2272,6 @@ describe("TryForm preview status", () => {
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: false,
       },
     });
 
@@ -2165,12 +2280,12 @@ describe("TryForm preview status", () => {
         locale="en"
         messages={messages}
         supportedLanguages={supportedLanguages}
-        showEmailField
+        disabled={false}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Provider capacity email hint")).toBeTruthy();
+      expect(screen.getByText("Provider capacity hint")).toBeTruthy();
     });
   });
 
@@ -2201,6 +2316,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -2237,6 +2355,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -2271,6 +2392,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -2289,7 +2413,7 @@ describe("TryForm preview status", () => {
     expect(MockEventSource.instances).toHaveLength(1);
   });
 
-  it("restores running UI when a timed-out preview status check remains active", async () => {
+  it("keeps the stepper and falls back to polling when the SSE stream errors", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/api/prospect-showcases") {
@@ -2313,6 +2437,9 @@ describe("TryForm preview status", () => {
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
     });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
@@ -2321,14 +2448,12 @@ describe("TryForm preview status", () => {
 
     MockEventSource.instances[0].emit("error");
 
+    // SSE loss is a transport event: no alarm copy, the stepper stays, and the
+    // form silently checks status over HTTP.
     await waitFor(() => {
-      expect(screen.getByText("Processing is taking longer than expected.")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
-
-    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/timeout-active-8888-8888-8888-888888888888/status?token=timeout-token",
+      );
       expect(screen.queryByText("Processing is taking longer than expected.")).toBeNull();
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
       expect(screen.getByText("Waiting for translation capacity...")).toBeTruthy();
@@ -2352,6 +2477,9 @@ describe("TryForm preview status", () => {
     renderTryForm();
     fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
       target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
@@ -2417,19 +2545,137 @@ describe("TryForm preview status", () => {
     renderTryForm();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("https://expired.example.com")).toBeTruthy();
+      expect(screen.getByText("Preview expired")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "If you contact support, include reference 66666666-6666-6666-6666-666666666666.",
+        ),
+      ).toBeTruthy();
     });
 
-    const button = screen.getByRole("button", { name: "Retry preview" }) as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
+    // The restored legacy job has no email, so retry stays disabled until the
+    // visitor re-enters the request through translate-another.
+    const retryButton = screen.getByRole("button", { name: "Retry preview" }) as HTMLButtonElement;
+    expect(retryButton.disabled).toBe(true);
 
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://expired.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/prospect-showcases",
         expect.objectContaining({ method: "POST" }),
       );
+    });
+  });
+
+  it("reattaches to an identical in-flight run instead of creating a duplicate", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const now = Date.now();
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://inflight.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    // Old enough to skip the auto-restore path, but still within the active budget.
+    storeRestoredActiveJob({
+      previewId: "inflight-8888-8888-8888-888888888888",
+      requestKey,
+      statusToken: "inflight-token",
+      sourceUrl: "https://inflight.example.com",
+      createdAt: now - 16 * 60 * 1000,
+      updatedAt: now - 16 * 60 * 1000,
+    });
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://inflight.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+      expect(MockEventSource.instances[0].url).toBe(
+        "/api/prospect-showcases/inflight-8888-8888-8888-888888888888/stream?token=inflight-token",
+      );
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/prospect-showcases",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    MockEventSource.instances[0].emit("progress", {
+      status: "processing",
+      stage: "translating",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+    });
+    expect(
+      getPreviewStatusCenterJobsSnapshot().filter((job) => job.requestKey === requestKey),
+    ).toHaveLength(1);
+  });
+
+  it("updates the tracked job when the backend dedupes the create request", async () => {
+    const now = Date.now();
+    // Legacy job without email in its request key: the client cannot reattach
+    // locally, but the backend returns the same ref for the duplicate run.
+    storeRestoredActiveJob({
+      previewId: "dedupe-9999-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://dedupe.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://dedupe.example.com",
+      createdAt: now - 16 * 60 * 1000,
+      updatedAt: now - 16 * 60 * 1000,
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "dedupe-9999-9999-9999-999999999999",
+          statusToken: "fresh-token",
+          status: "processing",
+        });
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://dedupe.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases",
+        expect.objectContaining({ method: "POST" }),
+      );
+      const jobs = getPreviewStatusCenterJobsSnapshot();
+      const matching = jobs.filter((job) => job.previewId === "dedupe-9999-9999-9999-999999999999");
+      expect(jobs).toHaveLength(1);
+      expect(matching).toHaveLength(1);
+      expect(matching[0]?.statusToken).toBe("fresh-token");
     });
   });
 });

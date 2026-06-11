@@ -136,7 +136,6 @@ export function LandingVariant23({
                     messages={messages}
                     disabled={!hasPreviewConfig}
                     supportedLanguages={supportedLanguages}
-                    showEmailField
                   />
                 </div>
               </div>

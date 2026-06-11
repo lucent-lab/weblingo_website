@@ -6268,6 +6268,18 @@
         ],
         "type": "object"
       },
+      "ProspectShowcasePublicFailureCode": {
+        "enum": [
+          "provision_failed",
+          "translation_failed",
+          "showcase_failed",
+          "provision_stalled",
+          "processing_stalled",
+          "translation_capacity_exhausted",
+          "source_page_too_large"
+        ],
+        "type": "string"
+      },
       "ProspectShowcasePublicStage": {
         "enum": [
           "accepted",
@@ -6309,15 +6321,20 @@
             ]
           },
           "error": {
+            "description": "Visitor-safe failure explanation (cause + next step). Null unless the demo failed.",
             "type": [
               "string",
               "null"
             ]
           },
           "errorCode": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProspectShowcasePublicFailureCode"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "expiresAt": {
@@ -6334,6 +6351,33 @@
           },
           "prospectShowcaseRef": {
             "type": "string"
+          },
+          "retryHint": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "const": "provider_capacity_wait",
+                    "type": "string"
+                  },
+                  "retryAfterSeconds": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "reason",
+                  "retryAfterSeconds"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "showcaseUrl": {
             "type": [
@@ -14534,7 +14578,7 @@
     },
     "/prospect-showcases": {
       "post": {
-        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
+        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account. If an active (submitted or demo_creating) showcase already exists for the same source URL, language pair, and email, the endpoint does not start a second demo: it rotates the status token on the existing row and returns 202 with the existing `prospectShowcaseRef` and a fresh `statusToken`. Terminal rows never dedupe.",
         "operationId": "prospectShowcases.create",
         "requestBody": {
           "content": {

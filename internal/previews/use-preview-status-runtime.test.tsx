@@ -6,6 +6,7 @@ import {
   DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
   getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
 } from "./status-center-store";
@@ -269,7 +270,6 @@ describe("usePreviewStatusRuntime", () => {
               retryHint: {
                 reason: "browser_capacity_exhausted",
                 retryAfterSeconds: 60,
-                emailRecommended: true,
               },
             }),
             {
@@ -304,7 +304,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: 60,
-        emailRecommended: true,
       });
     });
   });
@@ -412,7 +411,6 @@ describe("usePreviewStatusRuntime", () => {
               retryHint: {
                 reason: "provider_capacity_wait",
                 retryAfterSeconds: 2,
-                emailRecommended: true,
               },
             }),
             {
@@ -448,7 +446,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
         retryAfterSeconds: 2,
-        emailRecommended: true,
       });
       expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 2_000);
       expect(job?.nextPollAt).toBeLessThan(
@@ -495,7 +492,6 @@ describe("usePreviewStatusRuntime", () => {
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       },
       remoteStatusVerified: true,
       nextPollAt: 0,
@@ -512,7 +508,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       });
       expect(job?.remoteStatusVerified).toBe(false);
       expect(job?.retryCount).toBe(1);
@@ -560,7 +555,7 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
-  it("terminalizes restored jobs after repeated transient status failures", async () => {
+  it("keeps jobs active with slow retries after repeated transient status failures", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -584,7 +579,7 @@ describe("usePreviewStatusRuntime", () => {
       sourceLang: "en",
       targetLang: "fr",
       status: "processing",
-      retryCount: 4,
+      retryCount: 8,
       nextPollAt: 0,
       remoteStatusVerified: false,
     });
@@ -595,9 +590,46 @@ describe("usePreviewStatusRuntime", () => {
       const job = getPreviewStatusCenterJobsSnapshot().find(
         (entry) => entry.previewId === "66666666-6666-6666-6666-666666666666",
       );
-      expect(job?.status).toBe("failed");
-      expect(job?.errorCode).toBe("unknown");
-      expect(job?.remoteStatusVerified).toBe(true);
+      expect(job?.status).toBe("processing");
+      expect(job?.remoteStatusVerified).toBe(false);
+      expect(job?.retryCount).toBe(9);
+      expect(job?.nextPollAt).toBeGreaterThan(Date.now());
+    });
+  });
+
+  it("stale-fails active jobs that exceed the wall-clock budget", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T12:00:00.000Z"));
+
+    upsertPreviewStatusCenterJob({
+      previewId: "stale-budget-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      stage: "translating",
+      nextPollAt: Date.now() + PREVIEW_ACTIVE_JOB_MAX_AGE_MS + 60_000,
+    });
+
+    render(<RuntimeHarness />);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]?.status).toBe("processing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PREVIEW_ACTIVE_JOB_MAX_AGE_MS + 1_000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "failed",
+      errorCode: "processing_stalled",
+      errorStage: "translating",
+      remoteStatusVerified: true,
     });
   });
 });

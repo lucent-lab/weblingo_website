@@ -13,7 +13,6 @@ export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_ca
 export type PreviewRetryHint = {
   reason: PreviewRetryHintReason;
   retryAfterSeconds: number | null;
-  emailRecommended: boolean;
 };
 
 export type PreviewJob = {
@@ -32,6 +31,8 @@ export type PreviewJob = {
   errorStage: PreviewStage | null;
   retryHint: PreviewRetryHint | null;
   remoteStatusVerified: boolean;
+  /** Last time the backend confirmed this job's status; null when never verified. */
+  lastVerifiedAt: number | null;
   createdAt: number;
   updatedAt: number;
   expiresAt: number | null;
@@ -150,7 +151,6 @@ export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
   return {
     reason: value.reason,
     retryAfterSeconds,
-    emailRecommended: value.emailRecommended === true,
   };
 }
 
@@ -267,6 +267,9 @@ function reduceUpsert(
     : input.retryHint === undefined
       ? (existing?.retryHint ?? null)
       : input.retryHint;
+  const remoteStatusVerified = terminal
+    ? true
+    : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true);
 
   return {
     previewId: input.previewId,
@@ -283,9 +286,8 @@ function reduceUpsert(
     errorCode: input.errorCode ?? existing?.errorCode ?? null,
     errorStage: input.errorStage ?? existing?.errorStage ?? null,
     retryHint,
-    remoteStatusVerified: terminal
-      ? true
-      : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true),
+    remoteStatusVerified,
+    lastVerifiedAt: remoteStatusVerified ? context.now : (existing?.lastVerifiedAt ?? null),
     createdAt: existing?.createdAt ?? context.now,
     updatedAt: context.now,
     expiresAt: input.expiresAt ?? existing?.expiresAt ?? null,
@@ -319,6 +321,9 @@ function reducePatch(
     : patch.retryHint === undefined
       ? existing.retryHint
       : patch.retryHint;
+  const remoteStatusVerified = terminal
+    ? true
+    : (patch.remoteStatusVerified ?? existing.remoteStatusVerified);
 
   return {
     ...existing,
@@ -336,9 +341,8 @@ function reducePatch(
     errorCode: patch.errorCode === undefined ? existing.errorCode : patch.errorCode,
     errorStage: patch.errorStage === undefined ? existing.errorStage : patch.errorStage,
     retryHint,
-    remoteStatusVerified: terminal
-      ? true
-      : (patch.remoteStatusVerified ?? existing.remoteStatusVerified),
+    remoteStatusVerified,
+    lastVerifiedAt: remoteStatusVerified ? context.now : existing.lastVerifiedAt,
     expiresAt: patch.expiresAt === undefined ? existing.expiresAt : patch.expiresAt,
     updatedAt: context.now,
     retryCount: terminal
