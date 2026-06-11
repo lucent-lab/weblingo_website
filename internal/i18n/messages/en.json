@@ -109,7 +109,7 @@
   "try.form.emailLabel": "Email",
   "try.form.emailPlaceholder": "you@company.com",
   "try.form.emailHint": "Generating the demo takes a few minutes — we email you the links when it's ready.",
-  "try.form.emailRequired": "Enter your email. The demo takes a few minutes and we email you the link when it's ready.",
+  "try.form.emailRequired": "Enter your email. The demo takes a few minutes and we email you the links when it's ready.",
   "try.form.emailInvalid": "Enter a valid email address.",
   "try.form.button": "Generate a private preview",
   "try.form.invalidUrl": "Enter a valid URL that starts with http or https.",

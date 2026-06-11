@@ -109,7 +109,7 @@
   "try.form.emailLabel": "Email",
   "try.form.emailPlaceholder": "vous@entreprise.com",
   "try.form.emailHint": "La génération de la démo prend quelques minutes — nous vous envoyons les liens par email dès qu'elle est prête.",
-  "try.form.emailRequired": "Entrez votre adresse e-mail. La démo prend quelques minutes et nous vous envoyons le lien par email dès qu'elle est prête.",
+  "try.form.emailRequired": "Entrez votre adresse e-mail. La démo prend quelques minutes et nous vous envoyons les liens par email dès qu'elle est prête.",
   "try.form.emailInvalid": "Saisissez une adresse e-mail valide.",
   "try.form.button": "Générer une prévisualisation privée",
   "try.disabled.notice": "Le service de prévisualisation privée est temporairement indisponible. Réessayez plus tard ou discutez d’un déploiement.",

@@ -6362,8 +6362,9 @@
                     "type": "string"
                   },
                   "retryAfterSeconds": {
+                    "minimum": 0,
                     "type": [
-                      "number",
+                      "integer",
                       "null"
                     ]
                   }
