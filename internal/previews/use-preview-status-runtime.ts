@@ -11,6 +11,8 @@ import {
   isPreviewStatusCenterJobActive,
   markPreviewStatusCenterJobTerminal,
   PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
+  PREVIEW_STATUS_CENTER_STORAGE_KEY,
+  rehydratePreviewStatusCenterStoreFromStorage,
   resetPreviewStatusCenterJobRetry,
   subscribePreviewStatusCenterStore,
   updatePreviewStatusCenterJob,
@@ -27,6 +29,16 @@ type PreviewStatusCenterJobWithExpiry = PreviewStatusCenterJob & { expiresAt: nu
 
 function hasTerminalExpiry(job: PreviewStatusCenterJob): job is PreviewStatusCenterJobWithExpiry {
   return (job.status === "ready" || job.status === "failed") && job.expiresAt !== null;
+}
+
+// A poll that started with a token another tab has since rotated must not have
+// its auth-shaped rejection treated as the job's verdict; the next tick polls
+// with the fresh token instead.
+function hasRotatedStatusToken(job: PreviewStatusCenterJob): boolean {
+  const current = getPreviewStatusCenterJobsSnapshot().find(
+    (candidate) => candidate.previewId === job.previewId,
+  );
+  return current !== undefined && current.statusToken !== job.statusToken;
 }
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
@@ -75,6 +87,27 @@ export function usePreviewStatusRuntime() {
     }
     hydratePreviewStatusCenterStore();
     cleanupPreviewStatusCenterJobs();
+  }, []);
+
+  useEffect(() => {
+    if (!isOwnerRef.current) {
+      return;
+    }
+    // Cross-tab convergence: another tab committing the shared snapshot (for
+    // example rotating a status token on a duplicate submission) must replace
+    // this tab's stale in-memory job before its next poll 401s into a false
+    // terminal failure. `storage` events only fire in non-writing tabs, so
+    // this never loops.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== PREVIEW_STATUS_CENTER_STORAGE_KEY) {
+        return;
+      }
+      rehydratePreviewStatusCenterStoreFromStorage();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -146,6 +179,9 @@ export function usePreviewStatusRuntime() {
           mapNotFoundToErrorCode: true,
         });
         if (decision.kind === "terminal") {
+          if (!response.ok && hasRotatedStatusToken(job)) {
+            return;
+          }
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
             demoDashboardUrl: decision.demoDashboardUrl,

@@ -639,6 +639,40 @@ export function hydratePreviewStatusCenterStore() {
   }
 }
 
+/**
+ * Re-reads the persisted snapshot after another tab committed it (localStorage
+ * `storage` event). Storage decides membership; for jobs known locally, the
+ * newer `updatedAt` wins so a status token rotated by a duplicate submission
+ * in another tab replaces the stale local token instead of letting this tab
+ * poll itself into a false terminal failure.
+ */
+export function rehydratePreviewStatusCenterStoreFromStorage() {
+  if (!canUseStorage()) {
+    return;
+  }
+  if (!hydrated) {
+    hydratePreviewStatusCenterStore();
+    return;
+  }
+  const { jobs: storedJobs } = readJobsFromStorage();
+  const localByPreviewId = new Map(state.jobs.map((job) => [job.previewId, job]));
+  const merged = storedJobs.map((incoming) => {
+    const local = localByPreviewId.get(incoming.previewId);
+    if (!local) {
+      return incoming;
+    }
+    return normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
+      ? incoming
+      : local;
+  });
+  // Never persist here: echoing the merged snapshot back to localStorage would
+  // ping-pong storage events between tabs.
+  state = {
+    jobs: pruneJobs(merged),
+  };
+  emit();
+}
+
 export function subscribePreviewStatusCenterStore(listener: Listener): () => void {
   listeners.add(listener);
   return () => {

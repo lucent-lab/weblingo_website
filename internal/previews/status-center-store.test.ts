@@ -14,6 +14,7 @@ import {
   parsePreviewStatusCenterRequestKey,
   PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
+  rehydratePreviewStatusCenterStoreFromStorage,
   removePreviewStatusCenterJob,
   resetPreviewStatusCenterJobRetry,
   resetPreviewStatusCenterStoreForTests,
@@ -85,6 +86,53 @@ describe("status-center-store", () => {
     expect(afterHydrate.jobs[0].sourceUrl).toBe("https://example.com");
     expect(afterHydrate.jobs[0].nextPollAt).toBe(persistedNextPollAt);
     expect(afterHydrate.jobs[0].remoteStatusVerified).toBe(false);
+  });
+
+  it("adopts a rotated status token committed by another tab during rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+
+    // Another tab resubmitted the same preview: the create endpoint rotated the
+    // status token and that tab committed the newer snapshot to localStorage.
+    const stored = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
+    ) as Array<Record<string, unknown>>;
+    stored[0].statusToken = "rotated-token";
+    stored[0].updatedAt = local.updatedAt + 1;
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const jobs = getPreviewStatusCenterJobsSnapshot();
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].statusToken).toBe("rotated-token");
+    expect(jobs[0].status).toBe("processing");
+  });
+
+  it("keeps the newer local job over a stale persisted snapshot during rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
+    ) as Array<Record<string, unknown>>;
+    stored[0].statusToken = "older-token";
+    stored[0].updatedAt = local.updatedAt - 1;
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0].statusToken).toBe("status-token");
+  });
+
+  it("drops jobs removed by another tab during rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
   });
 
   it("clears hydrated preview links with unresolved route placeholders", () => {

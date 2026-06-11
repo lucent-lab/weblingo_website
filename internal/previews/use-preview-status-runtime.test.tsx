@@ -652,6 +652,131 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("adopts a status token rotated by another tab and polls with it", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ status: "processing" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-9999-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=stale-token"),
+        expect.anything(),
+      );
+    });
+
+    // Another tab resubmits the same preview: the create endpoint rotates the
+    // token and the other tab commits the newer snapshot to localStorage.
+    const job = getPreviewStatusCenterJobsSnapshot()[0];
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...job,
+          statusToken: "rotated-token",
+          updatedAt: job.updatedAt + 1,
+          retryCount: 0,
+          nextPollAt: 0,
+        },
+      ]),
+    );
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }));
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0].statusToken).toBe("rotated-token");
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=rotated-token"),
+        expect.anything(),
+      );
+    });
+  });
+
+  it("ignores auth-shaped verdicts from polls that started with a since-rotated token", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("token=stale-token")) {
+        // Simulate the other tab rotating the token while this poll is in flight.
+        const job = getPreviewStatusCenterJobsSnapshot()[0];
+        window.localStorage.setItem(
+          PREVIEW_STATUS_CENTER_STORAGE_KEY,
+          JSON.stringify([
+            {
+              ...job,
+              statusToken: "rotated-token",
+              updatedAt: job.updatedAt + 1,
+              retryCount: 0,
+              nextPollAt: Date.now() + 60_000,
+            },
+          ]),
+        );
+        window.dispatchEvent(
+          new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }),
+        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "processing" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-inflight-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    // The 401 produced by the stale token must not terminalize the job that the
+    // rotated token still tracks as running.
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      statusToken: "rotated-token",
+    });
+  });
+
   it("restores the server verdict for over-budget restored jobs instead of fabricating a stall", async () => {
     const now = Date.now();
     window.localStorage.setItem(
