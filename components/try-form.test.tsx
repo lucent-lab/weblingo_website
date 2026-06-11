@@ -972,8 +972,13 @@ describe("TryForm preview status", () => {
     });
   });
 
-  it("stale-fails an old active preview on refresh instead of resuming it", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ status: "processing" }));
+  it("restores the server verdict for an over-budget pinned preview instead of stale-failing it", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        status: "ready",
+        showcaseUrl: "https://showcase.example.com/p/old",
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const now = Date.now();
     storeRestoredActiveJob({
@@ -982,17 +987,24 @@ describe("TryForm preview status", () => {
       createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
       updatedAt: now,
     });
+    window.sessionStorage.setItem(
+      "weblingo:try-form:active-preview-id:v1",
+      "old-6666-6666-6666-666666666666",
+    );
 
     renderTryForm();
 
-    // The job exceeded the wall-clock budget, so it is surfaced as a stale failure
-    // with a retry path instead of being silently resumed or polled.
+    // The backend completed the showcase while no tab was open, so the restored
+    // job must surface the ready showcase instead of a fabricated stale failure.
     await waitFor(() => {
-      expect(screen.getByText("Processing stalled copy")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Retry preview" })).toBeTruthy();
-      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/old-6666-6666-6666-666666666666/status?token=restore-token",
+      );
+      expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
+        "https://showcase.example.com/p/old",
+      );
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Processing stalled copy")).toBeNull();
   });
 
   it("shows a manual check-status retry when restored status fetch fails", async () => {

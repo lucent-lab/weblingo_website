@@ -7,6 +7,7 @@ import {
   getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
   PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
+  PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
 } from "./status-center-store";
@@ -597,9 +598,15 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
-  it("stale-fails active jobs that exceed the wall-clock budget", async () => {
+  it("stale-fails over-budget jobs only after repeated failed verifications", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T12:00:00.000Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      }),
+    );
 
     upsertPreviewStatusCenterJob({
       previewId: "stale-budget-7777-7777-7777-777777777777",
@@ -615,11 +622,23 @@ describe("usePreviewStatusRuntime", () => {
       targetLang: "fr",
       status: "processing",
       stage: "translating",
-      nextPollAt: Date.now() + PREVIEW_ACTIVE_JOB_MAX_AGE_MS + 60_000,
+      retryCount: 2,
+      remoteStatusVerified: false,
+      nextPollAt: 0,
     });
 
     render(<RuntimeHarness />);
-    expect(getPreviewStatusCenterJobsSnapshot()[0]?.status).toBe("processing");
+
+    // The third consecutive failed verification alone is not enough while the
+    // job is still inside the wall-clock budget.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      retryCount: 3,
+      remoteStatusVerified: false,
+    });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(PREVIEW_ACTIVE_JOB_MAX_AGE_MS + 1_000);
@@ -630,6 +649,69 @@ describe("usePreviewStatusRuntime", () => {
       errorCode: "processing_stalled",
       errorStage: "translating",
       remoteStatusVerified: true,
+    });
+  });
+
+  it("restores the server verdict for over-budget restored jobs instead of fabricating a stall", async () => {
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "over-budget-8888-8888-8888-888888888888",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+            email: "owner@example.com",
+          }),
+          statusToken: "token",
+          sourceUrl: "https://example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          retryHint: null,
+          lastVerifiedAt: null,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
+          updatedAt: now - 60_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 60_000,
+        },
+      ]),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "ready",
+              showcaseUrl: "https://showcase.example.com/demo",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+      ),
+    );
+
+    render(<RuntimeHarness />);
+
+    // Hydration must not stale-fail the job; the immediate verification poll
+    // restores the ready showcase the backend completed while the tab slept.
+    await waitFor(() => {
+      expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+        status: "ready",
+        previewUrl: "https://showcase.example.com/demo",
+        remoteStatusVerified: true,
+      });
     });
   });
 });

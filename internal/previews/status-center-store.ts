@@ -31,8 +31,13 @@ export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
 // polling. This budget must exceed that window (60 + 15 = 75 minutes) with margin
 // for cron jitter and clock skew, so the client never fabricates a failure for a
 // job the server still considers live; it only catches jobs whose server truth is
-// unreachable.
+// unreachable (see STALE_FAIL_MIN_FAILED_VERIFICATIONS).
 export const PREVIEW_ACTIVE_JOB_MAX_AGE_MS = 90 * 60 * 1000;
+// Server truth wins: an over-budget active job may have completed successfully
+// while the tab slept, so it is never stale-failed before /status has been
+// consulted. The stall verdict is fabricated only after this many consecutive
+// failed verification attempts show the server is unreachable.
+const STALE_FAIL_MIN_FAILED_VERIFICATIONS = 3;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
 const PROSPECT_SHOWCASE_REQUEST_KEY_KIND = "prospect_showcase";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;
@@ -259,12 +264,19 @@ function parseOptionalPreviewStage(value: unknown): PreviewStage | null {
 function resolveHydratedActiveNextPollAt(
   storedNextPollAt: unknown,
   retryHint: PreviewStatusCenterJob["retryHint"],
+  createdAt: number,
 ): number {
+  const now = Date.now();
+  // Over-budget restored jobs need server truth immediately: the backend may
+  // have finished or terminalized the run while no tab was open.
+  if (now - normalizeTimestamp(createdAt) >= PREVIEW_ACTIVE_JOB_MAX_AGE_MS) {
+    return now;
+  }
   if (isFiniteNumber(storedNextPollAt)) {
     return storedNextPollAt;
   }
   const retryHintDelayMs = resolvePreviewRetryHintDelayMs(retryHint);
-  return Date.now() + (retryHintDelayMs ?? 0);
+  return now + (retryHintDelayMs ?? 0);
 }
 
 function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
@@ -391,10 +403,12 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     expiresAt: isFiniteNumber(value.expiresAt) ? value.expiresAt : null,
-    retryCount: isFiniteNumber(value.retryCount) ? value.retryCount : 0,
+    // Failed-verification counts never carry across sessions: each restore gets
+    // fresh /status attempts before the stale-fail backstop may apply.
+    retryCount: 0,
     nextPollAt: isPreviewStatusCenterJobTerminal(status)
       ? Number.POSITIVE_INFINITY
-      : resolveHydratedActiveNextPollAt(value.nextPollAt, retryHint),
+      : resolveHydratedActiveNextPollAt(value.nextPollAt, retryHint, value.createdAt),
   });
 }
 
@@ -427,6 +441,13 @@ function staleFailActiveJob(job: PreviewStatusCenterJob, now: number): PreviewSt
     return job;
   }
   if (now - normalizeTimestamp(job.createdAt) < PREVIEW_ACTIVE_JOB_MAX_AGE_MS) {
+    return job;
+  }
+  // The backend may have terminalized (or completed) this run while no tab was
+  // polling. Keep the job active until repeated verification attempts fail so
+  // the poll runtime can restore the server verdict instead of this fabricated
+  // stall; each failed poll commits a retryCount bump, which re-runs pruning.
+  if (job.retryCount < STALE_FAIL_MIN_FAILED_VERIFICATIONS) {
     return job;
   }
   return normalizeJob({

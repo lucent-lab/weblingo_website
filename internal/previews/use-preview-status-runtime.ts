@@ -83,6 +83,7 @@ export function usePreviewStatusRuntime() {
     }
 
     let nextExpiryAt: number | null = null;
+    const schedulingNow = Date.now();
     for (const job of jobs) {
       if (hasTerminalExpiry(job)) {
         nextExpiryAt =
@@ -90,7 +91,12 @@ export function usePreviewStatusRuntime() {
       }
       if (isPreviewStatusCenterJobActive(job)) {
         const staleAt = job.createdAt + PREVIEW_ACTIVE_JOB_MAX_AGE_MS;
-        nextExpiryAt = nextExpiryAt === null ? staleAt : Math.min(nextExpiryAt, staleAt);
+        // Already-over-budget jobs resolve through /status polling (server truth
+        // first) and, failing that, through the prune pass each failed poll
+        // commits; scheduling a past-due cleanup here would only busy-loop.
+        if (staleAt > schedulingNow) {
+          nextExpiryAt = nextExpiryAt === null ? staleAt : Math.min(nextExpiryAt, staleAt);
+        }
       }
     }
     if (nextExpiryAt === null) {

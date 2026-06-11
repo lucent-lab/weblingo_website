@@ -214,10 +214,11 @@ for (const previewFlowRoute of previewFlowRoutes) {
   });
 }
 
-test("stalled active job converges to stale-failed and leaves the status center", async ({
+test("over-budget restored job adopts the server verdict instead of stale-failing", async ({
   page,
 }) => {
   const staleJobId = "ps-stale-ui-2222-2222-2222-222222222222";
+  const showcaseUrl = "https://stale-fr.weblingo.app/";
   await installMockEventSource(page);
   await stubPosthogAnalyticsProxy(page);
   await page.addInitScript(
@@ -242,7 +243,8 @@ test("stalled active job converges to stale-failed and leaves the status center"
             errorStage: null,
             retryHint: null,
             lastVerifiedAt: null,
-            // Older than PREVIEW_ACTIVE_JOB_MAX_AGE_MS (90 min) so restore stale-fails it.
+            // Older than PREVIEW_ACTIVE_JOB_MAX_AGE_MS (90 min); restore must
+            // verify server truth instead of stale-failing locally.
             createdAt: now - 95 * 60 * 1000,
             updatedAt: now - 60 * 1000,
             expiresAt: null,
@@ -262,24 +264,26 @@ test("stalled active job converges to stale-failed and leaves the status center"
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ status: "processing", stage: "translating" }),
+      body: JSON.stringify({ status: "ready", showcaseUrl }),
     });
   });
 
   await page.goto("/en/try");
 
+  // The backend completed the showcase while no tab was open: the restored job
+  // must consult /status and surface the ready showcase instead of fabricating
+  // a local processing_stalled failure.
+  await expect(page.getByText("Ready").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "View showcase" })).toHaveAttribute(
+    "href",
+    showcaseUrl,
+  );
   await expect(
     page.getByText(
       "This preview took longer than expected, so we stopped this run. Please try again.",
     ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(`If you contact support, include reference ${staleJobId}.`),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Translate another page" })).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.locator('ol[aria-label="Preview progress"]')).toHaveCount(0);
-  // The single-job status center only mirrors active runs, so the stale-failed job leaves it.
-  await expect(page.getByText("stale.example.com")).toHaveCount(0);
 
   await expect
     .poll(() =>
@@ -289,8 +293,10 @@ test("stalled active job converges to stale-failed and leaves the status center"
         return jobs.map((job) => job.status ?? null);
       }),
     )
-    .toEqual(["failed"]);
-  expect(statusRequests, "stale jobs must not be polled").toBe(0);
+    .toEqual(["ready"]);
+  expect(statusRequests, "restored over-budget jobs are verified against /status").toBeGreaterThan(
+    0,
+  );
 });
 
 declare global {

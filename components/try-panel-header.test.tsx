@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ACTIVE_PREVIEW_SESSION_STORAGE_KEY,
   buildPreviewStatusCenterRequestKey,
+  getPreviewStatusCenterJobsSnapshot,
+  markPreviewStatusCenterJobTerminal,
   PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
@@ -64,7 +66,7 @@ describe("TryPanelHeader", () => {
     });
   });
 
-  it("ignores stale active previews when choosing header copy", async () => {
+  it("keeps unpinned over-budget previews out of the header without stale-failing them", async () => {
     const now = Date.now();
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -98,14 +100,21 @@ describe("TryPanelHeader", () => {
 
     render(<TryPanelHeader messages={messages} />);
 
+    // Unpinned jobs past the restorable window never take over the header, but
+    // hydration must not stale-fail them either: the poll runtime still owns
+    // resolving their server truth in the background.
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Try WebLingo" })).toBeTruthy();
       expect(screen.getByText("Create a preview")).toBeTruthy();
     });
-    expect(screen.queryByRole("heading", { name: "Translating" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Checking preview status..." })).toBeNull();
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      previewId: "stale-2222-2222-2222-222222222222",
+      status: "processing",
+    });
   });
 
-  it("shows default copy for pinned previews past the wall-clock budget", async () => {
+  it("keeps pinned over-budget previews in the header until the server verdict lands", async () => {
     const now = Date.now();
     const previewId = "pinned-3333-3333-3333-333333333333";
     window.sessionStorage.setItem(ACTIVE_PREVIEW_SESSION_STORAGE_KEY, previewId);
@@ -140,8 +149,13 @@ describe("TryPanelHeader", () => {
 
     render(<TryPanelHeader messages={messages} />);
 
-    // Hydration stale-fails active jobs past the budget, so the header falls back
-    // to the default copy even for the pinned job.
+    // Hydration no longer stale-fails over-budget jobs; the pinned restored job
+    // keeps the running header until the poll runtime verifies server truth.
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Checking preview status..." })).toBeTruthy();
+    });
+
+    markPreviewStatusCenterJobTerminal(previewId, "expired", {});
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Try WebLingo" })).toBeTruthy();
       expect(screen.getByText("Create a preview")).toBeTruthy();

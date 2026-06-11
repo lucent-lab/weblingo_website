@@ -2,7 +2,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildPreviewStatusCenterRequestKey,
-  cleanupPreviewStatusCenterJobs,
   comparePreviewStatusCenterJobs,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
@@ -25,6 +24,7 @@ import {
   selectLatestJobByRequestKey,
   selectRestorablePreviewStatusCenterJob,
   setPreviewStatusCenterJobRetry,
+  updatePreviewStatusCenterJob,
   upsertPreviewStatusCenterJob,
   type PreviewStatusCenterJob,
 } from "./status-center-store";
@@ -706,7 +706,7 @@ describe("status-center-store", () => {
     ).toBe("prospect-1111-1111-1111-111111111111");
   });
 
-  it("stale-fails active jobs beyond the wall-clock budget on hydration", () => {
+  it("keeps over-budget active jobs alive until repeated verification attempts fail", () => {
     const now = Date.now();
     window.localStorage.setItem(
       PREVIEW_STATUS_CENTER_STORAGE_KEY,
@@ -719,42 +719,50 @@ describe("status-center-store", () => {
           stage: "translating",
           createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 1,
           updatedAt: now - 1_000,
-        },
-        {
-          ...buildJob({
-            previewId: "budget-2222-2222-2222-222222222222",
-            status: "processing",
-          }),
-          createdAt: now - 1_000,
-          updatedAt: now - 500,
+          retryCount: 5,
+          nextPollAt: now + 60_000,
         },
       ]),
     );
 
     hydratePreviewStatusCenterStore();
 
-    const jobs = getPreviewStatusCenterJobsSnapshot();
-    const stale = jobs.find((job) => job.previewId === "budget-1111-1111-1111-111111111111");
-    const fresh = jobs.find((job) => job.previewId === "budget-2222-2222-2222-222222222222");
-    expect(stale).toMatchObject({
+    // Server truth first: hydration never fabricates a failure (even with a
+    // persisted retry count) and schedules an immediate verification poll.
+    const restored = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(restored).toMatchObject({
+      status: "processing",
+      retryCount: 0,
+      remoteStatusVerified: false,
+    });
+    expect(restored!.nextPollAt).toBeLessThanOrEqual(Date.now());
+
+    // Two failed verification attempts are still not enough.
+    updatePreviewStatusCenterJob("budget-1111-1111-1111-111111111111", {
+      remoteStatusVerified: false,
+      retryCount: 2,
+      nextPollAt: Date.now() + 10_000,
+    });
+    expect(getPreviewStatusCenterJobsSnapshot()[0]?.status).toBe("processing");
+
+    // The third consecutive failure trips the unreachable-server backstop.
+    updatePreviewStatusCenterJob("budget-1111-1111-1111-111111111111", {
+      remoteStatusVerified: false,
+      retryCount: 3,
+      nextPollAt: Date.now() + 20_000,
+    });
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
       status: "failed",
       errorCode: "processing_stalled",
       errorStage: "translating",
       remoteStatusVerified: true,
       nextPollAt: Number.POSITIVE_INFINITY,
     });
-    expect(fresh?.status).toBe("processing");
 
-    // The poll runtime always runs a cleanup pass after hydration; that pass
-    // persists the stale-failed conversion back to localStorage.
-    cleanupPreviewStatusCenterJobs();
     const persisted = JSON.parse(
       window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY) ?? "[]",
     ) as Array<{ previewId: string; status: string }>;
-    const persistedStale = persisted.find(
-      (job) => job.previewId === "budget-1111-1111-1111-111111111111",
-    );
-    expect(persistedStale?.status).toBe("failed");
+    expect(persisted[0]?.status).toBe("failed");
   });
 
   it("drops ancient active jobs past the storage TTL instead of resurrecting them as failures", () => {
