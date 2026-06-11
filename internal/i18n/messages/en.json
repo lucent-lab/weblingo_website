@@ -163,6 +163,7 @@
   "try.error.queue_enqueue_failed": "Preview service is busy. Please try again in a moment.",
   "try.error.preview_not_found": "We couldn't find that preview.",
   "try.error.provision_failed": "We couldn't set up the demo environment for this page. Please try again in a few minutes.",
+  "try.error.source_fetch_failed": "We couldn't fetch this page from its website — it was unreachable, returned an error, or blocked our crawler. Check that the URL loads publicly without a login or bot challenge, then try again.",
   "try.error.provision_stalled": "Setting up the demo took longer than expected, so we stopped this run. Please try again.",
   "try.error.processing_stalled": "This preview took longer than expected, so we stopped this run. Please try again.",
   "try.error.translation_capacity_exhausted": "Our translation provider is at capacity right now, so this run could not finish. Please try again in a little while.",

@@ -147,6 +147,7 @@
   "try.error.queue_enqueue_failed": "プレビューサービスが混雑しています。しばらくしてから再度お試しください。",
   "try.error.preview_not_found": "そのプレビューが見つかりませんでした。",
   "try.error.provision_failed": "このページのデモ環境を準備できませんでした。数分後に再度お試しください。",
+  "try.error.source_fetch_failed": "このページをサイトから取得できませんでした（接続不可、エラー応答、またはクローラーがブロックされた可能性があります）。URLがログインやボット対策なしで公開されているか確認して、再度お試しください。",
   "try.error.provision_stalled": "デモの準備に想定より時間がかかったため、この実行を停止しました。再度お試しください。",
   "try.error.processing_stalled": "このプレビューに想定より時間がかかったため、この実行を停止しました。再度お試しください。",
   "try.error.translation_capacity_exhausted": "翻訳プロバイダーが現在混雑しているため、この実行を完了できませんでした。しばらくしてから再度お試しください。",

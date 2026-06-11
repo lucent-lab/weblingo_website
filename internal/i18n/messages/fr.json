@@ -147,6 +147,7 @@
   "try.error.queue_enqueue_failed": "Le service de prévisualisation est occupé. Veuillez réessayer dans un instant.",
   "try.error.preview_not_found": "Cette prévisualisation est introuvable.",
   "try.error.provision_failed": "Impossible de préparer l'environnement de démo pour cette page. Veuillez réessayer dans quelques minutes.",
+  "try.error.source_fetch_failed": "Impossible de récupérer cette page depuis son site — site injoignable, erreur renvoyée ou robot bloqué. Vérifiez que l'URL est accessible publiquement, sans connexion ni protection anti-robot, puis réessayez.",
   "try.error.provision_stalled": "La préparation de la démo a pris plus de temps que prévu, nous avons donc arrêté cette exécution. Veuillez réessayer.",
   "try.error.processing_stalled": "Cet aperçu a pris plus de temps que prévu, nous avons donc arrêté cette exécution. Veuillez réessayer.",
   "try.error.translation_capacity_exhausted": "Notre fournisseur de traduction est actuellement saturé, cette exécution n'a donc pas pu aboutir. Veuillez réessayer dans quelques instants.",

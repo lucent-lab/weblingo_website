@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-06-11T09:56:46+09:00",
+  "generatedAt": "2026-06-11T15:03:49+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
-      "bytes": 96461,
-      "sha256": "6b0c25296570f9a312a847dc4f29f770004df5400dc2f9a8df41d930d8b90bd1"
+      "bytes": 96621,
+      "sha256": "03a8a0c5b78ac08433298796405fe2a401101b73650a752399793a71e671b43d"
     },
     "content/docs/_generated/backend-openapi.snapshot.json": {
-      "bytes": 576661,
-      "sha256": "0bd15b188ac8cef1aaad155c04502b1f211b3fb0e59d27d6e9915ca908a3427a"
+      "bytes": 576854,
+      "sha256": "a641c248accabfd045d4264a12e3a75ad26968fb5325856378eeb941c11d7bc0"
     },
     "content/docs/_generated/backend-playbooks.snapshot.md": {
       "bytes": 10133,
@@ -24,15 +24,15 @@
       "sha256": "4e5e8eff1454c3f43b0e50e9c4ab58185f63e5c55417e90b2e37af399b8fab39"
     },
     "docs/reference/feature-catalog.generated.json": {
-      "bytes": 90021,
-      "sha256": "533125f53ec3157f91c016ccc3177fdbc5472709d67495fa2d973431a13c689f"
+      "bytes": 90181,
+      "sha256": "f5f441a2944d39561a8292802d052bc2462f5e47fb4ad60a2b0b9aa013f77ec6"
     },
     "docs/reference/openapi.json": {
-      "bytes": 453635,
-      "sha256": "9bb31f582f2f2b7b2da6782c63db12590d70fa651fe76ae7af37f9d21eefa7c0"
+      "bytes": 453828,
+      "sha256": "0e6805bf33792a72877138b182232d8a319264e72b3ea717e953370b04a98060"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-06-11T09:56:46+09:00",
+  "sourceRepoCommitTimestamp": "2026-06-11T15:03:49+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_m30_preview_funnel_ux",
-  "sourceRepoSha": "89028f55cf1e16f8e133ccf537f5e04a41f940c8"
+  "sourceRepoSha": "71539aa43560e9aa9490eb631a08d3efe9bec0e6"
 }

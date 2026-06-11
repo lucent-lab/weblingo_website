@@ -16,6 +16,7 @@ export type PreviewErrorCode =
   | "preview_expired"
   | "canceled"
   | "provision_failed"
+  | "source_fetch_failed"
   | "translation_failed"
   | "showcase_failed"
   | "provision_stalled"
@@ -49,6 +50,7 @@ export const PREVIEW_ERROR_CODES: PreviewErrorCode[] = [
   "preview_expired",
   "canceled",
   "provision_failed",
+  "source_fetch_failed",
   "translation_failed",
   "showcase_failed",
   "provision_stalled",
