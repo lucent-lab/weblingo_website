@@ -1827,7 +1827,9 @@ export function TryForm({
                 </a>
               </Button>
             ) : null}
-            {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
+            {trackedJob &&
+            (trackedJob.status === "failed" || trackedJob.status === "expired") &&
+            trackedJob.demoDashboardUrl ? (
               <Button asChild size="sm" variant="secondary" className="w-fit">
                 <a
                   href={withDemoDashboardLocale(trackedJob.demoDashboardUrl, locale)}

@@ -28,10 +28,11 @@ export const RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS = 15 * 60 * 1000;
 // Client-side backstop for active jobs. The backend reaper terminalizes stalled
 // prospect showcases after PROSPECT_SHOWCASE_PROCESSING_TIMEOUT_SECONDS (recommended
 // 3600s) plus up to one 15-minute cron interval, and that server verdict arrives via
-// polling. This budget must exceed that window so the client never fabricates a
-// failure for a job the server still considers live; it only catches jobs whose
-// server truth is unreachable.
-export const PREVIEW_ACTIVE_JOB_MAX_AGE_MS = 75 * 60 * 1000;
+// polling. This budget must exceed that window (60 + 15 = 75 minutes) with margin
+// for cron jitter and clock skew, so the client never fabricates a failure for a
+// job the server still considers live; it only catches jobs whose server truth is
+// unreachable.
+export const PREVIEW_ACTIVE_JOB_MAX_AGE_MS = 90 * 60 * 1000;
 const PREVIEW_STATUS_CENTER_REQUEST_KEY_PREFIX = "v2:";
 const PROSPECT_SHOWCASE_REQUEST_KEY_KIND = "prospect_showcase";
 const MAX_PREVIEW_STATUS_CENTER_JOBS = 20;

@@ -242,8 +242,8 @@ test("stalled active job converges to stale-failed and leaves the status center"
             errorStage: null,
             retryHint: null,
             lastVerifiedAt: null,
-            // Older than PREVIEW_ACTIVE_JOB_MAX_AGE_MS (75 min) so restore stale-fails it.
-            createdAt: now - 80 * 60 * 1000,
+            // Older than PREVIEW_ACTIVE_JOB_MAX_AGE_MS (90 min) so restore stale-fails it.
+            createdAt: now - 95 * 60 * 1000,
             updatedAt: now - 60 * 1000,
             expiresAt: null,
             retryCount: 0,

@@ -2497,6 +2497,51 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("keeps the demo-dashboard handoff visible for restored expired jobs", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://expired-dashboard.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "88888888-8888-8888-8888-888888888888",
+          requestKey,
+          statusToken: "expired-token",
+          sourceUrl: "https://expired-dashboard.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "expired",
+          stage: null,
+          previewUrl: null,
+          demoDashboardUrl: "https://weblingo.app/dashboard/demo#token=expired-handoff",
+          error: "Preview expired",
+          errorCode: "preview_expired",
+          errorStage: null,
+          createdAt: now - 2_000,
+          updatedAt: now - 1_000,
+          expiresAt: now - 1_000,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Preview expired")).toBeTruthy();
+    });
+    // The showcase serving is gone, but the retained dashboard token still works.
+    expect(screen.getByRole("link", { name: "Open demo dashboard" }).getAttribute("href")).toBe(
+      "https://weblingo.app/dashboard/demo?locale=en#token=expired-handoff",
+    );
+  });
+
   it("allows resubmission when restored job is expired", async () => {
     const requestKey = buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://expired.example.com",
