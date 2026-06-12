@@ -206,6 +206,88 @@ describe("status-center-store", () => {
     expect(merged.previewUrl).toBe("https://preview.example.com/p/ready");
   });
 
+  it("keeps local active progress over an unverified cross-tab stale failure", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing", stage: "translating" }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0]!;
+    const staleFailure: PreviewStatusCenterJob = {
+      ...local,
+      status: "failed",
+      stage: null,
+      error: null,
+      errorCode: "processing_stalled",
+      errorStage: "translating",
+      retryHint: null,
+      remoteStatusVerified: false,
+      updatedAt: local.updatedAt + 10,
+      retryCount: 0,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    };
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([staleFailure]));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.status).toBe("processing");
+    expect(merged.stage).toBe("translating");
+  });
+
+  it("adopts active cross-tab progress over a local unverified stale failure", () => {
+    const now = Date.now();
+    const staleFailure: PreviewStatusCenterJob = {
+      previewId: "unverified-1111-1111-1111-111111111111",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://unverified.example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "",
+      }),
+      statusToken: "status-token",
+      statusTokenUpdatedAt: now,
+      sourceUrl: "https://unverified.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "failed",
+      stage: null,
+      previewUrl: null,
+      demoDashboardUrl: null,
+      error: null,
+      errorCode: "processing_stalled",
+      errorStage: "translating",
+      retryHint: null,
+      remoteStatusVerified: false,
+      lastVerifiedAt: now - 1_000,
+      createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 1,
+      updatedAt: now,
+      expiresAt: null,
+      retryCount: 0,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    };
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([staleFailure]));
+    hydratePreviewStatusCenterStore();
+
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...staleFailure,
+          status: "processing",
+          stage: "translating",
+          errorCode: null,
+          remoteStatusVerified: false,
+          updatedAt: now - 10,
+          retryCount: 1,
+          nextPollAt: now + 5_000,
+        },
+      ]),
+    );
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.status).toBe("processing");
+    expect(merged.stage).toBe("translating");
+  });
+
   it("keeps the newer local job over a stale persisted snapshot during rehydration", () => {
     upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
     const local = getPreviewStatusCenterJobsSnapshot()[0];
@@ -946,7 +1028,7 @@ describe("status-center-store", () => {
       status: "failed",
       errorCode: "processing_stalled",
       errorStage: "translating",
-      remoteStatusVerified: true,
+      remoteStatusVerified: false,
       nextPollAt: Number.POSITIVE_INFINITY,
     });
 

@@ -214,6 +214,16 @@ export function resolveTryFormMode(
   return "idle";
 }
 
+function shouldPreserveDismissedReattachProof(job: PreviewStatusCenterJob): boolean {
+  return (
+    Boolean(job.statusToken) &&
+    (isActivePreviewJobPhase(job.status) ||
+      (job.status === "failed" &&
+        job.errorCode === "processing_stalled" &&
+        !job.remoteStatusVerified))
+  );
+}
+
 export function TryForm({
   locale,
   messages,
@@ -810,7 +820,7 @@ export function TryForm({
     restoreAttemptedRef.current = true;
     closeEventSource();
     if (trackedJob) {
-      if (isActivePreviewJobPhase(trackedJob.status) && trackedJob.statusToken) {
+      if (shouldPreserveDismissedReattachProof(trackedJob)) {
         dismissedReattachProofsRef.current.set(trackedJob.requestKey, trackedJob.statusToken);
       } else {
         dismissedReattachProofsRef.current.delete(trackedJob.requestKey);

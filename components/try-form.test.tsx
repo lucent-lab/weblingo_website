@@ -1474,6 +1474,85 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("preserves reattach proof after dismissing an unverified stalled terminal job", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://stall-reattach.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "stall-reattach-4444-4444-4444-444444444444",
+          requestKey,
+          statusToken: "stall-token",
+          statusTokenUpdatedAt: now,
+          sourceUrl: "https://stall-reattach.example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "failed",
+          stage: null,
+          previewUrl: null,
+          demoDashboardUrl: null,
+          error: null,
+          errorCode: "processing_stalled",
+          errorStage: "translating",
+          retryHint: null,
+          remoteStatusVerified: false,
+          lastVerifiedAt: now - 1_000,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 1,
+          updatedAt: now,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: Number.POSITIVE_INFINITY,
+        },
+      ]),
+    );
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "stall-reattach-4444-4444-4444-444444444444",
+          statusToken: "rotated-token",
+          status: "processing",
+          stage: "translating",
+        });
+      }
+      return jsonResponse({ status: "processing", stage: "translating" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Processing stalled copy")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Translate another page" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Translate another page" }));
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://stall-reattach.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const createCall = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>).find(
+        (call) => String(call[0]) === "/api/prospect-showcases",
+      );
+      expect(createCall).toBeTruthy();
+      expect(JSON.parse(String(createCall![1].body))).toMatchObject({
+        sourceUrl: "https://stall-reattach.example.com",
+        email: "owner@example.com",
+        reattachStatusToken: "stall-token",
+      });
+    });
+  });
+
   it("renders terminal cards without the editable form and resets via translate-another", async () => {
     upsertDefaultJob("pending", {
       previewId: "cccc3333-3333-3333-3333-333333333333",

@@ -684,7 +684,7 @@ describe("usePreviewStatusRuntime", () => {
       status: "failed",
       errorCode: "processing_stalled",
       errorStage: "translating",
-      remoteStatusVerified: true,
+      remoteStatusVerified: false,
     });
   });
 

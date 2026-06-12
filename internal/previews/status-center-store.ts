@@ -328,7 +328,7 @@ function normalizeJob(job: PreviewStatusCenterJob): PreviewStatusCenterJob {
         : Date.now() + DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
     stage: terminal ? null : job.stage,
     retryHint: terminal ? null : job.retryHint,
-    remoteStatusVerified: terminal ? true : job.remoteStatusVerified,
+    remoteStatusVerified: job.remoteStatusVerified,
   };
 }
 
@@ -442,7 +442,11 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     errorCode: parseOptionalPreviewErrorCode(value.errorCode),
     errorStage,
     retryHint,
-    remoteStatusVerified: isPreviewStatusCenterJobTerminal(status),
+    remoteStatusVerified: isPreviewStatusCenterJobTerminal(status)
+      ? typeof value.remoteStatusVerified === "boolean"
+        ? value.remoteStatusVerified
+        : true
+      : false,
     lastVerifiedAt: isFiniteNumber(value.lastVerifiedAt) ? value.lastVerifiedAt : null,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
@@ -502,7 +506,7 @@ function staleFailActiveJob(job: PreviewStatusCenterJob, now: number): PreviewSt
     errorCode: "processing_stalled",
     errorStage: job.stage,
     retryHint: null,
-    remoteStatusVerified: true,
+    remoteStatusVerified: false,
     updatedAt: now,
     retryCount: 0,
     nextPollAt: Number.POSITIVE_INFINITY,
@@ -720,8 +724,12 @@ export function rehydratePreviewStatusCenterStoreFromStorage(
     const base =
       incomingTerminal !== localTerminal
         ? incomingTerminal
-          ? incoming
-          : local
+          ? incoming.remoteStatusVerified
+            ? incoming
+            : local
+          : local.remoteStatusVerified
+            ? local
+            : incoming
         : normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
           ? incoming
           : local;
