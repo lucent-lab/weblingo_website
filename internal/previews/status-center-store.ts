@@ -715,10 +715,16 @@ export function rehydratePreviewStatusCenterStoreFromStorage(
     if (!local) {
       return incoming;
     }
+    const incomingTerminal = isPreviewStatusCenterJobTerminal(incoming.status);
+    const localTerminal = isPreviewStatusCenterJobTerminal(local.status);
     const base =
-      normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
-        ? incoming
-        : local;
+      incomingTerminal !== localTerminal
+        ? incomingTerminal
+          ? incoming
+          : local
+        : normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
+          ? incoming
+          : local;
     let merged = base;
     if (incoming.statusToken !== local.statusToken) {
       // Equal stamps with different tokens should not happen; trust the shared

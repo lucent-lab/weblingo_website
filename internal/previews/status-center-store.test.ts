@@ -184,6 +184,28 @@ describe("status-center-store", () => {
     expect(merged.lastVerifiedAt).toBe(local.lastVerifiedAt);
   });
 
+  it("keeps a terminal cross-tab row over a newer local active retry", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing", stage: "translating" }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+    const terminal = {
+      ...local,
+      status: "ready",
+      stage: null,
+      previewUrl: "https://preview.example.com/p/ready",
+      remoteStatusVerified: true,
+      updatedAt: local.updatedAt - 10,
+      retryCount: 0,
+      nextPollAt: Number.POSITIVE_INFINITY,
+    };
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([terminal]));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.status).toBe("ready");
+    expect(merged.previewUrl).toBe("https://preview.example.com/p/ready");
+  });
+
   it("keeps the newer local job over a stale persisted snapshot during rehydration", () => {
     upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
     const local = getPreviewStatusCenterJobsSnapshot()[0];
