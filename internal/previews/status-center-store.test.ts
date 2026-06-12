@@ -27,6 +27,7 @@ import {
   setPreviewStatusCenterJobRetry,
   updatePreviewStatusCenterJob,
   upsertPreviewStatusCenterJob,
+  writeActivePreviewIdToSession,
   type PreviewStatusCenterJob,
 } from "./status-center-store";
 
@@ -51,6 +52,7 @@ function buildJob(overrides: Partial<Parameters<typeof upsertPreviewStatusCenter
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   resetPreviewStatusCenterStoreForTests();
 });
 
@@ -198,6 +200,31 @@ describe("status-center-store", () => {
     expect(getPreviewStatusCenterJobsSnapshot()[0].previewId).toBe(
       "11111111-1111-1111-1111-111111111111",
     );
+  });
+
+  it("preserves a session-pinned active local-only job during storage-event rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+    writeActivePreviewIdToSession("11111111-1111-1111-1111-111111111111");
+
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+
+    rehydratePreviewStatusCenterStoreFromStorage({ preservePinnedActiveLocalJob: true });
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(1);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      previewId: "11111111-1111-1111-1111-111111111111",
+      status: "processing",
+    });
+  });
+
+  it("still drops unpinned local-only jobs during storage-event rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+
+    rehydratePreviewStatusCenterStoreFromStorage({ preservePinnedActiveLocalJob: true });
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
   });
 
   it("clears hydrated preview links with unresolved route placeholders", () => {

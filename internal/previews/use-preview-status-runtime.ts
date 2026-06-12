@@ -102,7 +102,7 @@ export function usePreviewStatusRuntime() {
       if (event.key !== null && event.key !== PREVIEW_STATUS_CENTER_STORAGE_KEY) {
         return;
       }
-      rehydratePreviewStatusCenterStoreFromStorage();
+      rehydratePreviewStatusCenterStoreFromStorage({ preservePinnedActiveLocalJob: true });
     };
     window.addEventListener("storage", onStorage);
     return () => {

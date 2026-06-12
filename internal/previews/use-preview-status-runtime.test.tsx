@@ -10,6 +10,7 @@ import {
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
+  writeActivePreviewIdToSession,
 } from "./status-center-store";
 import {
   resetPreviewStatusRuntimeOwnerForTests,
@@ -27,6 +28,7 @@ describe("usePreviewStatusRuntime", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
     resetPreviewStatusCenterStoreForTests();
     resetPreviewStatusRuntimeOwnerForTests();
     nextIntervalId = 1;
@@ -73,6 +75,7 @@ describe("usePreviewStatusRuntime", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     resetPreviewStatusCenterStoreForTests();
     resetPreviewStatusRuntimeOwnerForTests();
   });
@@ -195,6 +198,39 @@ describe("usePreviewStatusRuntime", () => {
 
     await waitFor(() => {
       expect(activeIntervals.size).toBe(0);
+    });
+  });
+
+  it("keeps this tab's pinned active job when a storage event omits it", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "local-only-3333-3333-3333-333333333333",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+    });
+    writeActivePreviewIdToSession("local-only-3333-3333-3333-333333333333");
+
+    render(<RuntimeHarness />);
+    await waitFor(() => {
+      expect(activeIntervals.size).toBe(1);
+    });
+
+    act(() => {
+      window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+      window.dispatchEvent(new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }));
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(1);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      previewId: "local-only-3333-3333-3333-333333333333",
+      status: "processing",
     });
   });
 
