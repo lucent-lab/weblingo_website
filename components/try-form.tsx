@@ -733,17 +733,20 @@ export function TryForm({
     const existing = getPreviewStatusCenterJobsSnapshot().find(
       (job) => job.previewId === previewId,
     );
-    if (existing && isActivePreviewJobPhase(existing.status)) {
-      syncStatusCenterActiveState(
-        previewId,
-        existing.status,
-        existing.stage,
-        existing.retryHint,
-        false,
-      );
+    if (!existing) {
+      syncStatusCenterActiveState(previewId, "processing", null, null, false);
       return;
     }
-    syncStatusCenterActiveState(previewId, "processing", null, null, false);
+    if (!isActivePreviewJobPhase(existing.status)) {
+      return;
+    }
+    syncStatusCenterActiveState(
+      previewId,
+      existing.status,
+      existing.stage,
+      existing.retryHint,
+      false,
+    );
   }
 
   function syncStatusCenterTerminalState(

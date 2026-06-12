@@ -1331,6 +1331,52 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("keeps a terminal restored job terminal after a stale-token auth verdict", async () => {
+    const previewId = "restore-terminal-3333-3333-3333-333333333333";
+    const stalePoll = {
+      resolve: null as ((response: Response) => void) | null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === `/api/prospect-showcases/${previewId}/status?token=old-token`) {
+        return await new Promise<Response>((resolve) => {
+          stalePoll.resolve = resolve;
+        });
+      }
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId,
+      sourceUrl: "https://restore-terminal.example.com",
+      statusToken: "old-token",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/prospect-showcases/${previewId}/status?token=old-token`,
+      );
+      expect(stalePoll.resolve).toBeTruthy();
+    });
+
+    updatePreviewStatusCenterJob(previewId, { statusToken: "fresh-token" });
+    markPreviewStatusCenterJobTerminal(previewId, "ready", {
+      previewUrl: "https://preview.example.com/terminal",
+    });
+    stalePoll.resolve?.(jsonResponse({ error: "Unauthorized" }, 401));
+
+    await waitFor(() => {
+      const job = getPreviewStatusCenterJobsSnapshot().find(
+        (candidate) => candidate.previewId === previewId,
+      );
+      expect(job?.status).toBe("ready");
+      expect(screen.getByText("Ready")).toBeTruthy();
+      expect(screen.queryByRole("list", { name: "Preview progress" })).toBeNull();
+    });
+  });
+
   it("lets the visitor escape an unverifiable restored job and start a new preview", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("network unavailable"));
     vi.stubGlobal("fetch", fetchMock);
