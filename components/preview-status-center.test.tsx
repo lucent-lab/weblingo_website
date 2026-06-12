@@ -118,6 +118,34 @@ describe("PreviewStatusCenter", () => {
     });
   });
 
+  it("switches to the newly pinned job when the pin changes after mount", async () => {
+    upsertJob({
+      previewId: "33333333-3333-3333-3333-333333333333",
+      sourceUrl: "https://other.example.com",
+      status: "processing",
+    });
+    upsertJob({
+      previewId: "44444444-4444-4444-4444-444444444444",
+      sourceUrl: "https://pinned.example.com",
+      status: "pending",
+    });
+    writeActivePreviewIdToSession("33333333-3333-3333-3333-333333333333");
+
+    render(<PreviewStatusCenter messages={messages} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("other.example.com")).toBeTruthy();
+    });
+
+    // Re-pinning in the same tab must re-render without any store change.
+    writeActivePreviewIdToSession("44444444-4444-4444-4444-444444444444");
+
+    await waitFor(() => {
+      expect(screen.getByText("pinned.example.com")).toBeTruthy();
+      expect(screen.queryByText("other.example.com")).toBeNull();
+    });
+  });
+
   it("renders a capacity hint for jobs waiting on browser slots", async () => {
     upsertJob({
       previewId: "55555555-5555-5555-5555-555555555555",

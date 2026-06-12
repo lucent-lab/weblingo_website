@@ -126,6 +126,39 @@ function canUseSessionStorage() {
   return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
 }
 
+// sessionStorage writes do not notify the writing tab, so pin readers subscribe
+// to this in-tab event (via useSyncExternalStore) to re-render on pin changes.
+const ACTIVE_PREVIEW_PIN_EVENT = "weblingo:active-preview-pin-changed";
+
+function emitActivePreviewPinChange() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.dispatchEvent(new Event(ACTIVE_PREVIEW_PIN_EVENT));
+  } catch {
+    // Ignore dispatch failures; the pin is a best-effort UI hint.
+  }
+}
+
+export function subscribeActivePreviewPin(listener: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+  window.addEventListener(ACTIVE_PREVIEW_PIN_EVENT, listener);
+  return () => {
+    window.removeEventListener(ACTIVE_PREVIEW_PIN_EVENT, listener);
+  };
+}
+
+export function getActivePreviewPinSnapshot(): string | null {
+  return readActivePreviewIdFromSession();
+}
+
+export function getActivePreviewPinServerSnapshot(): string | null {
+  return null;
+}
+
 export function readActivePreviewIdFromSession(): string | null {
   if (!canUseSessionStorage()) {
     return null;
@@ -146,6 +179,7 @@ export function writeActivePreviewIdToSession(previewId: string) {
   } catch {
     // Ignore storage failures; local preview status still works without tab pinning.
   }
+  emitActivePreviewPinChange();
 }
 
 export function clearActivePreviewIdFromSession(previewId?: string | null) {
@@ -162,6 +196,7 @@ export function clearActivePreviewIdFromSession(previewId?: string | null) {
   } catch {
     // Ignore storage failures.
   }
+  emitActivePreviewPinChange();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

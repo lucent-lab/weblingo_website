@@ -98,6 +98,8 @@ const messages = {
   "try.action.translateAnother": "Translate another page",
   "try.action.checkStatus": "Check status",
   "try.action.checkingStatus": "Checking status...",
+  "try.action.startNewPreview": "Start a new preview",
+  "try.error.previewInProgress": "A demo is already being prepared for {email}.",
   "try.preview.linkLabel": "Preview link",
   "try.preview.showcaseLinkLabel": "Showcase link",
   "try.preview.open": "Open preview",
@@ -415,6 +417,95 @@ describe("TryForm preview status", () => {
         }),
       );
     });
+  });
+
+  it("sends the stored status token as reattach proof for an identical in-flight submission", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        {
+          prospectShowcaseRef: "reattach-1111-1111-1111-111111111111",
+          statusToken: "rotated-token",
+          status: "processing",
+          stage: "translating",
+          message: "Reconnecting to the existing demo.",
+        },
+        202,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Active job from an earlier session: old enough that the restore effect
+    // does not lock the form, but still in flight with a stored status token.
+    storeRestoredActiveJob({
+      previewId: "reattach-1111-1111-1111-111111111111",
+      sourceUrl: "https://reattach.example.com/page",
+      statusToken: "proof-token",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://reattach.example.com/page",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      createdAt: Date.now() - 16 * 60 * 1000,
+      updatedAt: Date.now() - 16 * 60 * 1000,
+    });
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://reattach.example.com/page" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const createCall = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>).find(
+        (call) => String(call[0]) === "/api/prospect-showcases",
+      );
+      expect(createCall).toBeTruthy();
+      expect(JSON.parse(String(createCall![1].body))).toMatchObject({
+        sourceUrl: "https://reattach.example.com/page",
+        email: "owner@example.com",
+        reattachStatusToken: "proof-token",
+      });
+    });
+  });
+
+  it("explains an in-progress duplicate when the create endpoint answers 409 without proof", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse(
+          {
+            error: "A demo for this page and language pair is already being prepared.",
+            errorCode: "preview_in_progress",
+          },
+          409,
+        );
+      }
+      return jsonResponse({ status: "processing", stage: "translating" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://duplicate.example.com/page" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("A demo is already being prepared for owner@example.com."),
+      ).toBeTruthy();
+    });
+    // No phantom job was created locally and the form stays editable.
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
+    expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
   });
 
   it("captures preview terminal failures from the create response", async () => {
@@ -1036,6 +1127,36 @@ describe("TryForm preview status", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
     });
+  });
+
+  it("lets the visitor escape an unverifiable restored job and start a new preview", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network unavailable"));
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "escape-4444-4444-4444-444444444444",
+      sourceUrl: "https://escape.example.com",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByText("Checking preview status...")).toBeTruthy();
+      expect(screen.queryByPlaceholderText("https://example.com")).toBeNull();
+      expect(screen.getByRole("button", { name: "Start a new preview" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start a new preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Generate a private preview" })).toBeTruthy();
+      expect(screen.queryByText("Checking preview status...")).toBeNull();
+    });
+    expect(
+      getPreviewStatusCenterJobsSnapshot().some(
+        (job) => job.previewId === "escape-4444-4444-4444-444444444444",
+      ),
+    ).toBe(false);
   });
 
   it("renders terminal cards without the editable form and resets via translate-another", async () => {

@@ -6248,6 +6248,10 @@
           "locale": {
             "type": "string"
           },
+          "reattachStatusToken": {
+            "description": "`statusToken` from the original create response for the same submission. When an identical submission (same email, URL, and language pair) is already in flight, a valid token proves ownership of that run and the API reconnects to it (202 with a rotated `statusToken`). Without valid proof the API answers 409 with `errorCode: \"preview_in_progress\"` and never reveals the in-flight run's ref or token.",
+            "type": "string"
+          },
           "sourceLang": {
             "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
@@ -6303,6 +6307,7 @@
         "enum": [
           "pending",
           "processing",
+          "waiting_provider_capacity",
           "ready",
           "failed",
           "checkout_pending",
@@ -14580,7 +14585,7 @@
     },
     "/prospect-showcases": {
       "post": {
-        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account. If an active (submitted or demo_creating) showcase already exists for the same source URL, language pair, and email, the endpoint does not start a second demo: it rotates the status token on the existing row and returns 202 with the existing `prospectShowcaseRef` and a fresh `statusToken`. Concurrent identical submissions that race past this check resolve deterministically to the oldest active row; the newer rows are disabled and never provision. Terminal rows never dedupe.",
+        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account. If an active (submitted or demo_creating) showcase already exists for the same source URL, language pair, and email, the endpoint never starts a second demo: with a valid `reattachStatusToken` (the `statusToken` from the original create) it reconnects to the in-flight run and returns 202 with the existing `prospectShowcaseRef` and a rotated `statusToken`; without valid proof it returns 409 with `errorCode: \"preview_in_progress\"` and reveals nothing about the in-flight run. A partial unique index over active submissions makes this dedupe atomic for concurrent identical creates. Terminal rows never dedupe.",
         "operationId": "prospectShowcases.create",
         "requestBody": {
           "content": {

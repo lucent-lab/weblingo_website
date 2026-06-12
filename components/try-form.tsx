@@ -1202,6 +1202,16 @@ export function TryForm({
         clearPreviewTracking(trackedJob.previewId);
         clearActivePreviewIdFromSession(trackedJob.previewId);
       }
+      // The backend only reconnects a duplicate submission to the in-flight run
+      // when the request proves ownership with that run's current status token;
+      // without proof it answers 409 preview_in_progress.
+      const reattachCandidate = selectLatestJobByRequestKey(requestKey, jobs);
+      const reattachStatusToken =
+        reattachCandidate &&
+        isActivePreviewJobPhase(reattachCandidate.status) &&
+        reattachCandidate.statusToken
+          ? reattachCandidate.statusToken
+          : null;
       setLastRequestKey(requestKey);
 
       const controller = new AbortController();
@@ -1223,12 +1233,22 @@ export function TryForm({
             targetLang: normalizedTargetLang,
             locale,
             email: trimmedEmail,
+            ...(reattachStatusToken ? { reattachStatusToken } : {}),
           }),
           signal: controller.signal,
         });
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
+          if (response.status === 409 && payload?.errorCode === "preview_in_progress") {
+            // A demo for this identity is already running but this browser has
+            // no proof token (other tab/device or dismissed local state).
+            trackPreviewCreateFailed({ errorCode: "preview_in_progress" });
+            setSubmissionError(
+              t("try.error.previewInProgress", undefined, { email: trimmedEmail }),
+            );
+            return;
+          }
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
           trackPreviewCreateFailed({
@@ -1641,8 +1661,8 @@ export function TryForm({
             <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
               {processingHintMessage}
             </p>
-            {canRetryRestoredStatusCheck ? (
-              <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {canRetryRestoredStatusCheck ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1652,8 +1672,14 @@ export function TryForm({
                 >
                   {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
                 </Button>
-              </div>
-            ) : null}
+              ) : null}
+              {/* Escape hatch: a restored job whose status cannot be verified must
+                  not lock the form. Dismissing only forgets it locally; if the run
+                  is still live, resubmitting reattaches via the backend dedupe. */}
+              <Button type="button" size="sm" variant="ghost" onClick={handleTranslateAnother}>
+                {t("try.action.startNewPreview")}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -1738,18 +1764,22 @@ export function TryForm({
                 </div>
               ) : null}
 
-              <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
-                {t("try.status.emailNotice", undefined, { email: submittedEmail })}
-              </p>
+              {submittedEmail ? (
+                <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
+                  {t("try.status.emailNotice", undefined, { email: submittedEmail })}
+                </p>
+              ) : null}
             </div>
           </div>
 
           {isTransportDegraded ? (
             <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
               <p>{t("try.status.statusUnreachable")}</p>
-              <p className="text-xs opacity-80">
-                {t("try.status.pendingEmail", undefined, { email: submittedEmail })}
-              </p>
+              {submittedEmail ? (
+                <p className="text-xs opacity-80">
+                  {t("try.status.pendingEmail", undefined, { email: submittedEmail })}
+                </p>
+              ) : null}
               <Button
                 onClick={handleRetryRestoredStatusCheck}
                 disabled={checkingStatus}
@@ -1924,9 +1954,11 @@ export function TryForm({
               </div>
             ) : null}
 
-            <p className="text-xs text-primary/80">
-              {t("try.preview.emailedNotice", undefined, { email: submittedEmail })}
-            </p>
+            {submittedEmail ? (
+              <p className="text-xs text-primary/80">
+                {t("try.preview.emailedNotice", undefined, { email: submittedEmail })}
+              </p>
+            ) : null}
 
             <Button
               type="button"

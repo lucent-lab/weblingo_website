@@ -7,10 +7,12 @@ import {
   resolvePreviewStatusCenterMessage,
 } from "@internal/previews/status-center-i18n";
 import {
+  getActivePreviewPinServerSnapshot,
+  getActivePreviewPinSnapshot,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
-  readActivePreviewIdFromSession,
   selectCurrentActivePreviewStatusCenterJob,
+  subscribeActivePreviewPin,
   subscribePreviewStatusCenterStore,
 } from "@internal/previews/status-center-store";
 
@@ -36,13 +38,18 @@ export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
     getPreviewStatusCenterJobsSnapshot,
     getPreviewStatusCenterServerJobsSnapshot,
   );
+  const pinnedPreviewId = useSyncExternalStore(
+    subscribeActivePreviewPin,
+    getActivePreviewPinSnapshot,
+    getActivePreviewPinServerSnapshot,
+  );
   const job = useMemo(
     () =>
       selectCurrentActivePreviewStatusCenterJob({
         jobs: jobsSnapshot,
-        pinnedPreviewId: readActivePreviewIdFromSession(),
+        pinnedPreviewId,
       }),
-    [jobsSnapshot],
+    [jobsSnapshot, pinnedPreviewId],
   );
 
   if (!job) {
