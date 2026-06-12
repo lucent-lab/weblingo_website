@@ -251,6 +251,7 @@ export function TryForm({
   const trackedPreviewStatusSignaturesRef = useRef<Map<string, string>>(new Map());
   const trackedPreviewTerminalRef = useRef<Set<string>>(new Set());
   const restoredStatusCheckStartedRef = useRef<Set<string>>(new Set());
+  const dismissedReattachProofsRef = useRef<Map<string, string>>(new Map());
   const handleCheckStatusRef = useRef<
     (previewIdOverride?: string, statusTokenOverride?: string) => Promise<boolean | null>
   >(async () => null);
@@ -268,6 +269,14 @@ export function TryForm({
       return next;
     });
   }, []);
+  const forgetPreviewJob = useCallback(
+    (job: PreviewStatusCenterJob) => {
+      removePreviewStatusCenterJob(job.previewId);
+      clearPreviewTracking(job.previewId);
+      clearActivePreviewIdFromSession(job.previewId);
+    },
+    [clearPreviewTracking],
+  );
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
@@ -788,9 +797,12 @@ export function TryForm({
     restoreAttemptedRef.current = true;
     closeEventSource();
     if (trackedJob) {
-      removePreviewStatusCenterJob(trackedJob.previewId);
-      clearPreviewTracking(trackedJob.previewId);
-      clearActivePreviewIdFromSession(trackedJob.previewId);
+      if (isActivePreviewJobPhase(trackedJob.status) && trackedJob.statusToken) {
+        dismissedReattachProofsRef.current.set(trackedJob.requestKey, trackedJob.statusToken);
+      } else {
+        dismissedReattachProofsRef.current.delete(trackedJob.requestKey);
+      }
+      forgetPreviewJob(trackedJob);
     }
     setLastRequestKey(null);
     setSubmissionError(null);
@@ -1232,20 +1244,20 @@ export function TryForm({
       // with a freshly rotated statusToken. Reattaching from local state would
       // keep a stale token when another tab already rotated it.
       if (trackedJob && !isActivePreviewJobPhase(trackedJob.status)) {
-        removePreviewStatusCenterJob(trackedJob.previewId);
-        clearPreviewTracking(trackedJob.previewId);
-        clearActivePreviewIdFromSession(trackedJob.previewId);
+        forgetPreviewJob(trackedJob);
       }
       // The backend only reconnects a duplicate submission to the in-flight run
       // when the request proves ownership with that run's current status token;
       // without proof it answers 409 preview_in_progress.
       const reattachCandidate = selectLatestJobByRequestKey(requestKey, jobs);
-      const reattachStatusToken =
+      const storedReattachStatusToken =
         reattachCandidate &&
         isActivePreviewJobPhase(reattachCandidate.status) &&
         reattachCandidate.statusToken
           ? reattachCandidate.statusToken
           : null;
+      const reattachStatusToken =
+        storedReattachStatusToken ?? dismissedReattachProofsRef.current.get(requestKey) ?? null;
       setLastRequestKey(requestKey);
 
       const controller = new AbortController();
@@ -1277,6 +1289,17 @@ export function TryForm({
           if (response.status === 409 && payload?.errorCode === "preview_in_progress") {
             // A demo for this identity is already running but this browser has
             // no proof token (other tab/device or dismissed local state).
+            if (reattachStatusToken) {
+              dismissedReattachProofsRef.current.delete(requestKey);
+              if (
+                reattachCandidate &&
+                isActivePreviewJobPhase(reattachCandidate.status) &&
+                reattachCandidate.statusToken === reattachStatusToken
+              ) {
+                forgetPreviewJob(reattachCandidate);
+              }
+              setLastRequestKey(null);
+            }
             trackPreviewCreateFailed({ errorCode: "preview_in_progress" });
             setSubmissionError(
               t("try.error.previewInProgress", undefined, { email: trimmedEmail }),
@@ -1294,6 +1317,7 @@ export function TryForm({
         }
 
         const payload = (await response.json()) as Record<string, unknown>;
+        dismissedReattachProofsRef.current.delete(requestKey);
         const previewId = resolveProspectShowcaseRef(payload);
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
         const immediatePreview = resolvePreviewJobPayloadUrl(payload);

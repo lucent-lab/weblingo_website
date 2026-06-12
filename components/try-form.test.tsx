@@ -509,6 +509,65 @@ describe("TryForm preview status", () => {
     expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
   });
 
+  it("clears a stale local reattach job when the create endpoint rejects its proof", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://duplicate.example.com/page",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse(
+          {
+            error: "A demo for this page and language pair is already being prepared.",
+            errorCode: "preview_in_progress",
+          },
+          409,
+        );
+      }
+      return jsonResponse({ status: "processing", stage: "translating" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "stale-reattach-1111-1111-1111-111111111111",
+      requestKey,
+      sourceUrl: "https://duplicate.example.com/page",
+      statusToken: "stale-proof-token",
+      createdAt: Date.now() - 16 * 60 * 1000,
+      updatedAt: Date.now() - 16 * 60 * 1000,
+    });
+
+    renderTryForm();
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://duplicate.example.com/page" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const createCall = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>).find(
+        (call) => String(call[0]) === "/api/prospect-showcases",
+      );
+      expect(createCall).toBeTruthy();
+      expect(JSON.parse(String(createCall![1].body))).toMatchObject({
+        reattachStatusToken: "stale-proof-token",
+      });
+      expect(
+        screen.getByText("A demo is already being prepared for owner@example.com."),
+      ).toBeTruthy();
+    });
+    expect(
+      getPreviewStatusCenterJobsSnapshot().some(
+        (job) => job.previewId === "stale-reattach-1111-1111-1111-111111111111",
+      ),
+    ).toBe(false);
+    expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+  });
+
   it("captures preview terminal failures from the create response", async () => {
     vi.stubGlobal(
       "fetch",
@@ -1196,6 +1255,73 @@ describe("TryForm preview status", () => {
         (job) => job.previewId === "escape-4444-4444-4444-444444444444",
       ),
     ).toBe(false);
+  });
+
+  it("preserves reattach proof after escaping an unverifiable restored job", async () => {
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://escape-reattach.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (
+        url ===
+        "/api/prospect-showcases/escape-reattach-4444-4444-4444-444444444444/status?token=restore-token"
+      ) {
+        throw new Error("network unavailable");
+      }
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "escape-reattach-4444-4444-4444-444444444444",
+          statusToken: "rotated-token",
+          status: "processing",
+          stage: "translating",
+        });
+      }
+      return jsonResponse({ status: "processing", stage: "translating" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "escape-reattach-4444-4444-4444-444444444444",
+      requestKey,
+      statusToken: "restore-token",
+      sourceUrl: "https://escape-reattach.example.com",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Start a new preview" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start a new preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("https://example.com")).toBeTruthy();
+    });
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://escape-reattach.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      const createCall = (fetchMock.mock.calls as unknown as Array<[string, RequestInit]>).find(
+        (call) => String(call[0]) === "/api/prospect-showcases",
+      );
+      expect(createCall).toBeTruthy();
+      expect(JSON.parse(String(createCall![1].body))).toMatchObject({
+        sourceUrl: "https://escape-reattach.example.com",
+        email: "owner@example.com",
+        reattachStatusToken: "restore-token",
+      });
+    });
   });
 
   it("renders terminal cards without the editable form and resets via translate-another", async () => {

@@ -777,6 +777,66 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("rehydrates persisted rotated tokens before terminalizing stale-token auth verdicts", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("token=stale-token")) {
+        const job = getPreviewStatusCenterJobsSnapshot()[0];
+        window.localStorage.setItem(
+          PREVIEW_STATUS_CENTER_STORAGE_KEY,
+          JSON.stringify([
+            {
+              ...job,
+              statusToken: "rotated-token",
+              updatedAt: job.updatedAt + 1,
+              retryCount: 0,
+              nextPollAt: Date.now() + 60_000,
+            },
+          ]),
+        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "processing" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-storage-only-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=stale-token"),
+        expect.anything(),
+      );
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      statusToken: "rotated-token",
+    });
+  });
+
   it("restores the server verdict for over-budget restored jobs instead of fabricating a stall", async () => {
     const now = Date.now();
     window.localStorage.setItem(

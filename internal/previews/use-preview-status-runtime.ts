@@ -179,8 +179,11 @@ export function usePreviewStatusRuntime() {
           mapNotFoundToErrorCode: true,
         });
         if (decision.kind === "terminal") {
-          if (!response.ok && hasRotatedStatusToken(job)) {
-            return;
+          if (!response.ok) {
+            rehydratePreviewStatusCenterStoreFromStorage();
+            if (hasRotatedStatusToken(job)) {
+              return;
+            }
           }
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
