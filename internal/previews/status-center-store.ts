@@ -343,6 +343,10 @@ function normalizeTimestamp(value: number): number {
   return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 }
 
+function normalizeNullableTimestamp(value: number | null): number {
+  return value === null ? Number.NEGATIVE_INFINITY : normalizeTimestamp(value);
+}
+
 function normalizeSortableString(value: string | null | undefined): string {
   return isString(value) ? value : "";
 }
@@ -715,24 +719,35 @@ export function rehydratePreviewStatusCenterStoreFromStorage(
       normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
         ? incoming
         : local;
-    if (incoming.statusToken === local.statusToken) {
-      return base;
+    let merged = base;
+    if (incoming.statusToken !== local.statusToken) {
+      // Equal stamps with different tokens should not happen; trust the shared
+      // snapshot over this tab's memory in that case.
+      const tokenWinner =
+        normalizeTimestamp(incoming.statusTokenUpdatedAt) >=
+        normalizeTimestamp(local.statusTokenUpdatedAt)
+          ? incoming
+          : local;
+      if (tokenWinner !== merged) {
+        merged = {
+          ...merged,
+          statusToken: tokenWinner.statusToken,
+          statusTokenUpdatedAt: tokenWinner.statusTokenUpdatedAt,
+        };
+      }
     }
-    // Equal stamps with different tokens should not happen; trust the shared
-    // snapshot over this tab's memory in that case.
-    const tokenWinner =
-      normalizeTimestamp(incoming.statusTokenUpdatedAt) >=
-      normalizeTimestamp(local.statusTokenUpdatedAt)
-        ? incoming
-        : local;
-    if (tokenWinner === base) {
-      return base;
+
+    const verifiedAt = Math.max(
+      normalizeNullableTimestamp(incoming.lastVerifiedAt),
+      normalizeNullableTimestamp(local.lastVerifiedAt),
+    );
+    if (verifiedAt > normalizeNullableTimestamp(merged.lastVerifiedAt)) {
+      merged = {
+        ...merged,
+        lastVerifiedAt: verifiedAt,
+      };
     }
-    return {
-      ...base,
-      statusToken: tokenWinner.statusToken,
-      statusTokenUpdatedAt: tokenWinner.statusTokenUpdatedAt,
-    };
+    return merged;
   });
   for (const local of state.jobs) {
     if (storedPreviewIds.has(local.previewId)) {

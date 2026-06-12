@@ -162,6 +162,28 @@ describe("status-center-store", () => {
     expect(merged.stage).toBe("translating");
   });
 
+  it("keeps the latest verified timestamp when a newer cross-tab row is unverified", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing", stage: null }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(local.lastVerifiedAt).not.toBeNull();
+
+    const stored = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
+    ) as Array<Record<string, unknown>>;
+    stored[0].updatedAt = local.updatedAt + 10;
+    stored[0].remoteStatusVerified = false;
+    stored[0].lastVerifiedAt = null;
+    stored[0].stage = "translating";
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.stage).toBe("translating");
+    expect(merged.remoteStatusVerified).toBe(false);
+    expect(merged.lastVerifiedAt).toBe(local.lastVerifiedAt);
+  });
+
   it("keeps the newer local job over a stale persisted snapshot during rehydration", () => {
     upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
     const local = getPreviewStatusCenterJobsSnapshot()[0];
