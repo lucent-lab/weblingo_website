@@ -2220,6 +2220,58 @@ describe("TryForm preview status", () => {
     expect(MockEventSource.instances).toHaveLength(0);
   });
 
+  it("can restore a stored active job after a transient create failure", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/prospect-showcases") {
+        return jsonResponse({ error: "Temporary failure" }, 503);
+      }
+      return jsonResponse({ status: "processing" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://new.example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Temporary failure")).toBeTruthy();
+    });
+
+    const requestKey = buildPreviewStatusCenterRequestKey({
+      sourceUrl: "https://restore-after-failure.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      email: "owner@example.com",
+    });
+    upsertPreviewStatusCenterJob({
+      previewId: "restore-failure-1111-1111-1111-111111111111",
+      requestKey,
+      statusToken: "restore-token",
+      sourceUrl: "https://restore-after-failure.example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      stage: "translating",
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://restore-after-failure.example.com" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+      expect(screen.queryByText("Temporary failure")).toBeNull();
+      expect(
+        screen.getByText("restore-after-failure.example.com • English -> French"),
+      ).toBeTruthy();
+    });
+  });
+
   it("restores email-scoped prospect showcase jobs with their submitted email", async () => {
     const requestKey = buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://restore.example.com",

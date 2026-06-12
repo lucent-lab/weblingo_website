@@ -1186,7 +1186,12 @@ export function TryForm({
     }
 
     let requestAttempted = false;
+    let previewClaimed = false;
     let previewCreateFailureTracked = false;
+    const releaseUnclaimedSubmission = () => {
+      restoreAttemptedRef.current = false;
+      setLastRequestKey(null);
+    };
     const trackPreviewCreateFailed = (overrides?: {
       previewId?: string | null;
       errorCode?: string | null;
@@ -1329,6 +1334,7 @@ export function TryForm({
             errorCode: typeof payload?.errorCode === "string" ? payload.errorCode : null,
             errorStage: typeof payload?.errorStage === "string" ? payload.errorStage : null,
           });
+          releaseUnclaimedSubmission();
           setSubmissionError(resolveErrorMessage(null, reason));
           return;
         }
@@ -1354,6 +1360,7 @@ export function TryForm({
           }
           const resolved = resolveErrorFromPayload(payload);
           if (previewId && statusToken) {
+            previewClaimed = true;
             captureAnalyticsEvent(
               ANALYTICS_EVENTS.previewCreateSucceeded,
               buildPreviewAnalyticsProperties({
@@ -1395,6 +1402,7 @@ export function TryForm({
               errorCode: resolved.code,
               errorStage: resolved.stage,
             });
+            releaseUnclaimedSubmission();
             setSubmissionError(resolved.message);
           }
           return;
@@ -1406,10 +1414,12 @@ export function TryForm({
               errorCode: immediateDecision.errorCode,
               errorStage: immediateDecision.errorStage,
             });
+            releaseUnclaimedSubmission();
             setSubmissionError(immediateDecision.error ?? t("try.error.default"));
             return;
           }
 
+          previewClaimed = true;
           trackedPreviewIdsRef.current.add(previewId);
           trackedPreviewTerminalRef.current.delete(previewId);
           trackedPreviewStatusSignaturesRef.current.delete(previewId);
@@ -1451,13 +1461,16 @@ export function TryForm({
 
         if (!previewId) {
           trackPreviewCreateFailed();
+          releaseUnclaimedSubmission();
           throw new Error("Preview was created but no ID was returned.");
         }
         if (!statusToken) {
           trackPreviewCreateFailed({ previewId });
+          releaseUnclaimedSubmission();
           throw new Error("Preview was created but no status token was returned.");
         }
 
+        previewClaimed = true;
         trackedPreviewIdsRef.current.add(previewId);
         trackedPreviewTerminalRef.current.delete(previewId);
         trackedPreviewStatusSignaturesRef.current.delete(previewId);
@@ -1498,6 +1511,9 @@ export function TryForm({
       }
       if (requestAttempted && !previewCreateFailureTracked) {
         trackPreviewCreateFailed();
+      }
+      if (requestAttempted && !previewClaimed) {
+        releaseUnclaimedSubmission();
       }
       const message = error instanceof Error ? error.message : "Failed to generate preview.";
       setSubmissionError(message);
