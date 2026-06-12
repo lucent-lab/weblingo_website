@@ -798,14 +798,31 @@ export function TryForm({
     setUrlError(null);
   }
 
+  function readCurrentPreviewStatusToken(previewId: string): string | null {
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (candidate) => candidate.previewId === previewId,
+    );
+    return job ? job.statusToken : null;
+  }
+
   async function handleCheckStatus(
     previewIdOverride?: string,
     statusTokenOverride?: string,
   ): Promise<boolean | null> {
     const previewId = previewIdOverride ?? trackedJob?.previewId ?? null;
-    const statusToken = statusTokenOverride ?? trackedJob?.statusToken ?? null;
+    if (!previewId || checkingStatus) {
+      return null;
+    }
+    // Callers capture the token when they schedule the check (SSE handlers,
+    // restored-job effects), but another tab may have rotated it since; the
+    // store token is the freshest one this tab knows about.
+    const statusToken =
+      readCurrentPreviewStatusToken(previewId) ??
+      statusTokenOverride ??
+      trackedJob?.statusToken ??
+      null;
 
-    if (!previewId || !statusToken || checkingStatus) {
+    if (!statusToken) {
       return null;
     }
 
@@ -834,6 +851,13 @@ export function TryForm({
         mapNotFoundToErrorCode: true,
       });
       if (decision.kind === "terminal") {
+        // A non-ok verdict obtained with a token that has since been rotated
+        // (duplicate submission in another tab) is an auth artifact, not the
+        // job's fate; the shared runtime re-polls with the fresh token.
+        const currentToken = readCurrentPreviewStatusToken(previewId);
+        if (!response.ok && currentToken !== null && currentToken !== statusToken) {
+          return false;
+        }
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
           demoDashboardUrl: decision.demoDashboardUrl,

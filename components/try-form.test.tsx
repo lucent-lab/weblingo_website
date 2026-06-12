@@ -13,6 +13,7 @@ import {
   PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
   PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
+  updatePreviewStatusCenterJob,
   upsertPreviewStatusCenterJob,
 } from "@internal/previews/status-center-store";
 import { TryForm, resolveTryFormMode } from "./try-form";
@@ -2583,6 +2584,60 @@ describe("TryForm preview status", () => {
     });
     expect(stream.closed).toBe(true);
     expect(MockEventSource.instances).toHaveLength(1);
+  });
+
+  it("polls with the rotated store token instead of the captured one when SSE errors", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "rotate-5555-5555-5555-555555555555",
+          statusToken: "original-token",
+          status: "pending",
+        });
+      }
+      if (
+        url ===
+        "/api/prospect-showcases/rotate-5555-5555-5555-555555555555/status?token=fresh-token"
+      ) {
+        return jsonResponse({ status: "processing", stage: "translating" });
+      }
+      // The original token was revoked by the rotation: answering 401 here
+      // would be misread as a terminal failure if the stale token leaked.
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    // Another tab reattached the same submission; cross-tab sync delivered the
+    // rotated token while this tab's EventSource was still open.
+    updatePreviewStatusCenterJob("rotate-5555-5555-5555-555555555555", {
+      statusToken: "fresh-token",
+    });
+
+    MockEventSource.instances[0].emit("error");
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/rotate-5555-5555-5555-555555555555/status?token=fresh-token",
+      );
+    });
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).not.toContain(
+      "/api/prospect-showcases/rotate-5555-5555-5555-555555555555/status?token=original-token",
+    );
+    expect(screen.queryByText("Preview failed.")).toBeNull();
   });
 
   it("keeps the stepper and falls back to polling when the SSE stream errors", async () => {
