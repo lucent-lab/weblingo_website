@@ -1196,6 +1196,45 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("does not block terminal restore after a locally invalid submit", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const now = Date.now();
+    storeRestoredActiveJob({
+      previewId: "invalid-restore-7777-7777-7777-777777777777",
+      sourceUrl: "https://invalid-restore.example.com",
+      createdAt: now - 20 * 60 * 1000,
+      updatedAt: now - 20 * 60 * 1000,
+    });
+
+    renderTryForm();
+
+    expect(screen.queryByText("Checking preview status...")).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "not-a-url" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Invalid URL").length).toBeGreaterThan(0);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    markPreviewStatusCenterJobTerminal("invalid-restore-7777-7777-7777-777777777777", "ready", {
+      previewUrl: "https://preview.example.com/invalid-restore",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
+        "https://preview.example.com/invalid-restore",
+      );
+    });
+  });
+
   it("shows a manual check-status retry when restored status fetch fails", async () => {
     const fetchMock = vi
       .fn()
@@ -2764,6 +2803,64 @@ describe("TryForm preview status", () => {
       "/api/prospect-showcases/rotate-5555-5555-5555-555555555555/status?token=original-token",
     );
     expect(screen.queryByText("Preview failed.")).toBeNull();
+  });
+
+  it("rehydrates a persisted rotated token before SSE fallback polls", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/prospect-showcases") {
+        return jsonResponse({
+          prospectShowcaseRef: "persisted-rotate-5555-5555-5555-555555555555",
+          statusToken: "original-token",
+          status: "pending",
+        });
+      }
+      if (
+        url ===
+        "/api/prospect-showcases/persisted-rotate-5555-5555-5555-555555555555/status?token=persisted-fresh-token"
+      ) {
+        return jsonResponse({ status: "processing", stage: "translating" });
+      }
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTryForm();
+    fireEvent.change(screen.getByPlaceholderText("https://example.com"), {
+      target: { value: "https://example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Generate a private preview" }));
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    const [job] = getPreviewStatusCenterJobsSnapshot();
+    expect(job).toBeTruthy();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...job,
+          statusToken: "persisted-fresh-token",
+          statusTokenUpdatedAt: Date.now() + 1_000,
+        },
+      ]),
+    );
+
+    MockEventSource.instances[0].emit("error");
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/persisted-rotate-5555-5555-5555-555555555555/status?token=persisted-fresh-token",
+      );
+    });
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).not.toContain(
+      "/api/prospect-showcases/persisted-rotate-5555-5555-5555-555555555555/status?token=original-token",
+    );
   });
 
   it("keeps the stepper and falls back to polling when the SSE stream errors", async () => {

@@ -62,6 +62,7 @@ import {
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
   readActivePreviewIdFromSession,
+  rehydratePreviewStatusCenterStoreFromStorage,
   removePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   selectRestorablePreviewStatusCenterJob,
@@ -312,6 +313,15 @@ export function TryForm({
       }),
     [normalizedSourceLang, normalizedTargetLang, trimmedEmail, trimmedUrl],
   );
+  const currentRestorableRequestKey =
+    trimmedUrl &&
+    isValidHttpUrl(trimmedUrl) &&
+    isValidEmail(trimmedEmail) &&
+    normalizedSourceLang &&
+    normalizedTargetLang &&
+    normalizedSourceLang.toLowerCase() !== normalizedTargetLang.toLowerCase()
+      ? currentRequestKey
+      : null;
 
   const trackedJob = useMemo(
     () => selectLatestJobByRequestKey(lastRequestKey, jobs),
@@ -490,7 +500,7 @@ export function TryForm({
 
     const restoredJob = selectRestorablePreviewStatusCenterJob({
       jobs,
-      currentRequestKey: trimmedUrl ? currentRequestKey : null,
+      currentRequestKey: currentRestorableRequestKey,
       pinnedPreviewId: readActivePreviewIdFromSession(),
     });
     if (!restoredJob) {
@@ -524,7 +534,7 @@ export function TryForm({
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
     setEmail((current) => (current ? current : parsedRequest.email));
-  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, trimmedUrl]);
+  }, [clearPreviewTracking, currentRestorableRequestKey, jobs, lastRequestKey]);
 
   useEffect(() => {
     return () => {
@@ -825,6 +835,7 @@ export function TryForm({
     if (!previewId || checkingStatus) {
       return null;
     }
+    rehydratePreviewStatusCenterStoreFromStorage();
     // Callers capture the token when they schedule the check (SSE handlers,
     // restored-job effects), but another tab may have rotated it since; the
     // store token is the freshest one this tab knows about.
@@ -866,6 +877,7 @@ export function TryForm({
         // A non-ok verdict obtained with a token that has since been rotated
         // (duplicate submission in another tab) is an auth artifact, not the
         // job's fate; the shared runtime re-polls with the fresh token.
+        rehydratePreviewStatusCenterStoreFromStorage();
         const currentToken = readCurrentPreviewStatusToken(previewId);
         if (!response.ok && currentToken !== null && currentToken !== statusToken) {
           return false;
@@ -1167,9 +1179,6 @@ export function TryForm({
     if (!trimmedUrl || disabled) {
       return;
     }
-    // A deliberate submission owns the form; a pending auto-restore of an older
-    // stored job must not race it.
-    restoreAttemptedRef.current = true;
 
     let requestAttempted = false;
     let previewCreateFailureTracked = false;
@@ -1214,6 +1223,9 @@ export function TryForm({
         throw new Error(t("try.form.sameLanguage"));
       }
 
+      // A deliberate, locally valid submission owns the form; a pending
+      // auto-restore of an older stored job must not race the request.
+      restoreAttemptedRef.current = true;
       setUrlError(null);
       setEmailError(null);
       setSubmissionError(null);
