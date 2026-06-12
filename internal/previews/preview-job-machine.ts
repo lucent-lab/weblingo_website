@@ -19,6 +19,12 @@ export type PreviewJob = {
   previewId: string;
   requestKey: string;
   statusToken: string;
+  /**
+   * Last time `statusToken` changed value. Cross-tab rehydration merges the
+   * token by this stamp so a rotation committed by another tab survives even
+   * when this tab's row carries newer progress (`updatedAt`).
+   */
+  statusTokenUpdatedAt: number;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
@@ -270,11 +276,15 @@ function reduceUpsert(
   const remoteStatusVerified = terminal
     ? true
     : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true);
+  const statusToken = resolveStringWithFallback(input.statusToken, existing?.statusToken ?? "");
+  const statusTokenUpdatedAt =
+    existing && statusToken === existing.statusToken ? existing.statusTokenUpdatedAt : context.now;
 
   return {
     previewId: input.previewId,
     requestKey: resolveStringWithFallback(input.requestKey, existing?.requestKey ?? ""),
-    statusToken: resolveStringWithFallback(input.statusToken, existing?.statusToken ?? ""),
+    statusToken,
+    statusTokenUpdatedAt,
     sourceUrl: resolveStringWithFallback(input.sourceUrl, existing?.sourceUrl ?? ""),
     sourceLang: resolveStringWithFallback(input.sourceLang, existing?.sourceLang ?? ""),
     targetLang: resolveStringWithFallback(input.targetLang, existing?.targetLang ?? ""),
@@ -324,11 +334,15 @@ function reducePatch(
   const remoteStatusVerified = terminal
     ? true
     : (patch.remoteStatusVerified ?? existing.remoteStatusVerified);
+  const statusToken = resolveStringWithFallback(patch.statusToken, existing.statusToken);
+  const statusTokenUpdatedAt =
+    statusToken === existing.statusToken ? existing.statusTokenUpdatedAt : context.now;
 
   return {
     ...existing,
     requestKey: resolveStringWithFallback(patch.requestKey, existing.requestKey),
-    statusToken: resolveStringWithFallback(patch.statusToken, existing.statusToken),
+    statusToken,
+    statusTokenUpdatedAt,
     sourceUrl: resolveStringWithFallback(patch.sourceUrl, existing.sourceUrl),
     sourceLang: resolveStringWithFallback(patch.sourceLang, existing.sourceLang),
     targetLang: resolveStringWithFallback(patch.targetLang, existing.targetLang),

@@ -12,6 +12,7 @@ function buildJob(overrides: Partial<PreviewJob> = {}): PreviewJob {
     previewId: "11111111-1111-1111-1111-111111111111",
     requestKey: "v2:prospect_showcase|https%3A%2F%2Fexample.com|en|fr|",
     statusToken: "status-token",
+    statusTokenUpdatedAt: now,
     sourceUrl: "https://example.com",
     sourceLang: "en",
     targetLang: "fr",

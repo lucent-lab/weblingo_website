@@ -478,7 +478,6 @@ export function TryForm({
     if (jobs.length === 0) {
       return;
     }
-    restoreAttemptedRef.current = true;
 
     const restoredJob = selectRestorablePreviewStatusCenterJob({
       jobs,
@@ -486,8 +485,14 @@ export function TryForm({
       pinnedPreviewId: readActivePreviewIdFromSession(),
     });
     if (!restoredJob) {
+      // An unpinned active job past the restore window is skipped here, but the
+      // status runtime keeps polling it. Stay un-latched so the verdict it
+      // produces (often `ready`) restores the terminal card instead of
+      // vanishing: terminal jobs are always restorable.
+      restoreAttemptedRef.current = !jobs.some((job) => isActivePreviewJobPhase(job.status));
       return;
     }
+    restoreAttemptedRef.current = true;
     writeActivePreviewIdToSession(restoredJob.previewId);
 
     if (isActivePreviewJobPhase(restoredJob.status)) {
@@ -779,6 +784,8 @@ export function TryForm({
   // Terminal-state reset: clears the finished job and starts a fresh form while
   // keeping the already-collected email.
   function handleTranslateAnother() {
+    // Explicit dismissal: never auto-restore another stored job afterwards.
+    restoreAttemptedRef.current = true;
     closeEventSource();
     if (trackedJob) {
       removePreviewStatusCenterJob(trackedJob.previewId);
@@ -1124,6 +1131,9 @@ export function TryForm({
     if (!trimmedUrl || disabled) {
       return;
     }
+    // A deliberate submission owns the form; a pending auto-restore of an older
+    // stored job must not race it.
+    restoreAttemptedRef.current = true;
 
     let requestAttempted = false;
     let previewCreateFailureTracked = false;

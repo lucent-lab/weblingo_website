@@ -422,6 +422,11 @@ function parseStoredV2Job(value: unknown): PreviewStatusCenterJob | null {
     previewId: value.previewId,
     requestKey,
     statusToken: value.statusToken,
+    // Legacy persisted rows predate the token stamp; their token is at most as
+    // fresh as the row itself.
+    statusTokenUpdatedAt: isFiniteNumber(value.statusTokenUpdatedAt)
+      ? value.statusTokenUpdatedAt
+      : value.updatedAt,
     sourceUrl: value.sourceUrl,
     sourceLang: value.sourceLang,
     targetLang: value.targetLang,
@@ -677,9 +682,10 @@ export function hydratePreviewStatusCenterStore() {
 /**
  * Re-reads the persisted snapshot after another tab committed it (localStorage
  * `storage` event). Storage decides membership; for jobs known locally, the
- * newer `updatedAt` wins so a status token rotated by a duplicate submission
- * in another tab replaces the stale local token instead of letting this tab
- * poll itself into a false terminal failure.
+ * newer `updatedAt` wins the row, but the status token is merged separately by
+ * `statusTokenUpdatedAt`: a token rotated by a duplicate submission in another
+ * tab must replace the stale local token even when this tab applied later
+ * SSE/poll progress, or every future poll here keeps using the revoked token.
  */
 export function rehydratePreviewStatusCenterStoreFromStorage() {
   if (!canUseStorage()) {
@@ -696,9 +702,28 @@ export function rehydratePreviewStatusCenterStoreFromStorage() {
     if (!local) {
       return incoming;
     }
-    return normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
-      ? incoming
-      : local;
+    const base =
+      normalizeTimestamp(incoming.updatedAt) > normalizeTimestamp(local.updatedAt)
+        ? incoming
+        : local;
+    if (incoming.statusToken === local.statusToken) {
+      return base;
+    }
+    // Equal stamps with different tokens should not happen; trust the shared
+    // snapshot over this tab's memory in that case.
+    const tokenWinner =
+      normalizeTimestamp(incoming.statusTokenUpdatedAt) >=
+      normalizeTimestamp(local.statusTokenUpdatedAt)
+        ? incoming
+        : local;
+    if (tokenWinner === base) {
+      return base;
+    }
+    return {
+      ...base,
+      statusToken: tokenWinner.statusToken,
+      statusTokenUpdatedAt: tokenWinner.statusTokenUpdatedAt,
+    };
   });
   // Never persist here: echoing the merged snapshot back to localStorage would
   // ping-pong storage events between tabs.

@@ -109,6 +109,57 @@ describe("status-center-store", () => {
     expect(jobs[0].status).toBe("processing");
   });
 
+  it("adopts a rotated token even when local progress is newer than the rotating tab's row", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+
+    // Another tab reattached (rotating the token), then this tab applied a
+    // later SSE/poll progress update: the local row is newer overall, but the
+    // token stamp proves the rotation happened after the local token was set.
+    const stored = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
+    ) as Array<Record<string, unknown>>;
+    stored[0].statusToken = "rotated-token";
+    stored[0].statusTokenUpdatedAt = local.statusTokenUpdatedAt + 5;
+    stored[0].updatedAt = local.updatedAt - 1;
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.statusToken).toBe("rotated-token");
+    expect(merged.statusTokenUpdatedAt).toBe(local.statusTokenUpdatedAt + 5);
+    // The newer local row still wins everything except the token.
+    expect(merged.updatedAt).toBe(local.updatedAt);
+    expect(merged.status).toBe("processing");
+  });
+
+  it("keeps a locally rotated token when another tab commits stale-token progress", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+    const before = getPreviewStatusCenterJobsSnapshot()[0];
+    updatePreviewStatusCenterJob(before.previewId, { statusToken: "locally-rotated" });
+    const local = getPreviewStatusCenterJobsSnapshot()[0];
+
+    // The other tab never saw the rotation and committed newer progress
+    // carrying the revoked token.
+    const stored = JSON.parse(
+      window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
+    ) as Array<Record<string, unknown>>;
+    stored[0].statusToken = "status-token";
+    stored[0].statusTokenUpdatedAt = local.statusTokenUpdatedAt - 5;
+    stored[0].updatedAt = local.updatedAt + 10;
+    stored[0].stage = "translating";
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
+
+    rehydratePreviewStatusCenterStoreFromStorage();
+
+    const merged = getPreviewStatusCenterJobsSnapshot()[0];
+    expect(merged.statusToken).toBe("locally-rotated");
+    expect(merged.statusTokenUpdatedAt).toBe(local.statusTokenUpdatedAt);
+    // The newer incoming row wins everything except the token.
+    expect(merged.stage).toBe("translating");
+  });
+
   it("keeps the newer local job over a stale persisted snapshot during rehydration", () => {
     upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
     const local = getPreviewStatusCenterJobsSnapshot()[0];
@@ -117,6 +168,7 @@ describe("status-center-store", () => {
       window.localStorage.getItem(PREVIEW_STATUS_CENTER_STORAGE_KEY)!,
     ) as Array<Record<string, unknown>>;
     stored[0].statusToken = "older-token";
+    stored[0].statusTokenUpdatedAt = local.statusTokenUpdatedAt - 1;
     stored[0].updatedAt = local.updatedAt - 1;
     window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify(stored));
 
@@ -400,6 +452,7 @@ describe("status-center-store", () => {
       retryHint: null,
       remoteStatusVerified: true,
       lastVerifiedAt: null,
+      statusTokenUpdatedAt: 0,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -420,6 +473,7 @@ describe("status-center-store", () => {
       retryHint: null,
       remoteStatusVerified: true,
       lastVerifiedAt: null,
+      statusTokenUpdatedAt: 0,
       expiresAt: null,
       retryCount: 0,
       nextPollAt: Number.POSITIVE_INFINITY,
@@ -522,6 +576,7 @@ describe("status-center-store", () => {
         errorStage: null,
         remoteStatusVerified: false,
         lastVerifiedAt: null,
+        statusTokenUpdatedAt: 0,
         createdAt: now - 1_000,
         updatedAt: now - 500,
         expiresAt: null,
@@ -540,6 +595,7 @@ describe("status-center-store", () => {
         errorStage: null,
         remoteStatusVerified: false,
         lastVerifiedAt: null,
+        statusTokenUpdatedAt: 0,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
         updatedAt: now - 250,
         expiresAt: null,
@@ -579,6 +635,7 @@ describe("status-center-store", () => {
         errorStage: null,
         remoteStatusVerified: true,
         lastVerifiedAt: null,
+        statusTokenUpdatedAt: 0,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 10_000,
         updatedAt: now - 2_000,
         expiresAt: now + 60_000,
@@ -598,6 +655,7 @@ describe("status-center-store", () => {
         errorStage: null,
         remoteStatusVerified: false,
         lastVerifiedAt: null,
+        statusTokenUpdatedAt: 0,
         createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
         updatedAt: now,
         expiresAt: null,
@@ -629,6 +687,7 @@ describe("status-center-store", () => {
       errorStage: null,
       remoteStatusVerified: false,
       lastVerifiedAt: null,
+      statusTokenUpdatedAt: 0,
       createdAt: now - RESTORABLE_ACTIVE_PREVIEW_MAX_AGE_MS - 1,
       updatedAt: now,
       expiresAt: null,

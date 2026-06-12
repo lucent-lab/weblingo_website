@@ -756,6 +756,7 @@ describe("TryForm preview status", () => {
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
+        statusTokenUpdatedAt: 0,
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -780,6 +781,7 @@ describe("TryForm preview status", () => {
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
+        statusTokenUpdatedAt: 0,
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -804,6 +806,7 @@ describe("TryForm preview status", () => {
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
+        statusTokenUpdatedAt: 0,
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -828,6 +831,7 @@ describe("TryForm preview status", () => {
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
+        statusTokenUpdatedAt: 0,
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -852,6 +856,7 @@ describe("TryForm preview status", () => {
         previewId: "1",
         requestKey: "k",
         statusToken: "t",
+        statusTokenUpdatedAt: 0,
         sourceUrl: "https://example.com",
         sourceLang: "en",
         targetLang: "fr",
@@ -1098,6 +1103,39 @@ describe("TryForm preview status", () => {
     expect(screen.queryByText("Processing stalled copy")).toBeNull();
   });
 
+  it("surfaces the verdict of an over-age unpinned job once the runtime resolves it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ status: "processing", stage: "translating" })),
+    );
+    const now = Date.now();
+    // Reopened from persisted localStorage with no session pin: the job is past
+    // the form-restore window but still active, so the one-shot restore skips it.
+    storeRestoredActiveJob({
+      previewId: "overage-7777-7777-7777-777777777777",
+      sourceUrl: "https://overage.example.com",
+      createdAt: now - 20 * 60 * 1000,
+      updatedAt: now - 20 * 60 * 1000,
+    });
+
+    renderTryForm();
+
+    expect(screen.queryByText("Checking preview status...")).toBeNull();
+
+    // The shared status runtime polls the job to its verdict shortly after
+    // load; the form must surface that outcome instead of letting it vanish.
+    markPreviewStatusCenterJobTerminal("overage-7777-7777-7777-777777777777", "ready", {
+      previewUrl: "https://preview.example.com/overage",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Ready")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "View showcase" }).getAttribute("href")).toBe(
+        "https://preview.example.com/overage",
+      );
+    });
+  });
+
   it("shows a manual check-status retry when restored status fetch fails", async () => {
     const fetchMock = vi
       .fn()
@@ -1323,6 +1361,7 @@ describe("TryForm preview status", () => {
           previewId: `phase-${phase.status}`,
           requestKey,
           statusToken: `token-${phase.status}`,
+          statusTokenUpdatedAt: 0,
           sourceUrl: "https://parity.example.com",
           sourceLang: "en",
           targetLang: "fr",
