@@ -180,7 +180,7 @@ export function usePreviewStatusRuntime() {
         });
         if (decision.kind === "terminal") {
           if (!response.ok) {
-            rehydratePreviewStatusCenterStoreFromStorage();
+            rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
             if (hasRotatedStatusToken(job)) {
               return;
             }

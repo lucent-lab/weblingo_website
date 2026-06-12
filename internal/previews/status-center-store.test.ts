@@ -187,6 +187,19 @@ describe("status-center-store", () => {
     expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(0);
   });
 
+  it("preserves local-only jobs during an explicit pre-poll rehydration", () => {
+    upsertPreviewStatusCenterJob(buildJob({ status: "processing" }));
+
+    window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+
+    rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(1);
+    expect(getPreviewStatusCenterJobsSnapshot()[0].previewId).toBe(
+      "11111111-1111-1111-1111-111111111111",
+    );
+  });
+
   it("clears hydrated preview links with unresolved route placeholders", () => {
     const requestKey = buildPreviewStatusCenterRequestKey({
       sourceUrl: "https://example.com",
@@ -938,8 +951,8 @@ describe("status-center-store", () => {
       selectCurrentActivePreviewStatusCenterJob({
         jobs,
         pinnedPreviewId: "done-3333-3333-3333-333333333333",
-      })?.previewId,
-    ).toBe(selectLatestActivePreviewStatusCenterJob(jobs)?.previewId);
+      }),
+    ).toBeNull();
 
     expect(
       selectCurrentActivePreviewStatusCenterJob({

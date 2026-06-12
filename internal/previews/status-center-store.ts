@@ -681,13 +681,18 @@ export function hydratePreviewStatusCenterStore() {
 
 /**
  * Re-reads the persisted snapshot after another tab committed it (localStorage
- * `storage` event). Storage decides membership; for jobs known locally, the
- * newer `updatedAt` wins the row, but the status token is merged separately by
- * `statusTokenUpdatedAt`: a token rotated by a duplicate submission in another
- * tab must replace the stale local token even when this tab applied later
- * SSE/poll progress, or every future poll here keeps using the revoked token.
+ * `storage` event). Storage decides membership by default; callers doing a
+ * local pre-poll refresh may preserve local-only jobs so caught localStorage
+ * write failures do not erase this tab's in-memory run. For jobs known locally,
+ * the newer `updatedAt` wins the row, but the status token is merged separately
+ * by `statusTokenUpdatedAt`: a token rotated by a duplicate submission in
+ * another tab must replace the stale local token even when this tab applied
+ * later SSE/poll progress, or every future poll here keeps using the revoked
+ * token.
  */
-export function rehydratePreviewStatusCenterStoreFromStorage() {
+export function rehydratePreviewStatusCenterStoreFromStorage(
+  options: { preserveLocalJobs?: boolean } = {},
+) {
   if (!canUseStorage()) {
     return;
   }
@@ -697,6 +702,7 @@ export function rehydratePreviewStatusCenterStoreFromStorage() {
   }
   const { jobs: storedJobs } = readJobsFromStorage();
   const localByPreviewId = new Map(state.jobs.map((job) => [job.previewId, job]));
+  const storedPreviewIds = new Set(storedJobs.map((job) => job.previewId));
   const merged = storedJobs.map((incoming) => {
     const local = localByPreviewId.get(incoming.previewId);
     if (!local) {
@@ -725,6 +731,13 @@ export function rehydratePreviewStatusCenterStoreFromStorage() {
       statusTokenUpdatedAt: tokenWinner.statusTokenUpdatedAt,
     };
   });
+  if (options.preserveLocalJobs === true) {
+    for (const local of state.jobs) {
+      if (!storedPreviewIds.has(local.previewId)) {
+        merged.push(local);
+      }
+    }
+  }
   // Never persist here: echoing the merged snapshot back to localStorage would
   // ping-pong storage events between tabs.
   state = {
@@ -773,8 +786,8 @@ export function selectCurrentActivePreviewStatusCenterJob(options: {
 }): PreviewStatusCenterJob | null {
   if (options.pinnedPreviewId) {
     const pinned = options.jobs.find((job) => job.previewId === options.pinnedPreviewId);
-    if (pinned && isPreviewStatusCenterJobActive(pinned)) {
-      return pinned;
+    if (pinned) {
+      return isPreviewStatusCenterJobActive(pinned) ? pinned : null;
     }
   }
   return selectLatestActivePreviewStatusCenterJob(options.jobs);

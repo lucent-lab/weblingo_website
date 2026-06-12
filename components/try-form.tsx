@@ -835,7 +835,7 @@ export function TryForm({
     if (!previewId || checkingStatus) {
       return null;
     }
-    rehydratePreviewStatusCenterStoreFromStorage();
+    rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
     // Callers capture the token when they schedule the check (SSE handlers,
     // restored-job effects), but another tab may have rotated it since; the
     // store token is the freshest one this tab knows about.
@@ -877,7 +877,7 @@ export function TryForm({
         // A non-ok verdict obtained with a token that has since been rotated
         // (duplicate submission in another tab) is an auth artifact, not the
         // job's fate; the shared runtime re-polls with the fresh token.
-        rehydratePreviewStatusCenterStoreFromStorage();
+        rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
         const currentToken = readCurrentPreviewStatusToken(previewId);
         if (!response.ok && currentToken !== null && currentToken !== statusToken) {
           syncStatusCenterTransientRetry(previewId);
