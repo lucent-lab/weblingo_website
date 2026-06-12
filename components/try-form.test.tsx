@@ -1266,6 +1266,71 @@ describe("TryForm preview status", () => {
     });
   });
 
+  it("shows restored retry after a stale-token auth verdict", async () => {
+    const stalePoll = {
+      resolve: null as ((response: Response) => void) | null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (
+        url ===
+        "/api/prospect-showcases/restore-rotate-3333-3333-3333-333333333333/status?token=old-token"
+      ) {
+        return await new Promise<Response>((resolve) => {
+          stalePoll.resolve = resolve;
+        });
+      }
+      if (
+        url ===
+        "/api/prospect-showcases/restore-rotate-3333-3333-3333-333333333333/status?token=fresh-token"
+      ) {
+        return jsonResponse({ status: "processing", stage: "translating" });
+      }
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    storeRestoredActiveJob({
+      previewId: "restore-rotate-3333-3333-3333-333333333333",
+      sourceUrl: "https://restore-rotate.example.com",
+      statusToken: "old-token",
+    });
+
+    renderTryForm();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/restore-rotate-3333-3333-3333-333333333333/status?token=old-token",
+      );
+      expect(stalePoll.resolve).toBeTruthy();
+    });
+
+    const [job] = getPreviewStatusCenterJobsSnapshot();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...job,
+          statusToken: "fresh-token",
+          statusTokenUpdatedAt: Date.now() + 1_000,
+        },
+      ]),
+    );
+    stalePoll.resolve?.(jsonResponse({ error: "Unauthorized" }, 401));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Check status" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check status" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/prospect-showcases/restore-rotate-3333-3333-3333-333333333333/status?token=fresh-token",
+      );
+      expect(screen.getByRole("list", { name: "Preview progress" })).toBeTruthy();
+    });
+  });
+
   it("lets the visitor escape an unverifiable restored job and start a new preview", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("network unavailable"));
     vi.stubGlobal("fetch", fetchMock);

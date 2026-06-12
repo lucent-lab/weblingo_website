@@ -880,6 +880,8 @@ export function TryForm({
         rehydratePreviewStatusCenterStoreFromStorage();
         const currentToken = readCurrentPreviewStatusToken(previewId);
         if (!response.ok && currentToken !== null && currentToken !== statusToken) {
+          syncStatusCenterTransientRetry(previewId);
+          markRestoredStatusCheckRetryAvailable(previewId);
           return false;
         }
         syncStatusCenterTerminalState(previewId, decision.status, {
