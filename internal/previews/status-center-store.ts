@@ -790,8 +790,9 @@ export function isPreviewStatusCenterJobActive(job: PreviewStatusCenterJob): boo
 }
 
 // The marketing status center mirrors only the single current run so it can never
-// disagree with the try form: the session-pinned job when it is active, else the
-// latest active job, else nothing (terminal outcomes are owned by the form + email).
+// disagree with the try form: the session-pinned job when it is active, the latest
+// active job only when this tab has no known pin, else nothing. Terminal outcomes
+// are owned by the form + email.
 export function selectCurrentActivePreviewStatusCenterJob(options: {
   jobs: PreviewStatusCenterJob[];
   pinnedPreviewId: string | null;
