@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-13T01:28:54+09:00",
+  "generatedAt": "2026-06-13T18:50:14+09:00",
   "generatedFiles": {
     "content/docs/_generated/backend-feature-catalog.snapshot.json": {
       "bytes": 96756,
@@ -32,7 +32,7 @@
       "sha256": "e0c2dc60198eb4acfc2ced04e4d650680fd6d7d6ece1b6b4fa8173154fda6857"
     }
   },
-  "sourceRepoCommitTimestamp": "2026-06-13T01:28:54+09:00",
+  "sourceRepoCommitTimestamp": "2026-06-13T18:50:14+09:00",
   "sourceRepoPath": "/Users/francoisgueguen/Documents/workspaces-self/saas/weblingo_m30_preview_funnel_ux",
-  "sourceRepoSha": "41f25928fe4e9bd198af0f281f568a678fb6cd37"
+  "sourceRepoSha": "30c2443ff89a393131994507aaf4d948efd38ff2"
 }
