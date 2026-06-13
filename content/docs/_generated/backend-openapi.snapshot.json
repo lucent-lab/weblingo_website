@@ -14639,6 +14639,23 @@
             },
             "description": "Unauthorized"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "details": {
+                    "code": "preview_in_progress"
+                  },
+                  "error": "Preview already in progress",
+                  "errorCode": "preview_in_progress"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A matching prospect showcase is already in progress and no valid reattach proof was provided."
+          },
           "429": {
             "content": {
               "application/json": {
