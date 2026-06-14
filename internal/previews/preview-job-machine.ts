@@ -13,13 +13,18 @@ export type PreviewRetryHintReason = "browser_capacity_exhausted" | "provider_ca
 export type PreviewRetryHint = {
   reason: PreviewRetryHintReason;
   retryAfterSeconds: number | null;
-  emailRecommended: boolean;
 };
 
 export type PreviewJob = {
   previewId: string;
   requestKey: string;
   statusToken: string;
+  /**
+   * Last time `statusToken` changed value. Cross-tab rehydration merges the
+   * token by this stamp so a rotation committed by another tab survives even
+   * when this tab's row carries newer progress (`updatedAt`).
+   */
+  statusTokenUpdatedAt: number;
   sourceUrl: string;
   sourceLang: string;
   targetLang: string;
@@ -32,6 +37,8 @@ export type PreviewJob = {
   errorStage: PreviewStage | null;
   retryHint: PreviewRetryHint | null;
   remoteStatusVerified: boolean;
+  /** Last time the backend confirmed this job's status; null when never verified. */
+  lastVerifiedAt: number | null;
   createdAt: number;
   updatedAt: number;
   expiresAt: number | null;
@@ -150,7 +157,6 @@ export function parsePreviewRetryHint(value: unknown): PreviewRetryHint | null {
   return {
     reason: value.reason,
     retryAfterSeconds,
-    emailRecommended: value.emailRecommended === true,
   };
 }
 
@@ -267,11 +273,18 @@ function reduceUpsert(
     : input.retryHint === undefined
       ? (existing?.retryHint ?? null)
       : input.retryHint;
+  const remoteStatusVerified = terminal
+    ? true
+    : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true);
+  const statusToken = resolveStringWithFallback(input.statusToken, existing?.statusToken ?? "");
+  const statusTokenUpdatedAt =
+    existing && statusToken === existing.statusToken ? existing.statusTokenUpdatedAt : context.now;
 
   return {
     previewId: input.previewId,
     requestKey: resolveStringWithFallback(input.requestKey, existing?.requestKey ?? ""),
-    statusToken: resolveStringWithFallback(input.statusToken, existing?.statusToken ?? ""),
+    statusToken,
+    statusTokenUpdatedAt,
     sourceUrl: resolveStringWithFallback(input.sourceUrl, existing?.sourceUrl ?? ""),
     sourceLang: resolveStringWithFallback(input.sourceLang, existing?.sourceLang ?? ""),
     targetLang: resolveStringWithFallback(input.targetLang, existing?.targetLang ?? ""),
@@ -283,9 +296,8 @@ function reduceUpsert(
     errorCode: input.errorCode ?? existing?.errorCode ?? null,
     errorStage: input.errorStage ?? existing?.errorStage ?? null,
     retryHint,
-    remoteStatusVerified: terminal
-      ? true
-      : (input.remoteStatusVerified ?? existing?.remoteStatusVerified ?? true),
+    remoteStatusVerified,
+    lastVerifiedAt: remoteStatusVerified ? context.now : (existing?.lastVerifiedAt ?? null),
     createdAt: existing?.createdAt ?? context.now,
     updatedAt: context.now,
     expiresAt: input.expiresAt ?? existing?.expiresAt ?? null,
@@ -319,11 +331,18 @@ function reducePatch(
     : patch.retryHint === undefined
       ? existing.retryHint
       : patch.retryHint;
+  const remoteStatusVerified = terminal
+    ? true
+    : (patch.remoteStatusVerified ?? existing.remoteStatusVerified);
+  const statusToken = resolveStringWithFallback(patch.statusToken, existing.statusToken);
+  const statusTokenUpdatedAt =
+    statusToken === existing.statusToken ? existing.statusTokenUpdatedAt : context.now;
 
   return {
     ...existing,
     requestKey: resolveStringWithFallback(patch.requestKey, existing.requestKey),
-    statusToken: resolveStringWithFallback(patch.statusToken, existing.statusToken),
+    statusToken,
+    statusTokenUpdatedAt,
     sourceUrl: resolveStringWithFallback(patch.sourceUrl, existing.sourceUrl),
     sourceLang: resolveStringWithFallback(patch.sourceLang, existing.sourceLang),
     targetLang: resolveStringWithFallback(patch.targetLang, existing.targetLang),
@@ -336,9 +355,8 @@ function reducePatch(
     errorCode: patch.errorCode === undefined ? existing.errorCode : patch.errorCode,
     errorStage: patch.errorStage === undefined ? existing.errorStage : patch.errorStage,
     retryHint,
-    remoteStatusVerified: terminal
-      ? true
-      : (patch.remoteStatusVerified ?? existing.remoteStatusVerified),
+    remoteStatusVerified,
+    lastVerifiedAt: remoteStatusVerified ? context.now : existing.lastVerifiedAt,
     expiresAt: patch.expiresAt === undefined ? existing.expiresAt : patch.expiresAt,
     updatedAt: context.now,
     retryCount: terminal

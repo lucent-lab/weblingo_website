@@ -120,7 +120,6 @@ export function LandingVariant36({
                   messages={messages}
                   disabled={!hasPreviewConfig}
                   supportedLanguages={supportedLanguages}
-                  showEmailField
                   primaryButtonClassName={styles.buttonMicro}
                 />
               </div>

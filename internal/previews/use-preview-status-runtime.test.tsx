@@ -6,8 +6,11 @@ import {
   DEFAULT_PREVIEW_STATUS_CENTER_POLL_INTERVAL_MS,
   getPreviewStatusCenterJobsSnapshot,
   markPreviewStatusCenterJobTerminal,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
+  PREVIEW_STATUS_CENTER_STORAGE_KEY,
   resetPreviewStatusCenterStoreForTests,
   upsertPreviewStatusCenterJob,
+  writeActivePreviewIdToSession,
 } from "./status-center-store";
 import {
   resetPreviewStatusRuntimeOwnerForTests,
@@ -25,6 +28,7 @@ describe("usePreviewStatusRuntime", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
     resetPreviewStatusCenterStoreForTests();
     resetPreviewStatusRuntimeOwnerForTests();
     nextIntervalId = 1;
@@ -71,6 +75,7 @@ describe("usePreviewStatusRuntime", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     resetPreviewStatusCenterStoreForTests();
     resetPreviewStatusRuntimeOwnerForTests();
   });
@@ -196,6 +201,39 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
+  it("keeps this tab's pinned active job when a storage event omits it", async () => {
+    upsertPreviewStatusCenterJob({
+      previewId: "local-only-3333-3333-3333-333333333333",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+    });
+    writeActivePreviewIdToSession("local-only-3333-3333-3333-333333333333");
+
+    render(<RuntimeHarness />);
+    await waitFor(() => {
+      expect(activeIntervals.size).toBe(1);
+    });
+
+    act(() => {
+      window.localStorage.setItem(PREVIEW_STATUS_CENTER_STORAGE_KEY, JSON.stringify([]));
+      window.dispatchEvent(new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }));
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()).toHaveLength(1);
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      previewId: "local-only-3333-3333-3333-333333333333",
+      status: "processing",
+    });
+  });
+
   it("enforces singleton ownership when mounted multiple times", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
@@ -269,7 +307,6 @@ describe("usePreviewStatusRuntime", () => {
               retryHint: {
                 reason: "browser_capacity_exhausted",
                 retryAfterSeconds: 60,
-                emailRecommended: true,
               },
             }),
             {
@@ -304,7 +341,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "browser_capacity_exhausted",
         retryAfterSeconds: 60,
-        emailRecommended: true,
       });
     });
   });
@@ -412,7 +448,6 @@ describe("usePreviewStatusRuntime", () => {
               retryHint: {
                 reason: "provider_capacity_wait",
                 retryAfterSeconds: 2,
-                emailRecommended: true,
               },
             }),
             {
@@ -448,7 +483,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
         retryAfterSeconds: 2,
-        emailRecommended: true,
       });
       expect(job?.nextPollAt).toBeGreaterThanOrEqual(beforePoll + 2_000);
       expect(job?.nextPollAt).toBeLessThan(
@@ -495,7 +529,6 @@ describe("usePreviewStatusRuntime", () => {
       retryHint: {
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       },
       remoteStatusVerified: true,
       nextPollAt: 0,
@@ -512,7 +545,6 @@ describe("usePreviewStatusRuntime", () => {
       expect(job?.retryHint).toEqual({
         reason: "provider_capacity_wait",
         retryAfterSeconds: 30,
-        emailRecommended: true,
       });
       expect(job?.remoteStatusVerified).toBe(false);
       expect(job?.retryCount).toBe(1);
@@ -560,7 +592,7 @@ describe("usePreviewStatusRuntime", () => {
     });
   });
 
-  it("terminalizes restored jobs after repeated transient status failures", async () => {
+  it("keeps jobs active with slow retries after repeated transient status failures", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -584,7 +616,7 @@ describe("usePreviewStatusRuntime", () => {
       sourceLang: "en",
       targetLang: "fr",
       status: "processing",
-      retryCount: 4,
+      retryCount: 8,
       nextPollAt: 0,
       remoteStatusVerified: false,
     });
@@ -595,9 +627,312 @@ describe("usePreviewStatusRuntime", () => {
       const job = getPreviewStatusCenterJobsSnapshot().find(
         (entry) => entry.previewId === "66666666-6666-6666-6666-666666666666",
       );
-      expect(job?.status).toBe("failed");
-      expect(job?.errorCode).toBe("unknown");
-      expect(job?.remoteStatusVerified).toBe(true);
+      expect(job?.status).toBe("processing");
+      expect(job?.remoteStatusVerified).toBe(false);
+      expect(job?.retryCount).toBe(9);
+      expect(job?.nextPollAt).toBeGreaterThan(Date.now());
+    });
+  });
+
+  it("stale-fails over-budget jobs only after repeated failed verifications", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T12:00:00.000Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      }),
+    );
+
+    upsertPreviewStatusCenterJob({
+      previewId: "stale-budget-7777-7777-7777-777777777777",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      stage: "translating",
+      retryCount: 2,
+      remoteStatusVerified: false,
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    // The third consecutive failed verification alone is not enough while the
+    // job is still inside the wall-clock budget.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      retryCount: 3,
+      remoteStatusVerified: false,
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PREVIEW_ACTIVE_JOB_MAX_AGE_MS + 1_000);
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "failed",
+      errorCode: "processing_stalled",
+      errorStage: "translating",
+      remoteStatusVerified: false,
+    });
+  });
+
+  it("adopts a status token rotated by another tab and polls with it", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ status: "processing" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-9999-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=stale-token"),
+        expect.anything(),
+      );
+    });
+
+    // Another tab resubmits the same preview: the create endpoint rotates the
+    // token and the other tab commits the newer snapshot to localStorage.
+    const job = getPreviewStatusCenterJobsSnapshot()[0];
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...job,
+          statusToken: "rotated-token",
+          updatedAt: job.updatedAt + 1,
+          retryCount: 0,
+          nextPollAt: 0,
+        },
+      ]),
+    );
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }));
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0].statusToken).toBe("rotated-token");
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=rotated-token"),
+        expect.anything(),
+      );
+    });
+  });
+
+  it("ignores auth-shaped verdicts from polls that started with a since-rotated token", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("token=stale-token")) {
+        // Simulate the other tab rotating the token while this poll is in flight.
+        const job = getPreviewStatusCenterJobsSnapshot()[0];
+        window.localStorage.setItem(
+          PREVIEW_STATUS_CENTER_STORAGE_KEY,
+          JSON.stringify([
+            {
+              ...job,
+              statusToken: "rotated-token",
+              updatedAt: job.updatedAt + 1,
+              retryCount: 0,
+              nextPollAt: Date.now() + 60_000,
+            },
+          ]),
+        );
+        window.dispatchEvent(
+          new StorageEvent("storage", { key: PREVIEW_STATUS_CENTER_STORAGE_KEY }),
+        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "processing" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-inflight-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    // The 401 produced by the stale token must not terminalize the job that the
+    // rotated token still tracks as running.
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      statusToken: "rotated-token",
+    });
+  });
+
+  it("rehydrates persisted rotated tokens before terminalizing stale-token auth verdicts", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("token=stale-token")) {
+        const job = getPreviewStatusCenterJobsSnapshot()[0];
+        window.localStorage.setItem(
+          PREVIEW_STATUS_CENTER_STORAGE_KEY,
+          JSON.stringify([
+            {
+              ...job,
+              statusToken: "rotated-token",
+              updatedAt: job.updatedAt + 1,
+              retryCount: 0,
+              nextPollAt: Date.now() + 60_000,
+            },
+          ]),
+        );
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ status: "processing" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    upsertPreviewStatusCenterJob({
+      previewId: "rotated-storage-only-9999-9999-999999999999",
+      requestKey: buildPreviewStatusCenterRequestKey({
+        sourceUrl: "https://example.com",
+        sourceLang: "en",
+        targetLang: "fr",
+        email: "owner@example.com",
+      }),
+      statusToken: "stale-token",
+      sourceUrl: "https://example.com",
+      sourceLang: "en",
+      targetLang: "fr",
+      status: "processing",
+      nextPollAt: 0,
+    });
+
+    render(<RuntimeHarness />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("token=stale-token"),
+        expect.anything(),
+      );
+    });
+
+    expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+      status: "processing",
+      statusToken: "rotated-token",
+    });
+  });
+
+  it("restores the server verdict for over-budget restored jobs instead of fabricating a stall", async () => {
+    const now = Date.now();
+    window.localStorage.setItem(
+      PREVIEW_STATUS_CENTER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          previewId: "over-budget-8888-8888-8888-888888888888",
+          requestKey: buildPreviewStatusCenterRequestKey({
+            sourceUrl: "https://example.com",
+            sourceLang: "en",
+            targetLang: "fr",
+            email: "owner@example.com",
+          }),
+          statusToken: "token",
+          sourceUrl: "https://example.com",
+          sourceLang: "en",
+          targetLang: "fr",
+          status: "processing",
+          stage: "translating",
+          previewUrl: null,
+          error: null,
+          errorCode: null,
+          errorStage: null,
+          retryHint: null,
+          lastVerifiedAt: null,
+          createdAt: now - PREVIEW_ACTIVE_JOB_MAX_AGE_MS - 60_000,
+          updatedAt: now - 60_000,
+          expiresAt: null,
+          retryCount: 0,
+          nextPollAt: now + 60_000,
+        },
+      ]),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "ready",
+              showcaseUrl: "https://showcase.example.com/demo",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+      ),
+    );
+
+    render(<RuntimeHarness />);
+
+    // Hydration must not stale-fail the job; the immediate verification poll
+    // restores the ready showcase the backend completed while the tab slept.
+    await waitFor(() => {
+      expect(getPreviewStatusCenterJobsSnapshot()[0]).toMatchObject({
+        status: "ready",
+        previewUrl: "https://showcase.example.com/demo",
+        remoteStatusVerified: true,
+      });
     });
   });
 });

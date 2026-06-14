@@ -8,11 +8,13 @@ import {
   resolvePreviewStatusCenterMessage,
 } from "@internal/previews/status-center-i18n";
 import {
+  getActivePreviewPinServerSnapshot,
+  getActivePreviewPinSnapshot,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
   hydratePreviewStatusCenterStore,
-  readActivePreviewIdFromSession,
   selectRestorablePreviewStatusCenterJob,
+  subscribeActivePreviewPin,
   subscribePreviewStatusCenterStore,
 } from "@internal/previews/status-center-store";
 
@@ -32,13 +34,18 @@ export function TryPanelHeader({ messages }: TryPanelHeaderProps) {
     hydratePreviewStatusCenterStore();
   }, []);
 
+  const pinnedPreviewId = useSyncExternalStore(
+    subscribeActivePreviewPin,
+    getActivePreviewPinSnapshot,
+    getActivePreviewPinServerSnapshot,
+  );
   const activeJob = useMemo(
     () =>
       selectRestorablePreviewStatusCenterJob({
         jobs,
-        pinnedPreviewId: readActivePreviewIdFromSession(),
+        pinnedPreviewId,
       }),
-    [jobs],
+    [jobs, pinnedPreviewId],
   );
   const isRunning =
     activeJob?.status === "pending" ||

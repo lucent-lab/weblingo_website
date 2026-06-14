@@ -62,6 +62,7 @@ import {
   markPreviewStatusCenterJobTerminal,
   parsePreviewStatusCenterRequestKey,
   readActivePreviewIdFromSession,
+  rehydratePreviewStatusCenterStoreFromStorage,
   removePreviewStatusCenterJob,
   selectLatestJobByRequestKey,
   selectRestorablePreviewStatusCenterJob,
@@ -79,9 +80,8 @@ type TryFormFieldLayout = "legacy" | "funnel";
 type TryFormProps = {
   locale: string;
   messages: ClientMessages;
-  disabled?: boolean;
+  disabled: boolean;
   supportedLanguages: SupportedLanguage[];
-  showEmailField?: boolean;
   showInlineStatusText?: boolean;
   primaryButtonClassName?: string;
   fieldLayout?: TryFormFieldLayout;
@@ -214,12 +214,21 @@ export function resolveTryFormMode(
   return "idle";
 }
 
+function shouldPreserveDismissedReattachProof(job: PreviewStatusCenterJob): boolean {
+  return (
+    Boolean(job.statusToken) &&
+    (isActivePreviewJobPhase(job.status) ||
+      (job.status === "failed" &&
+        job.errorCode === "processing_stalled" &&
+        !job.remoteStatusVerified))
+  );
+}
+
 export function TryForm({
   locale,
   messages,
-  disabled = false,
+  disabled,
   supportedLanguages,
-  showEmailField = false,
   showInlineStatusText = true,
   primaryButtonClassName,
   fieldLayout = "legacy",
@@ -233,8 +242,6 @@ export function TryForm({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
-  const [timedOut, setTimedOut] = useState(false);
-  const [timedOutWithEmail, setTimedOutWithEmail] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
   const [restoredStatusRetryPreviewIds, setRestoredStatusRetryPreviewIds] = useState<Set<string>>(
@@ -249,14 +256,13 @@ export function TryForm({
   const abortControllerRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
-  const timedOutRef = useRef(false);
-  const submittedEmailRef = useRef("");
   const restoreAttemptedRef = useRef(false);
   const trackedTryStartRef = useRef(false);
   const trackedPreviewIdsRef = useRef<Set<string>>(new Set());
   const trackedPreviewStatusSignaturesRef = useRef<Map<string, string>>(new Map());
   const trackedPreviewTerminalRef = useRef<Set<string>>(new Set());
   const restoredStatusCheckStartedRef = useRef<Set<string>>(new Set());
+  const dismissedReattachProofsRef = useRef<Map<string, string>>(new Map());
   const handleCheckStatusRef = useRef<
     (previewIdOverride?: string, statusTokenOverride?: string) => Promise<boolean | null>
   >(async () => null);
@@ -274,10 +280,17 @@ export function TryForm({
       return next;
     });
   }, []);
+  const forgetPreviewJob = useCallback(
+    (job: PreviewStatusCenterJob) => {
+      removePreviewStatusCenterJob(job.previewId);
+      clearPreviewTracking(job.previewId);
+      clearActivePreviewIdFromSession(job.previewId);
+    },
+    [clearPreviewTracking],
+  );
 
   const trimmedUrl = url.trim();
   const trimmedEmail = email.trim();
-  const submittedEmail = submittedEmailRef.current;
   const normalizedSourceLang = useMemo(
     () => normalizeLangTag(sourceLang) ?? sourceLang.trim(),
     [sourceLang],
@@ -306,40 +319,66 @@ export function TryForm({
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,
-        email: showEmailField ? trimmedEmail : undefined,
+        email: trimmedEmail,
       }),
-    [normalizedSourceLang, normalizedTargetLang, showEmailField, trimmedEmail, trimmedUrl],
+    [normalizedSourceLang, normalizedTargetLang, trimmedEmail, trimmedUrl],
   );
+  const currentRestorableRequestKey =
+    trimmedUrl &&
+    isValidHttpUrl(trimmedUrl) &&
+    isValidEmail(trimmedEmail) &&
+    normalizedSourceLang &&
+    normalizedTargetLang &&
+    normalizedSourceLang.toLowerCase() !== normalizedTargetLang.toLowerCase()
+      ? currentRequestKey
+      : null;
 
   const trackedJob = useMemo(
     () => selectLatestJobByRequestKey(lastRequestKey, jobs),
     [jobs, lastRequestKey],
   );
   const mode = useMemo(() => resolveTryFormMode(isCreating, trackedJob), [isCreating, trackedJob]);
+  const submittedEmail = useMemo(() => {
+    if (!trackedJob) {
+      return trimmedEmail;
+    }
+    const parsedRequest = parsePreviewStatusCenterRequestKey(trackedJob.requestKey);
+    return parsedRequest?.email ? parsedRequest.email : trimmedEmail;
+  }, [trackedJob, trimmedEmail]);
 
   const isSameRequest = lastRequestKey !== null && currentRequestKey === lastRequestKey;
   const isPreviewRunning =
     mode === "creating" || mode === "running_pending" || mode === "running_processing";
-  const isRestoredStatusChecking =
+  const isStatusUnverified =
     trackedJob !== null &&
     isActivePreviewJobPhase(trackedJob.status) &&
     !trackedJob.remoteStatusVerified;
-  const isRequestInFlight = isPreviewRunning || isRestoredStatusChecking;
-  const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking && !timedOut;
-  const showRestoredStatusCheckingCard = isRestoredStatusChecking && !timedOut;
+  // Never-verified jobs (fresh restore) show the restoring card; jobs that were
+  // verified at least once keep the progress stepper through transport blips.
+  const isRestoredStatusChecking =
+    isStatusUnverified && trackedJob !== null && trackedJob.lastVerifiedAt === null;
+  const isTransportDegraded =
+    isStatusUnverified &&
+    trackedJob !== null &&
+    trackedJob.lastVerifiedAt !== null &&
+    (restoredStatusRetryPreviewIds.has(trackedJob.previewId) || trackedJob.retryCount > 0);
+  const isRequestInFlight = isPreviewRunning || isStatusUnverified;
+  const isTerminalMode =
+    mode === "terminal_ready" || mode === "terminal_failed" || mode === "terminal_expired";
+  const showInProgressCard = isPreviewRunning && !isRestoredStatusChecking;
+  const showRestoredStatusCheckingCard = isRestoredStatusChecking;
   const canRetryRestoredStatusCheck =
     trackedJob !== null &&
     isRestoredStatusChecking &&
     restoredStatusRetryPreviewIds.has(trackedJob.previewId);
   const showGeneratingState = isSameRequest && mode === "creating";
-  const showEditableControls = !isRequestInFlight;
+  const showEditableControls = !isRequestInFlight && !isTerminalMode;
   const isSameLanguage =
     Boolean(normalizedSourceLang) &&
     Boolean(normalizedTargetLang) &&
     normalizedSourceLang.toLowerCase() === normalizedTargetLang.toLowerCase();
   const inputsDisabled = disabled;
-  const isGenerateDisabled =
-    inputsDisabled || !trimmedUrl || isSameLanguage || (showEmailField && !trimmedEmail);
+  const isGenerateDisabled = inputsDisabled || !trimmedUrl || isSameLanguage || !trimmedEmail;
   const progressSteps = useMemo<PreviewProgressStep[]>(() => {
     const currentStepId = resolvePreviewProgressStepId(mode, trackedJob);
     const currentStepIndex = PREVIEW_PROGRESS_STEP_ORDER.indexOf(currentStepId);
@@ -416,13 +455,11 @@ export function TryForm({
   const processingHintMessage = useMemo(() => {
     return (
       resolvePreviewCapacityHintMessage(activeRetryHint?.reason, t, {
-        browser: showEmailField ? "try.status.capacityEmailHint" : "try.status.capacityHint",
-        provider: showEmailField
-          ? "try.status.providerCapacityEmailHint"
-          : "try.status.providerCapacityHint",
+        browser: "try.status.capacityHint",
+        provider: "try.status.providerCapacityHint",
       }) ?? t("try.status.processingHint")
     );
-  }, [activeRetryHint, showEmailField, t]);
+  }, [activeRetryHint, t]);
 
   const statusMessage = useMemo(() => {
     switch (mode) {
@@ -470,16 +507,21 @@ export function TryForm({
     if (jobs.length === 0) {
       return;
     }
-    restoreAttemptedRef.current = true;
 
     const restoredJob = selectRestorablePreviewStatusCenterJob({
       jobs,
-      currentRequestKey: trimmedUrl ? currentRequestKey : null,
+      currentRequestKey: currentRestorableRequestKey,
       pinnedPreviewId: readActivePreviewIdFromSession(),
     });
     if (!restoredJob) {
+      // An unpinned active job past the restore window is skipped here, but the
+      // status runtime keeps polling it. Stay un-latched so the verdict it
+      // produces (often `ready`) restores the terminal card instead of
+      // vanishing: terminal jobs are always restorable.
+      restoreAttemptedRef.current = !jobs.some((job) => isActivePreviewJobPhase(job.status));
       return;
     }
+    restoreAttemptedRef.current = true;
     writeActivePreviewIdToSession(restoredJob.previewId);
 
     if (isActivePreviewJobPhase(restoredJob.status)) {
@@ -492,9 +534,6 @@ export function TryForm({
 
     setLastRequestKey(restoredJob.requestKey);
     setSubmissionError(null);
-    timedOutRef.current = false;
-    setTimedOut(false);
-    setTimedOutWithEmail(false);
 
     const parsedRequest = parsePreviewStatusCenterRequestKey(restoredJob.requestKey);
     if (!parsedRequest) {
@@ -504,23 +543,8 @@ export function TryForm({
     setUrl((current) => (current ? current : parsedRequest.sourceUrl));
     setSourceLang((current) => (current ? current : parsedRequest.sourceLang));
     setTargetLang((current) => (current ? current : parsedRequest.targetLang));
-    if (showEmailField) {
-      setEmail((current) => (current ? current : parsedRequest.email));
-    }
-  }, [clearPreviewTracking, currentRequestKey, jobs, lastRequestKey, showEmailField, trimmedUrl]);
-
-  useEffect(() => {
-    if (
-      trackedJob &&
-      (trackedJob.status === "ready" ||
-        trackedJob.status === "failed" ||
-        trackedJob.status === "expired")
-    ) {
-      timedOutRef.current = false;
-      setTimedOut(false);
-      setTimedOutWithEmail(false);
-    }
-  }, [trackedJob]);
+    setEmail((current) => (current ? current : parsedRequest.email));
+  }, [clearPreviewTracking, currentRestorableRequestKey, jobs, lastRequestKey]);
 
   useEffect(() => {
     return () => {
@@ -658,9 +682,6 @@ export function TryForm({
   }
 
   function validateEmail(value: string): string | null {
-    if (!showEmailField) {
-      return null;
-    }
     if (!value.trim()) {
       return t("try.form.emailRequired");
     }
@@ -722,17 +743,20 @@ export function TryForm({
     const existing = getPreviewStatusCenterJobsSnapshot().find(
       (job) => job.previewId === previewId,
     );
-    if (existing && isActivePreviewJobPhase(existing.status)) {
-      syncStatusCenterActiveState(
-        previewId,
-        existing.status,
-        existing.stage,
-        existing.retryHint,
-        false,
-      );
+    if (!existing) {
+      syncStatusCenterActiveState(previewId, "processing", null, null, false);
       return;
     }
-    syncStatusCenterActiveState(previewId, "processing", null, null, false);
+    if (!isActivePreviewJobPhase(existing.status)) {
+      return;
+    }
+    syncStatusCenterActiveState(
+      previewId,
+      existing.status,
+      existing.stage,
+      existing.retryHint,
+      false,
+    );
   }
 
   function syncStatusCenterTerminalState(
@@ -789,21 +813,31 @@ export function TryForm({
     });
   }
 
-  function handleStartAnotherPreview() {
+  // Terminal-state reset: clears the finished job and starts a fresh form while
+  // keeping the already-collected email.
+  function handleTranslateAnother() {
+    // Explicit dismissal: never auto-restore another stored job afterwards.
+    restoreAttemptedRef.current = true;
     closeEventSource();
     if (trackedJob) {
-      removePreviewStatusCenterJob(trackedJob.previewId);
-      clearPreviewTracking(trackedJob.previewId);
-      clearActivePreviewIdFromSession(trackedJob.previewId);
+      if (shouldPreserveDismissedReattachProof(trackedJob)) {
+        dismissedReattachProofsRef.current.set(trackedJob.requestKey, trackedJob.statusToken);
+      } else {
+        dismissedReattachProofsRef.current.delete(trackedJob.requestKey);
+      }
+      forgetPreviewJob(trackedJob);
     }
     setLastRequestKey(null);
     setSubmissionError(null);
-    submittedEmailRef.current = "";
-    setEmail("");
-    setEmailError(null);
-    timedOutRef.current = false;
-    setTimedOut(false);
-    setTimedOutWithEmail(false);
+    setUrl("");
+    setUrlError(null);
+  }
+
+  function readCurrentPreviewStatusToken(previewId: string): string | null {
+    const job = getPreviewStatusCenterJobsSnapshot().find(
+      (candidate) => candidate.previewId === previewId,
+    );
+    return job ? job.statusToken : null;
   }
 
   async function handleCheckStatus(
@@ -811,9 +845,20 @@ export function TryForm({
     statusTokenOverride?: string,
   ): Promise<boolean | null> {
     const previewId = previewIdOverride ?? trackedJob?.previewId ?? null;
-    const statusToken = statusTokenOverride ?? trackedJob?.statusToken ?? null;
+    if (!previewId || checkingStatus) {
+      return null;
+    }
+    rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
+    // Callers capture the token when they schedule the check (SSE handlers,
+    // restored-job effects), but another tab may have rotated it since; the
+    // store token is the freshest one this tab knows about.
+    const statusToken =
+      readCurrentPreviewStatusToken(previewId) ??
+      statusTokenOverride ??
+      trackedJob?.statusToken ??
+      null;
 
-    if (!previewId || !statusToken || checkingStatus) {
+    if (!statusToken) {
       return null;
     }
 
@@ -842,6 +887,16 @@ export function TryForm({
         mapNotFoundToErrorCode: true,
       });
       if (decision.kind === "terminal") {
+        // A non-ok verdict obtained with a token that has since been rotated
+        // (duplicate submission in another tab) is an auth artifact, not the
+        // job's fate; the shared runtime re-polls with the fresh token.
+        rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
+        const currentToken = readCurrentPreviewStatusToken(previewId);
+        if (!response.ok && currentToken !== null && currentToken !== statusToken) {
+          syncStatusCenterTransientRetry(previewId);
+          markRestoredStatusCheckRetryAvailable(previewId);
+          return false;
+        }
         syncStatusCenterTerminalState(previewId, decision.status, {
           previewUrl: decision.previewUrl,
           demoDashboardUrl: decision.demoDashboardUrl,
@@ -851,9 +906,6 @@ export function TryForm({
           errorStage: decision.errorStage,
         });
         setSubmissionError(null);
-        timedOutRef.current = false;
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
         clearRestoredStatusCheckRetry(previewId);
         return true;
       }
@@ -872,9 +924,6 @@ export function TryForm({
       }
       if (decision.remoteStatusVerified) {
         setSubmissionError(null);
-        timedOutRef.current = false;
-        setTimedOut(false);
-        setTimedOutWithEmail(false);
         clearRestoredStatusCheckRetry(previewId);
       } else {
         markRestoredStatusCheckRetryAvailable(previewId);
@@ -915,7 +964,7 @@ export function TryForm({
   }, [checkingStatus, restoredStatusRetryPreviewIds, trackedJob]);
 
   function handleRetryRestoredStatusCheck() {
-    if (!trackedJob || !isRestoredStatusChecking) {
+    if (!trackedJob || !isStatusUnverified) {
       return;
     }
     const previewId = trackedJob.previewId;
@@ -935,23 +984,14 @@ export function TryForm({
       lastEventAt = Date.now();
     };
 
+    // SSE going quiet is a transport event: drop the stream and let the global
+    // poll runtime keep the job updated; the progress stepper stays untouched.
     idleTimerRef.current = setInterval(() => {
       if (Date.now() - lastEventAt <= 45_000) {
         return;
       }
-      if (timedOutRef.current) {
-        closeEventSource();
-        return;
-      }
-
-      timedOutRef.current = true;
-      setTimedOut(true);
-      if (submittedEmailRef.current) {
-        setTimedOutWithEmail(true);
-      } else {
-        setTimedOutWithEmail(false);
-      }
       closeEventSource();
+      void handleCheckStatus(previewId, statusToken);
     }, 15_000);
 
     const handlePayload = (data: Record<string, unknown>) => {
@@ -1086,31 +1126,9 @@ export function TryForm({
     });
 
     es.addEventListener("error", () => {
+      // Transport event only: fall back silently to status polling.
       closeEventSource();
-
-      if (timedOutRef.current) {
-        return;
-      }
-
-      const handleDisconnect = async () => {
-        const terminal = await handleCheckStatus(previewId, statusToken);
-        if (terminal) {
-          return;
-        }
-        if (!mountedRef.current) {
-          return;
-        }
-
-        timedOutRef.current = true;
-        setTimedOut(true);
-        if (submittedEmailRef.current) {
-          setTimedOutWithEmail(true);
-        } else {
-          setTimedOutWithEmail(false);
-        }
-      };
-
-      void handleDisconnect();
+      void handleCheckStatus(previewId, statusToken);
     });
   }
 
@@ -1178,7 +1196,12 @@ export function TryForm({
     }
 
     let requestAttempted = false;
+    let previewClaimed = false;
     let previewCreateFailureTracked = false;
+    const releaseUnclaimedSubmission = () => {
+      restoreAttemptedRef.current = false;
+      setLastRequestKey(null);
+    };
     const trackPreviewCreateFailed = (overrides?: {
       previewId?: string | null;
       errorCode?: string | null;
@@ -1220,13 +1243,13 @@ export function TryForm({
         throw new Error(t("try.form.sameLanguage"));
       }
 
+      // A deliberate, locally valid submission owns the form; a pending
+      // auto-restore of an older stored job must not race the request.
+      restoreAttemptedRef.current = true;
       setUrlError(null);
       setEmailError(null);
       setSubmissionError(null);
       setIsCreating(true);
-      if (showEmailField) {
-        submittedEmailRef.current = trimmedEmail;
-      }
       trackTryFormStarted();
       captureAnalyticsEvent(
         ANALYTICS_EVENTS.tryFormSubmitted,
@@ -1238,23 +1261,35 @@ export function TryForm({
           fieldLayout,
         }),
       );
-      setTimedOut(false);
-      setTimedOutWithEmail(false);
-      timedOutRef.current = false;
 
       closeEventSource();
-      if (trackedJob) {
-        removePreviewStatusCenterJob(trackedJob.previewId);
-        clearPreviewTracking(trackedJob.previewId);
-        clearActivePreviewIdFromSession(trackedJob.previewId);
-      }
 
       const requestKey = buildPreviewStatusCenterRequestKey({
         sourceUrl: trimmedUrl,
         sourceLang: normalizedSourceLang,
         targetLang: normalizedTargetLang,
-        email: showEmailField ? trimmedEmail : undefined,
+        email: trimmedEmail,
       });
+
+      // One preview at a time: identical in-flight requests are deduped by the
+      // create endpoint itself, which returns the existing prospectShowcaseRef
+      // with a freshly rotated statusToken. Reattaching from local state would
+      // keep a stale token when another tab already rotated it.
+      if (trackedJob && !isActivePreviewJobPhase(trackedJob.status)) {
+        forgetPreviewJob(trackedJob);
+      }
+      // The backend only reconnects a duplicate submission to the in-flight run
+      // when the request proves ownership with that run's current status token;
+      // without proof it answers 409 preview_in_progress.
+      const reattachCandidate = selectLatestJobByRequestKey(requestKey, jobs);
+      const storedReattachStatusToken =
+        reattachCandidate &&
+        isActivePreviewJobPhase(reattachCandidate.status) &&
+        reattachCandidate.statusToken
+          ? reattachCandidate.statusToken
+          : null;
+      const reattachStatusToken =
+        storedReattachStatusToken ?? dismissedReattachProofsRef.current.get(requestKey) ?? null;
       setLastRequestKey(requestKey);
 
       const controller = new AbortController();
@@ -1275,25 +1310,47 @@ export function TryForm({
             sourceLang: normalizedSourceLang,
             targetLang: normalizedTargetLang,
             locale,
-            ...(showEmailField && trimmedEmail ? { email: trimmedEmail } : {}),
+            email: trimmedEmail,
+            ...(reattachStatusToken ? { reattachStatusToken } : {}),
           }),
           signal: controller.signal,
         });
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
+          if (response.status === 409 && payload?.errorCode === "preview_in_progress") {
+            // A demo for this identity is already running but this browser has
+            // no proof token (other tab/device or dismissed local state).
+            if (reattachStatusToken) {
+              dismissedReattachProofsRef.current.delete(requestKey);
+              if (
+                reattachCandidate &&
+                isActivePreviewJobPhase(reattachCandidate.status) &&
+                reattachCandidate.statusToken === reattachStatusToken
+              ) {
+                forgetPreviewJob(reattachCandidate);
+              }
+              setLastRequestKey(null);
+            }
+            trackPreviewCreateFailed({ errorCode: "preview_in_progress" });
+            setSubmissionError(
+              t("try.error.previewInProgress", undefined, { email: trimmedEmail }),
+            );
+            return;
+          }
           const reason =
             payload?.error || payload?.message || `Request failed with status ${response.status}`;
           trackPreviewCreateFailed({
             errorCode: typeof payload?.errorCode === "string" ? payload.errorCode : null,
             errorStage: typeof payload?.errorStage === "string" ? payload.errorStage : null,
           });
-          submittedEmailRef.current = "";
+          releaseUnclaimedSubmission();
           setSubmissionError(resolveErrorMessage(null, reason));
           return;
         }
 
         const payload = (await response.json()) as Record<string, unknown>;
+        dismissedReattachProofsRef.current.delete(requestKey);
         const previewId = resolveProspectShowcaseRef(payload);
         const statusToken = typeof payload?.statusToken === "string" ? payload.statusToken : null;
         const immediatePreview = resolvePreviewJobPayloadUrl(payload);
@@ -1313,6 +1370,7 @@ export function TryForm({
           }
           const resolved = resolveErrorFromPayload(payload);
           if (previewId && statusToken) {
+            previewClaimed = true;
             captureAnalyticsEvent(
               ANALYTICS_EVENTS.previewCreateSucceeded,
               buildPreviewAnalyticsProperties({
@@ -1354,7 +1412,7 @@ export function TryForm({
               errorCode: resolved.code,
               errorStage: resolved.stage,
             });
-            submittedEmailRef.current = "";
+            releaseUnclaimedSubmission();
             setSubmissionError(resolved.message);
           }
           return;
@@ -1366,11 +1424,12 @@ export function TryForm({
               errorCode: immediateDecision.errorCode,
               errorStage: immediateDecision.errorStage,
             });
-            submittedEmailRef.current = "";
+            releaseUnclaimedSubmission();
             setSubmissionError(immediateDecision.error ?? t("try.error.default"));
             return;
           }
 
+          previewClaimed = true;
           trackedPreviewIdsRef.current.add(previewId);
           trackedPreviewTerminalRef.current.delete(previewId);
           trackedPreviewStatusSignaturesRef.current.delete(previewId);
@@ -1412,13 +1471,16 @@ export function TryForm({
 
         if (!previewId) {
           trackPreviewCreateFailed();
+          releaseUnclaimedSubmission();
           throw new Error("Preview was created but no ID was returned.");
         }
         if (!statusToken) {
           trackPreviewCreateFailed({ previewId });
+          releaseUnclaimedSubmission();
           throw new Error("Preview was created but no status token was returned.");
         }
 
+        previewClaimed = true;
         trackedPreviewIdsRef.current.add(previewId);
         trackedPreviewTerminalRef.current.delete(previewId);
         trackedPreviewStatusSignaturesRef.current.delete(previewId);
@@ -1460,7 +1522,9 @@ export function TryForm({
       if (requestAttempted && !previewCreateFailureTracked) {
         trackPreviewCreateFailed();
       }
-      submittedEmailRef.current = "";
+      if (requestAttempted && !previewClaimed) {
+        releaseUnclaimedSubmission();
+      }
       const message = error instanceof Error ? error.message : "Failed to generate preview.";
       setSubmissionError(message);
     } finally {
@@ -1554,32 +1618,29 @@ export function TryForm({
                 </label>
               </div>
 
-              {showEmailField ? (
-                <>
-                  <label className="flex flex-col gap-2 text-sm">
-                    <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
-                    <Input
-                      value={email}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        setEmail(value);
-                        if (emailError) {
-                          setEmailError(validateEmail(value));
-                        }
-                      }}
-                      onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
-                      placeholder={t("try.form.emailPlaceholder")}
-                      type="email"
-                      autoComplete="email"
-                      inputMode="email"
-                      required
-                      disabled={inputsDisabled}
-                      aria-invalid={emailError ? "true" : "false"}
-                    />
-                  </label>
-                  {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
-                </>
-              ) : null}
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
+                <Input
+                  value={email}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setEmail(value);
+                    if (emailError) {
+                      setEmailError(validateEmail(value));
+                    }
+                  }}
+                  onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
+                  placeholder={t("try.form.emailPlaceholder")}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                  disabled={inputsDisabled}
+                  aria-invalid={emailError ? "true" : "false"}
+                />
+              </label>
+              <span className="text-xs text-muted-foreground">{t("try.form.emailHint")}</span>
+              {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
 
               <Button
                 className={primaryButtonClassName}
@@ -1661,33 +1722,30 @@ export function TryForm({
                 </label>
               </div>
 
-              {showEmailField ? (
-                <>
-                  <label className="flex flex-col gap-2 text-sm">
-                    <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
-                    <Input
-                      value={email}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        trackTryFormStarted();
-                        setEmail(value);
-                        if (emailError) {
-                          setEmailError(validateEmail(value));
-                        }
-                      }}
-                      onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
-                      placeholder={t("try.form.emailPlaceholder")}
-                      type="email"
-                      autoComplete="email"
-                      inputMode="email"
-                      required
-                      disabled={inputsDisabled}
-                      aria-invalid={emailError ? "true" : "false"}
-                    />
-                  </label>
-                  {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
-                </>
-              ) : null}
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-foreground">{t("try.form.emailLabel")}</span>
+                <Input
+                  value={email}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    trackTryFormStarted();
+                    setEmail(value);
+                    if (emailError) {
+                      setEmailError(validateEmail(value));
+                    }
+                  }}
+                  onBlur={(event) => setEmailError(validateEmail(event.currentTarget.value))}
+                  placeholder={t("try.form.emailPlaceholder")}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                  disabled={inputsDisabled}
+                  aria-invalid={emailError ? "true" : "false"}
+                />
+              </label>
+              <span className="text-xs text-muted-foreground">{t("try.form.emailHint")}</span>
+              {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
             </>
           )}
         </div>
@@ -1704,8 +1762,8 @@ export function TryForm({
             <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
               {processingHintMessage}
             </p>
-            {canRetryRestoredStatusCheck ? (
-              <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {canRetryRestoredStatusCheck ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1715,11 +1773,14 @@ export function TryForm({
                 >
                   {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={handleStartAnotherPreview}>
-                  {t("try.action.startAnother")}
-                </Button>
-              </div>
-            ) : null}
+              ) : null}
+              {/* Escape hatch: a restored job whose status cannot be verified must
+                  not lock the form. Dismissing only forgets it locally; if the run
+                  is still live, resubmitting reattaches via the backend dedupe. */}
+              <Button type="button" size="sm" variant="ghost" onClick={handleTranslateAnother}>
+                {t("try.action.startNewPreview")}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -1804,41 +1865,33 @@ export function TryForm({
                 </div>
               ) : null}
 
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleStartAnotherPreview}
-                className="w-fit"
-              >
-                {t("try.action.startAnother")}
-              </Button>
+              {submittedEmail ? (
+                <p className="max-w-md text-xs leading-5 text-muted-foreground/90">
+                  {t("try.status.emailNotice", undefined, { email: submittedEmail })}
+                </p>
+              ) : null}
             </div>
           </div>
-        </div>
-      ) : null}
 
-      {timedOut && timedOutWithEmail ? (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <p>{t("try.status.pendingEmail", undefined, { email: submittedEmail })}</p>
-          <p className="mt-1 text-xs opacity-80">{t("try.status.pendingEmailHint")}</p>
-        </div>
-      ) : null}
-
-      {timedOut && !timedOutWithEmail ? (
-        <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <p>{t("try.status.timedOutNoEmail")}</p>
-          <Button
-            onClick={() => {
-              void handleCheckStatus();
-            }}
-            disabled={checkingStatus}
-            variant="outline"
-            size="sm"
-            className="w-fit"
-          >
-            {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
-          </Button>
+          {isTransportDegraded ? (
+            <div className="flex flex-col gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+              <p>{t("try.status.statusUnreachable")}</p>
+              {submittedEmail ? (
+                <p className="text-xs opacity-80">
+                  {t("try.status.pendingEmail", undefined, { email: submittedEmail })}
+                </p>
+              ) : null}
+              <Button
+                onClick={handleRetryRestoredStatusCheck}
+                disabled={checkingStatus}
+                variant="outline"
+                size="sm"
+                className="w-fit"
+              >
+                {checkingStatus ? t("try.action.checkingStatus") : t("try.action.checkStatus")}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1849,6 +1902,11 @@ export function TryForm({
             {errorStageMessage ? (
               <div className="text-xs text-destructive/80">
                 {t("try.error.stageLabel", undefined, { stage: errorStageMessage })}
+              </div>
+            ) : null}
+            {trackedJob && (trackedJob.status === "failed" || trackedJob.status === "expired") ? (
+              <div className="text-xs text-destructive/80">
+                {t("try.error.referenceHint", undefined, { ref: trackedJob.previewId })}
               </div>
             ) : null}
           </div>
@@ -1864,6 +1922,17 @@ export function TryForm({
             >
               {t("try.action.retry")}
             </Button>
+            {isTerminalMode ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="w-fit"
+                onClick={handleTranslateAnother}
+              >
+                {t("try.action.translateAnother")}
+              </Button>
+            ) : null}
             {trackedJob?.status === "failed" && trackedJob.previewUrl ? (
               <Button asChild size="sm" variant="secondary" className="w-fit">
                 <a
@@ -1889,7 +1958,9 @@ export function TryForm({
                 </a>
               </Button>
             ) : null}
-            {trackedJob?.status === "failed" && trackedJob.demoDashboardUrl ? (
+            {trackedJob &&
+            (trackedJob.status === "failed" || trackedJob.status === "expired") &&
+            trackedJob.demoDashboardUrl ? (
               <Button asChild size="sm" variant="secondary" className="w-fit">
                 <a
                   href={withDemoDashboardLocale(trackedJob.demoDashboardUrl, locale)}
@@ -1983,11 +2054,27 @@ export function TryForm({
                 </div>
               </div>
             ) : null}
+
+            {submittedEmail ? (
+              <p className="text-xs text-primary/80">
+                {t("try.preview.emailedNotice", undefined, { email: submittedEmail })}
+              </p>
+            ) : null}
+
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-fit"
+              onClick={handleTranslateAnother}
+            >
+              {t("try.action.translateAnother")}
+            </Button>
           </div>
         </div>
       ) : null}
 
-      {!isRequestInFlight && isSameLanguage ? (
+      {showEditableControls && isSameLanguage ? (
         <div className="text-sm text-destructive">{t("try.form.sameLanguage")}</div>
       ) : null}
     </div>

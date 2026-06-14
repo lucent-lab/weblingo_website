@@ -23,6 +23,14 @@ export const PREVIEW_STATUS_CENTER_ERROR_MESSAGE_KEYS: Record<PreviewErrorCode, 
   preview_not_found: "try.error.preview_not_found",
   preview_expired: "try.error.preview_expired",
   canceled: "try.error.canceled",
+  provision_failed: "try.error.provision_failed",
+  source_fetch_failed: "try.error.source_fetch_failed",
+  translation_failed: "try.error.translation_failed",
+  showcase_failed: "try.error.showcase_failed",
+  provision_stalled: "try.error.provision_stalled",
+  processing_stalled: "try.error.processing_stalled",
+  translation_capacity_exhausted: "try.error.translation_capacity_exhausted",
+  source_page_too_large: "try.error.source_page_too_large",
   unknown: "try.error.unknown",
 };
 
@@ -34,32 +42,11 @@ export const PREVIEW_STATUS_CENTER_STAGE_MESSAGE_KEYS: Record<PreviewStage, stri
   saving: "try.stage.saving",
 };
 
+// The marketing status center only mirrors the single active run, so it needs the
+// active status/stage copy plus the capacity hints.
 export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.center.capacityHint",
   "try.center.providerCapacityHint",
-  "try.center.dismiss",
-  "try.center.retryHint",
-  "try.error.blocked_host",
-  "try.error.canceled",
-  "try.error.checkStatusFailed",
-  "try.error.config_error",
-  "try.error.default",
-  "try.error.dns_failed",
-  "try.error.dns_timeout",
-  "try.error.invalid_url",
-  "try.error.page_too_large",
-  "try.error.preview_expired",
-  "try.error.preview_not_found",
-  "try.error.processing_timeout",
-  "try.error.queue_enqueue_failed",
-  "try.error.render_failed",
-  "try.error.storage_failed",
-  "try.error.template_decode_failed",
-  "try.error.translate_failed",
-  "try.error.unknown",
-  "try.error.waf_blocked",
-  "try.preview.open",
-  "try.preview.openDemoDashboard",
   "try.stage.analyzing_content",
   "try.stage.fetching_page",
   "try.stage.generating_preview",
@@ -67,7 +54,6 @@ export const PREVIEW_STATUS_CENTER_MESSAGE_KEYS: ReadonlyArray<string> = [
   "try.stage.translating",
   "try.status.pending",
   "try.status.processing",
-  "try.status.ready",
   "try.status.restoring",
   "try.status.waitingProviderCapacity",
 ];
@@ -105,7 +91,13 @@ export function resolvePreviewStatusCenterMessage(
   if (job.status === "waiting_provider_capacity") {
     return t("try.status.waitingProviderCapacity");
   }
-  if (!job.remoteStatusVerified && isActivePreviewJobPhase(job.status)) {
+  // Only never-verified restored jobs show the restoring copy; jobs that were verified
+  // once keep their last known progress copy through transport blips.
+  if (
+    !job.remoteStatusVerified &&
+    job.lastVerifiedAt === null &&
+    isActivePreviewJobPhase(job.status)
+  ) {
     return t("try.status.restoring");
   }
   if (job.status === "pending") {

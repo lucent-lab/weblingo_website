@@ -1,31 +1,23 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  ANALYTICS_EVENTS,
-  buildPreviewAnalyticsProperties,
-  captureAnalyticsEvent,
-} from "@internal/analytics/client";
 import { createClientTranslator, type ClientMessages } from "@internal/i18n";
 import {
   resolvePreviewStatusCenterCapacityHint,
   resolvePreviewStatusCenterMessage,
-  resolvePreviewStatusCenterTextClass,
 } from "@internal/previews/status-center-i18n";
-import { withDemoDashboardLocale } from "@internal/previews/demo-dashboard-url";
 import {
+  getActivePreviewPinServerSnapshot,
+  getActivePreviewPinSnapshot,
   getPreviewStatusCenterJobsSnapshot,
   getPreviewStatusCenterServerJobsSnapshot,
-  isPreviewStatusCenterJobTerminal,
-  removePreviewStatusCenterJob,
-  selectJobsForStatusCenter,
+  selectCurrentActivePreviewStatusCenterJob,
+  subscribeActivePreviewPin,
   subscribePreviewStatusCenterStore,
 } from "@internal/previews/status-center-store";
 
 type PreviewStatusCenterProps = {
   messages: ClientMessages;
-  locale?: string;
 };
 
 function resolveHost(url: string): string {
@@ -36,7 +28,9 @@ function resolveHost(url: string): string {
   }
 }
 
-export function PreviewStatusCenter({ locale, messages }: PreviewStatusCenterProps) {
+// Mirrors only the single current run so this toast can never disagree with the try
+// form. Terminal outcomes are rendered by the form's terminal cards and by email.
+export function PreviewStatusCenter({ messages }: PreviewStatusCenterProps) {
   const t = useMemo(() => createClientTranslator(messages), [messages]);
 
   const jobsSnapshot = useSyncExternalStore(
@@ -44,140 +38,51 @@ export function PreviewStatusCenter({ locale, messages }: PreviewStatusCenterPro
     getPreviewStatusCenterJobsSnapshot,
     getPreviewStatusCenterServerJobsSnapshot,
   );
-  const jobs = useMemo(() => selectJobsForStatusCenter(jobsSnapshot), [jobsSnapshot]);
+  const pinnedPreviewId = useSyncExternalStore(
+    subscribeActivePreviewPin,
+    getActivePreviewPinSnapshot,
+    getActivePreviewPinServerSnapshot,
+  );
+  const job = useMemo(
+    () =>
+      selectCurrentActivePreviewStatusCenterJob({
+        jobs: jobsSnapshot,
+        pinnedPreviewId,
+      }),
+    [jobsSnapshot, pinnedPreviewId],
+  );
 
-  if (jobs.length === 0) {
+  if (!job) {
     return null;
   }
+
+  const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
 
   return (
     <aside
       className="fixed bottom-4 left-2 right-2 z-50 max-w-sm space-y-2 sm:left-auto sm:right-4"
       aria-live="polite"
     >
-      {jobs.map((job) => {
-        const terminal = isPreviewStatusCenterJobTerminal(job.status);
-        const capacityHint = resolvePreviewStatusCenterCapacityHint(job, t);
-        const showDemoDashboardAction =
-          Boolean(job.demoDashboardUrl) &&
-          (job.status === "ready" || job.status === "failed" || job.status === "expired");
-        return (
-          <section
-            key={job.previewId}
-            className="rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-muted-foreground">
-                  {resolveHost(job.sourceUrl)}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {job.sourceLang} -&gt; {job.targetLang}
-                </p>
-              </div>
-              {!terminal ? (
-                <div
-                  aria-hidden
-                  className="mt-0.5 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                />
-              ) : null}
-            </div>
-
-            <p className={`mt-2 text-sm ${resolvePreviewStatusCenterTextClass(job)}`}>
-              {resolvePreviewStatusCenterMessage(job, t)}
+      <section className="rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-muted-foreground">
+              {resolveHost(job.sourceUrl)}
             </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {job.sourceLang} -&gt; {job.targetLang}
+            </p>
+          </div>
+          <div
+            aria-hidden
+            className="mt-0.5 h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          />
+        </div>
 
-            {capacityHint ? (
-              <p className="mt-1 text-xs text-muted-foreground">{capacityHint}</p>
-            ) : null}
+        <p className="mt-2 text-sm text-foreground">{resolvePreviewStatusCenterMessage(job, t)}</p>
 
-            {job.status === "failed" ? (
-              <p className="mt-1 text-xs text-muted-foreground">{t("try.center.retryHint")}</p>
-            ) : null}
-
-            <div className="mt-3 flex items-center gap-2">
-              {(job.status === "ready" || job.status === "failed") && job.previewUrl ? (
-                <Button asChild size="sm" variant="secondary">
-                  <a
-                    href={job.previewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => {
-                      captureAnalyticsEvent(
-                        ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
-                        buildPreviewAnalyticsProperties({
-                          sourceUrl: job.sourceUrl,
-                          sourceLang: job.sourceLang,
-                          targetLang: job.targetLang,
-                          previewId: job.previewId,
-                          status: job.status,
-                          stage: job.stage,
-                        }),
-                      );
-                    }}
-                  >
-                    {t("try.preview.open")}
-                  </a>
-                </Button>
-              ) : null}
-
-              {showDemoDashboardAction && job.demoDashboardUrl ? (
-                <Button asChild size="sm" variant="secondary">
-                  <a
-                    href={
-                      locale
-                        ? withDemoDashboardLocale(job.demoDashboardUrl, locale)
-                        : job.demoDashboardUrl
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => {
-                      captureAnalyticsEvent(
-                        ANALYTICS_EVENTS.previewStatusCenterOpenClicked,
-                        buildPreviewAnalyticsProperties({
-                          sourceUrl: job.sourceUrl,
-                          sourceLang: job.sourceLang,
-                          targetLang: job.targetLang,
-                          previewId: job.previewId,
-                          status: job.status,
-                          stage: job.stage,
-                        }),
-                      );
-                    }}
-                  >
-                    {t("try.preview.openDemoDashboard")}
-                  </a>
-                </Button>
-              ) : null}
-
-              {terminal ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    captureAnalyticsEvent(
-                      ANALYTICS_EVENTS.previewStatusCenterDismissed,
-                      buildPreviewAnalyticsProperties({
-                        sourceUrl: job.sourceUrl,
-                        sourceLang: job.sourceLang,
-                        targetLang: job.targetLang,
-                        previewId: job.previewId,
-                        status: job.status,
-                        stage: job.stage,
-                        errorCode: job.errorCode,
-                        errorStage: job.errorStage,
-                      }),
-                    );
-                    removePreviewStatusCenterJob(job.previewId);
-                  }}
-                >
-                  {t("try.center.dismiss")}
-                </Button>
-              ) : null}
-            </div>
-          </section>
-        );
-      })}
+        {capacityHint ? <p className="mt-1 text-xs text-muted-foreground">{capacityHint}</p> : null}
+      </section>
     </aside>
   );
 }

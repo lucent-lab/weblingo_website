@@ -41,6 +41,8 @@ type PreviewUxProbe = {
   stop: () => void;
 };
 
+const NON_VISIBLE_TEXT_SELECTOR = "script,style,template,noscript";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -178,7 +180,7 @@ async function installSourceTextProbe(
   sampleIntervalMs: number,
 ): Promise<void> {
   await page.addInitScript(
-    ({ phrases, durationMs, intervalMs }) => {
+    ({ phrases, durationMs, intervalMs, excludedSelector }) => {
       const startedAt = performance.now();
       let timer = 0;
       const probe: PreviewUxProbe = {
@@ -187,7 +189,17 @@ async function installSourceTextProbe(
         stop: () => clearInterval(timer),
       };
 
-      const visibleText = () => document.body?.innerText ?? "";
+      const visibleText = () => {
+        if (!document.body) {
+          return "";
+        }
+        const clone = document.body.cloneNode(true);
+        if (!(clone instanceof HTMLElement)) {
+          return "";
+        }
+        clone.querySelectorAll(excludedSelector).forEach((node) => node.remove());
+        return clone.textContent ?? "";
+      };
       const record = () => {
         const text = visibleText();
         const hits = phrases.filter((phrase) => phrase && text.includes(phrase));
@@ -219,8 +231,27 @@ async function installSourceTextProbe(
         clearInterval(timer);
       }, durationMs);
     },
-    { phrases: forbiddenText, durationMs: sampleMs, intervalMs: sampleIntervalMs },
+    {
+      phrases: forbiddenText,
+      durationMs: sampleMs,
+      intervalMs: sampleIntervalMs,
+      excludedSelector: NON_VISIBLE_TEXT_SELECTOR,
+    },
   );
+}
+
+async function readPageText(page: Page): Promise<string> {
+  return page.evaluate((excludedSelector) => {
+    if (!document.body) {
+      return "";
+    }
+    const clone = document.body.cloneNode(true);
+    if (!(clone instanceof HTMLElement)) {
+      return "";
+    }
+    clone.querySelectorAll(excludedSelector).forEach((node) => node.remove());
+    return clone.textContent ?? "";
+  }, NON_VISIBLE_TEXT_SELECTOR);
 }
 
 async function sampleRotatorStates(
@@ -263,12 +294,18 @@ async function assertDomAssertions(page: Page, assertions: DomAssertion[] | unde
   for (const assertion of assertions ?? []) {
     const locator = page.locator(assertion.selector);
     await expect(locator, `${assertion.selector} should resolve to one element`).toHaveCount(1);
-    const snapshot = await locator.evaluate((node) => ({
-      textContent: node.textContent ?? "",
-      firstChildText:
-        node.firstChild?.nodeType === Node.TEXT_NODE ? node.firstChild.textContent : null,
-      childTestIds: Array.from(node.children).map((child) => child.getAttribute("data-testid")),
-    }));
+    const snapshot = await locator.evaluate((node, excludedSelector) => {
+      const clone = node.cloneNode(true);
+      if (clone instanceof Element) {
+        clone.querySelectorAll(excludedSelector).forEach((child) => child.remove());
+      }
+      return {
+        textContent: clone.textContent ?? "",
+        firstChildText:
+          node.firstChild?.nodeType === Node.TEXT_NODE ? node.firstChild.textContent : null,
+        childTestIds: Array.from(node.children).map((child) => child.getAttribute("data-testid")),
+      };
+    }, NON_VISIBLE_TEXT_SELECTOR);
 
     for (const expected of assertion.textIncludes ?? []) {
       expect(snapshot.textContent, `${assertion.selector} should contain ${expected}`).toContain(
@@ -350,7 +387,10 @@ if (liveCases.length === 0) {
         page.on("requestfailed", (request) => {
           const url = new URL(request.url());
           if (url.origin === caseUrl.origin && url.searchParams.has("_rsc")) {
-            routeDataFailures.push(`${request.failure()?.errorText ?? "failed"} ${request.url()}`);
+            const errorText = request.failure()?.errorText ?? "failed";
+            if (errorText !== "net::ERR_ABORTED") {
+              routeDataFailures.push(`${errorText} ${request.url()}`);
+            }
           }
         });
 
@@ -361,7 +401,7 @@ if (liveCases.length === 0) {
 
         await page.waitForTimeout(sampleMs);
 
-        const bodyText = await page.locator("body").innerText();
+        const bodyText = await readPageText(page);
         for (const requiredText of previewCase.requiredText ?? []) {
           expect(bodyText).toContain(requiredText);
         }

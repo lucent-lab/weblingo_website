@@ -10,6 +10,9 @@ import {
   hydratePreviewStatusCenterStore,
   isPreviewStatusCenterJobActive,
   markPreviewStatusCenterJobTerminal,
+  PREVIEW_ACTIVE_JOB_MAX_AGE_MS,
+  PREVIEW_STATUS_CENTER_STORAGE_KEY,
+  rehydratePreviewStatusCenterStoreFromStorage,
   resetPreviewStatusCenterJobRetry,
   subscribePreviewStatusCenterStore,
   updatePreviewStatusCenterJob,
@@ -19,7 +22,6 @@ import { resolvePreviewStatusDecision } from "./preview-status-decision";
 import { resolvePreviewRetryHintDelayMs } from "./preview-job-machine";
 import { buildPreviewJobStatusUrl } from "./preview-job-policy";
 
-const MAX_STATUS_RETRY_ATTEMPTS = 4;
 const MAX_TIMEOUT_DELAY_MS = 2_147_483_647;
 let previewStatusRuntimeOwner: symbol | null = null;
 
@@ -27,6 +29,16 @@ type PreviewStatusCenterJobWithExpiry = PreviewStatusCenterJob & { expiresAt: nu
 
 function hasTerminalExpiry(job: PreviewStatusCenterJob): job is PreviewStatusCenterJobWithExpiry {
   return (job.status === "ready" || job.status === "failed") && job.expiresAt !== null;
+}
+
+// A poll that started with a token another tab has since rotated must not have
+// its auth-shaped rejection treated as the job's verdict; the next tick polls
+// with the fresh token instead.
+function hasRotatedStatusToken(job: PreviewStatusCenterJob): boolean {
+  const current = getPreviewStatusCenterJobsSnapshot().find(
+    (candidate) => candidate.previewId === job.previewId,
+  );
+  return current !== undefined && current.statusToken !== job.statusToken;
 }
 
 export function resetPreviewStatusRuntimeOwnerForTests() {
@@ -81,13 +93,44 @@ export function usePreviewStatusRuntime() {
     if (!isOwnerRef.current) {
       return;
     }
+    // Cross-tab convergence: another tab committing the shared snapshot (for
+    // example rotating a status token on a duplicate submission) must replace
+    // this tab's stale in-memory job before its next poll 401s into a false
+    // terminal failure. `storage` events only fire in non-writing tabs, so
+    // this never loops.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== PREVIEW_STATUS_CENTER_STORAGE_KEY) {
+        return;
+      }
+      rehydratePreviewStatusCenterStoreFromStorage({ preservePinnedActiveLocalJob: true });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOwnerRef.current) {
+      return;
+    }
 
     let nextExpiryAt: number | null = null;
+    const schedulingNow = Date.now();
     for (const job of jobs) {
-      if (!hasTerminalExpiry(job)) {
-        continue;
+      if (hasTerminalExpiry(job)) {
+        nextExpiryAt =
+          nextExpiryAt === null ? job.expiresAt : Math.min(nextExpiryAt, job.expiresAt);
       }
-      nextExpiryAt = nextExpiryAt === null ? job.expiresAt : Math.min(nextExpiryAt, job.expiresAt);
+      if (isPreviewStatusCenterJobActive(job)) {
+        const staleAt = job.createdAt + PREVIEW_ACTIVE_JOB_MAX_AGE_MS;
+        // Already-over-budget jobs resolve through /status polling (server truth
+        // first) and, failing that, through the prune pass each failed poll
+        // commits; scheduling a past-due cleanup here would only busy-loop.
+        if (staleAt > schedulingNow) {
+          nextExpiryAt = nextExpiryAt === null ? staleAt : Math.min(nextExpiryAt, staleAt);
+        }
+      }
     }
     if (nextExpiryAt === null) {
       return;
@@ -136,6 +179,12 @@ export function usePreviewStatusRuntime() {
           mapNotFoundToErrorCode: true,
         });
         if (decision.kind === "terminal") {
+          if (!response.ok) {
+            rehydratePreviewStatusCenterStoreFromStorage({ preserveLocalJobs: true });
+            if (hasRotatedStatusToken(job)) {
+              return;
+            }
+          }
           markPreviewStatusCenterJobTerminal(job.previewId, decision.status, {
             previewUrl: decision.previewUrl,
             demoDashboardUrl: decision.demoDashboardUrl,
@@ -147,16 +196,10 @@ export function usePreviewStatusRuntime() {
           return;
         }
 
+        // Transport/transient failures never fabricate a terminal state: keep the job
+        // active with capped backoff until the server answers or the wall-clock budget
+        // stale-fails it during store pruning.
         const retryCount = decision.remoteStatusVerified ? 0 : job.retryCount + 1;
-        if (!decision.remoteStatusVerified && retryCount > MAX_STATUS_RETRY_ATTEMPTS) {
-          markPreviewStatusCenterJobTerminal(job.previewId, "failed", {
-            errorCode: "unknown",
-            error: "Unable to check preview status.",
-            errorStage: null,
-          });
-          return;
-        }
-
         const nextStatus = decision.remoteStatusVerified ? decision.status : job.status;
         const nextStage = decision.remoteStatusVerified ? decision.stage : job.stage;
         const nextRetryHint = decision.remoteStatusVerified ? decision.retryHint : job.retryHint;
@@ -186,15 +229,6 @@ export function usePreviewStatusRuntime() {
         }
       } catch {
         const retryCount = job.retryCount + 1;
-        if (retryCount > MAX_STATUS_RETRY_ATTEMPTS) {
-          markPreviewStatusCenterJobTerminal(job.previewId, "failed", {
-            errorCode: "unknown",
-            error: "Unable to check preview status.",
-            errorStage: null,
-          });
-          return;
-        }
-
         const retryHintDelayMs = resolvePreviewRetryHintDelayMs(job.retryHint);
         const retryDelayMs = Math.max(
           calculatePreviewStatusCenterRetryDelayMs(retryCount),
