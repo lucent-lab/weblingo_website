@@ -682,7 +682,7 @@
         "prospectShowcases.create"
       ],
       "stability": "Beta",
-      "summary": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account. If an active (submitted or demo_creating) showcase already exists for the same source URL, language pair, and email, the endpoint never starts a second demo: with a valid `reattachStatusToken` (the `statusToken` from the original create) it reconnects to the in-flight run and returns 202 with the existing `prospectShowcaseRef` and a rotated `statusToken`; without valid proof it returns 409 with `errorCode: \"preview_in_progress\"` and reveals nothing about the in-flight run. A partial unique index over active submissions makes this dedupe atomic for concurrent identical creates. Terminal rows never dedupe.",
+      "summary": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
       "userFacing": true
     },
     {
@@ -2950,31 +2950,6 @@
           }
         ],
         "interfaceName": "ProspectShowcaseAccessLinkEmailQueuePayload",
-        "kindLiteral": null
-      },
-      "stability": "Internal",
-      "summary": "Queue payload contract for pipeline worker messages.",
-      "userFacing": false
-    },
-    {
-      "family": "pipeline",
-      "group": "pipeline",
-      "id": "pipeline.ProspectShowcaseFailedEmailQueuePayload",
-      "name": "ProspectShowcaseFailedEmailQueuePayload",
-      "payloadContract": {
-        "fields": [
-          {
-            "name": "type",
-            "optional": false,
-            "type": "\"prospect_showcase.failed\""
-          },
-          {
-            "name": "prospect_showcase_id",
-            "optional": false,
-            "type": "ProspectShowcaseId"
-          }
-        ],
-        "interfaceName": "ProspectShowcaseFailedEmailQueuePayload",
         "kindLiteral": null
       },
       "stability": "Internal",
