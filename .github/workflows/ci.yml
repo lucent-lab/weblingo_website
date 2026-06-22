@@ -42,7 +42,7 @@ jobs:
       WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: "60000"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Trust checkout for git-based tests
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -133,10 +133,10 @@ jobs:
       WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: "60000"
     steps:
       - name: Checkout website
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Checkout backend repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: lucent-lab/weblingo
           path: backend
