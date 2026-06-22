@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 
 const rateLimitFixedWindow = vi.fn();
@@ -226,5 +226,81 @@ describe("POST /api/waitlist", () => {
         source: "waitlist_upsert",
       }),
     );
+  });
+});
+
+describe("POST /api/waitlist with Turnstile enabled", () => {
+  beforeEach(() => {
+    process.env.TURNSTILE_SECRET_KEY = "0xSECRET";
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0xSITE";
+  });
+
+  afterEach(() => {
+    delete process.env.TURNSTILE_SECRET_KEY;
+    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    vi.unstubAllGlobals();
+  });
+
+  it("blocks with 403 when the Turnstile token is rejected", async () => {
+    rateLimitFixedWindow.mockResolvedValueOnce({
+      allowed: true,
+      limit: 100,
+      remaining: 99,
+      resetAtMs: Date.now() + 1000,
+      current: 1,
+      key: "k",
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ success: false, "error-codes": ["invalid-input-response"] }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest({ email: "a@example.com", turnstileToken: "bad" }));
+
+    expect(response.status).toBe(403);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(createServiceRoleClient).not.toHaveBeenCalled();
+  });
+
+  it("fails open (200) when Cloudflare verification is unavailable", async () => {
+    rateLimitFixedWindow.mockResolvedValueOnce({
+      allowed: true,
+      limit: 100,
+      remaining: 99,
+      resetAtMs: Date.now() + 1000,
+      current: 1,
+      key: "k",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("cloudflare down");
+      }),
+    );
+
+    const single = vi.fn(async () => ({
+      data: { id: "waitlist-2", created_at: "2026-02-10T00:00:00.000Z" },
+      error: null,
+    }));
+    const select = vi.fn(() => ({ single }));
+    const upsert = vi.fn(() => ({ select }));
+    const from = vi.fn(() => ({ upsert }));
+    createServiceRoleClient.mockReturnValue({ from });
+
+    vi.resetModules();
+    const { POST } = await import("./route");
+    const response = await POST(makeRequest({ email: "a@example.com", turnstileToken: "tok" }));
+
+    expect(response.status).toBe(200);
+    expect(upsert).toHaveBeenCalledOnce();
   });
 });

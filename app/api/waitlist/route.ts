@@ -19,6 +19,7 @@ import { envServer } from "@internal/core/env-server";
 import { rateLimitFixedWindow } from "@internal/core/rate-limit";
 import { redis } from "@internal/core/redis";
 import { getClientIp } from "@internal/core/request-ip";
+import { evaluateTurnstile, TURNSTILE_FAIL_CLOSED } from "@internal/core/turnstile";
 
 const payloadSchema = z.object({
   email: z.string().email().max(320),
@@ -99,6 +100,19 @@ export async function POST(request: NextRequest) {
     typeof json === "object" && json !== null
       ? (json as Record<string, unknown>)
       : ({} as Record<string, unknown>);
+
+  const turnstile = await evaluateTurnstile({
+    secretKey: envServer.TURNSTILE_SECRET_KEY,
+    token: typeof base.turnstileToken === "string" ? base.turnstileToken : null,
+    remoteIp: ip,
+    failClosed: TURNSTILE_FAIL_CLOSED.waitlist,
+  });
+  if (!turnstile.allowed) {
+    return NextResponse.json(
+      { error: "Verification failed. Please refresh and try again." },
+      { status: turnstile.status },
+    );
+  }
 
   const parsed = payloadSchema.safeParse({
     email: typeof base.email === "string" ? base.email.trim() : base.email,

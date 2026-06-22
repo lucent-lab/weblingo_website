@@ -10,8 +10,11 @@ import {
   getProspectShowcaseProxyConfig,
   readProspectShowcaseJsonBodyLimited,
 } from "@internal/api/prospect-showcases-proxy";
+import { envServer } from "@internal/core/env-server";
 import { fetchWithTimeout } from "@internal/core/fetch-timeout";
+import { getClientIp } from "@internal/core/request-ip";
 import { hasUnresolvedRoutePlaceholder } from "@internal/core/route-placeholders";
+import { evaluateTurnstile, TURNSTILE_FAIL_CLOSED } from "@internal/core/turnstile";
 
 export const runtime = "nodejs";
 
@@ -82,6 +85,32 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Bot gating (M12.3): fail-closed — a Cloudflare outage blocks the request so
+  // automated traffic cannot run up crawl + LLM translation spend.
+  const turnstile = await evaluateTurnstile({
+    secretKey: envServer.TURNSTILE_SECRET_KEY,
+    token:
+      isRecord(bodyResult.payload) && typeof bodyResult.payload.turnstileToken === "string"
+        ? bodyResult.payload.turnstileToken
+        : null,
+    remoteIp: getClientIp(request),
+    failClosed: TURNSTILE_FAIL_CLOSED.preview,
+  });
+  if (!turnstile.allowed) {
+    return createProspectShowcaseProxyResponse(
+      "json",
+      "Verification failed. Please refresh and try again.",
+      turnstile.status,
+    );
+  }
+
+  // Never forward the Turnstile token upstream; it is consumed at this edge.
+  const forwardPayload = isRecord(bodyResult.payload)
+    ? Object.fromEntries(
+        Object.entries(bodyResult.payload).filter(([key]) => key !== "turnstileToken"),
+      )
+    : bodyResult.payload;
+
   try {
     const upstream = await fetchWithTimeout(
       `${config.apiBase}/prospect-showcases`,
@@ -93,7 +122,7 @@ export async function POST(request: NextRequest) {
           "x-preview-token": config.tryNowToken,
           Accept: "application/json",
         },
-        body: JSON.stringify(bodyResult.payload),
+        body: JSON.stringify(forwardPayload),
         cache: "no-store",
       },
       { timeoutMs: config.upstreamCreateTimeoutMs, signal: request.signal },

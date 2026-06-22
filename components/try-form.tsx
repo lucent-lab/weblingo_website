@@ -11,6 +11,7 @@ const LanguageTagCombobox = dynamic(
 );
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { cn } from "@/lib/utils";
 import {
   ANALYTICS_EVENTS,
@@ -240,6 +241,7 @@ export function TryForm({
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [lastRequestKey, setLastRequestKey] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -1311,6 +1313,7 @@ export function TryForm({
             targetLang: normalizedTargetLang,
             locale,
             email: trimmedEmail,
+            ...(turnstileToken ? { turnstileToken } : {}),
             ...(reattachStatusToken ? { reattachStatusToken } : {}),
           }),
           signal: controller.signal,
@@ -1642,6 +1645,7 @@ export function TryForm({
               <span className="text-xs text-muted-foreground">{t("try.form.emailHint")}</span>
               {emailError ? <div className="text-sm text-destructive">{emailError}</div> : null}
 
+              <TurnstileWidget action="preview" onToken={setTurnstileToken} />
               <Button
                 className={primaryButtonClassName}
                 onClick={handleGenerate}
