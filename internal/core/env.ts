@@ -34,6 +34,9 @@ export const clientEnvSchema = z
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_WEBHOOKS_API_BASE: z.string().url(),
     NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS: z.string().regex(/^[1-9]\d*$/),
+    // Cloudflare Turnstile public site key (M12.3 bot gating). Optional: when
+    // unset the widget renders nothing and server-side gating stays disabled.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     const browserHost = new URL(env.NEXT_PUBLIC_POSTHOG_BROWSER_HOST);
@@ -85,6 +88,7 @@ export const readClientEnv = () => ({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   NEXT_PUBLIC_WEBHOOKS_API_BASE: process.env.NEXT_PUBLIC_WEBHOOKS_API_BASE,
   NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS: process.env.NEXT_PUBLIC_WEBHOOKS_API_TIMEOUT_MS,
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
 });
 
 export const env: ClientEnv = clientEnvSchema.parse(readClientEnv());

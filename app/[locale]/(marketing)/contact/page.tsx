@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { createLocalizedMetadata, normalizeLocale, resolveLocaleTranslator } from "@internal/i18n";
 
 import { submitContactMessage } from "./actions";
@@ -25,7 +26,10 @@ export default async function ContactPage({
   const errorParam =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : undefined;
   const hasError =
-    errorParam === "server" || errorParam === "invalid" || errorParam === "rate_limited";
+    errorParam === "server" ||
+    errorParam === "invalid" ||
+    errorParam === "rate_limited" ||
+    errorParam === "verification";
   const action = submitContactMessage.bind(null, locale);
 
   return (
@@ -79,6 +83,7 @@ export default async function ContactPage({
               name="message"
             />
           </label>
+          <TurnstileWidget action="contact" className="md:col-span-2" />
           <Button type="submit" size="lg" className="md:col-span-2 justify-center">
             {t("contact.form.submit")}
           </Button>

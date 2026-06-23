@@ -15,6 +15,7 @@ import { envServer } from "@internal/core/env-server";
 import { rateLimitFixedWindow } from "@internal/core/rate-limit";
 import { redis } from "@internal/core/redis";
 import { getClientIpFromHeaders } from "@internal/core/request-ip";
+import { evaluateTurnstile, TURNSTILE_FAIL_CLOSED } from "@internal/core/turnstile";
 
 const contactSchema = z.object({
   fullName: z.string().min(1, "fullName").max(200),
@@ -64,6 +65,18 @@ export async function submitContactMessage(locale: string, formData: FormData) {
 
   if (ipLimit && !ipLimit.allowed) {
     return redirect(`/${locale}/contact?error=rate_limited`);
+  }
+
+  // Bot gating (M12.3): fail-open — a Cloudflare outage must not drop a genuine
+  // sales lead. A missing or rejected token is still blocked.
+  const turnstile = await evaluateTurnstile({
+    secretKey: envServer.TURNSTILE_SECRET_KEY,
+    token: formData.get("cf-turnstile-response")?.toString() ?? null,
+    remoteIp: ip,
+    failClosed: TURNSTILE_FAIL_CLOSED.contact,
+  });
+  if (!turnstile.allowed) {
+    return redirect(`/${locale}/contact?error=verification`);
   }
 
   const parsed = contactSchema.safeParse({

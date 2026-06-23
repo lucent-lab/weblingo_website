@@ -6,6 +6,7 @@ import { Bell, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 type SubmissionState = "idle" | "loading" | "success" | "error";
 
@@ -37,6 +38,7 @@ export function LaunchBanner({ copy }: LaunchBannerProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -75,6 +77,7 @@ export function LaunchBanner({ copy }: LaunchBannerProps) {
         body: JSON.stringify({
           email,
           siteUrl: siteUrl || undefined,
+          turnstileToken: turnstileToken ?? undefined,
         }),
       });
 
@@ -157,6 +160,11 @@ export function LaunchBanner({ copy }: LaunchBannerProps) {
                 placeholder={copy.sitePlaceholder}
                 type="url"
                 value={siteUrl}
+              />
+              <TurnstileWidget
+                action="waitlist"
+                className="sm:flex-none"
+                onToken={setTurnstileToken}
               />
               <Button
                 className="sm:flex-none"

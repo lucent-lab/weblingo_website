@@ -171,4 +171,46 @@ describe("submitContactMessage", () => {
       expect.objectContaining({ distinctId: "contact_domain:hashed" }),
     );
   });
+
+  it("redirects with verification when the Turnstile token is rejected", async () => {
+    process.env.TURNSTILE_SECRET_KEY = "0xSECRET";
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0xSITE";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ success: false, "error-codes": ["bad"] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+    try {
+      rateLimitFixedWindow.mockResolvedValueOnce({
+        allowed: true,
+        limit: 10,
+        remaining: 9,
+        resetAtMs: Date.now() + 1000,
+        current: 1,
+        key: "k",
+      });
+
+      vi.resetModules();
+      const { submitContactMessage } = await import("./actions");
+
+      const formData = new FormData();
+      formData.set("fullName", "A");
+      formData.set("workEmail", "a@example.com");
+      formData.set("cf-turnstile-response", "bad");
+
+      await expect(submitContactMessage("en", formData)).rejects.toMatchObject({
+        url: "/en/contact?error=verification",
+      });
+      expect(createServiceRoleClient).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.TURNSTILE_SECRET_KEY;
+      delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      vi.unstubAllGlobals();
+    }
+  });
 });

@@ -42,6 +42,7 @@ Minimal validation:
   - `POST /api/prospect-showcases/:ref/convert`
   - `POST /api/prospect-showcases/access-link/resend`
 - Preview `errorCode` and `stage` enums must stay consistent with backend `webhooks-worker` responses.
+- Bot gating (M12.3): unauthenticated public endpoints (`POST /api/prospect-showcases`, `POST /api/waitlist`, contact server action) verify a Cloudflare Turnstile token via `internal/core/turnstile.ts` after the cheap IP rate-limit/body checks. Gating is enabled only when `TURNSTILE_SECRET_KEY` is set (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` becomes required then). Policy: preview is **fail-closed** (a Cloudflare outage blocks, protecting LLM/compute spend); waitlist and contact are **fail-open** (an outage allows, never dropping a lead). Missing/rejected tokens are always blocked. Do not forward the token upstream.
 - Stripe routes must verify signatures and preserve metadata needed to associate subscriptions with sites.
 - Logging follows the one-wide-event rule from `docs/LOGGING_POLICY.md`.
 - Do not introduce silent env fallbacks or legacy alias names.

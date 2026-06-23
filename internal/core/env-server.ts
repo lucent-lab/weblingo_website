@@ -16,6 +16,10 @@ const serverEnvSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1),
   SUPABASE_AUTH_TIMEOUT_MS: z.string().regex(/^[1-9]\d*$/),
   TRY_NOW_TOKEN: z.string().min(1).optional(),
+  // Cloudflare Turnstile secret (M12.3 bot gating). Optional: when unset, bot
+  // gating is disabled for all public endpoints (keeps dev/CI/tests green).
+  // When set, NEXT_PUBLIC_TURNSTILE_SITE_KEY becomes required (see superRefine).
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: z.string().regex(/^[1-9]\d*$/),
   WEBSITE_WAITLIST_MAX_PER_WINDOW: z.string().regex(/^[1-9]\d*$/),
   WEBSITE_WAITLIST_MAX_BODY_BYTES: z.string().regex(/^[1-9]\d*$/),
@@ -85,6 +89,14 @@ const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema).superRefine((env, c
     });
   }
 
+  if (env.TURNSTILE_SECRET_KEY && !env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"],
+      message: "NEXT_PUBLIC_TURNSTILE_SITE_KEY is required when TURNSTILE_SECRET_KEY is set.",
+    });
+  }
+
   const hasPreviewToken = Boolean(env.TRY_NOW_TOKEN);
   if (hasPreviewToken && !env.NEXT_PUBLIC_WEBHOOKS_API_BASE) {
     ctx.addIssue({
@@ -134,6 +146,7 @@ const readServerEnv = () => ({
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   SUPABASE_AUTH_TIMEOUT_MS: process.env.SUPABASE_AUTH_TIMEOUT_MS,
   TRY_NOW_TOKEN: process.env.TRY_NOW_TOKEN,
+  TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS: process.env.WEBSITE_WAITLIST_RATE_LIMIT_WINDOW_MS,
   WEBSITE_WAITLIST_MAX_PER_WINDOW: process.env.WEBSITE_WAITLIST_MAX_PER_WINDOW,
   WEBSITE_WAITLIST_MAX_BODY_BYTES: process.env.WEBSITE_WAITLIST_MAX_BODY_BYTES,
