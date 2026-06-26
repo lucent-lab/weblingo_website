@@ -173,6 +173,62 @@ function parseLivePreviewCases(): LivePreviewCase[] {
   });
 }
 
+async function installRenderedVisibleTextReader(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.__weblingoRenderedVisibleText = (excludedSelector: string): string => {
+      if (!document.body) {
+        return "";
+      }
+      const chunks: string[] = [];
+      const isRenderedElement = (element: Element | null): boolean => {
+        if (!element || element.closest(excludedSelector)) {
+          return false;
+        }
+        let current: Element | null = element;
+        while (current) {
+          const style = window.getComputedStyle(current);
+          if (
+            style.display === "none" ||
+            style.visibility === "hidden" ||
+            style.visibility === "collapse" ||
+            style.opacity === "0"
+          ) {
+            return false;
+          }
+          current = current.parentElement;
+        }
+        return true;
+      };
+      const hasRenderedTextBox = (node: Text): boolean => {
+        const value = node.textContent?.replace(/\s+/g, " ").trim();
+        if (!value) {
+          return false;
+        }
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rendered = Array.from(range.getClientRects()).some(
+          (rect) => rect.width > 0 && rect.height > 0,
+        );
+        range.detach();
+        return rendered;
+      };
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        if (
+          node instanceof Text &&
+          isRenderedElement(node.parentElement) &&
+          hasRenderedTextBox(node)
+        ) {
+          chunks.push(node.textContent ?? "");
+        }
+        node = walker.nextNode();
+      }
+      return chunks.join(" ");
+    };
+  });
+}
+
 async function installSourceTextProbe(
   page: Page,
   forbiddenText: string[],
@@ -189,17 +245,7 @@ async function installSourceTextProbe(
         stop: () => clearInterval(timer),
       };
 
-      const visibleText = () => {
-        if (!document.body) {
-          return "";
-        }
-        const clone = document.body.cloneNode(true);
-        if (!(clone instanceof HTMLElement)) {
-          return "";
-        }
-        clone.querySelectorAll(excludedSelector).forEach((node) => node.remove());
-        return clone.textContent ?? "";
-      };
+      const visibleText = () => window.__weblingoRenderedVisibleText?.(excludedSelector) ?? "";
       const record = () => {
         const text = visibleText();
         const hits = phrases.filter((phrase) => phrase && text.includes(phrase));
@@ -241,17 +287,10 @@ async function installSourceTextProbe(
 }
 
 async function readPageText(page: Page): Promise<string> {
-  return page.evaluate((excludedSelector) => {
-    if (!document.body) {
-      return "";
-    }
-    const clone = document.body.cloneNode(true);
-    if (!(clone instanceof HTMLElement)) {
-      return "";
-    }
-    clone.querySelectorAll(excludedSelector).forEach((node) => node.remove());
-    return clone.textContent ?? "";
-  }, NON_VISIBLE_TEXT_SELECTOR);
+  return page.evaluate(
+    (excludedSelector) => window.__weblingoRenderedVisibleText?.(excludedSelector) ?? "",
+    NON_VISIBLE_TEXT_SELECTOR,
+  );
 }
 
 async function sampleRotatorStates(
@@ -394,6 +433,7 @@ if (liveCases.length === 0) {
           }
         });
 
+        await installRenderedVisibleTextReader(page);
         await installSourceTextProbe(page, forbiddenText, sampleMs, DEFAULT_SAMPLE_INTERVAL_MS);
         const response = await page.goto(previewCase.url, { waitUntil: "domcontentloaded" });
         expect(response, `${previewCase.url} should return a document response`).not.toBeNull();
@@ -448,5 +488,6 @@ if (liveCases.length === 0) {
 declare global {
   interface Window {
     __weblingoPreviewUxProbe?: PreviewUxProbe;
+    __weblingoRenderedVisibleText?: (excludedSelector: string) => string;
   }
 }
