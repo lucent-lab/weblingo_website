@@ -4023,6 +4023,7 @@
         "additionalProperties": false,
         "properties": {
           "complete": {
+            "description": "False when the listing did not cover the full DLQ backlog.",
             "type": "boolean"
           },
           "cursor": {
@@ -4031,23 +4032,54 @@
               "null"
             ]
           },
+          "invalidKeyCount": {
+            "description": "Scanned keys under the DLQ prefix that did not match the DLQ key format.",
+            "type": "number"
+          },
+          "invalidMessageCount": {
+            "description": "Scanned message keys whose KV body was not a valid DLQ message.",
+            "type": "number"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/DlqMessage"
             },
             "type": "array"
           },
+          "scannedKeys": {
+            "description": "Raw KV keys scanned under the site's DLQ prefix.",
+            "type": "number"
+          },
+          "scannedPages": {
+            "description": "KV list pages scanned before sampling/sorting messages.",
+            "type": "number"
+          },
           "siteId": {
             "type": "string"
           },
           "summary": {
-            "$ref": "#/components/schemas/DlqSummary"
+            "$ref": "#/components/schemas/DlqSummary",
+            "description": "Summary for scanned DLQ keys. When complete is false, totals are partial and error buckets may reflect only fetched message bodies."
+          },
+          "truncated": {
+            "description": "True when messages is a bounded sample, either from the message cap or scan cap.",
+            "type": "boolean"
+          },
+          "unreadableMessageCount": {
+            "description": "Scanned message keys whose KV body was missing at read time.",
+            "type": "number"
           }
         },
         "required": [
           "siteId",
           "summary",
           "messages",
+          "truncated",
+          "scannedPages",
+          "scannedKeys",
+          "invalidKeyCount",
+          "unreadableMessageCount",
+          "invalidMessageCount",
           "complete"
         ],
         "type": "object"
@@ -6248,10 +6280,6 @@
           "locale": {
             "type": "string"
           },
-          "reattachStatusToken": {
-            "description": "`statusToken` from the original create response for the same submission. When an identical submission (same email, URL, and language pair) is already in flight, a valid token proves ownership of that run and the API reconnects to it (202 with a rotated `statusToken`). Without valid proof the API answers 409 with `errorCode: \"preview_in_progress\"` and never reveals the in-flight run's ref or token.",
-            "type": "string"
-          },
           "sourceLang": {
             "description": "Must be one of `GET /api/meta/languages` / `SUPPORTED_LANGUAGES`.",
             "type": "string"
@@ -6271,19 +6299,6 @@
           "email"
         ],
         "type": "object"
-      },
-      "ProspectShowcasePublicFailureCode": {
-        "enum": [
-          "provision_failed",
-          "source_fetch_failed",
-          "translation_failed",
-          "showcase_failed",
-          "provision_stalled",
-          "processing_stalled",
-          "translation_capacity_exhausted",
-          "source_page_too_large"
-        ],
-        "type": "string"
       },
       "ProspectShowcasePublicStage": {
         "enum": [
@@ -6307,7 +6322,6 @@
         "enum": [
           "pending",
           "processing",
-          "waiting_provider_capacity",
           "ready",
           "failed",
           "checkout_pending",
@@ -6327,20 +6341,15 @@
             ]
           },
           "error": {
-            "description": "Visitor-safe failure explanation (cause + next step). Null unless the demo failed.",
             "type": [
               "string",
               "null"
             ]
           },
           "errorCode": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProspectShowcasePublicFailureCode"
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "string",
+              "null"
             ]
           },
           "expiresAt": {
@@ -6357,34 +6366,6 @@
           },
           "prospectShowcaseRef": {
             "type": "string"
-          },
-          "retryHint": {
-            "anyOf": [
-              {
-                "additionalProperties": false,
-                "properties": {
-                  "reason": {
-                    "const": "provider_capacity_wait",
-                    "type": "string"
-                  },
-                  "retryAfterSeconds": {
-                    "minimum": 0,
-                    "type": [
-                      "integer",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "reason",
-                  "retryAfterSeconds"
-                ],
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "showcaseUrl": {
             "type": [
@@ -14585,7 +14566,7 @@
     },
     "/prospect-showcases": {
       "post": {
-        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account. If an active (submitted or demo_creating) showcase already exists for the same source URL, language pair, and email, the endpoint never starts a second demo: with a valid `reattachStatusToken` (the `statusToken` from the original create) it reconnects to the in-flight run and returns 202 with the existing `prospectShowcaseRef` and a rotated `statusToken`; without valid proof it returns 409 with `errorCode: \"preview_in_progress\"` and reveals nothing about the in-flight run. A partial unique index over active submissions makes this dedupe atomic for concurrent identical creates. Terminal rows never dedupe.",
+        "description": "Accepts a public try-now request, creates an unowned prospect showcase lifecycle row, and provisions a managed-demo site under the configured demo agency account.",
         "operationId": "prospectShowcases.create",
         "requestBody": {
           "content": {
@@ -14638,23 +14619,6 @@
               }
             },
             "description": "Unauthorized"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "example": {
-                  "details": {
-                    "code": "preview_in_progress"
-                  },
-                  "error": "Preview already in progress",
-                  "errorCode": "preview_in_progress"
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "A matching prospect showcase is already in progress and no valid reattach proof was provided."
           },
           "429": {
             "content": {
@@ -16935,24 +16899,41 @@
               "application/json": {
                 "example": {
                   "complete": true,
+                  "cursor": null,
+                  "invalidKeyCount": 0,
+                  "invalidMessageCount": 0,
                   "messages": [
                     {
-                      "attempts": 1,
-                      "error": "string",
-                      "key": "string",
+                      "attempts": 5,
+                      "error": "crawl fetch failed (503)",
+                      "key": "dlq:v1:00000000-0000-0000-0000-000000000001:crawl:1770926400000:abc",
                       "payloadSummary": {
-                        "shape": "null"
+                        "fields": [
+                          "site_id",
+                          "source_url"
+                        ],
+                        "shape": "object"
                       },
-                      "timestamp": "string",
-                      "worker": "string"
+                      "timestamp": "2026-02-12T20:00:00.000Z",
+                      "worker": "crawl"
                     }
                   ],
-                  "siteId": "string",
+                  "scannedKeys": 1,
+                  "scannedPages": 1,
+                  "siteId": "00000000-0000-0000-0000-000000000001",
                   "summary": {
-                    "errors": {},
-                    "perWorker": {},
+                    "errors": {
+                      "crawl fetch failed (503)": 1
+                    },
+                    "newest": "2026-02-12T20:00:00.000Z",
+                    "oldest": "2026-02-12T20:00:00.000Z",
+                    "perWorker": {
+                      "crawl": 1
+                    },
                     "total": 1
-                  }
+                  },
+                  "truncated": false,
+                  "unreadableMessageCount": 0
                 },
                 "schema": {
                   "$ref": "#/components/schemas/DlqListResponse"
